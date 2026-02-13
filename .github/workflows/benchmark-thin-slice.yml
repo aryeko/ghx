@@ -4,8 +4,16 @@ on:
   workflow_dispatch:
 
 jobs:
-  placeholder:
+  benchmark-harness-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: echo "Benchmark workflow scaffold"
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run benchmark:check
+      - run: pnpm --filter @ghx-router/benchmark run test
+      - run: pnpm --filter @ghx-router/benchmark run typecheck
