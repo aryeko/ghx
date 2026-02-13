@@ -36,7 +36,6 @@ jobs:
 
   release:
     needs: build-and-test
-    if: always()
     runs-on: ubuntu-latest
     permissions:
       contents: write
