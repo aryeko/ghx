@@ -39,4 +39,4 @@ jobs:
         with:
           files: packages/ghx-router/coverage/lcov.info,packages/benchmark/coverage/lcov.info
           flags: pr
-          fail_ci_if_error: false
+          fail_ci_if_error: true

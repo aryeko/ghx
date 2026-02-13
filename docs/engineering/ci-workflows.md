@@ -1,0 +1,27 @@
+# CI Workflows
+
+This repo uses two workflows:
+
+- `.github/workflows/ci-pr.yml` for pull requests.
+- `.github/workflows/ci-main.yml` for pushes to `main`.
+
+## PR Workflow
+
+- Runs a Node matrix (`22`, `24`).
+- Installs dependencies with pnpm and configures Nx SHAs.
+- Runs affected validation via `pnpm run ci:affected`.
+- Enforces GraphQL codegen drift check with `pnpm run ghx:gql:check`.
+- Validates benchmark scenarios with `pnpm run benchmark:check`.
+- Generates and uploads coverage on Node `24`.
+
+## Main Workflow
+
+- Runs full validation via `pnpm run ci`.
+- Runs `pnpm run ghx:gql:check` and `pnpm run benchmark:check`.
+- Generates coverage and uploads to Codecov.
+- On version commits (`chore: version packages`), uploads dist artifacts and runs release steps with Changesets.
+
+## Release Artifact Notes
+
+- Artifacts are uploaded from `packages/*/dist`.
+- Artifacts are downloaded into `packages/` and normalized before publish to ensure expected package layout.

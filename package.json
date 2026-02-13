@@ -15,6 +15,8 @@
     "changeset:version": "changeset version",
     "test": "nx run-many -t test",
     "test:affected": "nx affected -t test",
+    "test:coverage": "nx run-many -t test:coverage",
+    "test:coverage:affected": "nx affected -t test:coverage",
     "typecheck": "nx run-many -t typecheck",
     "typecheck:affected": "nx affected -t typecheck",
     "ci": "nx run-many -t ci",

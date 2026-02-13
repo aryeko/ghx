@@ -16,7 +16,9 @@
   },
   "nx": {
     "targets": {
-      "ci": {}
+      "ci": {
+        "dependsOn": ["lint", "typecheck", "test", "build", "gql-check"]
+      }
     }
   },
   "dependencies": {

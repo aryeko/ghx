@@ -34,7 +34,7 @@ jobs:
         with:
           files: packages/ghx-router/coverage/lcov.info,packages/benchmark/coverage/lcov.info
           flags: main
-          fail_ci_if_error: false
+          fail_ci_if_error: true
       - name: Upload dist artifacts
         id: upload_artifacts
         if: startsWith(github.event.head_commit.message, 'chore') && contains(github.event.head_commit.message, 'version packages')
@@ -67,6 +67,13 @@ jobs:
           github-token: ${{ github.token }}
           run-id: ${{ github.run_id }}
           path: packages
+      - name: Normalize downloaded artifact paths
+        if: startsWith(github.event.head_commit.message, 'chore') && contains(github.event.head_commit.message, 'version packages')
+        run: |
+          if [ -d packages/packages ]; then
+            cp -R packages/packages/. packages/
+            rm -rf packages/packages
+          fi
       - name: Create Release Pull Request or Publish
         id: changesets
         uses: changesets/action@v1

@@ -264,8 +264,9 @@ Implementation is complete when all conditions are true:
 Use this command set as a release gate for each milestone:
 
 ```bash
-pnpm run verify
-pnpm --filter @ghx-router/core run gql:check
+pnpm run ci
+pnpm run ci:affected
+pnpm run ghx:gql:check
 pnpm run benchmark:check
 pnpm run benchmark:run
 pnpm run benchmark:report

@@ -82,6 +82,10 @@ Normalized runtime envelope:
 - Benchmark reporting: `docs/benchmark/reporting.md`
 - Efficiency criteria: `docs/benchmark/efficiency-criteria.md`
 - Scenario assertions: `docs/benchmark/scenario-assertions.md`
+- CI workflows: `docs/engineering/ci-workflows.md`
+- Nx commands: `docs/engineering/nx-commands.md`
+- Changesets and publishing: `docs/release/changesets-and-publishing.md`
+- Codecov coverage policy: `docs/quality/codecov-coverage-policy.md`
 
 ## Verification
 
