@@ -23,12 +23,13 @@ export function createSafeCliCommandRunner(options?: SafeRunnerOptions): CliComm
         const stderrChunks: Buffer[] = []
         let stdoutSize = 0
         let stderrSize = 0
-        let timedOut = false
-        let overflowed = false
+        let failureReason: "timeout" | "overflow" | null = null
         let settled = false
 
         const timer = setTimeout(() => {
-          timedOut = true
+          if (failureReason === null) {
+            failureReason = "timeout"
+          }
           child.kill("SIGKILL")
         }, timeoutMs)
 
@@ -53,13 +54,16 @@ export function createSafeCliCommandRunner(options?: SafeRunnerOptions): CliComm
         }
 
         child.stdout?.on("data", (chunk: Buffer) => {
-          if (overflowed) {
+          if (failureReason === "overflow") {
             return
           }
 
           stdoutSize += chunk.length
           if (stdoutSize + stderrSize > maxOutputBytes) {
-            overflowed = true
+            if (failureReason === null) {
+              failureReason = "overflow"
+              clearTimeout(timer)
+            }
             child.kill("SIGKILL")
             return
           }
@@ -68,13 +72,16 @@ export function createSafeCliCommandRunner(options?: SafeRunnerOptions): CliComm
         })
 
         child.stderr?.on("data", (chunk: Buffer) => {
-          if (overflowed) {
+          if (failureReason === "overflow") {
             return
           }
 
           stderrSize += chunk.length
           if (stdoutSize + stderrSize > maxOutputBytes) {
-            overflowed = true
+            if (failureReason === null) {
+              failureReason = "overflow"
+              clearTimeout(timer)
+            }
             child.kill("SIGKILL")
             return
           }
@@ -87,12 +94,12 @@ export function createSafeCliCommandRunner(options?: SafeRunnerOptions): CliComm
         })
 
         child.on("close", (code) => {
-          if (timedOut) {
+          if (failureReason === "timeout") {
             settleError(new Error(`CLI command timed out after ${timeoutMs}ms`))
             return
           }
 
-          if (overflowed) {
+          if (failureReason === "overflow") {
             settleError(new Error(`CLI output exceeded ${maxOutputBytes} bytes`))
             return
           }

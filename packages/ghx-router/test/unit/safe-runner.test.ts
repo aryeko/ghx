@@ -96,4 +96,40 @@ describe("createSafeCliCommandRunner", () => {
       vi.resetModules()
     }
   })
+
+  it("reports overflow even when close happens after timeout window", async () => {
+    const stdout = new EventEmitter()
+    const stderr = new EventEmitter()
+    const child = new EventEmitter() as EventEmitter & {
+      stdout: EventEmitter
+      stderr: EventEmitter
+      kill: (signal: string) => void
+    }
+    child.stdout = stdout
+    child.stderr = stderr
+    child.kill = vi.fn()
+
+    const spawnMock = vi.fn(() => child)
+    vi.resetModules()
+    vi.doMock("node:child_process", () => ({ spawn: spawnMock }))
+
+    try {
+      const { createSafeCliCommandRunner: createMockedRunner } = await import(
+        "../../src/core/execution/cli/safe-runner.js"
+      )
+      const runner = createMockedRunner({ maxOutputBytes: 4 })
+
+      const pending = runner.run("gh", ["repo", "view"], 20)
+
+      stdout.emit("data", Buffer.from("abcde"))
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      child.emit("close", 0)
+
+      await expect(pending).rejects.toThrow("output exceeded")
+      expect(child.kill).toHaveBeenCalledWith("SIGKILL")
+    } finally {
+      vi.doUnmock("node:child_process")
+      vi.resetModules()
+    }
+  })
 })
