@@ -6,14 +6,16 @@ function baseCard(
   capabilityId: string,
   description: string,
   operationName: string,
-  documentPath: string
+  documentPath: string,
+  required: string[]
 ): OperationCard {
   return {
     capability_id: capabilityId,
     version: "1.0.0",
     description,
     input_schema: {
-      type: "object"
+      type: "object",
+      required
     },
     output_schema: {
       type: "object"
@@ -34,9 +36,9 @@ function baseCard(
 }
 
 export const operationCards: OperationCard[] = [
-  baseCard("repo.view", "Fetch repository metadata.", "RepoView", "src/gql/operations/repo-view.graphql"),
-  baseCard("issue.view", "Fetch one issue by number.", "IssueView", "src/gql/operations/issue-view.graphql"),
-  baseCard("issue.list", "List repository issues.", "IssueList", "src/gql/operations/issue-list.graphql"),
-  baseCard("pr.view", "Fetch one pull request by number.", "PrView", "src/gql/operations/pr-view.graphql"),
-  baseCard("pr.list", "List repository pull requests.", "PrList", "src/gql/operations/pr-list.graphql")
+  baseCard("repo.view", "Fetch repository metadata.", "RepoView", "src/gql/operations/repo-view.graphql", ["owner", "name"]),
+  baseCard("issue.view", "Fetch one issue by number.", "IssueView", "src/gql/operations/issue-view.graphql", ["owner", "name", "issueNumber"]),
+  baseCard("issue.list", "List repository issues.", "IssueList", "src/gql/operations/issue-list.graphql", ["owner", "name"]),
+  baseCard("pr.view", "Fetch one pull request by number.", "PrView", "src/gql/operations/pr-view.graphql", ["owner", "name", "prNumber"]),
+  baseCard("pr.list", "List repository pull requests.", "PrList", "src/gql/operations/pr-list.graphql", ["owner", "name"])
 ]
