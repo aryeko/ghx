@@ -18,7 +18,13 @@ function buildArgs(capabilityId: CliCapabilityId, params: Record<string, unknown
   const repo = owner && name ? `${owner}/${name}` : ""
 
   if (capabilityId === "repo.view") {
-    return ["repo", "view", repo, "--json", "id,name,nameWithOwner,isPrivate,stargazerCount,forkCount,url,defaultBranchRef"]
+    const args = ["repo", "view"]
+    if (repo) {
+      args.push(repo)
+    }
+
+    args.push("--json", "id,name,nameWithOwner,isPrivate,stargazerCount,forkCount,url,defaultBranchRef")
+    return args
   }
 
   if (capabilityId === "issue.view") {
@@ -27,11 +33,23 @@ function buildArgs(capabilityId: CliCapabilityId, params: Record<string, unknown
       throw new Error("Missing or invalid issueNumber for issue.view")
     }
 
-    return ["issue", "view", String(issueNumber), "--repo", repo, "--json", "id,number,title,state,url"]
+    const args = ["issue", "view", String(issueNumber)]
+    if (repo) {
+      args.push("--repo", repo)
+    }
+
+    args.push("--json", "id,number,title,state,url")
+    return args
   }
 
   if (capabilityId === "issue.list") {
-    return ["issue", "list", "--repo", repo, "--limit", String(params.first ?? 30), "--json", "id,number,title,state,url"]
+    const args = ["issue", "list"]
+    if (repo) {
+      args.push("--repo", repo)
+    }
+
+    args.push("--limit", String(params.first ?? 30), "--json", "id,number,title,state,url")
+    return args
   }
 
   if (capabilityId === "pr.view") {
@@ -40,10 +58,26 @@ function buildArgs(capabilityId: CliCapabilityId, params: Record<string, unknown
       throw new Error("Missing or invalid prNumber for pr.view")
     }
 
-    return ["pr", "view", String(prNumber), "--repo", repo, "--json", "id,number,title,state,url"]
+    const args = ["pr", "view", String(prNumber)]
+    if (repo) {
+      args.push("--repo", repo)
+    }
+
+    args.push("--json", "id,number,title,state,url")
+    return args
   }
 
-  return ["pr", "list", "--repo", repo, "--limit", String(params.first ?? 30), "--json", "id,number,title,state,url"]
+  if (capabilityId === "pr.list") {
+    const args = ["pr", "list"]
+    if (repo) {
+      args.push("--repo", repo)
+    }
+
+    args.push("--limit", String(params.first ?? 30), "--json", "id,number,title,state,url")
+    return args
+  }
+
+  throw new Error(`Unsupported CLI capability: ${capabilityId}`)
 }
 
 function parseCliData(stdout: string): unknown {

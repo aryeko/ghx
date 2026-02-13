@@ -99,8 +99,28 @@ export async function execute(options: ExecuteOptions): Promise<ResultEnvelope> 
       continue
     }
 
+    const routeHandler = options.routes[route]
+    if (typeof routeHandler !== "function") {
+      logMetric("route.missing_handler", 1, {
+        capability_id: options.card.capability_id,
+        route
+      })
+
+      const handlerError = {
+        code: errorCodes.AdapterUnsupported,
+        message: `No route handler configured for '${route}'`,
+        retryable: false,
+        details: { route }
+      }
+
+      attempts.push({ route, status: "skipped", error_code: errorCodes.AdapterUnsupported })
+      lastError = handlerError
+      firstError ??= handlerError
+      continue
+    }
+
     for (let attempt = 0; attempt < maxAttemptsPerRoute; attempt += 1) {
-      const result = await options.routes[route](options.params)
+      const result = await routeHandler(options.params)
       logMetric("route.attempt", 1, {
         capability_id: options.card.capability_id,
         route,
