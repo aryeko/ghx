@@ -12,6 +12,9 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GITHUB_TOKEN: ${{ github.token }}
     outputs:
       artifacts_uploaded: ${{ steps.upload_artifacts.outputs.artifact-id }}
     steps:
