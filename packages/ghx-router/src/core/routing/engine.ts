@@ -41,10 +41,6 @@ function resolveRoutesForTask(task: string): ResultEnvelope["meta"]["source"][] 
     ordered.add(route)
   }
 
-  if (ordered.size === 0) {
-    ordered.add(chooseRoute())
-  }
-
   return [...ordered]
 }
 
@@ -74,6 +70,15 @@ export async function executeTask(
         route: ResultEnvelope["meta"]["source"]
       }
     | null = null
+  let lastPreflightError:
+    | {
+        code: string
+        message: string
+        details: { route: ResultEnvelope["meta"]["source"] }
+        retryable: boolean
+        route: ResultEnvelope["meta"]["source"]
+      }
+    | null = null
 
   for (let routeIndex = 0; routeIndex < routes.length; routeIndex += 1) {
     const route = routes[routeIndex] as ResultEnvelope["meta"]["source"]
@@ -92,6 +97,17 @@ export async function executeTask(
 
     const preflightResult = preflightCheck(preflightInput)
     if (!preflightResult.ok) {
+      if (hasNextRoute && route !== "graphql") {
+        lastPreflightError = {
+          code: preflightResult.code,
+          message: preflightResult.message,
+          details: preflightResult.details,
+          retryable: preflightResult.retryable,
+          route
+        }
+        continue
+      }
+
       return normalizeError(
         {
           code: preflightResult.code,
@@ -188,6 +204,19 @@ export async function executeTask(
         retryable: true
       },
       lastRetryableError.route,
+      reason
+    )
+  }
+
+  if (lastPreflightError) {
+    return normalizeError(
+      {
+        code: lastPreflightError.code,
+        message: lastPreflightError.message,
+        details: lastPreflightError.details,
+        retryable: lastPreflightError.retryable
+      },
+      lastPreflightError.route,
       reason
     )
   }

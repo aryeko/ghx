@@ -156,4 +156,58 @@ describe("executeTask repo.view", () => {
       capability.fallbackRoutes = originalFallbackRoutes
     }
   })
+
+  it("continues to graphql when cli preflight fails and fallback exists", async () => {
+    const capability = capabilityRegistry.find((entry) => entry.task === "repo.view")
+    if (!capability) {
+      throw new Error("repo.view capability missing")
+    }
+
+    const originalDefaultRoute = capability.defaultRoute
+    const originalFallbackRoutes = [...capability.fallbackRoutes]
+
+    capability.defaultRoute = "cli"
+    capability.fallbackRoutes = ["graphql"]
+
+    try {
+      const githubClient = createGithubClient({
+        async execute<TData>(query: string): Promise<TData> {
+          if (query.includes("query RepoView")) {
+            return {
+              repository: {
+                id: "repo-id",
+                name: "modkit",
+                nameWithOwner: "go-modkit/modkit",
+                isPrivate: false,
+                stargazerCount: 10,
+                forkCount: 2,
+                url: "https://github.com/go-modkit/modkit",
+                defaultBranchRef: { name: "main" }
+              }
+            } as TData
+          }
+
+          throw new Error("Unexpected query")
+        }
+      })
+
+      const request: TaskRequest = {
+        task: "repo.view",
+        input: { owner: "go-modkit", name: "modkit" }
+      }
+
+      const result = await executeTask(request, {
+        githubClient,
+        githubToken: "test-token",
+        ghCliAvailable: false,
+        ghAuthenticated: false
+      })
+
+      expect(result.success).toBe(true)
+      expect(result.meta.source).toBe("graphql")
+    } finally {
+      capability.defaultRoute = originalDefaultRoute
+      capability.fallbackRoutes = originalFallbackRoutes
+    }
+  })
 })

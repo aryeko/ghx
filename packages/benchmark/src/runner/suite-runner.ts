@@ -495,6 +495,11 @@ async function runScenario(
     const hasRequiredToolCalls = requireToolCalls ? toolCounts.toolCalls >= minToolCalls : true
     const expectValidOutput = scenario.assertions.expect_valid_output ?? scenario.assertions.must_succeed
     const outputExpectationMet = expectValidOutput ? outputValid : !outputValid
+    const errorReason = !outputExpectationMet
+      ? `Output validation failed: outputValid=${outputValid}, expectValidOutput=${expectValidOutput}`
+      : !hasRequiredToolCalls
+        ? `Expected at least ${minToolCalls} tool call(s), got ${toolCounts.toolCalls}`
+        : null
 
     const success = outputExpectationMet && hasRequiredToolCalls
 
@@ -530,13 +535,12 @@ async function runScenario(
         repo: GIT_REPO,
         commit: GIT_COMMIT
       },
-      error:
-        hasRequiredToolCalls
-          ? null
-          : {
-              type: "assertion_failed",
-              message: `Expected at least ${minToolCalls} tool call(s), got ${toolCounts.toolCalls}`
-            }
+      error: errorReason
+        ? {
+            type: "assertion_failed",
+            message: errorReason
+          }
+        : null
     }
   } catch (error: unknown) {
     if (sessionId) {
