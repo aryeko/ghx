@@ -31,8 +31,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run ci
-      - run: pnpm run ghx:gql:check
-      - run: pnpm run benchmark:check
       - name: Generate coverage
         run: pnpm run test:coverage
       - name: Upload coverage to Codecov

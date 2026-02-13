@@ -18,7 +18,7 @@
   "nx": {
     "targets": {
       "ci": {
-        "dependsOn": ["lint", "typecheck", "test", "build"]
+        "dependsOn": ["lint", "typecheck", "test", "build", "check:scenarios"]
       }
     }
   },

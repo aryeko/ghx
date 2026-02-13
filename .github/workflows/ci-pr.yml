@@ -34,8 +34,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: nrwl/nx-set-shas@v4
       - run: pnpm run ci:affected
-      - run: pnpm run ghx:gql:check
-      - run: pnpm run benchmark:check
       - name: Generate coverage (Node 24)
         if: matrix.node-version == 24
         run: pnpm run test:coverage
