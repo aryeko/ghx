@@ -19,18 +19,6 @@
       "dependsOn": ["^typecheck"],
       "cache": true
     },
-    "gql:check": {
-      "cache": false
-    },
-    "check:scenarios": {
-      "cache": false
-    },
-    "report": {
-      "cache": false
-    },
-    "report:gate": {
-      "cache": false
-    },
     "ci": {
       "dependsOn": ["lint", "typecheck", "test", "build"],
       "cache": false
