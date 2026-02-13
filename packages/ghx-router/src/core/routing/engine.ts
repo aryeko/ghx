@@ -116,6 +116,11 @@ export async function executeTask(
   return execute({
     card,
     params: request.input as Record<string, unknown>,
+    routingContext: {
+      ghCliAvailable: deps.ghCliAvailable,
+      ghAuthenticated: deps.ghAuthenticated,
+      githubTokenPresent: Boolean(deps.githubToken)
+    },
     retry: {
       maxAttemptsPerRoute: 2
     },
@@ -153,7 +158,7 @@ export async function executeTask(
       graphql: async () =>
         runGraphqlCapability(deps.githubClient, request.task as GraphqlCapabilityId, request.input as Record<string, unknown>),
       cli: async () => {
-        return runCliCapability(cliRunner, request.task as CliCapabilityId, request.input as Record<string, unknown>)
+        return runCliCapability(cliRunner, request.task as CliCapabilityId, request.input as Record<string, unknown>, card)
       },
       rest: async () =>
         normalizeError(

@@ -32,6 +32,6 @@ Runtime reason codes:
 
 Source of truth:
 
-- `packages/ghx-router/src/core/registry/cards.ts`
+- `packages/ghx-router/src/core/registry/cards/*.yaml`
 - `packages/ghx-router/src/core/execute/execute.ts`
 - `packages/ghx-router/src/core/execution/preflight.ts`

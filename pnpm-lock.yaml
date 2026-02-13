@@ -78,6 +78,9 @@ importers:
       graphql-tag:
         specifier: ^2.12.6
         version: 2.12.6(graphql@16.12.0)
+      js-yaml:
+        specifier: ^4.1.0
+        version: 4.1.1
     devDependencies:
       '@graphql-codegen/cli':
         specifier: ^5.0.7
@@ -94,6 +97,9 @@ importers:
       '@graphql-codegen/typescript-operations':
         specifier: ^4.6.1
         version: 4.6.1(graphql@16.12.0)
+      '@types/js-yaml':
+        specifier: ^4.0.9
+        version: 4.0.9
       '@types/node':
         specifier: ^25.2.3
         version: 25.2.3

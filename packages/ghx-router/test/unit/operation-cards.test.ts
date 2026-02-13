@@ -37,9 +37,13 @@ describe("operation cards registry", () => {
     expect(prListCard?.input_schema.required).toEqual(["owner", "name"])
   })
 
-  it("keeps CLI metadata absent until adapter is card-driven", () => {
+  it("exposes CLI command metadata for card-driven adapter execution", () => {
     const card = getOperationCard("issue.comments.list")
-    expect(card?.cli).toBeUndefined()
+    expect(card?.cli).toEqual(
+      expect.objectContaining({
+        command: "api graphql"
+      })
+    )
   })
 
   it("allows nullable defaultBranch in repo.view output schema", () => {

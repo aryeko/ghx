@@ -200,4 +200,47 @@ describe("execute", () => {
       expect.objectContaining({ route: "graphql", status: "error", error_code: "VALIDATION" })
     ])
   })
+
+  it("supports suitability rules that override preferred route", async () => {
+    const cardWithSuitability: OperationCard = {
+      ...baseCard,
+      routing: {
+        preferred: "graphql",
+        fallbacks: ["cli"],
+        suitability: [
+          {
+            when: "params",
+            predicate: "cli if owner == acme",
+            reason: "Prefer CLI for acme repos"
+          }
+        ]
+      }
+    }
+
+    const cli = vi.fn(async () => ({
+      ok: true,
+      data: { id: "repo-id" },
+      meta: { capability_id: "repo.view", route_used: "cli" as const }
+    }))
+    const graphql = vi.fn(async () => ({
+      ok: true,
+      data: { id: "repo-id" },
+      meta: { capability_id: "repo.view", route_used: "graphql" as const }
+    }))
+
+    const result = await execute({
+      card: cardWithSuitability,
+      params: { owner: "acme", name: "modkit" },
+      preflight: alwaysPassPreflight,
+      routes: {
+        graphql,
+        cli,
+        rest: vi.fn()
+      }
+    })
+
+    expect(result.ok).toBe(true)
+    expect(cli).toHaveBeenCalledTimes(1)
+    expect(graphql).not.toHaveBeenCalled()
+  })
 })

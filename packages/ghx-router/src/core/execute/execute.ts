@@ -13,6 +13,7 @@ type PreflightResult =
 type ExecuteOptions = {
   card: OperationCard
   params: Record<string, unknown>
+  routingContext?: Record<string, unknown>
   trace?: boolean
   retry?: {
     maxAttemptsPerRoute?: number
@@ -21,8 +22,88 @@ type ExecuteOptions = {
   routes: Record<RouteSource, (params: Record<string, unknown>) => Promise<ResultEnvelope>>
 }
 
-function routePlan(card: OperationCard): RouteSource[] {
-  const planned = new Set<RouteSource>([card.routing.preferred, ...card.routing.fallbacks])
+function parsePredicateValue(raw: string): unknown {
+  const value = raw.trim()
+  if (value === "true") {
+    return true
+  }
+  if (value === "false") {
+    return false
+  }
+  if (value === "null") {
+    return null
+  }
+
+  const numeric = Number(value)
+  if (!Number.isNaN(numeric) && value.length > 0) {
+    return numeric
+  }
+
+  return value.replace(/^['"]|['"]$/g, "")
+}
+
+function resolvePathValue(source: Record<string, unknown>, path: string): unknown {
+  const segments = path.split(".").filter((segment) => segment.length > 0)
+  let current: unknown = source
+
+  for (const segment of segments) {
+    if (typeof current !== "object" || current === null || Array.isArray(current)) {
+      return undefined
+    }
+
+    current = (current as Record<string, unknown>)[segment]
+  }
+
+  return current
+}
+
+function evaluateSuitabilityPreferred(
+  card: OperationCard,
+  params: Record<string, unknown>,
+  routingContext: Record<string, unknown>
+): RouteSource {
+  const rules = card.routing.suitability ?? []
+
+  for (const rule of rules) {
+    const alwaysMatch = /^(cli|graphql|rest)$/i.exec(rule.predicate.trim())
+    const alwaysRoute = alwaysMatch?.[1]
+    if (rule.when === "always" && alwaysRoute) {
+      return alwaysRoute.toLowerCase() as RouteSource
+    }
+
+    const conditionalMatch = /^(cli|graphql|rest)\s+if\s+([a-zA-Z0-9_.]+)\s*(==|!=)\s*(.+)$/i.exec(
+      rule.predicate.trim()
+    )
+
+    if (!conditionalMatch) {
+      continue
+    }
+
+    const [, targetRouteRaw = "", rawPath = "", operator = "==", rawExpected = ""] = conditionalMatch
+    const targetRoute = targetRouteRaw.toLowerCase() as RouteSource
+    const source = rule.when === "env" ? routingContext : params
+    const path = rawPath.startsWith("params.") || rawPath.startsWith("env.")
+      ? rawPath.split(".").slice(1).join(".")
+      : rawPath
+    const actual = resolvePathValue(source, path)
+    const expected = parsePredicateValue(rawExpected)
+    const matches = operator === "==" ? actual === expected : actual !== expected
+
+    if (matches) {
+      return targetRoute
+    }
+  }
+
+  return card.routing.preferred
+}
+
+function routePlan(
+  card: OperationCard,
+  params: Record<string, unknown>,
+  routingContext: Record<string, unknown>
+): RouteSource[] {
+  const preferred = evaluateSuitabilityPreferred(card, params, routingContext)
+  const planned = new Set<RouteSource>([preferred, ...card.routing.fallbacks])
   return [...planned]
 }
 
@@ -49,7 +130,9 @@ export async function execute(options: ExecuteOptions): Promise<ResultEnvelope> 
   let lastError: ResultEnvelope["error"]
   let firstError: ResultEnvelope["error"]
 
-  for (const route of routePlan(options.card)) {
+  const routingContext = options.routingContext ?? {}
+
+  for (const route of routePlan(options.card, options.params, routingContext)) {
     logMetric("route.plan", 1, {
       capability_id: options.card.capability_id,
       route

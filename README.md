@@ -47,7 +47,7 @@ Normalized runtime envelope:
 
 ## Routing (v1)
 
-- Capabilities are defined by operation cards in `packages/ghx-router/src/core/registry/cards.ts`.
+- Capabilities are defined by runtime-loaded operation cards in `packages/ghx-router/src/core/registry/cards/*.yaml`.
 - Route plan is deterministic: `preferred` then ordered `fallbacks`.
 - CLI-suitable capabilities (`repo.view`, `issue.view`, `issue.list`, `pr.view`, `pr.list`) prefer `cli` with `graphql` fallback.
 - `issue.comments.list` prefers `graphql` with `cli` fallback.

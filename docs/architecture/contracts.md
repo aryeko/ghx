@@ -35,7 +35,7 @@ Runtime schema enforcement:
 Source of truth:
 
 - `packages/ghx-router/src/core/registry/types.ts`
-- `packages/ghx-router/src/core/registry/cards.ts`
+- `packages/ghx-router/src/core/registry/cards/*.yaml`
 - `packages/ghx-router/src/core/registry/index.ts`
 
 ## Agent Tool Surface Contract
