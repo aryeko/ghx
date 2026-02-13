@@ -25,4 +25,19 @@ describe("extractAttemptMetrics", () => {
   it("returns zeroed metrics when payload has no meta", () => {
     expect(extractAttemptMetrics({})).toEqual({ totalAttempts: 0, routeUsed: null, retryCount: 0 })
   })
+
+  it("ignores non-object attempts and non-string route_used", () => {
+    const metrics = extractAttemptMetrics({
+      meta: {
+        route_used: 42,
+        attempts: [null, "bad", { status: "success" }, { status: "error" }]
+      }
+    })
+
+    expect(metrics).toEqual({
+      totalAttempts: 2,
+      routeUsed: null,
+      retryCount: 1
+    })
+  })
 })
