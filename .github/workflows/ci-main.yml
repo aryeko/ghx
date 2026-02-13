@@ -49,36 +49,37 @@ jobs:
           path: packages/*/dist
           retention-days: 1
 
-  release:
-    needs: build-and-test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-      actions: read
-    steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v6
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Download build artifacts
-        if: startsWith(github.event.head_commit.message, 'chore') && contains(github.event.head_commit.message, 'version packages')
-        uses: actions/download-artifact@v4
-        with:
-          name: dist-artifacts
-          github-token: ${{ github.token }}
-          run-id: ${{ github.run_id }}
-          path: packages
-      - name: Create Release Pull Request or Publish
-        id: changesets
-        uses: changesets/action@v1
-        with:
-          publish: pnpm run changeset:publish
-          version: pnpm run changeset:version
-          commit: "chore: version packages"
-          title: "chore: version packages"
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+  # npm publish not yet configured
+  # release:
+  #   needs: build-and-test
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: write
+  #     pull-requests: write
+  #     actions: read
+  #   steps:
+  #     - uses: actions/checkout@v6
+  #     - uses: pnpm/action-setup@v4
+  #     - uses: actions/setup-node@v6
+  #       with:
+  #         node-version-file: .nvmrc
+  #         cache: pnpm
+  #     - run: pnpm install --frozen-lockfile
+  #     - name: Download build artifacts
+  #       if: startsWith(github.event.head_commit.message, 'chore') && contains(github.event.head_commit.message, 'version packages')
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: dist-artifacts
+  #         github-token: ${{ github.token }}
+  #         run-id: ${{ github.run_id }}
+  #         path: packages
+  #     - name: Create Release Pull Request or Publish
+  #       id: changesets
+  #       uses: changesets/action@v1
+  #       with:
+  #         publish: pnpm run changeset:publish
+  #         version: pnpm run changeset:version
+  #         commit: "chore: version packages"
+  #         title: "chore: version packages"
+  #       env:
+  #         GITHUB_TOKEN: ${{ github.token }}
