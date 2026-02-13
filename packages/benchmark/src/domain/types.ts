@@ -8,6 +8,8 @@ export type ScenarioAssertions = {
   data_type?: "array" | "object"
   require_tool_calls?: boolean
   min_tool_calls?: number
+  max_tool_calls?: number
+  require_attempt_trace?: boolean
 }
 
 export type Scenario = {

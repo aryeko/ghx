@@ -1,4 +1,5 @@
 import { errorCodes } from "./codes.js"
+import type { ErrorCode } from "./codes.js"
 
 function toMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -8,7 +9,7 @@ function toMessage(error: unknown): string {
   return String(error)
 }
 
-export function mapErrorToCode(error: unknown): string {
+export function mapErrorToCode(error: unknown): ErrorCode {
   const message = toMessage(error).toLowerCase()
 
   if (message.includes("rate limit") || message.includes(" 429") || message.includes("too many requests")) {

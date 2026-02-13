@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto"
 import { join } from "node:path"
 
 import { extractFirstJsonObject, validateEnvelope } from "../extract/envelope.js"
+import { extractAttemptMetrics } from "../extract/attempts.js"
 import { aggregateToolCounts } from "../extract/tool-usage.js"
 import type {
   BenchmarkMode,
@@ -409,7 +410,7 @@ function renderPrompt(scenario: Scenario, mode: BenchmarkMode): string {
       ? `The JSON data object MUST include: ${requiredDataFields.join(", ")}.`
       : "The JSON data field may be object or array based on task output."
 
-  return `${modePromptPrefix[mode]}\n${fixtureNote}\nYou MUST use real tools to gather data. Do not fabricate outputs.\nReturn STRICT JSON only. No markdown fences.\nOutput must be exactly one JSON object with keys: success, data, error, meta.\n${dataContract}\n\n${rendered}`
+  return `${modePromptPrefix[mode]}\n${fixtureNote}\nYou MUST use real tools to gather data. Do not fabricate outputs.\nReturn STRICT JSON only. No markdown fences.\nOutput must be exactly one JSON object with keys: ok, data, error, meta.\n${dataContract}\n\n${rendered}`
 }
 
 async function runScenario(
@@ -484,6 +485,7 @@ async function runScenario(
 
     const allMessages = await fetchSessionMessages(sessionApi, session.id)
     const toolCounts = aggregateToolCounts(allMessages)
+    const attemptMetrics = extractAttemptMetrics(envelope)
     const latencyWall = Date.now() - startedAt
     const sdkLatency =
       typeof assistant.time.completed === "number"
@@ -498,17 +500,25 @@ async function runScenario(
       assistant.tokens.cache.write
 
     const minToolCalls = scenario.assertions.min_tool_calls ?? 1
+    const maxToolCalls = scenario.assertions.max_tool_calls
     const requireToolCalls = scenario.assertions.require_tool_calls ?? true
     const hasRequiredToolCalls = requireToolCalls ? toolCounts.toolCalls >= minToolCalls : true
+    const hasValidMaxToolCalls = maxToolCalls === undefined ? true : toolCounts.toolCalls <= maxToolCalls
+    const requiresAttemptTrace = scenario.assertions.require_attempt_trace ?? false
+    const hasAttemptTrace = !requiresAttemptTrace || attemptMetrics.totalAttempts > 0
     const expectValidOutput = scenario.assertions.expect_valid_output ?? scenario.assertions.must_succeed
     const outputExpectationMet = expectValidOutput ? outputValid : !outputValid
     const errorReason = !outputExpectationMet
       ? `Output validation failed: outputValid=${outputValid}, expectValidOutput=${expectValidOutput}`
       : !hasRequiredToolCalls
         ? `Expected at least ${minToolCalls} tool call(s), got ${toolCounts.toolCalls}`
+        : !hasValidMaxToolCalls
+          ? `Expected at most ${maxToolCalls} tool call(s), got ${toolCounts.toolCalls}`
+          : !hasAttemptTrace
+            ? "Expected attempt trace metadata in output envelope"
         : null
 
-    const success = outputExpectationMet && hasRequiredToolCalls
+    const success = outputExpectationMet && hasRequiredToolCalls && hasValidMaxToolCalls && hasAttemptTrace
 
     return {
       timestamp: new Date().toISOString(),
@@ -532,7 +542,7 @@ async function runScenario(
       cost: assistant.cost,
       tool_calls: toolCounts.toolCalls,
       api_calls: toolCounts.apiCalls,
-      retry_count: 0,
+      retry_count: attemptMetrics.retryCount,
       model: {
         provider_id: PROVIDER_ID,
         model_id: MODEL_ID,

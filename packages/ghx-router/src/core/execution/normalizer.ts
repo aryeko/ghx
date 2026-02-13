@@ -3,18 +3,23 @@ import type { RouteReasonCode } from "../routing/reason-codes.js"
 
 type MetaInput = {
   capabilityId: string
-  reason?: RouteReasonCode
+  reason: RouteReasonCode | undefined
 }
 
 function buildMeta(
   route: "cli" | "rest" | "graphql",
   options: MetaInput
 ): ResultEnvelope["meta"] {
-  return {
+  const meta: ResultEnvelope["meta"] = {
     capability_id: options.capabilityId,
-    route_used: route,
-    reason: options.reason
+    route_used: route
   }
+
+  if (options.reason !== undefined) {
+    meta.reason = options.reason
+  }
+
+  return meta
 }
 
 export function normalizeResult<TData>(

@@ -1,4 +1,5 @@
 import type { RouteSource } from "../contracts/envelope.js"
+import type { ErrorCode } from "../errors/codes.js"
 import { errorCodes } from "../errors/codes.js"
 
 export type PreflightInput = {
@@ -12,7 +13,7 @@ export type PreflightResult =
   | { ok: true }
   | {
       ok: false
-      code: string
+      code: ErrorCode
       message: string
       retryable: boolean
       details: { route: RouteSource }

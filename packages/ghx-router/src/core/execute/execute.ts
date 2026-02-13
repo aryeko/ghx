@@ -3,6 +3,7 @@ import { errorCodes } from "../errors/codes.js"
 import type { ResultEnvelope, RouteSource } from "../contracts/envelope.js"
 import type { OperationCard } from "../registry/types.js"
 import { normalizeError } from "../execution/normalizer.js"
+import { logMetric } from "../telemetry/logger.js"
 
 type PreflightResult =
   | { ok: true }
@@ -62,14 +63,24 @@ export async function execute(options: ExecuteOptions): Promise<ResultEnvelope> 
   let firstError: ResultEnvelope["error"]
 
   for (const route of routePlan(options.card)) {
+    logMetric("route.plan", 1, {
+      capability_id: options.card.capability_id,
+      route
+    })
+
     const preflight = await options.preflight(route)
     if (!preflight.ok) {
+      logMetric("route.preflight_skipped", 1, {
+        capability_id: options.card.capability_id,
+        route,
+        error_code: preflight.code
+      })
       attempts.push({ route, status: "skipped", error_code: preflight.code })
       lastError = {
         code: preflight.code,
         message: preflight.message,
         retryable: preflight.retryable,
-        details: preflight.details
+        ...(preflight.details ? { details: preflight.details } : {})
       }
       firstError ??= lastError
       continue
@@ -77,7 +88,19 @@ export async function execute(options: ExecuteOptions): Promise<ResultEnvelope> 
 
     for (let attempt = 0; attempt < maxAttemptsPerRoute; attempt += 1) {
       const result = await options.routes[route](options.params)
-      attempts.push({ route, status: result.ok ? "success" : "error", error_code: result.error?.code })
+      logMetric("route.attempt", 1, {
+        capability_id: options.card.capability_id,
+        route,
+        ok: result.ok
+      })
+      const attempt: { route: RouteSource; status: "success" | "error"; error_code?: ErrorCode } = {
+        route,
+        status: result.ok ? "success" : "error"
+      }
+      if (result.error?.code) {
+        attempt.error_code = result.error.code
+      }
+      attempts.push(attempt)
 
       if (result.ok) {
         if (options.trace) {

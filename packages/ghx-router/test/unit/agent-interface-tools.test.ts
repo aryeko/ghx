@@ -9,7 +9,7 @@ describe("agent interface tools", () => {
     const executeTask = vi.fn(async () => ({
       ok: true,
       data: { id: "repo-id" },
-      meta: { capability_id: "repo.view", route_used: "graphql" }
+      meta: { capability_id: "repo.view", route_used: "graphql" as const }
     }))
 
     const tool = createExecuteTool({ executeTask })

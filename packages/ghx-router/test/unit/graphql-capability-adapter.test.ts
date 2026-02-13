@@ -5,7 +5,16 @@ import { runGraphqlCapability } from "../../src/core/execution/adapters/graphql-
 describe("runGraphqlCapability", () => {
   it("returns normalized data for supported capability", async () => {
     const client = {
-      fetchRepoView: vi.fn(async () => ({ id: "repo-id" })),
+      fetchRepoView: vi.fn(async () => ({
+        id: "repo-id",
+        name: "modkit",
+        nameWithOwner: "acme/modkit",
+        isPrivate: false,
+        stargazerCount: 1,
+        forkCount: 0,
+        url: "https://github.com/acme/modkit",
+        defaultBranch: "main"
+      })),
       fetchIssueView: vi.fn(),
       fetchIssueList: vi.fn(),
       fetchPrView: vi.fn(),
@@ -19,7 +28,12 @@ describe("runGraphqlCapability", () => {
 
     expect(result.ok).toBe(true)
     expect(result.meta.route_used).toBe("graphql")
-    expect(result.data).toEqual({ id: "repo-id" })
+    expect(result.data).toEqual(
+      expect.objectContaining({
+        id: "repo-id",
+        nameWithOwner: "acme/modkit"
+      })
+    )
   })
 
   it("maps thrown client errors", async () => {

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { execute } from "../../src/core/execute/execute.js"
 import type { OperationCard } from "../../src/core/registry/types.js"
+import type { RouteSource } from "../../src/core/contracts/envelope.js"
 
 const baseCard: OperationCard = {
   capability_id: "repo.view",
@@ -20,12 +21,14 @@ const baseCard: OperationCard = {
   }
 }
 
+const alwaysPassPreflight = vi.fn(async (_route: RouteSource) => ({ ok: true as const }))
+
 describe("execute", () => {
   it("validates required params from input schema", async () => {
     const result = await execute({
       card: baseCard,
       params: { owner: "acme" },
-      preflight: vi.fn(async () => ({ ok: true })),
+      preflight: alwaysPassPreflight,
       routes: {
         graphql: vi.fn(),
         cli: vi.fn(),
@@ -55,7 +58,7 @@ describe("execute", () => {
       card: baseCard,
       params: { owner: "acme", name: "modkit" },
       retry: { maxAttemptsPerRoute: 2 },
-      preflight: vi.fn(async () => ({ ok: true })),
+      preflight: alwaysPassPreflight,
       routes: {
         graphql,
         cli: vi.fn(),
@@ -75,14 +78,14 @@ describe("execute", () => {
       params: { owner: "acme", name: "modkit" },
       preflight: vi
         .fn()
-        .mockResolvedValueOnce({ ok: false, code: "AUTH", message: "missing token", retryable: false })
-        .mockResolvedValueOnce({ ok: true }),
+        .mockResolvedValueOnce({ ok: false as const, code: "AUTH", message: "missing token", retryable: false })
+        .mockResolvedValueOnce({ ok: true as const }),
       routes: {
         graphql: vi.fn(),
         cli: vi.fn(async () => ({
           ok: true,
           data: { id: "repo-id" },
-          meta: { capability_id: "repo.view", route_used: "cli" }
+          meta: { capability_id: "repo.view", route_used: "cli" as const }
         })),
         rest: vi.fn()
       },
