@@ -10,11 +10,15 @@ This index clarifies which plan is currently active and how each document is use
 
 ## Active Sub-Plan
 
-- `2026-02-13-phase-4-execution-plan.md`
-  - **Role**: implementation spec for Phase 4 normalization and telemetry work.
-  - **Use for**: envelope consistency, telemetry instrumentation, and targeted GraphQL expansion.
+- `2026-02-13-phase-6-validation-gate-plan.md`
+  - **Role**: implementation spec for Phase 6 benchmark validation gate work.
+  - **Use for**: summary aggregation, threshold checks, and release-gate artifacts.
 
 ## Recently Completed Sub-Plan
+
+- `2026-02-13-phase-4-execution-plan.md`
+  - **Role**: Phase 4 normalization and telemetry scope plan.
+  - **Use for**: normalization and instrumentation sequence reference.
 
 - `2026-02-13-phase-3-execution-plan.md`
   - **Role**: Phase 3 adapter and safety implementation.

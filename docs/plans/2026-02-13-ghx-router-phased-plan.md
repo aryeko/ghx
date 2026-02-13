@@ -103,6 +103,8 @@ Reach the v1 functional surface for high-frequency PR, issue, and repo operation
 
 ## Phase 6: Benchmark Harness + Validation Gate
 
+Status: active.
+
 ### Goal
 Prove efficiency claims with repeatable measurements.
 

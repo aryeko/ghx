@@ -10,6 +10,8 @@
     "verify": "pnpm run test && pnpm run typecheck",
     "benchmark:check": "pnpm --filter @ghx-router/benchmark run check:scenarios",
     "benchmark:run": "pnpm --filter @ghx-router/benchmark run run",
+    "benchmark:report": "pnpm --filter @ghx-router/benchmark run report",
+    "benchmark:gate": "pnpm --filter @ghx-router/benchmark run report:gate",
     "benchmark:typecheck": "pnpm --filter @ghx-router/benchmark run typecheck",
     "ghx:typecheck": "pnpm --filter @ghx-router/core run typecheck"
   },
