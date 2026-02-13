@@ -60,6 +60,119 @@ describe("extractors", () => {
     ).toBe(false)
   })
 
+  it("validates expected route usage assertions", () => {
+    expect(
+      validateEnvelope(
+        {
+          must_succeed: true,
+          expected_route_used: "cli",
+          required_meta_fields: ["route_used"]
+        },
+        {
+          ok: true,
+          data: {},
+          error: null,
+          meta: {
+            route_used: "cli"
+          }
+        }
+      )
+    ).toBe(true)
+
+    expect(
+      validateEnvelope(
+        {
+          must_succeed: true,
+          expected_route_used: "graphql"
+        },
+        {
+          ok: true,
+          data: {},
+          error: null,
+          meta: {
+            route_used: "graphql"
+          }
+        }
+      )
+    ).toBe(true)
+
+    expect(
+      validateEnvelope(
+        {
+          must_succeed: true,
+          expected_route_used: "graphql"
+        },
+        {
+          ok: true,
+          data: {},
+          error: null,
+          meta: {
+            route_used: "cli"
+          }
+        }
+      )
+    ).toBe(false)
+  })
+
+  it("validates expected error code assertions", () => {
+    expect(
+      validateEnvelope(
+        {
+          must_succeed: false,
+          expected_error_code: "SERVER"
+        },
+        {
+          ok: false,
+          data: null,
+          error: {
+            code: "SERVER",
+            message: "Output schema validation failed",
+            retryable: false
+          },
+          meta: { route_used: "graphql" }
+        }
+      )
+    ).toBe(true)
+
+    expect(
+      validateEnvelope(
+        {
+          must_succeed: false,
+          expected_error_code: "VALIDATION"
+        },
+        {
+          ok: false,
+          data: null,
+          error: {
+            code: "VALIDATION",
+            message: "Input schema validation failed",
+            retryable: false
+          },
+          meta: { route_used: "cli" }
+        }
+      )
+    ).toBe(true)
+
+    expect(
+      validateEnvelope(
+        {
+          must_succeed: false,
+          expected_error_code: "SERVER"
+        },
+        {
+          ok: false,
+          data: null,
+          error: {
+            code: "VALIDATION",
+            message: "Input schema validation failed",
+            retryable: false
+          },
+          meta: { route_used: "graphql" }
+        }
+      )
+    ).toBe(false)
+  })
+
   it("counts tool calls across message parts", () => {
     const counts = aggregateToolCounts([
       {

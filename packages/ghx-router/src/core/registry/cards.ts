@@ -1,38 +1,68 @@
 import type { OperationCard } from "./types.js"
 
-const DEFAULT_FALLBACKS = ["cli"] as const
+type RouteConfig = OperationCard["routing"]
+
+const CLI_FIRST_FALLBACKS = ["graphql"] as const
+
+const repoRefSchema = {
+  type: "object",
+  required: ["owner", "name"],
+  properties: {
+    owner: { type: "string", minLength: 1 },
+    name: { type: "string", minLength: 1 }
+  },
+  additionalProperties: false
+} as const
+
+const issueOrPrListItemSchema = {
+  type: "object",
+  required: ["id", "number", "title", "state", "url"],
+  properties: {
+    id: { type: "string", minLength: 1 },
+    number: { type: "integer", minimum: 1 },
+    title: { type: "string" },
+    state: { type: "string" },
+    url: { type: "string", minLength: 1 }
+  },
+  additionalProperties: false
+} as const
+
+const listPageInfoSchema = {
+  type: "object",
+  required: ["hasNextPage", "endCursor"],
+  properties: {
+    hasNextPage: { type: "boolean" },
+    endCursor: { type: ["string", "null"] }
+  },
+  additionalProperties: false
+} as const
 
 function baseCard(
   capabilityId: string,
   description: string,
   operationName: string,
   documentPath: string,
-  required: string[],
+  inputSchema: Record<string, unknown>,
   outputSchema: Record<string, unknown>,
-  routingNotes?: string[]
+  routing?: RouteConfig
 ): OperationCard {
   return {
     capability_id: capabilityId,
     version: "1.0.0",
     description,
-    input_schema: {
-      type: "object",
-      required
-    },
+    input_schema: inputSchema,
     output_schema: {
       ...outputSchema
     },
-    routing: {
-      preferred: "graphql",
-      fallbacks: [...DEFAULT_FALLBACKS],
-      notes: routingNotes ?? ["Prefer GraphQL for typed shape, fallback to CLI when unavailable."]
-    },
+    routing:
+      routing ?? {
+        preferred: "cli",
+        fallbacks: [...CLI_FIRST_FALLBACKS],
+        notes: ["Prefer CLI for low-latency structured fetches when gh authentication is available."]
+      },
     graphql: {
       operationName,
       documentPath
-    },
-    cli: {
-      command: capabilityId.replaceAll(".", " ")
     }
   }
 }
@@ -43,20 +73,21 @@ export const operationCards: OperationCard[] = [
     "Fetch repository metadata.",
     "RepoView",
     "src/gql/operations/repo-view.graphql",
-    ["owner", "name"],
+    repoRefSchema,
     {
       type: "object",
       required: ["id", "name", "nameWithOwner", "isPrivate", "url", "defaultBranch"],
       properties: {
-        id: { type: "string" },
-        name: { type: "string" },
-        nameWithOwner: { type: "string" },
+        id: { type: "string", minLength: 1 },
+        name: { type: "string", minLength: 1 },
+        nameWithOwner: { type: "string", minLength: 1 },
         isPrivate: { type: "boolean" },
-        stargazerCount: { type: "number" },
-        forkCount: { type: "number" },
-        url: { type: "string" },
+        stargazerCount: { type: "integer", minimum: 0 },
+        forkCount: { type: "integer", minimum: 0 },
+        url: { type: "string", minLength: 1 },
         defaultBranch: { type: ["string", "null"] }
-      }
+      },
+      additionalProperties: false
     }
   ),
   baseCard(
@@ -64,17 +95,27 @@ export const operationCards: OperationCard[] = [
     "Fetch one issue by number.",
     "IssueView",
     "src/gql/operations/issue-view.graphql",
-    ["owner", "name", "issueNumber"],
+    {
+      type: "object",
+      required: ["owner", "name", "issueNumber"],
+      properties: {
+        owner: { type: "string", minLength: 1 },
+        name: { type: "string", minLength: 1 },
+        issueNumber: { type: "integer", minimum: 1 }
+      },
+      additionalProperties: false
+    },
     {
       type: "object",
       required: ["id", "number", "title", "state", "url"],
       properties: {
-        id: { type: "string" },
-        number: { type: "number" },
+        id: { type: "string", minLength: 1 },
+        number: { type: "integer", minimum: 1 },
         title: { type: "string" },
         state: { type: "string" },
-        url: { type: "string" }
-      }
+        url: { type: "string", minLength: 1 }
+      },
+      additionalProperties: false
     }
   ),
   baseCard(
@@ -82,14 +123,29 @@ export const operationCards: OperationCard[] = [
     "List repository issues.",
     "IssueList",
     "src/gql/operations/issue-list.graphql",
-    ["owner", "name"],
+    {
+      type: "object",
+      required: ["owner", "name"],
+      properties: {
+        owner: { type: "string", minLength: 1 },
+        name: { type: "string", minLength: 1 },
+        state: { type: "string", minLength: 1 },
+        first: { type: "integer", minimum: 1 },
+        after: { type: ["string", "null"] }
+      },
+      additionalProperties: false
+    },
     {
       type: "object",
       required: ["items", "pageInfo"],
       properties: {
-        items: { type: "array" },
-        pageInfo: { type: "object" }
-      }
+        items: {
+          type: "array",
+          items: issueOrPrListItemSchema
+        },
+        pageInfo: listPageInfoSchema
+      },
+      additionalProperties: false
     }
   ),
   baseCard(
@@ -97,36 +153,76 @@ export const operationCards: OperationCard[] = [
     "List comments for one issue.",
     "IssueCommentsList",
     "src/gql/operations/issue-comments-list.graphql",
-    ["owner", "name", "issueNumber", "first"],
+    {
+      type: "object",
+      required: ["owner", "name", "issueNumber", "first"],
+      properties: {
+        owner: { type: "string", minLength: 1 },
+        name: { type: "string", minLength: 1 },
+        issueNumber: { type: "integer", minimum: 1 },
+        first: { type: "integer", minimum: 1 },
+        after: { type: ["string", "null"] }
+      },
+      additionalProperties: false
+    },
     {
       type: "object",
       required: ["items", "pageInfo"],
       properties: {
-        items: { type: "array" },
-        pageInfo: { type: "object" }
-      }
+        items: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["id", "body", "authorLogin", "url", "createdAt"],
+            properties: {
+              id: { type: "string", minLength: 1 },
+              body: { type: "string" },
+              authorLogin: { type: ["string", "null"] },
+              url: { type: "string", minLength: 1 },
+              createdAt: { type: "string", minLength: 1 }
+            },
+            additionalProperties: false
+          }
+        },
+        pageInfo: listPageInfoSchema
+      },
+      additionalProperties: false
     },
-    [
-      "Prefer GraphQL for typed shape, fallback to CLI when unavailable.",
-      "CLI fallback uses gh api graphql with bounded cursor pagination for comments."
-    ]
+    {
+      preferred: "graphql",
+      fallbacks: ["cli"],
+      notes: [
+        "Prefer GraphQL for typed issue-comment pagination and stable cursor handling.",
+        "CLI fallback uses gh api graphql with bounded cursor pagination for comments."
+      ]
+    }
   ),
   baseCard(
     "pr.view",
     "Fetch one pull request by number.",
     "PrView",
     "src/gql/operations/pr-view.graphql",
-    ["owner", "name", "prNumber"],
+    {
+      type: "object",
+      required: ["owner", "name", "prNumber"],
+      properties: {
+        owner: { type: "string", minLength: 1 },
+        name: { type: "string", minLength: 1 },
+        prNumber: { type: "integer", minimum: 1 }
+      },
+      additionalProperties: false
+    },
     {
       type: "object",
       required: ["id", "number", "title", "state", "url"],
       properties: {
-        id: { type: "string" },
-        number: { type: "number" },
+        id: { type: "string", minLength: 1 },
+        number: { type: "integer", minimum: 1 },
         title: { type: "string" },
         state: { type: "string" },
-        url: { type: "string" }
-      }
+        url: { type: "string", minLength: 1 }
+      },
+      additionalProperties: false
     }
   ),
   baseCard(
@@ -134,14 +230,29 @@ export const operationCards: OperationCard[] = [
     "List repository pull requests.",
     "PrList",
     "src/gql/operations/pr-list.graphql",
-    ["owner", "name"],
+    {
+      type: "object",
+      required: ["owner", "name"],
+      properties: {
+        owner: { type: "string", minLength: 1 },
+        name: { type: "string", minLength: 1 },
+        state: { type: "string", minLength: 1 },
+        first: { type: "integer", minimum: 1 },
+        after: { type: ["string", "null"] }
+      },
+      additionalProperties: false
+    },
     {
       type: "object",
       required: ["items", "pageInfo"],
       properties: {
-        items: { type: "array" },
-        pageInfo: { type: "object" }
-      }
+        items: {
+          type: "array",
+          items: issueOrPrListItemSchema
+        },
+        pageInfo: listPageInfoSchema
+      },
+      additionalProperties: false
     }
   )
 ]

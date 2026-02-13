@@ -6,6 +6,90 @@ import { capabilityRegistry } from "../../src/core/routing/capability-registry.j
 import { createGithubClient } from "../../src/gql/client.js"
 
 describe("executeTask repo.view", () => {
+  it("returns cli envelope when cli preflight passes", async () => {
+    const githubClient = createGithubClient({
+      async execute<TData>(): Promise<TData> {
+        return {} as TData
+      }
+    })
+
+    const request: TaskRequest = {
+      task: "repo.view",
+      input: { owner: "go-modkit", name: "modkit" }
+    }
+
+    const result = await executeTask(request, {
+      githubClient,
+      ghCliAvailable: true,
+      ghAuthenticated: true,
+      cliRunner: {
+        run: async () => ({
+          stdout: JSON.stringify({
+            id: "repo-id",
+            name: "modkit",
+            nameWithOwner: "go-modkit/modkit",
+            isPrivate: false,
+            stargazerCount: 10,
+            forkCount: 2,
+            url: "https://github.com/go-modkit/modkit",
+            defaultBranchRef: { name: "main" }
+          }),
+          stderr: "",
+          exitCode: 0
+        })
+      }
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.meta.route_used).toBe("cli")
+  })
+
+  it("auto-detects cli availability and uses cli route", async () => {
+    const githubClient = createGithubClient({
+      async execute<TData>(): Promise<TData> {
+        return {} as TData
+      }
+    })
+
+    const request: TaskRequest = {
+      task: "repo.view",
+      input: { owner: "go-modkit", name: "modkit" }
+    }
+
+    const result = await executeTask(request, {
+      githubClient,
+      cliRunner: {
+        run: async (_command, args) => {
+          if (args[0] === "--version") {
+            return { stdout: "gh version 2.x", stderr: "", exitCode: 0 }
+          }
+
+          if (args[0] === "auth" && args[1] === "status") {
+            return { stdout: "authenticated", stderr: "", exitCode: 0 }
+          }
+
+          return {
+            stdout: JSON.stringify({
+              id: "repo-id",
+              name: "modkit",
+              nameWithOwner: "go-modkit/modkit",
+              isPrivate: false,
+              stargazerCount: 10,
+              forkCount: 2,
+              url: "https://github.com/go-modkit/modkit",
+              defaultBranchRef: { name: "main" }
+            }),
+            stderr: "",
+            exitCode: 0
+          }
+        }
+      }
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.meta.route_used).toBe("cli")
+  })
+
   it("returns graphql envelope for repo.view", async () => {
     const githubClient = createGithubClient({
       async execute<TData>(query: string): Promise<TData> {
@@ -33,7 +117,12 @@ describe("executeTask repo.view", () => {
       input: { owner: "go-modkit", name: "modkit" }
     }
 
-    const result = await executeTask(request, { githubClient, githubToken: "test-token" })
+    const result = await executeTask(request, {
+      githubClient,
+      githubToken: "test-token",
+      ghCliAvailable: false,
+      ghAuthenticated: false
+    })
 
     expect(result.ok).toBe(true)
     expect(result.meta.route_used).toBe("graphql")
@@ -58,11 +147,17 @@ describe("executeTask repo.view", () => {
       input: { owner: "", name: "modkit" }
     }
 
-    const result = await executeTask(request, { githubClient, githubToken: "test-token" })
+    const result = await executeTask(request, {
+      githubClient,
+      githubToken: "test-token",
+      ghCliAvailable: false,
+      ghAuthenticated: false
+    })
 
     expect(result.ok).toBe(false)
     expect(result.error?.code).toBe("VALIDATION")
-    expect(result.meta.route_used).toBe("graphql")
+    expect(result.meta.route_used).toBe("cli")
+    expect(result.meta.reason).toBe("INPUT_VALIDATION")
   })
 
   it("returns validation error envelope for unsupported task", async () => {
@@ -77,7 +172,12 @@ describe("executeTask repo.view", () => {
       input: { owner: "go-modkit", name: "modkit" }
     }
 
-    const result = await executeTask(request, { githubClient, githubToken: "test-token" })
+    const result = await executeTask(request, {
+      githubClient,
+      githubToken: "test-token",
+      ghCliAvailable: false,
+      ghAuthenticated: false
+    })
 
     expect(result.ok).toBe(false)
     expect(result.error?.code).toBe("VALIDATION")
@@ -96,14 +196,19 @@ describe("executeTask repo.view", () => {
       input: { owner: "go-modkit", name: "modkit" }
     }
 
-    const result = await executeTask(request, { githubClient, githubToken: "" })
+    const result = await executeTask(request, {
+      githubClient,
+      githubToken: "",
+      ghCliAvailable: false,
+      ghAuthenticated: false
+    })
 
     expect(result.ok).toBe(false)
     expect(result.error?.code).toBe("AUTH")
     expect(result.error?.message).toContain("token")
   })
 
-  it("falls back from non-graphql route to graphql when configured", async () => {
+  it("falls back from cli to graphql when cli execution fails", async () => {
     const capability = capabilityRegistry.find((entry) => entry.task === "repo.view")
     if (!capability) {
       throw new Error("repo.view capability missing")
@@ -113,7 +218,7 @@ describe("executeTask repo.view", () => {
     const originalFallbackRoutes = [...capability.fallbackRoutes]
 
     capability.defaultRoute = "cli"
-    capability.fallbackRoutes = ["graphql", "rest"]
+    capability.fallbackRoutes = ["graphql"]
 
     try {
       const githubClient = createGithubClient({
@@ -146,7 +251,10 @@ describe("executeTask repo.view", () => {
         githubClient,
         githubToken: "test-token",
         ghCliAvailable: true,
-        ghAuthenticated: true
+        ghAuthenticated: true,
+        cliRunner: {
+          run: async () => ({ stdout: "", stderr: "network error", exitCode: 1 })
+        }
       })
 
       expect(result.ok).toBe(true)

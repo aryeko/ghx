@@ -7,7 +7,7 @@ Operation cards are the runtime source of truth for capabilities.
 - capability id, version, description
 - input schema + output schema
 - routing policy (`preferred`, `fallbacks`)
-- optional GraphQL/CLI metadata
+- optional GraphQL/CLI metadata (CLI metadata is optional and non-executable in v1)
 
 ## Current v1 Capabilities
 

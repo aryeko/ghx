@@ -20,8 +20,8 @@ describe("operation cards registry", () => {
     const card = getOperationCard("issue.view")
 
     expect(card).toBeDefined()
-    expect(card?.routing.preferred).toBe("graphql")
-    expect(card?.routing.fallbacks).toEqual(["cli"])
+    expect(card?.routing.preferred).toBe("cli")
+    expect(card?.routing.fallbacks).toEqual(["graphql"])
   })
 
   it("requires explicit pagination input for issue.comments.list", () => {
@@ -37,9 +37,9 @@ describe("operation cards registry", () => {
     expect(prListCard?.input_schema.required).toEqual(["owner", "name"])
   })
 
-  it("stores CLI command metadata with all dot segments expanded", () => {
+  it("keeps CLI metadata absent until adapter is card-driven", () => {
     const card = getOperationCard("issue.comments.list")
-    expect(card?.cli?.command).toBe("issue comments list")
+    expect(card?.cli).toBeUndefined()
   })
 
   it("allows nullable defaultBranch in repo.view output schema", () => {

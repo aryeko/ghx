@@ -20,7 +20,9 @@
     "min_tool_calls": 1,
     "max_tool_calls": 4,
     "required_fields": ["ok", "data", "error", "meta"],
-    "required_data_fields": ["items", "pageInfo"]
+    "required_data_fields": ["items", "pageInfo"],
+    "required_meta_fields": ["route_used"],
+    "expected_route_used": "graphql"
   },
   "tags": ["issue", "comments", "thin-slice"]
 }

@@ -27,7 +27,6 @@ export interface OperationCard<Input = Record<string, unknown>, Output = Record<
     limits?: { maxPageSize?: number }
   }
   cli?: {
-    command: string
     jsonFields?: string[]
     jq?: string
     limits?: { maxItemsPerCall?: number }

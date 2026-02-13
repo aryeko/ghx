@@ -10,7 +10,12 @@ const baseCard: OperationCard = {
   description: "Fetch repository",
   input_schema: {
     type: "object",
-    required: ["owner", "name"]
+    required: ["owner", "name"],
+    properties: {
+      owner: { type: "string", minLength: 1 },
+      name: { type: "string", minLength: 1 }
+    },
+    additionalProperties: false
   },
   output_schema: {
     type: "object"
@@ -28,6 +33,27 @@ describe("execute", () => {
     const result = await execute({
       card: baseCard,
       params: { owner: "acme" },
+      preflight: alwaysPassPreflight,
+      routes: {
+        graphql: vi.fn(),
+        cli: vi.fn(),
+        rest: vi.fn()
+      }
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("VALIDATION")
+    expect(result.error?.details).toEqual(
+      expect.objectContaining({
+        ajvErrors: expect.any(Array)
+      })
+    )
+  })
+
+  it("validates full input schema, not only required keys", async () => {
+    const result = await execute({
+      card: baseCard,
+      params: { owner: 123, name: "modkit" } as unknown as Record<string, unknown>,
       preflight: alwaysPassPreflight,
       routes: {
         graphql: vi.fn(),
@@ -142,7 +168,13 @@ describe("execute", () => {
     })
 
     expect(result.ok).toBe(false)
-    expect(result.error?.message).toContain("Output schema mismatch")
+    expect(result.error?.code).toBe("SERVER")
+    expect(result.error?.message).toContain("Output schema validation failed")
+    expect(result.error?.details).toEqual(
+      expect.objectContaining({
+        ajvErrors: expect.any(Array)
+      })
+    )
   })
 
   it("returns non-retryable route errors with trace attempts", async () => {
