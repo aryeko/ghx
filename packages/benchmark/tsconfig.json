@@ -3,6 +3,5 @@
   "compilerOptions": {
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src/**/*.ts", "test/**/*.ts"],
-  "exclude": ["src/runner/ghx-router-shim.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts"]
 }

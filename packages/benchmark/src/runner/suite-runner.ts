@@ -1,9 +1,9 @@
 import { createOpencode } from "@opencode-ai/sdk"
 import { spawnSync } from "node:child_process"
-import { appendFile, mkdir, mkdtemp, rm } from "node:fs/promises"
+import { appendFile, chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { randomUUID } from "node:crypto"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { delimiter, join } from "node:path"
 
 import { extractFirstJsonObject, validateEnvelope } from "../extract/envelope.js"
 import { extractAttemptMetrics } from "../extract/attempts.js"
@@ -82,7 +82,7 @@ const modePromptPrefix: Record<BenchmarkMode, string> = {
     "You are running a benchmark in agent_direct mode. Use GitHub CLI (`gh`) commands directly to complete the task. Do not use any `ghx` command.",
   mcp: "You are running a benchmark in mcp mode. Prefer MCP tools when available.",
   ghx_router:
-    "You are running a benchmark in ghx_router mode. Use `pnpm exec tsx src/runner/ghx-router-shim.ts run <task> --input '<json>'` as the primary execution path. Do not call bare `ghx` because it is not installed globally in this benchmark environment."
+    "You are running a benchmark in ghx_router mode. Use the local `ghx` command from PATH as the primary execution path. Run `ghx run <task> --input '<json>'` and do not use direct `gh` commands unless explicitly asked."
 }
 
 export function isObject(value: unknown): value is Record<string, unknown> {
@@ -587,6 +587,17 @@ function resolveGhTokenFromCli(): string | null {
   return token.length > 0 ? token : null
 }
 
+async function installLocalGhxAlias(): Promise<{ binDir: string; commandPath: string }> {
+  const binDir = await mkdtemp(join(tmpdir(), "ghx-router-benchmark-bin-"))
+  const commandPath = join(binDir, "ghx")
+  const wrapper = "#!/usr/bin/env bash\nset -euo pipefail\npnpm exec tsx src/runner/ghx-local-entry.ts \"$@\"\n"
+
+  await writeFile(commandPath, wrapper, "utf8")
+  await chmod(commandPath, 0o755)
+
+  return { binDir, commandPath }
+}
+
 export function validateFixture(scenario: Scenario): void {
   const repo = scenario.fixture?.repo
   if (!repo) return
@@ -738,7 +749,7 @@ function forcedToolCommandHint(scenario: Scenario, mode: BenchmarkMode): string 
   const prNumber = typeof scenario.input.prNumber === "number" ? scenario.input.prNumber : 1
 
   if (mode === "ghx_router") {
-    return `pnpm exec tsx src/runner/ghx-router-shim.ts run ${scenario.task} --input '${JSON.stringify(scenario.input)}'`
+    return `ghx run ${scenario.task} --input '${JSON.stringify(scenario.input)}'`
   }
 
   switch (scenario.task) {
@@ -1184,15 +1195,18 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
     OPENCODE_CONFIG: process.env.OPENCODE_CONFIG,
     OPENCODE_CONFIG_DIR: process.env.OPENCODE_CONFIG_DIR,
     XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME,
+    PATH: process.env.PATH,
     GH_TOKEN: process.env.GH_TOKEN,
     GITHUB_TOKEN: process.env.GITHUB_TOKEN
   }
 
   const ghToken = previousEnv.GH_TOKEN ?? previousEnv.GITHUB_TOKEN ?? resolveGhTokenFromCli()
+  const ghxAlias = await installLocalGhxAlias()
 
   delete process.env.OPENCODE_CONFIG
   delete process.env.OPENCODE_CONFIG_DIR
   process.env.XDG_CONFIG_HOME = isolatedXdgConfigHome
+  process.env.PATH = previousEnv.PATH ? `${ghxAlias.binDir}${delimiter}${previousEnv.PATH}` : ghxAlias.binDir
   if (ghToken) {
     process.env.GH_TOKEN = ghToken
     process.env.GITHUB_TOKEN = ghToken
@@ -1240,6 +1254,12 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
       delete process.env.XDG_CONFIG_HOME
     } else {
       process.env.XDG_CONFIG_HOME = previousEnv.XDG_CONFIG_HOME
+    }
+
+    if (previousEnv.PATH === undefined) {
+      delete process.env.PATH
+    } else {
+      process.env.PATH = previousEnv.PATH
     }
 
     if (previousEnv.GH_TOKEN === undefined) {
@@ -1316,6 +1336,7 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
     console.log(`Wrote benchmark suite results: ${outFile}`)
   } finally {
     server.close()
+    await rm(ghxAlias.binDir, { recursive: true, force: true })
     await rm(isolatedXdgConfigHome, { recursive: true, force: true })
   }
 }

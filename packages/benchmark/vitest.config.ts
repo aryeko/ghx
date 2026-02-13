@@ -5,8 +5,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text-summary", "lcov"],
-      include: ["src/**/*.ts"],
-      exclude: ["src/runner/ghx-router-shim.ts"]
+      include: ["src/**/*.ts"]
     }
   }
 })
