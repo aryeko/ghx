@@ -11,14 +11,10 @@ export type CliCommandRunner = {
 }
 
 const DEFAULT_TIMEOUT_MS = 10_000
+const MAX_COMMENTS_PER_CLI_CALL = 100
 
-function normalizeListLimit(value: unknown): number {
-  const candidate = typeof value === "number" ? value : Number(value)
-  if (!Number.isFinite(candidate) || candidate < 1) {
-    return 30
-  }
-
-  return Math.floor(candidate)
+function parseStrictPositiveInt(value: unknown): number | null {
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null
 }
 
 function buildArgs(capabilityId: CliCapabilityId, params: Record<string, unknown>): string[] {
@@ -37,8 +33,8 @@ function buildArgs(capabilityId: CliCapabilityId, params: Record<string, unknown
   }
 
   if (capabilityId === "issue.view") {
-    const issueNumber = params.issueNumber
-    if (typeof issueNumber !== "number" || Number.isNaN(issueNumber) || issueNumber < 1) {
+    const issueNumber = parseStrictPositiveInt(params.issueNumber)
+    if (issueNumber === null) {
       throw new Error("Missing or invalid issueNumber for issue.view")
     }
 
@@ -52,18 +48,23 @@ function buildArgs(capabilityId: CliCapabilityId, params: Record<string, unknown
   }
 
   if (capabilityId === "issue.list") {
+    const first = parseStrictPositiveInt(params.first)
+    if (first === null) {
+      throw new Error("Missing or invalid first for issue.list")
+    }
+
     const args = ["issue", "list"]
     if (repo) {
       args.push("--repo", repo)
     }
 
-    args.push("--limit", String(normalizeListLimit(params.first)), "--json", "id,number,title,state,url")
+    args.push("--limit", String(first), "--json", "id,number,title,state,url")
     return args
   }
 
   if (capabilityId === "issue.comments.list") {
-    const issueNumber = params.issueNumber
-    if (typeof issueNumber !== "number" || Number.isNaN(issueNumber) || issueNumber < 1) {
+    const issueNumber = parseStrictPositiveInt(params.issueNumber)
+    if (issueNumber === null) {
       throw new Error("Missing or invalid issueNumber for issue.comments.list")
     }
 
@@ -77,8 +78,8 @@ function buildArgs(capabilityId: CliCapabilityId, params: Record<string, unknown
   }
 
   if (capabilityId === "pr.view") {
-    const prNumber = params.prNumber
-    if (typeof prNumber !== "number" || Number.isNaN(prNumber) || prNumber < 1) {
+    const prNumber = parseStrictPositiveInt(params.prNumber)
+    if (prNumber === null) {
       throw new Error("Missing or invalid prNumber for pr.view")
     }
 
@@ -92,12 +93,17 @@ function buildArgs(capabilityId: CliCapabilityId, params: Record<string, unknown
   }
 
   if (capabilityId === "pr.list") {
+    const first = parseStrictPositiveInt(params.first)
+    if (first === null) {
+      throw new Error("Missing or invalid first for pr.list")
+    }
+
     const args = ["pr", "list"]
     if (repo) {
       args.push("--repo", repo)
     }
 
-    args.push("--limit", String(normalizeListLimit(params.first)), "--json", "id,number,title,state,url")
+    args.push("--limit", String(first), "--json", "id,number,title,state,url")
     return args
   }
 
@@ -165,14 +171,22 @@ function normalizeCliData(capabilityId: CliCapabilityId, data: unknown, params: 
   }
 
   if (capabilityId === "issue.comments.list") {
-    const limit = normalizeListLimit(params.first)
+    const limit = parseStrictPositiveInt(params.first)
+    if (limit === null) {
+      throw new Error("Missing or invalid first for issue.comments.list")
+    }
+
     const input = typeof data === "object" && data !== null && !Array.isArray(data)
       ? (data as Record<string, unknown>)
       : {}
-    const comments = Array.isArray(input.comments) ? input.comments : []
+    if (!("comments" in input) || !Array.isArray(input.comments)) {
+      throw new Error("Invalid CLI payload: comments field must be an array")
+    }
+
+    const comments = input.comments
     const normalizedItems = comments.flatMap((comment) => {
       if (typeof comment !== "object" || comment === null || Array.isArray(comment)) {
-        return []
+        throw new Error("Invalid CLI payload: comment item must be an object")
       }
 
       const commentRecord = comment as Record<string, unknown>
@@ -181,23 +195,31 @@ function normalizeCliData(capabilityId: CliCapabilityId, data: unknown, params: 
           ? (commentRecord.author as Record<string, unknown>)
           : null
 
-      return [
-        {
-          id: commentRecord.id,
-          body: commentRecord.body,
-          authorLogin: typeof author?.login === "string" ? author.login : null,
-          url: commentRecord.url,
-          createdAt: commentRecord.createdAt
-        }
-      ]
+      if (
+        typeof commentRecord.id !== "string" ||
+        typeof commentRecord.body !== "string" ||
+        typeof commentRecord.url !== "string" ||
+        typeof commentRecord.createdAt !== "string"
+      ) {
+        throw new Error("Invalid CLI payload: comment item has invalid field types")
+      }
+
+      return [{
+        id: commentRecord.id,
+        body: commentRecord.body,
+        authorLogin: typeof author?.login === "string" ? author.login : null,
+        url: commentRecord.url,
+        createdAt: commentRecord.createdAt
+      }]
     })
 
     const items = normalizedItems.slice(0, limit)
+    const hasNextPage = normalizedItems.length > items.length
 
     return {
       items,
       pageInfo: {
-        hasNextPage: normalizedItems.length > items.length,
+        hasNextPage,
         endCursor: null
       }
     }
@@ -216,6 +238,49 @@ export async function runCliCapability(
   params: Record<string, unknown>
 ): Promise<ResultEnvelope> {
   try {
+    if (capabilityId === "issue.comments.list") {
+      const after = params.after
+      if (typeof after === "string" && after.trim().length > 0) {
+        return normalizeError(
+          {
+            code: errorCodes.AdapterUnsupported,
+            message: "CLI fallback does not support cursor pagination for issue.comments.list",
+            retryable: false,
+            details: { capabilityId }
+          },
+          "cli",
+          { capabilityId, reason: "CARD_FALLBACK" }
+        )
+      }
+
+      const requestedLimit = parseStrictPositiveInt(params.first)
+      if (requestedLimit === null) {
+        return normalizeError(
+          {
+            code: errorCodes.Validation,
+            message: "Missing or invalid first for issue.comments.list",
+            retryable: false,
+            details: { capabilityId }
+          },
+          "cli",
+          { capabilityId, reason: "CARD_FALLBACK" }
+        )
+      }
+
+      if (requestedLimit > MAX_COMMENTS_PER_CLI_CALL) {
+        return normalizeError(
+          {
+            code: errorCodes.AdapterUnsupported,
+            message: `CLI fallback supports at most ${MAX_COMMENTS_PER_CLI_CALL} comments per call for issue.comments.list`,
+            retryable: false,
+            details: { capabilityId, maxCommentsPerCall: MAX_COMMENTS_PER_CLI_CALL }
+          },
+          "cli",
+          { capabilityId, reason: "CARD_FALLBACK" }
+        )
+      }
+    }
+
     const args = buildArgs(capabilityId, params)
     const result = await runner.run("gh", args, DEFAULT_TIMEOUT_MS)
 
@@ -242,6 +307,18 @@ export async function runCliCapability(
         {
           code: errorCodes.Server,
           message: "Failed to parse CLI JSON output",
+          retryable: false
+        },
+        "cli",
+        { capabilityId, reason: "CARD_FALLBACK" }
+      )
+    }
+
+    if (error instanceof Error && error.message.toLowerCase().includes("invalid cli payload")) {
+      return normalizeError(
+        {
+          code: errorCodes.Server,
+          message: error.message,
           retryable: false
         },
         "cli",

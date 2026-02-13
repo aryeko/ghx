@@ -11,7 +11,7 @@ export type IssueCommentsListQueryVariables = Types.Exact<{
 }>;
 
 
-export type IssueCommentsListQuery = { __typename?: 'Query', repository?: { __typename?: 'Repository', issue?: { __typename?: 'Issue', comments: { __typename?: 'IssueCommentConnection', nodes?: Array<{ __typename?: 'IssueComment', id: string, bodyText: string, createdAt: any, url: any, author?: { __typename?: 'Bot', login: string } | { __typename?: 'EnterpriseUserAccount', login: string } | { __typename?: 'Mannequin', login: string } | { __typename?: 'Organization', login: string } | { __typename?: 'User', login: string } | null } | null> | null, pageInfo: { __typename?: 'PageInfo', endCursor?: string | null, hasNextPage: boolean } } } | null } | null };
+export type IssueCommentsListQuery = { __typename?: 'Query', repository?: { __typename?: 'Repository', issue?: { __typename?: 'Issue', comments: { __typename?: 'IssueCommentConnection', nodes?: Array<{ __typename?: 'IssueComment', id: string, body: string, createdAt: any, url: any, author?: { __typename?: 'Bot', login: string } | { __typename?: 'EnterpriseUserAccount', login: string } | { __typename?: 'Mannequin', login: string } | { __typename?: 'Organization', login: string } | { __typename?: 'User', login: string } | null } | null> | null, pageInfo: { __typename?: 'PageInfo', endCursor?: string | null, hasNextPage: boolean } } } | null } | null };
 
 
 export const IssueCommentsListDocument = `
@@ -21,7 +21,7 @@ export const IssueCommentsListDocument = `
       comments(first: $first, after: $after) {
         nodes {
           id
-          bodyText
+          body
           createdAt
           url
           author {

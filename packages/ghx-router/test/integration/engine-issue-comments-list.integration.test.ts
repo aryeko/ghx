@@ -16,7 +16,7 @@ describe("executeTask issue.comments.list", () => {
                   nodes: [
                     {
                       id: "comment-1",
-                      bodyText: "First comment",
+                      body: "First comment",
                       createdAt: "2025-01-01T00:00:00Z",
                       url: "https://github.com/go-modkit/modkit/issues/101#issuecomment-1",
                       author: { login: "octocat" }

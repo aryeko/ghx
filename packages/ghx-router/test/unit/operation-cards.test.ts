@@ -29,9 +29,35 @@ describe("operation cards registry", () => {
     expect(card?.input_schema.required).toEqual(["owner", "name", "issueNumber", "first"])
   })
 
+  it("requires explicit pagination input for list capabilities", () => {
+    const issueListCard = getOperationCard("issue.list")
+    const prListCard = getOperationCard("pr.list")
+
+    expect(issueListCard?.input_schema.required).toEqual(["owner", "name", "first"])
+    expect(prListCard?.input_schema.required).toEqual(["owner", "name", "first"])
+  })
+
   it("stores CLI command metadata with all dot segments expanded", () => {
     const card = getOperationCard("issue.comments.list")
     expect(card?.cli?.command).toBe("issue comments list")
+  })
+
+  it("allows nullable defaultBranch in repo.view output schema", () => {
+    const card = getOperationCard("repo.view")
+    const properties = card?.output_schema.properties as Record<string, unknown>
+    const defaultBranch = properties.defaultBranch as Record<string, unknown>
+
+    expect(defaultBranch.type).toEqual(["string", "null"])
+  })
+
+  it("documents non-cursor CLI pagination for issue comments fallback", () => {
+    const card = getOperationCard("issue.comments.list")
+    expect(card?.routing.notes).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("does not provide cursor-based pagination"),
+        expect.stringContaining("caps at 100 comments")
+      ])
+    )
   })
 
   it("keeps rest route disabled until implemented", () => {

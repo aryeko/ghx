@@ -315,7 +315,7 @@ async function runIssueCommentsList(
         ? [
             {
               id: comment.id,
-              body: comment.bodyText,
+              body: comment.body,
               authorLogin: comment.author?.login ?? null,
               createdAt: comment.createdAt,
               url: String(comment.url)

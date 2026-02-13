@@ -4,7 +4,7 @@ query IssueCommentsList($owner: String!, $name: String!, $issueNumber: Int!, $fi
       comments(first: $first, after: $after) {
         nodes {
           id
-          bodyText
+          body
           createdAt
           url
           author {

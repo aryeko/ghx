@@ -8,7 +8,8 @@ function baseCard(
   operationName: string,
   documentPath: string,
   required: string[],
-  outputSchema: Record<string, unknown>
+  outputSchema: Record<string, unknown>,
+  routingNotes?: string[]
 ): OperationCard {
   return {
     capability_id: capabilityId,
@@ -24,7 +25,7 @@ function baseCard(
     routing: {
       preferred: "graphql",
       fallbacks: [...DEFAULT_FALLBACKS],
-      notes: ["Prefer GraphQL for typed shape, fallback to CLI when unavailable."]
+      notes: routingNotes ?? ["Prefer GraphQL for typed shape, fallback to CLI when unavailable."]
     },
     graphql: {
       operationName,
@@ -54,7 +55,7 @@ export const operationCards: OperationCard[] = [
         stargazerCount: { type: "number" },
         forkCount: { type: "number" },
         url: { type: "string" },
-        defaultBranch: { type: "string" }
+        defaultBranch: { type: ["string", "null"] }
       }
     }
   ),
@@ -81,7 +82,7 @@ export const operationCards: OperationCard[] = [
     "List repository issues.",
     "IssueList",
     "src/gql/operations/issue-list.graphql",
-    ["owner", "name"],
+    ["owner", "name", "first"],
     {
       type: "object",
       required: ["items", "pageInfo"],
@@ -104,7 +105,11 @@ export const operationCards: OperationCard[] = [
         items: { type: "array" },
         pageInfo: { type: "object" }
       }
-    }
+    },
+    [
+      "Prefer GraphQL for typed shape, fallback to CLI when unavailable.",
+      "CLI fallback truncates to requested first, caps at 100 comments, and does not provide cursor-based pagination."
+    ]
   ),
   baseCard(
     "pr.view",
@@ -129,7 +134,7 @@ export const operationCards: OperationCard[] = [
     "List repository pull requests.",
     "PrList",
     "src/gql/operations/pr-list.graphql",
-    ["owner", "name"],
+    ["owner", "name", "first"],
     {
       type: "object",
       required: ["items", "pageInfo"],

@@ -55,31 +55,61 @@ describe("runCliCapability", () => {
     expect(result.error?.code).toBe("AUTH")
   })
 
-  it("normalizes list limits and omits empty repo args", async () => {
+  it("requires strict positive integer first for list capabilities", async () => {
     const runner = {
       run: vi.fn(async () => ({ stdout: "[]", stderr: "", exitCode: 0 }))
     }
 
-    await runCliCapability(runner, "issue.list", {
+    const issueResult = await runCliCapability(runner, "issue.list", {
       owner: "",
       name: "",
       first: { bad: "input" }
     })
 
-    await runCliCapability(runner, "pr.list", {
+    const prResult = await runCliCapability(runner, "pr.list", {
       owner: "acme",
       name: "modkit",
       first: 12.9
     })
 
-    const calls = runner.run.mock.calls as unknown as [string, string[], number][]
-    const issueArgs = calls[0]?.[1]
-    const prArgs = calls[1]?.[1]
+    expect(issueResult.ok).toBe(false)
+    expect(issueResult.error?.code).toBe("VALIDATION")
+    expect(prResult.ok).toBe(false)
+    expect(prResult.error?.code).toBe("VALIDATION")
+    expect(runner.run).not.toHaveBeenCalled()
+  })
 
-    expect(issueArgs).toEqual(expect.arrayContaining(["issue", "list", "--limit", "30"]))
-    expect(issueArgs).not.toContain("--repo")
+  it("requires strict integer issue/pr numbers for view capabilities", async () => {
+    const runner = {
+      run: vi.fn(async () => ({ stdout: "{}", stderr: "", exitCode: 0 }))
+    }
 
-    expect(prArgs).toEqual(expect.arrayContaining(["pr", "list", "--repo", "acme/modkit", "--limit", "12"]))
+    const issueViewResult = await runCliCapability(runner, "issue.view", {
+      owner: "acme",
+      name: "modkit",
+      issueNumber: 1.5
+    })
+
+    const issueCommentsResult = await runCliCapability(runner, "issue.comments.list", {
+      owner: "acme",
+      name: "modkit",
+      issueNumber: 1.5,
+      first: 20
+    })
+
+    const prViewResult = await runCliCapability(runner, "pr.view", {
+      owner: "acme",
+      name: "modkit",
+      prNumber: 2.5
+    })
+
+    expect(issueViewResult.ok).toBe(false)
+    expect(issueViewResult.error?.code).toBe("VALIDATION")
+    expect(issueCommentsResult.ok).toBe(false)
+    expect(issueCommentsResult.error?.code).toBe("VALIDATION")
+    expect(prViewResult.ok).toBe(false)
+    expect(prViewResult.error?.code).toBe("VALIDATION")
+    expect(runner.run).not.toHaveBeenCalled()
   })
 
   it("normalizes repo.view output shape", async () => {
@@ -252,5 +282,118 @@ describe("runCliCapability", () => {
         endCursor: null
       }
     })
+  })
+
+  it("returns adapter unsupported when cursor pagination is requested for comments fallback", async () => {
+    const runner = {
+      run: vi.fn(async () => ({ stdout: "", stderr: "", exitCode: 0 }))
+    }
+
+    const result = await runCliCapability(runner, "issue.comments.list", {
+      owner: "acme",
+      name: "modkit",
+      issueNumber: 1,
+      first: 20,
+      after: "cursor-1"
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("ADAPTER_UNSUPPORTED")
+    expect(runner.run).not.toHaveBeenCalled()
+  })
+
+  it("returns adapter unsupported when comment limit exceeds cli cap", async () => {
+    const runner = {
+      run: vi.fn(async () => ({ stdout: "", stderr: "", exitCode: 0 }))
+    }
+
+    const result = await runCliCapability(runner, "issue.comments.list", {
+      owner: "acme",
+      name: "modkit",
+      issueNumber: 1,
+      first: 200
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("ADAPTER_UNSUPPORTED")
+    expect(runner.run).not.toHaveBeenCalled()
+  })
+
+  it("returns server error when comments payload is malformed", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: JSON.stringify({ wrong: [] }),
+        stderr: "",
+        exitCode: 0
+      }))
+    }
+
+    const result = await runCliCapability(runner, "issue.comments.list", {
+      owner: "acme",
+      name: "modkit",
+      issueNumber: 1,
+      first: 20
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("SERVER")
+  })
+
+  it("keeps hasNextPage false at cli cap boundary without cursor", async () => {
+    const comments = Array.from({ length: 100 }, (_, index) => ({
+      id: `comment-${index + 1}`,
+      body: `comment ${index + 1}`,
+      author: { login: "octocat" },
+      url: `https://github.com/acme/modkit/issues/1#issuecomment-${index + 1}`,
+      createdAt: "2025-01-01T00:00:00Z"
+    }))
+
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: JSON.stringify({ comments }),
+        stderr: "",
+        exitCode: 0
+      }))
+    }
+
+    const result = await runCliCapability(runner, "issue.comments.list", {
+      owner: "acme",
+      name: "modkit",
+      issueNumber: 1,
+      first: 100
+    })
+
+    expect(result.ok).toBe(true)
+    expect((result.data as { pageInfo: { hasNextPage: boolean } }).pageInfo.hasNextPage).toBe(false)
+  })
+
+  it("returns server error when comment item fields are invalid", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: JSON.stringify({
+          comments: [
+            {
+              id: 123,
+              body: "valid",
+              author: { login: "octocat" },
+              url: "https://github.com/acme/modkit/issues/1#issuecomment-1",
+              createdAt: "2025-01-01T00:00:00Z"
+            }
+          ]
+        }),
+        stderr: "",
+        exitCode: 0
+      }))
+    }
+
+    const result = await runCliCapability(runner, "issue.comments.list", {
+      owner: "acme",
+      name: "modkit",
+      issueNumber: 1,
+      first: 20
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("SERVER")
   })
 })
