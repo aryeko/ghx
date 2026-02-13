@@ -8,7 +8,7 @@ export interface SuitabilityRule {
   reason: string
 }
 
-export interface OperationCard<Input = Record<string, unknown>, Output = Record<string, unknown>> {
+export interface OperationCard<Input = Record<string, unknown>> {
   capability_id: string
   version: string
   description: string
