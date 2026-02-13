@@ -12,6 +12,9 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     env:
       GH_TOKEN: ${{ github.token }}
       GITHUB_TOKEN: ${{ github.token }}
@@ -42,4 +45,5 @@ jobs:
         with:
           files: packages/ghx-router/coverage/lcov.info,packages/benchmark/coverage/lcov.info
           flags: pr
+          use_oidc: true
           fail_ci_if_error: true
