@@ -22,7 +22,12 @@ function buildArgs(capabilityId: CliCapabilityId, params: Record<string, unknown
   }
 
   if (capabilityId === "issue.view") {
-    return ["issue", "view", String(params.issueNumber), "--repo", repo, "--json", "id,number,title,state,url"]
+    const issueNumber = params.issueNumber
+    if (typeof issueNumber !== "number" || Number.isNaN(issueNumber) || issueNumber < 1) {
+      throw new Error("Missing or invalid issueNumber for issue.view")
+    }
+
+    return ["issue", "view", String(issueNumber), "--repo", repo, "--json", "id,number,title,state,url"]
   }
 
   if (capabilityId === "issue.list") {
@@ -30,7 +35,12 @@ function buildArgs(capabilityId: CliCapabilityId, params: Record<string, unknown
   }
 
   if (capabilityId === "pr.view") {
-    return ["pr", "view", String(params.prNumber), "--repo", repo, "--json", "id,number,title,state,url"]
+    const prNumber = params.prNumber
+    if (typeof prNumber !== "number" || Number.isNaN(prNumber) || prNumber < 1) {
+      throw new Error("Missing or invalid prNumber for pr.view")
+    }
+
+    return ["pr", "view", String(prNumber), "--repo", repo, "--json", "id,number,title,state,url"]
   }
 
   return ["pr", "list", "--repo", repo, "--limit", String(params.first ?? 30), "--json", "id,number,title,state,url"]

@@ -106,19 +106,19 @@ export async function execute(options: ExecuteOptions): Promise<ResultEnvelope> 
         route,
         ok: result.ok
       })
-      const attempt: { route: RouteSource; status: "success" | "error"; error_code?: ErrorCode } = {
+      const attemptRecord: { route: RouteSource; status: "success" | "error"; error_code?: ErrorCode } = {
         route,
         status: result.ok ? "success" : "error"
       }
       if (result.error?.code) {
-        attempt.error_code = result.error.code
+        attemptRecord.error_code = result.error.code
       }
-      attempts.push(attempt)
+      attempts.push(attemptRecord)
 
       if (result.ok) {
         const outputMissing = validateOutputSchema(options.card, result.data)
         if (outputMissing.length > 0) {
-          return normalizeError(
+          const envelope = normalizeError(
             {
               code: errorCodes.Server,
               message: `Output schema mismatch: missing ${outputMissing.join(", ")}`,
@@ -131,6 +131,12 @@ export async function execute(options: ExecuteOptions): Promise<ResultEnvelope> 
               reason: "CAPABILITY_LIMIT"
             }
           )
+
+          if (options.trace) {
+            envelope.meta.attempts = attempts
+          }
+
+          return envelope
         }
 
         if (options.trace) {

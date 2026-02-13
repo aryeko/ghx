@@ -66,7 +66,8 @@ export type BenchmarkRow = {
   cost: number
   tool_calls: number
   api_calls: number
-  retry_count: number
+  internal_retry_count: number
+  external_retry_count: number
   model: {
     provider_id: string
     model_id: string

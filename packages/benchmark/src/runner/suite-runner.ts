@@ -544,7 +544,8 @@ async function runScenario(
       cost: assistant.cost,
       tool_calls: toolCounts.toolCalls,
       api_calls: toolCounts.apiCalls,
-      retry_count: attemptMetrics.retryCount,
+      internal_retry_count: attemptMetrics.retryCount,
+      external_retry_count: 0,
       model: {
         provider_id: PROVIDER_ID,
         model_id: MODEL_ID,
@@ -589,7 +590,8 @@ async function runScenario(
       cost: 0,
       tool_calls: 0,
       api_calls: 0,
-      retry_count: 0,
+      internal_retry_count: 0,
+      external_retry_count: 0,
       model: {
         provider_id: PROVIDER_ID,
         model_id: MODEL_ID,
@@ -650,7 +652,7 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
           const result = await runScenario(client, scenario, mode, iteration)
           latestResult = {
             ...result,
-            retry_count: attempt
+            external_retry_count: attempt
           }
 
           if (result.success || attempt === scenario.allowed_retries) {
