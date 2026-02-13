@@ -83,11 +83,19 @@ Normalized runtime envelope:
 - Benchmark reporting: `docs/benchmark/reporting.md`
 - Efficiency criteria: `docs/benchmark/efficiency-criteria.md`
 - Scenario assertions: `docs/benchmark/scenario-assertions.md`
+- CI workflows: `docs/engineering/ci-workflows.md`
+- Nx commands: `docs/engineering/nx-commands.md`
+- Changesets and publishing: `docs/release/changesets-and-publishing.md`
+- Codecov coverage policy: `docs/quality/codecov-coverage-policy.md`
 
 ## Verification
 
 ```bash
-pnpm run verify
-pnpm --filter @ghx-router/core run gql:check
+pnpm run build
+pnpm run lint
+pnpm run ci
+pnpm run ghx:gql:check
 pnpm run benchmark:check
 ```
+
+Codecov common recipes: https://docs.codecov.com/docs/common-recipe-list

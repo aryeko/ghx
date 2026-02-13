@@ -24,3 +24,11 @@
 
 - `docs/architecture/` - architecture contracts and runtime behavior.
 - `docs/benchmark/` - methodology, metrics, and reporting criteria.
+
+## Tooling and CI
+
+- `nx.json` - workspace target defaults and Nx plugin wiring.
+- `.github/workflows/ci-pr.yml` - PR checks (affected CI, GraphQL drift check, benchmark scenario check, coverage upload).
+- `.github/workflows/ci-main.yml` - main checks plus release workflow.
+- `.changeset/` - changesets configuration and release metadata.
+- `codecov.yml` - Codecov status configuration and generated-file ignore rules.

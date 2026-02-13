@@ -1,0 +1,47 @@
+name: CI - Pull Request
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GITHUB_TOKEN: ${{ github.token }}
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [22, 24]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: nrwl/nx-set-shas@v4
+      - run: pnpm run ci:affected
+      - name: Generate coverage (Node 24)
+        if: matrix.node-version == 24
+        run: pnpm run test:coverage
+      - name: Upload coverage to Codecov (Node 24)
+        if: matrix.node-version == 24
+        uses: codecov/codecov-action@v5
+        with:
+          files: packages/*/coverage/lcov.info
+          flags: pr
+          use_oidc: true
+          fail_ci_if_error: true

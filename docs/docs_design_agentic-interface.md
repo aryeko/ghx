@@ -502,10 +502,11 @@ Each scenario should define:
 - Error code correctness
 
 ### 12.3 CI checks
-- `pnpm verify` (typecheck, lint, tests)
-- `gql:check` (codegen drift)
-- `benchmark:check` (run suite)
-- `benchmark:report` (publish JSONL + summary)
+- `pnpm run ci:affected` on pull requests
+- `pnpm run ci` on main
+- `pnpm run ghx:gql:check` (codegen drift)
+- `pnpm run benchmark:check` (scenario validation)
+- coverage upload via Codecov with project and patch thresholds
 
 ---
 
