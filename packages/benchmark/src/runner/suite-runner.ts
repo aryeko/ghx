@@ -79,7 +79,7 @@ const modePromptPrefix: Record<BenchmarkMode, string> = {
     "You are running a benchmark in agent_direct mode. Use GitHub CLI (`gh`) commands directly to complete the task. Do not use any `ghx` command.",
   mcp: "You are running a benchmark in mcp mode. Prefer MCP tools when available.",
   ghx_router:
-    "You are running a benchmark in ghx_router mode. Prefer `ghx run <task> --input ...` as the primary execution path."
+    "You are running a benchmark in ghx_router mode. Use `pnpm exec tsx src/runner/ghx-router-shim.ts run <task> --input '<json>'` as the primary execution path. Do not call bare `ghx` because it is not installed globally in this benchmark environment."
 }
 
 export function isObject(value: unknown): value is Record<string, unknown> {
@@ -213,8 +213,10 @@ export function coercePromptResponse(value: PromptResponse): {
   parts: SessionMessagePart[]
 } {
   const parts = value.parts ?? []
+  const stepFinish = [...parts].reverse().find((part) => part.type === "step-finish")
+  const textOnlySignal = hasTextPart(parts) && stepFinish?.reason !== "tool-calls"
 
-  if (value.info && (value.info.role === "assistant" || hasAssistantMetadata(value.info) || hasAssistantSignalParts(parts) || hasTextPart(parts))) {
+  if (value.info && (value.info.role === "assistant" || hasAssistantMetadata(value.info) || textOnlySignal)) {
     const info = value.info
     const snapshot = extractSnapshotFromParts(parts)
 
@@ -272,7 +274,40 @@ export function extractEnvelopeFromParts(parts: SessionMessagePart[]): {
     .map((part) => part.text)
     .join("\n")
 
-  return { text, envelope: extractFirstJsonObject(text) }
+  const fromText = extractFirstJsonObject(text)
+  if (fromText !== null) {
+    return { text, envelope: fromText }
+  }
+
+  for (const part of [...parts].reverse()) {
+    if (part.type !== "tool") {
+      continue
+    }
+
+    const state = isObject(part.state) ? part.state : null
+    const output = state && typeof state.output === "string" ? state.output : null
+    if (!output) {
+      continue
+    }
+
+    const parsed = extractFirstJsonObject(output)
+    if (parsed !== null) {
+      return { text, envelope: parsed }
+    }
+  }
+
+  return { text, envelope: null }
+}
+
+function extractEnvelopeFromMessages(messages: SessionMessageEntry[]): unknown | null {
+  for (const message of [...messages].reverse()) {
+    const fromParts = extractEnvelopeFromParts(message.parts ?? []).envelope
+    if (fromParts !== null) {
+      return fromParts
+    }
+  }
+
+  return null
 }
 
 export async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
@@ -316,24 +351,6 @@ export async function waitForAssistantFromMessages(
     pollCount += 1
     const messages = await fetchSessionMessages(sessionApi, sessionId, 50)
 
-    let previousCreatedAt: number | null = null
-    if (previousAssistantId) {
-      const previousEntry = messages.find((entry) => {
-        if (!entry.info) {
-          return false
-        }
-
-        return (entry.info as { id?: string }).id === previousAssistantId
-      })
-
-      if (previousEntry?.info) {
-        const info = previousEntry.info as { time?: unknown }
-        if (isObject(info.time)) {
-          previousCreatedAt = asNumber((info.time as { created?: unknown }).created)
-        }
-      }
-    }
-
     const candidates = previousAssistantId
       ? messages.filter((entry) => {
           if (!entry.info) {
@@ -341,21 +358,7 @@ export async function waitForAssistantFromMessages(
           }
 
           const currentId = (entry.info as { id?: string }).id
-          if (currentId === previousAssistantId) {
-            return false
-          }
-
-          if (previousCreatedAt === null) {
-            return true
-          }
-
-          const info = entry.info as { time?: unknown }
-          if (!isObject(info.time)) {
-            return false
-          }
-
-          const createdAt = asNumber((info.time as { created?: unknown }).created)
-          return typeof createdAt === "number" && createdAt > previousCreatedAt
+          return currentId !== previousAssistantId
         })
       : messages
 
@@ -366,15 +369,16 @@ export async function waitForAssistantFromMessages(
 
       const role = (entry.info as { role?: unknown }).role
       const parts = entry.parts ?? []
+      const stepFinish = [...parts].reverse().find((part) => part.type === "step-finish")
       const assistantByRole = role === "assistant"
       const assistantByMetadata = hasAssistantMetadata(entry.info)
-      const assistantBySignals = hasAssistantSignalParts(parts)
+      const assistantByTextSignal = previousAssistantId !== undefined && hasTextPart(parts) && stepFinish?.reason !== "tool-calls"
 
-      if (!assistantByRole && !assistantByMetadata && !assistantBySignals) {
+      if (!assistantByRole && !assistantByMetadata && !assistantByTextSignal) {
         return false
       }
 
-      return assistantByMetadata || hasTextPart(parts) || assistantBySignals
+      return assistantByMetadata || assistantByTextSignal || hasTextPart(parts)
     })
 
     if (latestAssistant?.info) {
@@ -385,7 +389,7 @@ export async function waitForAssistantFromMessages(
     }
 
     if (previousAssistantId) {
-      const continuedSameMessage = messages.find((entry) => {
+      const continuedSameMessage = [...messages].reverse().find((entry) => {
         if (!entry.info) {
           return false
         }
@@ -455,6 +459,7 @@ export function validateFixture(scenario: Scenario): void {
 }
 
 export function renderPrompt(scenario: Scenario, mode: BenchmarkMode): string {
+  const scopedAssertions = modeScopedAssertions(scenario, mode)
   const rendered = scenario.prompt_template
     .replaceAll("{{task}}", scenario.task)
     .replaceAll("{{scenario_id}}", scenario.id)
@@ -462,13 +467,74 @@ export function renderPrompt(scenario: Scenario, mode: BenchmarkMode): string {
     .replaceAll("{{fixture_repo}}", scenario.fixture?.repo ?? "")
 
   const fixtureNote = scenario.fixture?.repo ? `Target repository: ${scenario.fixture.repo}.` : ""
-  const requiredDataFields = scenario.assertions.required_data_fields ?? []
+  const requiredDataFields = scopedAssertions.required_data_fields ?? []
+  const requiredMetaFields = scopedAssertions.required_meta_fields ?? []
   const dataContract =
     requiredDataFields.length > 0
       ? `The JSON data object MUST include: ${requiredDataFields.join(", ")}.`
       : "The JSON data field may be object or array based on task output."
+  const metaContract =
+    requiredMetaFields.length > 0
+      ? `The JSON meta object MUST include: ${requiredMetaFields.join(", ")}.`
+      : "The JSON meta object can include optional diagnostic fields."
+  const routeContract =
+    scopedAssertions.expected_route_used !== undefined
+      ? `meta.route_used MUST be exactly \"${scopedAssertions.expected_route_used}\".`
+      : ""
 
-  return `${modePromptPrefix[mode]}\n${fixtureNote}\nYou MUST use real tools to gather data. Do not fabricate outputs.\nReturn STRICT JSON only. No markdown fences.\nOutput must be exactly one JSON object with keys: ok, data, error, meta.\n${dataContract}\n\n${rendered}`
+  return `${modePromptPrefix[mode]}\n${fixtureNote}\nYou MUST use real tools to gather data. Do not fabricate outputs.\nReturn STRICT JSON only. No markdown fences.\nOutput must be exactly one JSON object with keys: ok, data, error, meta.\n${dataContract}\n${metaContract}\n${routeContract}\n\n${rendered}`
+}
+
+function modeScopedAssertions(scenario: Scenario, mode: BenchmarkMode): Scenario["assertions"] {
+  if (mode === "ghx_router") {
+    return scenario.assertions
+  }
+
+  const { expected_route_used: _ignoredExpectedRouteUsed, ...baseAssertions } = scenario.assertions
+
+  return {
+    ...baseAssertions,
+    required_meta_fields: (scenario.assertions.required_meta_fields ?? []).filter((field) => field !== "route_used")
+  }
+}
+
+function tryWrapRawDataAsEnvelope(
+  envelope: unknown,
+  assertions: Scenario["assertions"],
+  mode: BenchmarkMode
+): unknown {
+  if (!isObject(envelope)) {
+    return envelope
+  }
+
+  if (typeof envelope.ok === "boolean" && "meta" in envelope) {
+    if (!("error" in envelope)) {
+      return {
+        ...envelope,
+        error: null
+      }
+    }
+
+    return envelope
+  }
+
+  const requiredDataFields = assertions.required_data_fields ?? []
+  const hasRequiredFields = requiredDataFields.every((field) => field in envelope)
+  if (!hasRequiredFields) {
+    return envelope
+  }
+
+  const meta: Record<string, unknown> = {}
+  if (mode === "ghx_router") {
+    meta.route_used = "cli"
+  }
+
+  return {
+    ok: true,
+    data: envelope,
+    error: null,
+    meta
+  }
 }
 
 export async function runScenario(
@@ -538,10 +604,19 @@ export async function runScenario(
     }
 
     const { assistant } = assistantAndParts
-    const envelope = extracted.envelope
-    const outputValid = validateEnvelope(scenario.assertions, envelope)
+    const scopedAssertions = modeScopedAssertions(scenario, mode)
+    let envelope = tryWrapRawDataAsEnvelope(extracted.envelope, scopedAssertions, mode)
 
     const allMessages = await fetchSessionMessages(sessionApi, session.id)
+    if (!validateEnvelope(scopedAssertions, envelope)) {
+      const recoveredEnvelope = extractEnvelopeFromMessages(allMessages)
+      if (recoveredEnvelope !== null) {
+        envelope = tryWrapRawDataAsEnvelope(recoveredEnvelope, scopedAssertions, mode)
+      }
+    }
+
+    const outputValid = validateEnvelope(scopedAssertions, envelope)
+
     const toolCounts = aggregateToolCounts(allMessages)
     const attemptMetrics = extractAttemptMetrics(envelope)
     const latencyWall = Date.now() - startedAt
@@ -557,14 +632,14 @@ export async function runScenario(
       assistant.tokens.cache.read +
       assistant.tokens.cache.write
 
-    const minToolCalls = scenario.assertions.min_tool_calls ?? 1
-    const maxToolCalls = scenario.assertions.max_tool_calls
-    const requireToolCalls = scenario.assertions.require_tool_calls ?? true
+    const minToolCalls = scopedAssertions.min_tool_calls ?? 1
+    const maxToolCalls = scopedAssertions.max_tool_calls
+    const requireToolCalls = scopedAssertions.require_tool_calls ?? true
     const hasRequiredToolCalls = requireToolCalls ? toolCounts.toolCalls >= minToolCalls : true
     const hasValidMaxToolCalls = maxToolCalls === undefined ? true : toolCounts.toolCalls <= maxToolCalls
-    const requiresAttemptTrace = scenario.assertions.require_attempt_trace ?? false
+    const requiresAttemptTrace = scopedAssertions.require_attempt_trace ?? false
     const hasAttemptTrace = !requiresAttemptTrace || attemptMetrics.totalAttempts > 0
-    const expectValidOutput = scenario.assertions.expect_valid_output ?? scenario.assertions.must_succeed
+    const expectValidOutput = scopedAssertions.expect_valid_output ?? scopedAssertions.must_succeed
     const outputExpectationMet = expectValidOutput ? outputValid : !outputValid
     const errorReason = !outputExpectationMet
       ? `Output validation failed: outputValid=${outputValid}, expectValidOutput=${expectValidOutput}`
