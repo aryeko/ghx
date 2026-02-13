@@ -202,4 +202,55 @@ describe("runCliCapability", () => {
       }
     })
   })
+
+  it("applies first limit for issue.comments.list and signals more pages", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: JSON.stringify({
+          comments: [
+            {
+              id: "comment-1",
+              body: "first",
+              author: { login: "octocat" },
+              url: "https://github.com/acme/modkit/issues/1#issuecomment-1",
+              createdAt: "2025-01-01T00:00:00Z"
+            },
+            {
+              id: "comment-2",
+              body: "second",
+              author: { login: "hubot" },
+              url: "https://github.com/acme/modkit/issues/1#issuecomment-2",
+              createdAt: "2025-01-01T00:01:00Z"
+            }
+          ]
+        }),
+        stderr: "",
+        exitCode: 0
+      }))
+    }
+
+    const result = await runCliCapability(runner, "issue.comments.list", {
+      owner: "acme",
+      name: "modkit",
+      issueNumber: 1,
+      first: 1
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.data).toEqual({
+      items: [
+        {
+          id: "comment-1",
+          body: "first",
+          authorLogin: "octocat",
+          url: "https://github.com/acme/modkit/issues/1#issuecomment-1",
+          createdAt: "2025-01-01T00:00:00Z"
+        }
+      ],
+      pageInfo: {
+        hasNextPage: true,
+        endCursor: null
+      }
+    })
+  })
 })

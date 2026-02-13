@@ -128,7 +128,7 @@ function normalizeListItem(item: unknown): Record<string, unknown> {
   }
 }
 
-function normalizeCliData(capabilityId: CliCapabilityId, data: unknown): unknown {
+function normalizeCliData(capabilityId: CliCapabilityId, data: unknown, params: Record<string, unknown>): unknown {
   if (capabilityId === "repo.view") {
     const input = typeof data === "object" && data !== null && !Array.isArray(data)
       ? (data as Record<string, unknown>)
@@ -165,34 +165,39 @@ function normalizeCliData(capabilityId: CliCapabilityId, data: unknown): unknown
   }
 
   if (capabilityId === "issue.comments.list") {
+    const limit = normalizeListLimit(params.first)
     const input = typeof data === "object" && data !== null && !Array.isArray(data)
       ? (data as Record<string, unknown>)
       : {}
     const comments = Array.isArray(input.comments) ? input.comments : []
-    return {
-      items: comments.flatMap((comment) => {
-        if (typeof comment !== "object" || comment === null || Array.isArray(comment)) {
-          return []
+    const normalizedItems = comments.flatMap((comment) => {
+      if (typeof comment !== "object" || comment === null || Array.isArray(comment)) {
+        return []
+      }
+
+      const commentRecord = comment as Record<string, unknown>
+      const author =
+        typeof commentRecord.author === "object" && commentRecord.author !== null
+          ? (commentRecord.author as Record<string, unknown>)
+          : null
+
+      return [
+        {
+          id: commentRecord.id,
+          body: commentRecord.body,
+          authorLogin: typeof author?.login === "string" ? author.login : null,
+          url: commentRecord.url,
+          createdAt: commentRecord.createdAt
         }
+      ]
+    })
 
-        const commentRecord = comment as Record<string, unknown>
-        const author =
-          typeof commentRecord.author === "object" && commentRecord.author !== null
-            ? (commentRecord.author as Record<string, unknown>)
-            : null
+    const items = normalizedItems.slice(0, limit)
 
-        return [
-          {
-            id: commentRecord.id,
-            body: commentRecord.body,
-            authorLogin: typeof author?.login === "string" ? author.login : null,
-            url: commentRecord.url,
-            createdAt: commentRecord.createdAt
-          }
-        ]
-      }),
+    return {
+      items,
       pageInfo: {
-        hasNextPage: false,
+        hasNextPage: normalizedItems.length > items.length,
         endCursor: null
       }
     }
@@ -229,7 +234,7 @@ export async function runCliCapability(
     }
 
     const data = parseCliData(result.stdout)
-    const normalized = normalizeCliData(capabilityId, data)
+    const normalized = normalizeCliData(capabilityId, data, params)
     return normalizeResult(normalized, "cli", { capabilityId, reason: "CARD_FALLBACK" })
   } catch (error: unknown) {
     if (error instanceof SyntaxError) {

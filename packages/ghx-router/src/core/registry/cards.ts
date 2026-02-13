@@ -24,14 +24,14 @@ function baseCard(
     routing: {
       preferred: "graphql",
       fallbacks: [...DEFAULT_FALLBACKS],
-      notes: ["Prefer GraphQL for typed shape, fallback to CLI or REST when unavailable."]
+      notes: ["Prefer GraphQL for typed shape, fallback to CLI when unavailable."]
     },
     graphql: {
       operationName,
       documentPath
     },
     cli: {
-      command: capabilityId.replace(".", " ")
+      command: capabilityId.replaceAll(".", " ")
     }
   }
 }
@@ -96,7 +96,7 @@ export const operationCards: OperationCard[] = [
     "List comments for one issue.",
     "IssueCommentsList",
     "src/gql/operations/issue-comments-list.graphql",
-    ["owner", "name", "issueNumber"],
+    ["owner", "name", "issueNumber", "first"],
     {
       type: "object",
       required: ["items", "pageInfo"],

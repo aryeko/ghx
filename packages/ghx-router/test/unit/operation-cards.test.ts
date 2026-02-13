@@ -24,6 +24,16 @@ describe("operation cards registry", () => {
     expect(card?.routing.fallbacks).toEqual(["cli"])
   })
 
+  it("requires explicit pagination input for issue.comments.list", () => {
+    const card = getOperationCard("issue.comments.list")
+    expect(card?.input_schema.required).toEqual(["owner", "name", "issueNumber", "first"])
+  })
+
+  it("stores CLI command metadata with all dot segments expanded", () => {
+    const card = getOperationCard("issue.comments.list")
+    expect(card?.cli?.command).toBe("issue comments list")
+  })
+
   it("keeps rest route disabled until implemented", () => {
     const cards = listOperationCards()
 
