@@ -22,4 +22,4 @@ Primary code definitions:
 - Use bounded backoff.
 - Do not retry schema validation or auth/scope errors.
 
-Detailed behavior evolves with adapter implementation and should remain aligned with `docs/plans/2026-02-13-ghx-router-architecture.md`.
+Detailed behavior evolves with adapter implementation and should remain aligned with `docs/architecture/system-design.md`.

@@ -13,7 +13,7 @@ This document defines folder responsibilities and scope boundaries for `ghx-rout
 
 ### `docs/`
 
-Project documentation, design decisions, and implementation plans.
+Project documentation and long-lived design references.
 
 - `docs/architecture/`
   - **Responsibility**: long-lived architecture docs.
@@ -22,9 +22,6 @@ Project documentation, design decisions, and implementation plans.
 - `docs/benchmark/`
   - **Responsibility**: benchmark methodology and reporting standards.
   - **Scope**: metrics definitions, measurement method, release gate interpretation.
-- `docs/plans/`
-  - **Responsibility**: time-scoped plans and design specs.
-  - **Scope**: dated implementation plans, benchmark design proposals, phase docs.
 
 ### `packages/ghx-router/src/`
 

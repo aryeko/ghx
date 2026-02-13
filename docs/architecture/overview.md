@@ -6,9 +6,21 @@
 - `packages/ghx-router/src/cli/`: command interface and formatting.
 - `packages/benchmark/`: independent benchmark harness and reporting.
 
-The canonical architecture spec is:
+```mermaid
+flowchart LR
+  A[Agent] --> B[ghx CLI]
+  B --> C[Contract Validation]
+  C --> D[Routing Engine]
+  D --> E[Execution Adapter]
+  E --> F[Normalization]
+  F --> G[Result Envelope]
+  E --> H[Telemetry Hooks]
+  H --> I[Benchmark Reports]
+```
 
-- `docs/plans/2026-02-13-ghx-router-architecture.md`
+Canonical architecture reference:
+
+- `docs/architecture/system-design.md`
 
 Supporting references:
 

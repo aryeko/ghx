@@ -4,9 +4,9 @@ CLI-first GitHub execution router for agents.
 
 ## Status
 
-- Current phase: Phase 3 is complete and Phase 4 execution is starting.
+- Active development branch with core routing and benchmark harness implemented.
 - Not yet production-ready.
-- Primary objective now: execute Phase 4 normalization + telemetry and keep benchmark validation green.
+- Current focus: stabilize task coverage and keep benchmark validation green.
 
 ## Goals
 
@@ -47,7 +47,7 @@ This "interface ping-pong" makes runs slower, more expensive, and less reliable.
 
 MCP is not universally "bad" or "too expensive." It can be a great integration surface in some runtimes. But in many agent workflows, repeated tool-schema exchange and orchestration overhead can increase token and latency cost relative to direct CLI calls for common operations. This project optimizes for a CLI-first baseline and uses API paths only when they provide clear value.
 
-## Planned Interface (v1)
+## Interface (v1)
 
 Primary command surface:
 
@@ -84,15 +84,10 @@ Use this policy to choose execution path per task.
 | Write operations with mature CLI support | `gh` CLI first | Lower risk and clearer ergonomics for mutation workflows |
 | Write operations not exposed in CLI but available in API | REST first, GraphQL if required | Prefer simplest viable API path |
 
-### Tie-Break Rules
+### Runtime Note
 
-When multiple paths are possible, choose in this order:
-
-1. `gh` CLI command with `--json` support
-2. `gh api` REST endpoint
-3. Typed GraphQL client
-
-Only bypass this order when there is a clear and documented reason (coverage gap, major performance gain, or output-shape requirement).
+The active task set currently routes through GraphQL defaults in `packages/ghx-router/src/core/routing/capability-registry.ts`.
+The matrix above remains the target long-term policy as additional CLI and REST adapters are expanded.
 
 ### Required Runtime Guarantees
 
@@ -118,34 +113,22 @@ Prerequisites:
 - Node.js 20+
 - GitHub CLI (`gh`) authenticated
 
-Current repo includes active implementation plus design docs. You can review:
-
-- architecture and phased plans under `docs/`
-- benchmark harness package under `packages/benchmark/`
+Current repo includes active implementation plus architecture and benchmark docs under `docs/`.
 
 Note: `repo.view`, `issue.view`, and `pr.view` execution paths are wired through the GraphQL engine route.
 
-## Initial Direction
+## Current Direction
 
-1. Build a universal `ghx` CLI with stable JSON contracts.
-2. Implement a routing policy engine (`gh` vs REST vs GraphQL).
-3. Add typed GraphQL client generation from schema.
-4. Add skill/docs for agent guidance that call `ghx` first.
-
-## Roadmap Snapshot
-
-1. Phase 1: core CLI skeleton and task contracts.
-2. Phase 2: deterministic routing policy engine.
-3. Phase 2.5: thin benchmark slice (5-8 scenarios, early signal).
-4. Phase 3: adapters + safety + integration tests (complete).
-5. Phase 4-5: normalization, telemetry, and v1 task coverage.
-6. Phase 6: full benchmark validation gate.
+1. Expand task coverage while preserving deterministic envelope behavior.
+2. Keep routing and capability policy aligned with runtime behavior.
+3. Harden benchmark reliability and release-gate checks.
+4. Keep docs focused on long-lived architecture and benchmark references.
 
 ## Benchmarking
 
 - Thin-slice harness: `packages/benchmark/README.md`
-- Efficiency plan: `docs/plans/2026-02-13-efficiency-evaluation.md`
-- Benchmark design (TS SDK): `docs/plans/2026-02-13-benchmark-harness-ts-sdk-design.md`
+- Efficiency criteria: `docs/benchmark/efficiency-criteria.md`
+- Benchmark harness design (TS SDK): `docs/benchmark/harness-design.md`
 
 Current benchmark state:
 
@@ -154,17 +137,19 @@ Current benchmark state:
 - Aggregation/reporting templates are defined.
 - SDK-backed benchmark execution is wired; current focus is reliability and reporting stabilization.
 
-## Design Docs
+## Docs
 
-- Plans index (what is active): `docs/plans/README.md`
-- Architecture: `docs/plans/2026-02-13-ghx-router-architecture.md`
-- Efficiency evaluation plan: `docs/plans/2026-02-13-efficiency-evaluation.md`
-- Phased implementation plan: `docs/plans/2026-02-13-ghx-router-phased-plan.md`
-- Benchmark harness design: `docs/plans/2026-02-13-benchmark-harness-ts-sdk-design.md`
-
-## Architecture Docs
-
+- Architecture overview: `docs/architecture/overview.md`
+- System design: `docs/architecture/system-design.md`
+- Routing policy: `docs/architecture/routing-policy.md`
+- Contracts: `docs/architecture/contracts.md`
+- Errors and retries: `docs/architecture/errors-and-retries.md`
 - Repository structure: `docs/architecture/repository-structure.md`
+- Benchmark methodology: `docs/benchmark/methodology.md`
+- Benchmark metrics: `docs/benchmark/metrics.md`
+- Benchmark reporting: `docs/benchmark/reporting.md`
+- Benchmark harness design: `docs/benchmark/harness-design.md`
+- Efficiency criteria: `docs/benchmark/efficiency-criteria.md`
 
 ## Contributing
 

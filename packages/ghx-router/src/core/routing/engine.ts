@@ -1,4 +1,5 @@
 import { routePreferenceOrder } from "./policy.js"
+import { capabilityRegistry } from "./capability-registry.js"
 import type { ResultEnvelope } from "../contracts/envelope.js"
 import type { TaskRequest } from "../contracts/task.js"
 import { issueListTask } from "../contracts/tasks/issue.list.js"
@@ -24,6 +25,15 @@ export function chooseRoute(): (typeof routePreferenceOrder)[number] {
   return routePreferenceOrder[0]
 }
 
+function resolveRouteForTask(task: string): ResultEnvelope["meta"]["source"] {
+  const capability = capabilityRegistry.find((entry) => entry.task === task)
+  if (capability) {
+    return capability.defaultRoute
+  }
+
+  return chooseRoute()
+}
+
 type ExecutionDeps = {
   githubClient: Pick<
     GithubClient,
@@ -40,7 +50,7 @@ export async function executeTask(
   deps: ExecutionDeps
 ): Promise<ResultEnvelope> {
   const reason = deps.reason ?? DEFAULT_REASON
-  const route: ResultEnvelope["meta"]["source"] = "graphql"
+  const route = resolveRouteForTask(request.task)
   const preflightInput =
     deps.githubToken === undefined
       ? { route }

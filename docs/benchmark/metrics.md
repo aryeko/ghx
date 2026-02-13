@@ -33,4 +33,4 @@ Use OpenCode SDK values when available:
 
 Reference details:
 
-- `docs/plans/2026-02-13-benchmark-harness-ts-sdk-design.md`
+- `docs/benchmark/harness-design.md`

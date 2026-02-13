@@ -1,4 +1,4 @@
-import { readFile, readdir, writeFile } from "node:fs/promises"
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 
 import type { BenchmarkMode, BenchmarkRow } from "../domain/types.js"
@@ -60,6 +60,7 @@ async function main(): Promise<void> {
   const summary = buildSummary(rows)
   const markdown = toMarkdown(summary)
 
+  await mkdir(REPORTS_DIR, { recursive: true })
   await writeFile(join(REPORTS_DIR, "latest-summary.json"), `${JSON.stringify(summary, null, 2)}\n`, "utf8")
   await writeFile(join(REPORTS_DIR, "latest-summary.md"), `${markdown}\n`, "utf8")
 

@@ -23,5 +23,5 @@ Defines scenario selection, execution strategy, and run controls.
 
 Canonical detail:
 
-- `docs/plans/2026-02-13-efficiency-evaluation.md`
-- `docs/plans/2026-02-13-benchmark-harness-ts-sdk-design.md`
+- `docs/benchmark/efficiency-criteria.md`
+- `docs/benchmark/harness-design.md`

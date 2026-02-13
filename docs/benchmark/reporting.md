@@ -25,4 +25,4 @@ Defines report formats and release gate criteria.
 
 Threshold source:
 
-- `docs/plans/2026-02-13-efficiency-evaluation.md`
+- `docs/benchmark/efficiency-criteria.md`
