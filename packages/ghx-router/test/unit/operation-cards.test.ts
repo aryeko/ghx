@@ -20,7 +20,16 @@ describe("operation cards registry", () => {
 
     expect(card).toBeDefined()
     expect(card?.routing.preferred).toBe("graphql")
-    expect(card?.routing.fallbacks).toEqual(["cli", "rest"])
+    expect(card?.routing.fallbacks).toEqual(["cli"])
+  })
+
+  it("keeps rest route disabled until implemented", () => {
+    const cards = listOperationCards()
+
+    for (const card of cards) {
+      expect(card.routing.preferred).not.toBe("rest")
+      expect(card.routing.fallbacks).not.toContain("rest")
+    }
   })
 
   it("validates required card fields", () => {

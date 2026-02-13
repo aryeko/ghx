@@ -1,6 +1,6 @@
 import type { OperationCard } from "./types.js"
 
-const DEFAULT_FALLBACKS = ["cli", "rest"] as const
+const DEFAULT_FALLBACKS = ["cli"] as const
 
 function baseCard(
   capabilityId: string,

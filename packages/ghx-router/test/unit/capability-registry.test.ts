@@ -8,27 +8,27 @@ describe("capabilityRegistry", () => {
       {
         task: "repo.view",
         defaultRoute: "graphql",
-        fallbackRoutes: ["cli", "rest"]
+        fallbackRoutes: ["cli"]
       },
       {
         task: "issue.view",
         defaultRoute: "graphql",
-        fallbackRoutes: ["cli", "rest"]
+        fallbackRoutes: ["cli"]
       },
       {
         task: "issue.list",
         defaultRoute: "graphql",
-        fallbackRoutes: ["cli", "rest"]
+        fallbackRoutes: ["cli"]
       },
       {
         task: "pr.view",
         defaultRoute: "graphql",
-        fallbackRoutes: ["cli", "rest"]
+        fallbackRoutes: ["cli"]
       },
       {
         task: "pr.list",
         defaultRoute: "graphql",
-        fallbackRoutes: ["cli", "rest"]
+        fallbackRoutes: ["cli"]
       }
     ])
   })
