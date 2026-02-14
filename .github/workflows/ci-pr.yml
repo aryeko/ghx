@@ -34,10 +34,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - uses: nrwl/nx-set-shas@v4
-      - run: pnpm run ci:affected --parallel=3 --outputStyle=static
-      - name: Generate coverage (Node 24)
-        if: matrix.node-version == 24
-        run: pnpm run test:coverage
+      - run: pnpm run ci:affected
       - name: Upload coverage to Codecov (Node 24)
         if: ${{ always() && matrix.node-version == 24 && !cancelled() }}
         uses: codecov/codecov-action@v5
@@ -71,15 +68,14 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v6
         with:
-          node-version: 24
+          node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm nx run @ghx-dev/core:build
-      - name: Run core E2E local
-        run: pnpm --filter @ghx-dev/core run test:e2e:local
-      - name: Run core E2E SDK (secret-gated)
-        if: ${{ env.OPENAI_API_KEY != '' }}
-        run: pnpm --filter @ghx-dev/core run test:e2e:sdk
-      - name: Benchmark gate (pr_fast, secret-gated)
-        if: ${{ env.OPENAI_API_KEY != '' }}
+      - name: E2E tests
+        run: pnpm run test:e2e
+      - name: Benchmark gate (pr_fast)
+        if: ${{ !startsWith(github.event.head_commit.message, 'chore: version packages') }}
         run: pnpm run benchmark:proof:pr-fast
+      - name: Benchmark gate (release_strict)
+        if: ${{ startsWith(github.event.head_commit.message, 'chore: version packages') }}
+        run: pnpm run benchmark:proof:release-strict
