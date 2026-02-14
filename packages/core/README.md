@@ -25,8 +25,21 @@ Public ghx package: CLI-first GitHub execution router for AI agents.
 Requirements:
 
 - Node.js `22+`
+- `gh` CLI authenticated for CLI capability execution (`gh auth status`)
 
-Install package:
+CLI without global install:
+
+```bash
+npx @ghx-dev/core@beta capabilities list
+```
+
+CLI global install:
+
+```bash
+npm i -g @ghx-dev/core@beta
+```
+
+Library install:
 
 ```bash
 pnpm add @ghx-dev/core@beta
@@ -45,17 +58,19 @@ yarn add @ghx-dev/core@beta
 Set GitHub token (`GITHUB_TOKEN` or `GH_TOKEN`) and run capabilities:
 
 ```bash
-ghx capabilities list
-ghx capabilities explain repo.view
-ghx run repo.view --input '{"owner":"aryeko","name":"ghx"}'
+npx @ghx-dev/core@beta capabilities list
+npx @ghx-dev/core@beta capabilities explain repo.view
+npx @ghx-dev/core@beta run repo.view --input '{"owner":"aryeko","name":"ghx"}'
 ```
 
 Setup helper for Claude Code skill installation:
 
 ```bash
-ghx setup --platform claude-code --scope project --yes
-ghx setup --platform claude-code --scope project --verify
+npx @ghx-dev/core@beta setup --platform claude-code --scope project --yes
+npx @ghx-dev/core@beta setup --platform claude-code --scope project --verify
 ```
+
+If installed globally, replace `npx @ghx-dev/core@beta` with `ghx`.
 
 ## Quick Start (Library API)
 
@@ -161,6 +176,18 @@ For exact capability contracts, see https://github.com/aryeko/ghx/tree/main/pack
 - `GITHUB_TOKEN` or `GH_TOKEN` (required)
 - `GITHUB_GRAPHQL_URL` (optional override)
 - `GH_HOST` (optional; used to derive enterprise GraphQL endpoint)
+
+## Security and Permissions
+
+- Start with least privilege and grant only what your capability set needs.
+- For quick local testing, a classic PAT with `repo` scope is the simplest route.
+- For production agents, prefer fine-grained tokens with read permissions first (`Metadata`, `Contents`, `Pull requests`, `Issues`, `Actions`, `Projects`) and add writes only where needed.
+
+## Compatibility
+
+- Node.js `22+`
+- GitHub Cloud and GitHub Enterprise hosts (`GH_HOST` supported)
+- Route adapters currently used: CLI and GraphQL
 
 ## Public Exports
 

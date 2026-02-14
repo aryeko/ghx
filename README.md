@@ -18,6 +18,16 @@
 - Structured, normalized error taxonomy for predictable automation behavior
 - Built-in capability discovery (`ghx capabilities list`, `ghx capabilities explain`)
 
+## Why Not Direct `gh` + GraphQL Calls?
+
+| Concern | Direct Calls | `ghx` |
+| --- | --- | --- |
+| Route selection | Manual per operation | Deterministic policy per capability |
+| Output shape | Varies by endpoint/tool | Stable `{ ok, data, error, meta }` envelope |
+| Validation | Caller-owned | Runtime schema validation from operation cards |
+| Retries/fallbacks | Caller-owned | Built-in orchestration |
+| Capability discovery | Ad-hoc docs lookup | `capabilities list` and `capabilities explain` |
+
 ## Who This Is For
 
 - Agent builders who want predictable GitHub automation behavior
@@ -43,7 +53,14 @@ pnpm exec ghx capabilities explain repo.view
 pnpm exec ghx run repo.view --input '{"owner":"aryeko","name":"ghx"}'
 ```
 
-Install the CLI package (beta):
+Try without installing globally:
+
+```bash
+npx @ghx-dev/core@beta capabilities list
+npx @ghx-dev/core@beta run repo.view --input '{"owner":"aryeko","name":"ghx"}'
+```
+
+Install the CLI globally (beta):
 
 ```bash
 npm i -g @ghx-dev/core@beta
@@ -77,6 +94,19 @@ pnpm exec ghx setup --platform claude-code --scope project --verify
 }
 ```
 
+## Golden Workflow Example
+
+Diagnose a PR before merging:
+
+```bash
+pnpm exec ghx run pr.status.checks --input '{"owner":"aryeko","name":"ghx","number":14}'
+pnpm exec ghx run pr.checks.get_failed --input '{"owner":"aryeko","name":"ghx","number":14}'
+pnpm exec ghx run workflow_job.logs.analyze --input '{"owner":"aryeko","name":"ghx","job_id":123456789}'
+pnpm exec ghx run pr.merge.execute --input '{"owner":"aryeko","name":"ghx","number":14,"method":"squash"}'
+```
+
+The same flow can be run by agents through the public library API or `@ghx-dev/core/agent` tools.
+
 ## Capabilities at a Glance
 
 - Repository and issues: `repo.view`, `issue.view`, `issue.list`, `issue.comments.list`
@@ -86,7 +116,14 @@ pnpm exec ghx setup --platform claude-code --scope project --verify
 - Release and workflow control: draft/publish releases, workflow dispatch/reruns/cancel/artifacts
 - Projects v2 and repository metadata: project items/fields plus labels and issue types
 
-For the full capability inventory, see `packages/core/README.md` and `packages/core/src/core/registry/cards/*.yaml`.
+For the full capability inventory, see https://github.com/aryeko/ghx/blob/main/packages/core/README.md and https://github.com/aryeko/ghx/tree/main/packages/core/src/core/registry/cards.
+
+## Security and Permissions
+
+- Use least-privilege tokens and only grant scopes needed for the capabilities you execute.
+- For fast local evaluation, a classic PAT with `repo` scope is the simplest path.
+- For production agents, prefer fine-grained tokens with read permissions first (`Metadata`, `Contents`, `Pull requests`, `Issues`, `Actions`, `Projects`) and add write permissions only where required.
+- `ghx` reads `GITHUB_TOKEN` or `GH_TOKEN` from environment.
 
 ## Packages
 
