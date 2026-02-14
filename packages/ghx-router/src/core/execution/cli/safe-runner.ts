@@ -63,7 +63,11 @@ export function createSafeCliCommandRunner(options?: SafeRunnerOptions): CliComm
             if (failureReason === null) {
               failureReason = "overflow"
               clearTimeout(timer)
+              child.kill("SIGKILL")
+              settleError(new Error(`CLI output exceeded ${maxOutputBytes} bytes`))
+              return
             }
+
             child.kill("SIGKILL")
             return
           }
@@ -81,7 +85,11 @@ export function createSafeCliCommandRunner(options?: SafeRunnerOptions): CliComm
             if (failureReason === null) {
               failureReason = "overflow"
               clearTimeout(timer)
+              child.kill("SIGKILL")
+              settleError(new Error(`CLI output exceeded ${maxOutputBytes} bytes`))
+              return
             }
+
             child.kill("SIGKILL")
             return
           }

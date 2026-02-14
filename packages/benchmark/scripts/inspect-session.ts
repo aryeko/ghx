@@ -31,14 +31,17 @@ async function main(): Promise<void> {
   })
 
   try {
-    const sessionApi = (opencode.client as unknown as { session?: { messages?: (args: Record<string, unknown>) => Promise<unknown> } })
-      .session
-    if (!sessionApi?.messages) {
+    const session = (opencode.client as { session?: unknown }).session
+    if (!session || typeof session !== "object") {
+      throw new Error("session API is unavailable")
+    }
+
+    const messages = (session as { messages?: unknown }).messages
+    if (typeof messages !== "function") {
       throw new Error("session.messages API is unavailable")
     }
 
-    const response = await sessionApi.messages({
-      url: "/session/{id}/message",
+    const response = await (messages as (args: { path: { id: string }; query?: { limit?: number } }) => Promise<unknown>)({
       path: { id: sessionId },
       query: { limit: 100 }
     })

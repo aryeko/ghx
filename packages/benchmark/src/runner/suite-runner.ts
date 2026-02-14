@@ -447,6 +447,15 @@ export async function waitForAssistantFromMessages(
   const started = Date.now()
   let pollCount = 0
 
+  const getCreatedAt = (entry: SessionMessageEntry): number => {
+    if (!entry.info || !isObject(entry.info)) {
+      return Number.NEGATIVE_INFINITY
+    }
+
+    const info = entry.info as { time?: unknown }
+    return asNumber((isObject(info.time) ? info.time.created : undefined) as unknown) ?? Number.NEGATIVE_INFINITY
+  }
+
   while (Date.now() - started < timeoutMs) {
     pollCount += 1
     const messages = await fetchSessionMessages(sessionApi, sessionId, 50)
@@ -499,7 +508,7 @@ export async function waitForAssistantFromMessages(
     }
 
     if (previousAssistantId) {
-      const continuedSameMessage = [...messages].reverse().find((entry) => {
+      const continuedSameMessageCandidates = messages.filter((entry) => {
         if (!entry.info) {
           return false
         }
@@ -526,6 +535,14 @@ export async function waitForAssistantFromMessages(
         )
       })
 
+      const continuedSameMessage = continuedSameMessageCandidates.reduce<SessionMessageEntry | null>((latest, entry) => {
+        if (!latest) {
+          return entry
+        }
+
+        return getCreatedAt(entry) >= getCreatedAt(latest) ? entry : latest
+      }, null)
+
       if (continuedSameMessage?.info) {
         return {
           info: continuedSameMessage.info as AssistantMessage,
@@ -551,15 +568,6 @@ export function extractPromptResponseFromPromptResult(value: unknown): PromptRes
     return null
   }
 
-  if (isObject(payload.info) || Array.isArray(payload.parts)) {
-    return payload as PromptResponse
-  }
-
-  const message = (payload as { message?: unknown }).message
-  if (isObject(message) && (isObject(message.info) || Array.isArray((message as { parts?: unknown }).parts))) {
-    return message as PromptResponse
-  }
-
   const assistant = (payload as { assistant?: unknown }).assistant
   const parts = (payload as { parts?: unknown }).parts
   if (isObject(assistant) && Array.isArray(parts)) {
@@ -567,6 +575,15 @@ export function extractPromptResponseFromPromptResult(value: unknown): PromptRes
       info: assistant as AssistantMessage,
       parts: parts as SessionMessagePart[]
     }
+  }
+
+  if (isObject(payload.info) || Array.isArray(payload.parts)) {
+    return payload as PromptResponse
+  }
+
+  const message = (payload as { message?: unknown }).message
+  if (isObject(message) && (isObject(message.info) || Array.isArray((message as { parts?: unknown }).parts))) {
+    return message as PromptResponse
   }
 
   return null
@@ -966,15 +983,22 @@ function tryWrapRawDataAsEnvelope(
     }
   }
 
-  if (typeof envelope.ok === "boolean" && "meta" in envelope) {
-    if (!("error" in envelope)) {
-      return {
-        ...envelope,
-        error: null
-      }
+  if (typeof envelope.ok === "boolean") {
+    const nextEnvelope: Record<string, unknown> = { ...envelope }
+
+    if (!("meta" in nextEnvelope) || !isObject(nextEnvelope.meta)) {
+      nextEnvelope.meta = mode === "ghx_router" ? { route_used: "cli" } : {}
     }
 
-    return envelope
+    if (!("error" in nextEnvelope)) {
+      nextEnvelope.error = null
+    }
+
+    if (!("data" in nextEnvelope)) {
+      nextEnvelope.data = {}
+    }
+
+    return nextEnvelope
   }
 
   const hasRequiredFields = requiredDataFields.every((field) => field in envelope)

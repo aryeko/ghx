@@ -115,6 +115,7 @@ describe("suite-runner helpers", () => {
     expect(coerced.assistant.id).toBe("m1")
     expect(shouldRequestContinuation(parts)).toBe(false)
     expect(shouldRequestContinuation([{ type: "step-finish", reason: "tool-calls" }])).toBe(true)
+    expect(shouldRequestContinuation([{ type: "text", text: "partial" }])).toBe(false)
     expect(extractEnvelopeFromParts(parts).envelope).toBeTruthy()
     expect(() => coercePromptResponse({})).toThrow("Unsupported prompt response shape")
   })
@@ -138,6 +139,45 @@ describe("suite-runner helpers", () => {
     expect(extracted?.parts).toHaveLength(1)
   })
 
+  it("extracts prompt response from payload.message wrapper", () => {
+    const extracted = extractPromptResponseFromPromptResult({
+      data: {
+        message: {
+          info: {
+            id: "m-wrapped",
+            sessionID: "s1",
+            role: "assistant",
+            time: { created: 1, completed: 2 },
+            tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
+            cost: 0
+          },
+          parts: [{ type: "text", text: '{"ok":true,"data":{},"error":null,"meta":{}}' }]
+        }
+      }
+    })
+
+    expect(extracted?.info?.id).toBe("m-wrapped")
+  })
+
+  it("extracts prompt response from assistant+parts payload shape", () => {
+    const extracted = extractPromptResponseFromPromptResult({
+      data: {
+        assistant: {
+          id: "m-assistant",
+          sessionID: "s1",
+          role: "assistant",
+          time: { created: 1, completed: 2 },
+          tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
+          cost: 0
+        },
+        parts: [{ type: "text", text: '{"ok":true,"data":{},"error":null,"meta":{}}' }]
+      }
+    })
+
+    expect(extracted?.info?.id).toBe("m-assistant")
+    expect(extracted?.parts).toHaveLength(1)
+  })
+
   it("extracts envelope from tool output when text parts do not contain JSON", () => {
     const extracted = extractEnvelopeFromParts([
       { type: "text", text: "not json" },
@@ -155,6 +195,47 @@ describe("suite-runner helpers", () => {
       error: null,
       meta: {}
     })
+  })
+
+  it("extracts top-level JSON arrays from assistant text", () => {
+    const extracted = extractEnvelopeFromParts([
+      { type: "text", text: 'noise [{"id":"n1"},{"id":"n2"}] trailing' }
+    ])
+
+    expect(extracted.envelope).toEqual([{ id: "n1" }, { id: "n2" }])
+  })
+
+  it("extracts primitive arrays when no object appears before first bracket", () => {
+    const extracted = extractEnvelopeFromParts([{ type: "text", text: "prefix [1,2,3] suffix" }])
+
+    expect(extracted.envelope).toEqual([1, 2, 3])
+  })
+
+  it("falls back from malformed array to object extraction", () => {
+    const extracted = extractEnvelopeFromParts([
+      { type: "text", text: 'prefix [not-json] then {"ok":true,"data":{},"error":null,"meta":{}}' }
+    ])
+
+    expect(extracted.envelope).toEqual({ ok: true, data: {}, error: null, meta: {} })
+  })
+
+  it("falls back to object extraction when array payload is never closed", () => {
+    const extracted = extractEnvelopeFromParts([{ type: "text", text: 'prefix [{"id":1}' }])
+
+    expect(extracted.envelope).toEqual({ id: 1 })
+  })
+
+  it("ignores tool outputs that do not contain parseable JSON", () => {
+    const extracted = extractEnvelopeFromParts([
+      {
+        type: "tool",
+        state: {
+          output: "plain text only"
+        }
+      }
+    ])
+
+    expect(extracted.envelope).toBeNull()
   })
 
   it("coerces response with missing metadata using step-finish snapshot", () => {
@@ -509,6 +590,12 @@ describe("suite-runner helpers", () => {
     expect(prompt).toContain("id")
   })
 
+  it("returns false when gh command invocation fails", () => {
+    spawnSyncMock.mockReturnValue({ status: 1 } as never)
+
+    expect(ghOk(["auth", "status"])).toBe(false)
+  })
+
   it("omits route_used assertions outside ghx_router mode", () => {
     const prompt = renderPrompt(
       {
@@ -777,6 +864,100 @@ describe("suite-runner helpers", () => {
 
     expect(result.success).toBe(false)
     expect(result.error?.message).toContain("Expected at least 2 tool call")
+  })
+
+  it("continues incomplete assistant response and forces one tool call when required", async () => {
+    let messageCall = 0
+    const session = {
+      create: vi.fn(async () => ({ data: { id: "s1" } })),
+      promptAsync: vi.fn(async () => ({ data: {} })),
+      messages: vi.fn(async () => {
+        messageCall += 1
+
+        if (messageCall === 1) {
+          return {
+            data: [
+              {
+                info: {
+                  id: "m1",
+                  sessionID: "s1",
+                  role: "assistant"
+                },
+                parts: [{ type: "step-finish", reason: "tool-calls" }]
+              }
+            ]
+          }
+        }
+
+        if (messageCall <= 3) {
+          return {
+            data: [
+              {
+                info: {
+                  id: "m1",
+                  sessionID: "s1",
+                  role: "assistant",
+                  time: { created: 1, completed: 2 },
+                  tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
+                  cost: 0
+                },
+                parts: [
+                  { type: "text", text: '{"ok":true,"data":{"id":"repo"},"error":null,"meta":{}}' },
+                  { type: "step-finish", reason: "done" }
+                ]
+              }
+            ]
+          }
+        }
+
+        return {
+          data: [
+            {
+              info: {
+                id: "m2",
+                sessionID: "s1",
+                role: "assistant",
+                time: { created: 3, completed: 4 },
+                tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
+                cost: 0
+              },
+              parts: [
+                { type: "text", text: '{"ok":true,"data":{"id":"repo"},"error":null,"meta":{}}' },
+                { type: "tool", tool: "api-client" },
+                { type: "step-finish", reason: "done" }
+              ]
+            }
+          ]
+        }
+      }),
+      abort: vi.fn(async () => ({ data: {} }))
+    }
+
+    const result = await runScenario(
+      { session },
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "do {{task}} with {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+          require_tool_calls: true,
+          min_tool_calls: 1
+        },
+        tags: []
+      },
+      "ghx_router",
+      1
+    )
+
+    expect(result.success).toBe(true)
+    expect(session.promptAsync.mock.calls.length).toBeGreaterThanOrEqual(2)
   })
 
   it("marks scenario failed when max_tool_calls is exceeded", async () => {

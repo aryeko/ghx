@@ -27,7 +27,7 @@ describe("extractors", () => {
 
   it("handles escaped characters inside JSON strings", () => {
     const payload = extractFirstJsonObject(
-      'prefix {"ok":true,"data":{"text":"quote: \\" and slash: \\\\"},"error":null,"meta":{}} suffix'
+      String.raw`prefix {"ok":true,"data":{"text":"quote: \" and slash: \\"},"error":null,"meta":{}} suffix`
     ) as { data?: { text?: string } } | null
 
     expect(payload?.data?.text).toBe('quote: " and slash: \\')
