@@ -21,7 +21,12 @@
     "pr-comment-unresolve-001",
     "pr-ready-for-review-set-001"
   ],
-  "ci-diagnostics": [],
+  "ci-diagnostics": [
+    "check-run-annotations-list-001",
+    "workflow-runs-list-001",
+    "workflow-run-jobs-list-001",
+    "workflow-job-logs-get-001"
+  ],
   "ci-log-analysis": [],
   "pr-operations-all": [
     "pr-comments-unresolved-001",
@@ -34,6 +39,10 @@
     "pr-comment-resolve-001",
     "pr-comment-unresolve-001",
     "pr-ready-for-review-set-001",
+    "check-run-annotations-list-001",
+    "workflow-runs-list-001",
+    "workflow-run-jobs-list-001",
+    "workflow-job-logs-get-001",
     "pr-view-001",
     "pr-list-open-001"
   ]

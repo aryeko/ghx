@@ -750,4 +750,127 @@ describe("runCliCapability", () => {
       10_000
     )
   })
+
+  it("normalizes check run annotations list", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: JSON.stringify([
+          {
+            path: "src/index.ts",
+            start_line: 10,
+            end_line: 10,
+            annotation_level: "failure",
+            message: "Unexpected any",
+            title: "Type check",
+            raw_details: "no-explicit-any"
+          }
+        ]),
+        stderr: "",
+        exitCode: 0
+      }))
+    }
+
+    const result = await runCliCapability(runner, "check_run.annotations.list", {
+      owner: "acme",
+      name: "modkit",
+      checkRunId: 100
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.data).toEqual(
+      expect.objectContaining({
+        items: [expect.objectContaining({ path: "src/index.ts", level: "failure" })]
+      })
+    )
+  })
+
+  it("normalizes workflow runs list", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: JSON.stringify([
+          {
+            databaseId: 1,
+            workflowName: "CI",
+            status: "completed",
+            conclusion: "success",
+            headBranch: "main",
+            url: "https://example.com/run/1"
+          }
+        ]),
+        stderr: "",
+        exitCode: 0
+      }))
+    }
+
+    const result = await runCliCapability(runner, "workflow_runs.list", {
+      owner: "acme",
+      name: "modkit",
+      first: 20
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.data).toEqual(
+      expect.objectContaining({
+        items: [expect.objectContaining({ id: 1, workflowName: "CI" })]
+      })
+    )
+  })
+
+  it("normalizes workflow run jobs list", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: JSON.stringify({
+          jobs: [
+            {
+              databaseId: 11,
+              name: "build",
+              status: "completed",
+              conclusion: "success",
+              startedAt: "2025-01-01T00:00:00Z",
+              completedAt: "2025-01-01T00:01:00Z",
+              url: "https://example.com/job/11"
+            }
+          ]
+        }),
+        stderr: "",
+        exitCode: 0
+      }))
+    }
+
+    const result = await runCliCapability(runner, "workflow_run.jobs.list", {
+      owner: "acme",
+      name: "modkit",
+      runId: 200
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.data).toEqual(
+      expect.objectContaining({
+        items: [expect.objectContaining({ id: 11, name: "build" })]
+      })
+    )
+  })
+
+  it("returns bounded workflow job logs payload", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: "line1\nline2",
+        stderr: "",
+        exitCode: 0
+      }))
+    }
+
+    const result = await runCliCapability(runner, "workflow_job.logs.get", {
+      owner: "acme",
+      name: "modkit",
+      jobId: 300
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.data).toEqual({
+      jobId: 300,
+      log: "line1\nline2",
+      truncated: false
+    })
+  })
 })

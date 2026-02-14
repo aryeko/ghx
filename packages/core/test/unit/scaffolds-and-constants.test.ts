@@ -22,6 +22,10 @@ import { prCommentReplyTask } from "../../src/core/contracts/tasks/pr.comment.re
 import { prCommentResolveTask } from "../../src/core/contracts/tasks/pr.comment.resolve.js"
 import { prCommentUnresolveTask } from "../../src/core/contracts/tasks/pr.comment.unresolve.js"
 import { prReadyForReviewSetTask } from "../../src/core/contracts/tasks/pr.ready_for_review.set.js"
+import { checkRunAnnotationsListTask } from "../../src/core/contracts/tasks/check_run.annotations.list.js"
+import { workflowRunsListTask } from "../../src/core/contracts/tasks/workflow_runs.list.js"
+import { workflowRunJobsListTask } from "../../src/core/contracts/tasks/workflow_run.jobs.list.js"
+import { workflowJobLogsGetTask } from "../../src/core/contracts/tasks/workflow_job.logs.get.js"
 import { repoViewTask } from "../../src/core/contracts/tasks/repo.view.js"
 import { routeReasonCodes } from "../../src/core/routing/reason-codes.js"
 import { runRestAdapter } from "../../src/core/execution/adapters/rest-adapter.js"
@@ -62,6 +66,10 @@ describe("scaffolds and constants", () => {
     expect(prCommentResolveTask.id).toBe("pr.comment.resolve")
     expect(prCommentUnresolveTask.id).toBe("pr.comment.unresolve")
     expect(prReadyForReviewSetTask.id).toBe("pr.ready_for_review.set")
+    expect(checkRunAnnotationsListTask.id).toBe("check_run.annotations.list")
+    expect(workflowRunsListTask.id).toBe("workflow_runs.list")
+    expect(workflowRunJobsListTask.id).toBe("workflow_run.jobs.list")
+    expect(workflowJobLogsGetTask.id).toBe("workflow_job.logs.get")
     expect(repoViewTask.id).toBe("repo.view")
     expect(routeReasonCodes).toContain("CARD_FALLBACK")
   })

@@ -16,6 +16,10 @@ export type CliCapabilityId =
   | "pr.checks.get_failed"
   | "pr.mergeability.view"
   | "pr.ready_for_review.set"
+  | "check_run.annotations.list"
+  | "workflow_runs.list"
+  | "workflow_run.jobs.list"
+  | "workflow_job.logs.get"
 
 export type CliCommandRunner = {
   run(command: string, args: string[], timeoutMs: number): Promise<{ stdout: string; stderr: string; exitCode: number }>
@@ -23,6 +27,7 @@ export type CliCommandRunner = {
 
 const DEFAULT_TIMEOUT_MS = 10_000
 const DEFAULT_LIST_FIRST = 30
+const MAX_WORKFLOW_JOB_LOG_CHARS = 50_000
 const ISSUE_COMMENTS_GRAPHQL_QUERY =
   "query($owner:String!,$name:String!,$issueNumber:Int!,$first:Int!,$after:String){repository(owner:$owner,name:$name){issue(number:$issueNumber){comments(first:$first,after:$after){nodes{id body createdAt url author{login}} pageInfo{hasNextPage endCursor}}}}}"
 
@@ -212,6 +217,70 @@ function buildArgs(capabilityId: CliCapabilityId, params: Record<string, unknown
 
     if (!params.ready) {
       args.push("--undo")
+    }
+
+    return args
+  }
+
+  if (capabilityId === "check_run.annotations.list") {
+    const checkRunId = parseStrictPositiveInt(params.checkRunId)
+    if (checkRunId === null) {
+      throw new Error("Missing or invalid checkRunId for check_run.annotations.list")
+    }
+
+    const args = [...commandTokens(card, "api"), `repos/${owner}/${name}/check-runs/${checkRunId}/annotations`]
+    return args
+  }
+
+  if (capabilityId === "workflow_runs.list") {
+    const first = parseListFirst(params.first)
+    if (first === null) {
+      throw new Error("Missing or invalid first for workflow_runs.list")
+    }
+
+    const args = commandTokens(card, "run list")
+    if (repo) {
+      args.push("--repo", repo)
+    }
+
+    if (typeof params.branch === "string" && params.branch.length > 0) {
+      args.push("--branch", params.branch)
+    }
+    if (typeof params.event === "string" && params.event.length > 0) {
+      args.push("--event", params.event)
+    }
+    if (typeof params.status === "string" && params.status.length > 0) {
+      args.push("--status", params.status)
+    }
+
+    args.push("--limit", String(first), "--json", jsonFieldsFromCard(card, "databaseId,workflowName,status,conclusion,headBranch,url"))
+    return args
+  }
+
+  if (capabilityId === "workflow_run.jobs.list") {
+    const runId = parseStrictPositiveInt(params.runId)
+    if (runId === null) {
+      throw new Error("Missing or invalid runId for workflow_run.jobs.list")
+    }
+
+    const args = [...commandTokens(card, "run view"), String(runId)]
+    if (repo) {
+      args.push("--repo", repo)
+    }
+
+    args.push("--json", "jobs")
+    return args
+  }
+
+  if (capabilityId === "workflow_job.logs.get") {
+    const jobId = parseStrictPositiveInt(params.jobId)
+    if (jobId === null) {
+      throw new Error("Missing or invalid jobId for workflow_job.logs.get")
+    }
+
+    const args = [...commandTokens(card, "run view"), "--job", String(jobId), "--log"]
+    if (repo) {
+      args.push("--repo", repo)
     }
 
     return args
@@ -445,6 +514,120 @@ function normalizeCliData(capabilityId: CliCapabilityId, data: unknown, params: 
     }
   }
 
+  if (capabilityId === "check_run.annotations.list") {
+    const annotations = Array.isArray(data) ? data : []
+
+    return {
+      items: annotations.map((annotation) => {
+        if (typeof annotation !== "object" || annotation === null || Array.isArray(annotation)) {
+          return {
+            path: null,
+            startLine: null,
+            endLine: null,
+            level: null,
+            message: null,
+            title: null,
+            details: null
+          }
+        }
+
+        const record = annotation as Record<string, unknown>
+        return {
+          path: typeof record.path === "string" ? record.path : null,
+          startLine: typeof record.start_line === "number" ? record.start_line : null,
+          endLine: typeof record.end_line === "number" ? record.end_line : null,
+          level: typeof record.annotation_level === "string" ? record.annotation_level : null,
+          message: typeof record.message === "string" ? record.message : null,
+          title: typeof record.title === "string" ? record.title : null,
+          details: typeof record.raw_details === "string" ? record.raw_details : null
+        }
+      })
+    }
+  }
+
+  if (capabilityId === "workflow_runs.list") {
+    const runs = Array.isArray(data) ? data : []
+
+    return {
+      items: runs.map((run) => {
+        if (typeof run !== "object" || run === null || Array.isArray(run)) {
+          return {
+            id: 0,
+            workflowName: null,
+            status: null,
+            conclusion: null,
+            headBranch: null,
+            url: null
+          }
+        }
+
+        const record = run as Record<string, unknown>
+        return {
+          id: typeof record.databaseId === "number" ? record.databaseId : 0,
+          workflowName: typeof record.workflowName === "string" ? record.workflowName : null,
+          status: typeof record.status === "string" ? record.status : null,
+          conclusion: typeof record.conclusion === "string" ? record.conclusion : null,
+          headBranch: typeof record.headBranch === "string" ? record.headBranch : null,
+          url: typeof record.url === "string" ? record.url : null
+        }
+      }),
+      pageInfo: {
+        hasNextPage: false,
+        endCursor: null
+      }
+    }
+  }
+
+  if (capabilityId === "workflow_run.jobs.list") {
+    const root = typeof data === "object" && data !== null && !Array.isArray(data)
+      ? (data as Record<string, unknown>)
+      : {}
+    const jobs = Array.isArray(root.jobs) ? root.jobs : []
+
+    return {
+      items: jobs.map((job) => {
+        if (typeof job !== "object" || job === null || Array.isArray(job)) {
+          return {
+            id: 0,
+            name: null,
+            status: null,
+            conclusion: null,
+            startedAt: null,
+            completedAt: null,
+            url: null
+          }
+        }
+
+        const record = job as Record<string, unknown>
+        return {
+          id: typeof record.databaseId === "number" ? record.databaseId : 0,
+          name: typeof record.name === "string" ? record.name : null,
+          status: typeof record.status === "string" ? record.status : null,
+          conclusion: typeof record.conclusion === "string" ? record.conclusion : null,
+          startedAt: typeof record.startedAt === "string" ? record.startedAt : null,
+          completedAt: typeof record.completedAt === "string" ? record.completedAt : null,
+          url: typeof record.url === "string" ? record.url : null
+        }
+      })
+    }
+  }
+
+  if (capabilityId === "workflow_job.logs.get") {
+    const jobId = parseStrictPositiveInt(params.jobId)
+    if (jobId === null) {
+      throw new Error("Missing or invalid jobId for workflow_job.logs.get")
+    }
+
+    const rawLog = typeof data === "string" ? data : String(data)
+    const truncated = rawLog.length > MAX_WORKFLOW_JOB_LOG_CHARS
+
+    return {
+      jobId,
+      log: truncated ? rawLog.slice(0, MAX_WORKFLOW_JOB_LOG_CHARS) : rawLog,
+      truncated
+    }
+  }
+
   if (capabilityId === "issue.view" || capabilityId === "pr.view") {
     return normalizeListItem(data)
   }
@@ -476,7 +659,7 @@ export async function runCliCapability(
       )
     }
 
-    const data = parseCliData(result.stdout)
+    const data = capabilityId === "workflow_job.logs.get" ? result.stdout : parseCliData(result.stdout)
     const normalized = normalizeCliData(capabilityId, data, params)
     return normalizeResult(normalized, "cli", { capabilityId, reason: "CARD_FALLBACK" })
   } catch (error: unknown) {

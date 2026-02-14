@@ -22,7 +22,11 @@ describe("operation cards registry", () => {
       "pr.comment.reply",
       "pr.comment.resolve",
       "pr.comment.unresolve",
-      "pr.ready_for_review.set"
+      "pr.ready_for_review.set",
+      "check_run.annotations.list",
+      "workflow_runs.list",
+      "workflow_run.jobs.list",
+      "workflow_job.logs.get"
     ])
   })
 

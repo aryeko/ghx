@@ -84,6 +84,26 @@ describe("capabilityRegistry", () => {
         task: "pr.ready_for_review.set",
         defaultRoute: "cli",
         fallbackRoutes: []
+      },
+      {
+        task: "check_run.annotations.list",
+        defaultRoute: "cli",
+        fallbackRoutes: []
+      },
+      {
+        task: "workflow_runs.list",
+        defaultRoute: "cli",
+        fallbackRoutes: []
+      },
+      {
+        task: "workflow_run.jobs.list",
+        defaultRoute: "cli",
+        fallbackRoutes: []
+      },
+      {
+        task: "workflow_job.logs.get",
+        defaultRoute: "cli",
+        fallbackRoutes: []
       }
     ])
   })
