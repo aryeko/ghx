@@ -92,6 +92,16 @@ pnpm run ghx:gql:check
 pnpm run benchmark:check
 ```
 
+## Adoption Priorities
+
+ghx prioritizes the following sequence:
+
+1. **Setup first:** ship `ghx setup` for fast, verifiable onboarding (`user` and `project` scope).
+2. **Capability batches A-D:** complete PR execution, issue lifecycle, release flow, and workflow/Projects v2 controls.
+3. **Adoption next:** package/public API hardening, compatibility matrix, public ROI benchmarks, and ecosystem templates.
+
+See `ROADMAP.md` for the full capability inventory, batch exit criteria, and success metrics.
+
 ## Capabilities
 
 Core capabilities currently include:
