@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest"
 
+import type { Scenario } from "../../src/domain/types.js"
 import { runScenario } from "../../src/runner/suite-runner.js"
 
 describe("suite-runner scenario validation", () => {
-  const issueCommentsScenario = {
+  const issueCommentsScenario: Scenario = {
     id: "issue-comments-list-001",
     name: "Issue comments",
     task: "issue.comments.list" as const,
