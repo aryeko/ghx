@@ -672,6 +672,148 @@ describe("createGithubClient", () => {
     ).rejects.toThrow("Pull request files not found")
   })
 
+  it("validates PR reviews and diff inputs before querying", async () => {
+    const execute = vi.fn(async () => ({}))
+    const client = createGithubClient({ execute } as never)
+
+    await expect(
+      client.fetchPrReviewsList({
+        owner: "",
+        name: "modkit",
+        prNumber: 232,
+        first: 10
+      })
+    ).rejects.toThrow("Repository owner and name are required")
+
+    await expect(
+      client.fetchPrDiffListFiles({
+        owner: "go-modkit",
+        name: "",
+        prNumber: 232,
+        first: 10
+      })
+    ).rejects.toThrow("Repository owner and name are required")
+
+    await expect(
+      client.fetchPrReviewsList({
+        owner: "go-modkit",
+        name: "modkit",
+        prNumber: 0,
+        first: 10
+      })
+    ).rejects.toThrow("PR number must be a positive integer")
+
+    await expect(
+      client.fetchPrDiffListFiles({
+        owner: "go-modkit",
+        name: "modkit",
+        prNumber: 232,
+        first: 0
+      })
+    ).rejects.toThrow("List page size must be a positive integer")
+
+    expect(execute).not.toHaveBeenCalled()
+  })
+
+  it("applies PR comments filtering branches for invalid, resolved, and outdated threads", async () => {
+    const client = createGithubClient({
+      async execute<TData>(): Promise<TData> {
+        return {
+          repository: {
+            pullRequest: {
+              reviewThreads: {
+                edges: [
+                  { cursor: "invalid", node: null },
+                  {
+                    cursor: "resolved",
+                    node: {
+                      id: "thread-resolved",
+                      path: "src/a.ts",
+                      line: 10,
+                      startLine: null,
+                      diffSide: "RIGHT",
+                      subjectType: "LINE",
+                      isResolved: true,
+                      isOutdated: false,
+                      viewerCanReply: true,
+                      viewerCanResolve: false,
+                      viewerCanUnresolve: false,
+                      resolvedBy: null,
+                      comments: { nodes: [] }
+                    }
+                  },
+                  {
+                    cursor: "outdated",
+                    node: {
+                      id: "thread-outdated",
+                      path: "src/b.ts",
+                      line: 11,
+                      startLine: null,
+                      diffSide: "RIGHT",
+                      subjectType: "LINE",
+                      isResolved: false,
+                      isOutdated: true,
+                      viewerCanReply: true,
+                      viewerCanResolve: false,
+                      viewerCanUnresolve: false,
+                      resolvedBy: null,
+                      comments: { nodes: [] }
+                    }
+                  },
+                  {
+                    cursor: "kept",
+                    node: {
+                      id: "thread-kept",
+                      path: "src/c.ts",
+                      line: 12,
+                      startLine: null,
+                      diffSide: "RIGHT",
+                      subjectType: "LINE",
+                      isResolved: false,
+                      isOutdated: false,
+                      viewerCanReply: true,
+                      viewerCanResolve: true,
+                      viewerCanUnresolve: true,
+                      resolvedBy: null,
+                      comments: {
+                        nodes: [
+                          {
+                            id: "comment-1",
+                            body: "ok",
+                            createdAt: "2025-01-02T00:00:00Z",
+                            url: "https://example.com/comment-1",
+                            author: { login: "hubot" }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                ],
+                pageInfo: {
+                  endCursor: null,
+                  hasNextPage: false
+                }
+              }
+            }
+          }
+        } as TData
+      }
+    })
+
+    const list = await client.fetchPrCommentsList({
+      owner: "go-modkit",
+      name: "modkit",
+      prNumber: 232,
+      first: 10,
+      unresolvedOnly: true,
+      includeOutdated: false
+    })
+
+    expect(list.items).toHaveLength(1)
+    expect(list.items[0]?.id).toBe("thread-kept")
+    expect(list.scan.sourceItemsScanned).toBe(4)
+  })
+
   it("supports pr review-thread mutations", async () => {
     const execute = vi.fn(async (query: string) => {
       if (query.includes("mutation PrCommentReply")) {

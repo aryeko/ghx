@@ -107,4 +107,37 @@ describe("check-scenarios", () => {
 
     await expect(main("/tmp/benchmark")).rejects.toThrow("Missing required scenario set")
   })
+
+  it("fails when scenario ids are duplicated", async () => {
+    loadScenariosMock.mockResolvedValue([
+      {
+        id: "repo-view-001",
+        name: "Repo",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "x",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        assertions: { must_succeed: true },
+        tags: []
+      },
+      {
+        id: "repo-view-001",
+        name: "Repo duplicate",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "x",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        assertions: { must_succeed: true },
+        tags: []
+      }
+    ])
+    loadScenarioSetsMock.mockResolvedValue({
+      default: ["repo-view-001"],
+      "pr-operations-all": ["repo-view-001"]
+    })
+
+    await expect(main("/tmp/benchmark")).rejects.toThrow("Duplicate scenario id")
+  })
 })

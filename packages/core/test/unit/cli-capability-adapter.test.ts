@@ -921,4 +921,223 @@ describe("runCliCapability", () => {
       })
     )
   })
+
+  it("validates PR and workflow numeric inputs", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: "[]",
+        stderr: "",
+        exitCode: 0
+      }))
+    }
+
+    const checksResult = await runCliCapability(runner, "pr.status.checks", {
+      owner: "acme",
+      name: "modkit",
+      prNumber: 0
+    })
+    const mergeabilityResult = await runCliCapability(runner, "pr.mergeability.view", {
+      owner: "acme",
+      name: "modkit",
+      prNumber: 0
+    })
+    const readyResult = await runCliCapability(runner, "pr.ready_for_review.set", {
+      owner: "acme",
+      name: "modkit",
+      prNumber: 1,
+      ready: "yes"
+    })
+    const workflowListResult = await runCliCapability(runner, "workflow_runs.list", {
+      owner: "acme",
+      name: "modkit",
+      first: 0
+    })
+    const workflowJobsResult = await runCliCapability(runner, "workflow_run.jobs.list", {
+      owner: "acme",
+      name: "modkit",
+      runId: 0
+    })
+    const workflowLogsResult = await runCliCapability(runner, "workflow_job.logs.get", {
+      owner: "acme",
+      name: "modkit",
+      jobId: 0
+    })
+
+    expect(checksResult.ok).toBe(false)
+    expect(mergeabilityResult.ok).toBe(false)
+    expect(readyResult.ok).toBe(false)
+    expect(workflowListResult.ok).toBe(false)
+    expect(workflowJobsResult.ok).toBe(false)
+    expect(workflowLogsResult.ok).toBe(false)
+    expect(runner.run).not.toHaveBeenCalled()
+  })
+
+  it("includes workflow filters and undo flag in generated args", async () => {
+    const runner = {
+      run: vi.fn(async (_command: string, args: string[]) => {
+        if (args[0] === "run" && args[1] === "list") {
+          return {
+            stdout: "[]",
+            stderr: "",
+            exitCode: 0
+          }
+        }
+
+        return {
+          stdout: "{}",
+          stderr: "",
+          exitCode: 0
+        }
+      })
+    }
+
+    await runCliCapability(runner, "workflow_runs.list", {
+      owner: "acme",
+      name: "modkit",
+      first: 10,
+      branch: "main",
+      event: "push",
+      status: "completed"
+    })
+    await runCliCapability(runner, "pr.ready_for_review.set", {
+      owner: "acme",
+      name: "modkit",
+      prNumber: 10,
+      ready: false
+    })
+
+    const workflowRunCall = runner.run.mock.calls.find((call) => call[1][0] === "run" && call[1][1] === "list")
+    expect(workflowRunCall?.[1]).toEqual(
+      expect.arrayContaining(["--branch", "main", "--event", "push", "--status", "completed"])
+    )
+
+    const readyCall = runner.run.mock.calls.find((call) => call[1][0] === "pr" && call[1][1] === "ready")
+    expect(readyCall?.[1]).toEqual(expect.arrayContaining(["--undo"]))
+  })
+
+  it("normalizes fallback defaults for check, run, job, and annotation payloads", async () => {
+    const runner = {
+      run: vi.fn(async (_command: string, args: string[]) => {
+        if (args[0] === "pr" && args[1] === "checks") {
+          return {
+            stdout: JSON.stringify([null, { state: 42 }]),
+            stderr: "",
+            exitCode: 0
+          }
+        }
+        if (args[0] === "run" && args[1] === "list") {
+          return {
+            stdout: JSON.stringify([null]),
+            stderr: "",
+            exitCode: 0
+          }
+        }
+        if (args[0] === "run" && args[1] === "view" && args.includes("--json")) {
+          return {
+            stdout: JSON.stringify({ jobs: [null] }),
+            stderr: "",
+            exitCode: 0
+          }
+        }
+
+        return {
+          stdout: JSON.stringify([null]),
+          stderr: "",
+          exitCode: 0
+        }
+      })
+    }
+
+    const checksResult = await runCliCapability(runner, "pr.status.checks", {
+      owner: "acme",
+      name: "modkit",
+      prNumber: 1
+    })
+    const runsResult = await runCliCapability(runner, "workflow_runs.list", {
+      owner: "acme",
+      name: "modkit",
+      first: 1
+    })
+    const jobsResult = await runCliCapability(runner, "workflow_run.jobs.list", {
+      owner: "acme",
+      name: "modkit",
+      runId: 1
+    })
+    const annotationsResult = await runCliCapability(runner, "check_run.annotations.list", {
+      owner: "acme",
+      name: "modkit",
+      checkRunId: 1
+    })
+
+    expect(checksResult.ok).toBe(true)
+    expect(checksResult.data).toEqual(
+      expect.objectContaining({
+        items: [
+          expect.objectContaining({ name: null, state: null, workflow: null, link: null }),
+          expect.objectContaining({ name: null, state: null, workflow: null, link: null })
+        ]
+      })
+    )
+    expect(runsResult.data).toEqual(
+      expect.objectContaining({
+        items: [expect.objectContaining({ id: 0, workflowName: null, status: null })]
+      })
+    )
+    expect(jobsResult.data).toEqual(
+      expect.objectContaining({
+        items: [expect.objectContaining({ id: 0, name: null, status: null })]
+      })
+    )
+    expect(annotationsResult.data).toEqual(
+      expect.objectContaining({
+        items: [expect.objectContaining({ path: null, level: null, message: null })]
+      })
+    )
+  })
+
+  it("handles truncated logs and unknown mergeability payload", async () => {
+    const longLog = "x".repeat(50_200)
+    const runner = {
+      run: vi.fn(async (_command: string, args: string[]) => {
+        if (args[0] === "pr" && args[1] === "view") {
+          return {
+            stdout: "null",
+            stderr: "",
+            exitCode: 0
+          }
+        }
+
+        return {
+          stdout: longLog,
+          stderr: "",
+          exitCode: 0
+        }
+      })
+    }
+
+    const mergeabilityResult = await runCliCapability(runner, "pr.mergeability.view", {
+      owner: "acme",
+      name: "modkit",
+      prNumber: 2
+    })
+    const logsResult = await runCliCapability(runner, "workflow_job.logs.get", {
+      owner: "acme",
+      name: "modkit",
+      jobId: 2
+    })
+
+    expect(mergeabilityResult.ok).toBe(true)
+    expect(mergeabilityResult.data).toEqual(
+      expect.objectContaining({
+        mergeable: null,
+        mergeStateStatus: null,
+        reviewDecision: null,
+        isDraft: false,
+        state: "UNKNOWN"
+      })
+    )
+    expect(logsResult.ok).toBe(true)
+    expect((logsResult.data as { truncated: boolean }).truncated).toBe(true)
+    expect((logsResult.data as { log: string }).log.length).toBe(50_000)
+  })
 })

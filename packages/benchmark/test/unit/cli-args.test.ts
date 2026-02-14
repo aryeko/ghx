@@ -50,6 +50,11 @@ describe("parseCliArgs", () => {
     expect(parsed.scenarioSet).toBe("ci-diagnostics")
   })
 
+  it("treats --scenario-set with missing value as unset", () => {
+    const parsed = parseCliArgs(["run", "--scenario-set"])
+    expect(parsed.scenarioSet).toBeNull()
+  })
+
   it("rejects unsupported commands and modes", () => {
     expect(() => parseCliArgs(["validate"])).toThrow("Unsupported command")
     expect(() => parseCliArgs(["run", "invalid_mode"])).toThrow("Unsupported mode")

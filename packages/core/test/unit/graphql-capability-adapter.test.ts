@@ -400,4 +400,31 @@ describe("runGraphqlCapability", () => {
     expect(replyResult.error?.code).toBe("VALIDATION")
     expect(resolveResult.error?.code).toBe("VALIDATION")
   })
+
+  it("returns capability limit error for unsupported capability id", async () => {
+    const client = {
+      fetchRepoView: vi.fn(),
+      fetchIssueView: vi.fn(),
+      fetchIssueList: vi.fn(),
+      fetchIssueCommentsList: vi.fn(),
+      fetchPrView: vi.fn(),
+      fetchPrList: vi.fn(),
+      fetchPrCommentsList: vi.fn(),
+      fetchPrReviewsList: vi.fn(),
+      fetchPrDiffListFiles: vi.fn(),
+      replyToReviewThread: vi.fn(),
+      resolveReviewThread: vi.fn(),
+      unresolveReviewThread: vi.fn()
+    }
+
+    const result = await runGraphqlCapability(
+      client,
+      "unsupported.capability" as unknown as Parameters<typeof runGraphqlCapability>[1],
+      {}
+    )
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("VALIDATION")
+    expect(result.meta.reason).toBe("CAPABILITY_LIMIT")
+  })
 })

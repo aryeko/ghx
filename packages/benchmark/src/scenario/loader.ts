@@ -25,12 +25,7 @@ export async function loadScenarioSets(benchmarkRootDir: string): Promise<Record
   const raw = await readFile(join(benchmarkRootDir, "scenario-sets.json"), "utf8")
   const parsed = scenarioSetsSchema.safeParse(JSON.parse(raw))
   if (!parsed.success) {
-    const issue = parsed.error.issues[0]
-    if (!issue) {
-      throw new Error("Invalid scenario-sets manifest")
-    }
-
-    const path = issue.path[0]
+    const path = parsed.error.issues[0]?.path[0]
     if (typeof path === "string") {
       throw new Error(`Invalid scenario-sets manifest: set '${path}' must be an array of non-empty scenario ids`)
     }
