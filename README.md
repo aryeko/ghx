@@ -1,9 +1,8 @@
+# ghx
 
 <p align="center">
   <img src="assets/branding/social/ghx-social-dark-1280x640.png" alt="ghx social preview" width="480">
 </p>
-
-# ghx
 
 > GitHub execution router for AI agents.
 > One typed capability interface over `gh` CLI + GraphQL.
