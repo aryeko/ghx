@@ -18,8 +18,6 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GITHUB_TOKEN: ${{ github.token }}
-    outputs:
-      artifacts_uploaded: ${{ steps.upload_artifacts.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -51,15 +49,6 @@ jobs:
           flags: main
           use_oidc: true
           fail_ci_if_error: true
-      - name: Upload dist artifacts
-        id: upload_artifacts
-        if: startsWith(github.event.head_commit.message, 'chore') && contains(github.event.head_commit.message, 'version packages')
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist-artifacts
-          path: packages/*/dist
-          retention-days: 1
-
   release:
     needs: build-and-test
     if: github.ref == 'refs/heads/main'
