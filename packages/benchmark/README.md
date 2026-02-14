@@ -25,6 +25,9 @@ pnpm --filter @ghx-dev/benchmark run run -- ghx 1 --scenario-set projects-v2
 pnpm --filter @ghx-dev/benchmark run report
 pnpm --filter @ghx-dev/benchmark run report:gate
 
+GHX_SKIP_GH_PREFLIGHT=1 pnpm --filter @ghx-dev/benchmark run run -- ghx 3 --scenario-set pr-exec
+pnpm --filter @ghx-dev/benchmark exec tsx src/cli/report.ts --gate --gate-profile pr_fast
+
 pnpm --filter @ghx-dev/benchmark run test
 pnpm --filter @ghx-dev/benchmark run typecheck
 ```
@@ -43,6 +46,11 @@ pnpm --filter @ghx-dev/benchmark run typecheck
 
 - Latest summary: `packages/benchmark/reports/latest-summary.md`
 - Scenario definitions: `packages/benchmark/scenarios/`
+
+Notes:
+
+- Use mode `ghx`.
+- For benchmark runs, prefer `GHX_SKIP_GH_PREFLIGHT=1` on `ghx` executions; suite preflight performs auth verification once.
 
 For benchmark methodology and reporting details, see:
 

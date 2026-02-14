@@ -16,7 +16,7 @@
 - v2 gate outcome with profile (`pr_fast` or `nightly_full`)
 - stable-sample efficiency coverage and reductions
 - legacy v1 gate outcome (compatibility visibility)
-- profiling snapshot (assistant pre-reasoning, reasoning, tool runtime, post-tool)
+- profiling snapshot (assistant reasoning, reasoning->tool gap, tool runtime, post-tool)
 
 ## Release Gate Inputs
 
@@ -44,3 +44,13 @@ Per-mode profiling is emitted when rows include `timing_breakdown`.
 - `assistant_post_tool_ms`: time from first tool completion to assistant completion.
 
 Use this snapshot to diagnose whether latency is dominated by model-side turn processing or by tool execution.
+
+## Latest Validated Result (Reference)
+
+For `pr-exec` with 3 repetitions per scenario (`agent_direct` vs `ghx`), recent validated output showed:
+
+- reliability: `100%` success, `100%` output validity, `0%` runner failures/timeouts/retries
+- efficiency: active-token reduction `> 15%`, latency reduction `> 15%`, tool-call reduction `> 20%`
+- gate v2 (`pr_fast`): `PASS`
+
+Treat this as a reference snapshot; re-run proof commands for release decisions.

@@ -10,7 +10,7 @@ export type ParsedCliArgs = {
 }
 
 function isBenchmarkMode(value: string): boolean {
-  return ["agent_direct", "mcp", "ghx", "ghx_router"].includes(value)
+  return ["agent_direct", "mcp", "ghx"].includes(value)
 }
 
 function stripForwardingSeparator(args: string[]): string[] {
@@ -99,7 +99,7 @@ export function parseCliArgs(argv: string[]): ParsedCliArgs {
 
   const { positional, flags } = splitPositionalAndFlags(rest)
   const [modeRaw = "ghx", repetitionsRaw = "1"] = positional
-  const mode = modeRaw === "ghx_router" ? "ghx" : modeRaw
+  const mode = modeRaw
 
   if (!isBenchmarkMode(mode)) {
     throw new Error(`Unsupported mode: ${mode}`)

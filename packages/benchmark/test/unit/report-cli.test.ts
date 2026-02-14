@@ -28,7 +28,6 @@ describe("report cli", () => {
     expect(report.parseArgs(["--gate-profile=pr_fast"]).gateProfile).toBe("pr_fast")
     expect(report.modeFromFilename("x-agent_direct-suite.jsonl")).toBe("agent_direct")
     expect(report.modeFromFilename("x-mcp-suite.jsonl")).toBe("mcp")
-    expect(report.modeFromFilename("x-ghx_router-suite.jsonl")).toBe("ghx")
     expect(report.modeFromFilename("x-ghx-suite.jsonl")).toBe("ghx")
     expect(report.modeFromFilename("x-unknown.jsonl")).toBeNull()
   })

@@ -20,13 +20,6 @@ describe("parseCliArgs", () => {
     expect(parsed.scenarioFilter).toBeNull()
   })
 
-  it("accepts legacy ghx_router mode and normalizes to ghx", () => {
-    const parsed = parseCliArgs(["run", "ghx_router", "1", "--scenario", "issue-view-001"])
-
-    expect(parsed.mode).toBe("ghx")
-    expect(parsed.scenarioFilter).toBe("issue-view-001")
-  })
-
   it("defaults repetitions to 1 when omitted", () => {
     const parsed = parseCliArgs(["run", "agent_direct"])
 

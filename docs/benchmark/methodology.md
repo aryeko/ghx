@@ -13,6 +13,8 @@
 - fixed provider/model per suite
 - repeated runs per scenario
 - captured runtime metadata (commit, timestamp, model)
+- one-time `gh auth status` preflight for `ghx` suites before scenario execution
+- per-call CLI preflight skipped in benchmark execution path via `GHX_SKIP_GH_PREFLIGHT=1`
 
 ## Metric System v2
 
@@ -36,6 +38,18 @@ This design keeps timeout/intermittent runner stalls from corrupting efficiency 
 - coverage guard: eligible scenarios / total scenarios in compared modes
 
 This avoids one noisy scenario dominating suite-level medians and improves comparability across runs.
+
+## Proof Workflow (PR)
+
+Recommended proof sequence for PR validation:
+
+1. `pnpm --filter @ghx-dev/core run build`
+2. `pnpm --filter @ghx-dev/benchmark run run -- agent_direct 3 --scenario-set pr-exec`
+3. `GHX_SKIP_GH_PREFLIGHT=1 pnpm --filter @ghx-dev/benchmark run run -- ghx 3 --scenario-set pr-exec`
+4. `pnpm --filter @ghx-dev/benchmark run report`
+5. `pnpm --filter @ghx-dev/benchmark exec tsx src/cli/report.ts --gate --gate-profile pr_fast`
+
+Expected outcome: both reliability and efficiency checks pass for `pr_fast` on stable runs.
 
 ## Output Validation
 
