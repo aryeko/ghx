@@ -524,4 +524,44 @@ describe("runGraphqlCapability", () => {
     expect(result.ok).toBe(false)
     expect(result.error?.code).toBe("ADAPTER_UNSUPPORTED")
   })
+
+  it("returns adapter unsupported for optional issue mutation capabilities when operations are unavailable", async () => {
+    const client = {
+      fetchRepoView: vi.fn(),
+      fetchIssueView: vi.fn(),
+      fetchIssueList: vi.fn(),
+      fetchIssueCommentsList: vi.fn(),
+      fetchPrView: vi.fn(),
+      fetchPrList: vi.fn(),
+      fetchPrCommentsList: vi.fn(),
+      fetchPrReviewsList: vi.fn(),
+      fetchPrDiffListFiles: vi.fn(),
+      replyToReviewThread: vi.fn(),
+      resolveReviewThread: vi.fn(),
+      unresolveReviewThread: vi.fn()
+    }
+
+    const unsupportedCalls = await Promise.all([
+      runGraphqlCapability(client, "issue.update", { issueId: "issue-1", title: "x" }),
+      runGraphqlCapability(client, "issue.close", { issueId: "issue-1" }),
+      runGraphqlCapability(client, "issue.reopen", { issueId: "issue-1" }),
+      runGraphqlCapability(client, "issue.delete", { issueId: "issue-1" }),
+      runGraphqlCapability(client, "issue.labels.update", { issueId: "issue-1", labels: ["bug"] }),
+      runGraphqlCapability(client, "issue.assignees.update", { issueId: "issue-1", assignees: ["octocat"] }),
+      runGraphqlCapability(client, "issue.milestone.set", { issueId: "issue-1", milestoneNumber: 2 }),
+      runGraphqlCapability(client, "issue.comments.create", { issueId: "issue-1", body: "ack" }),
+      runGraphqlCapability(client, "issue.linked_prs.list", { owner: "acme", name: "modkit", issueNumber: 1 }),
+      runGraphqlCapability(client, "issue.relations.get", { owner: "acme", name: "modkit", issueNumber: 1 }),
+      runGraphqlCapability(client, "issue.parent.set", { issueId: "issue-1", parentIssueId: "issue-2" }),
+      runGraphqlCapability(client, "issue.parent.remove", { issueId: "issue-1" }),
+      runGraphqlCapability(client, "issue.blocked_by.add", { issueId: "issue-1", blockedByIssueId: "issue-2" }),
+      runGraphqlCapability(client, "issue.blocked_by.remove", { issueId: "issue-1", blockedByIssueId: "issue-2" })
+    ])
+
+    for (const result of unsupportedCalls) {
+      expect(result.ok).toBe(false)
+      expect(result.error?.code).toBe("ADAPTER_UNSUPPORTED")
+      expect(result.meta.reason).toBe("CAPABILITY_LIMIT")
+    }
+  })
 })

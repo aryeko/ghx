@@ -58,6 +58,20 @@ import { releaseUpdateTask } from "../../src/core/contracts/tasks/release.update
 import { releasePublishDraftTask } from "../../src/core/contracts/tasks/release.publish_draft.js"
 import { workflowDispatchRunTask } from "../../src/core/contracts/tasks/workflow_dispatch.run.js"
 import { workflowRunRerunFailedTask } from "../../src/core/contracts/tasks/workflow_run.rerun_failed.js"
+import { workflowListTask } from "../../src/core/contracts/tasks/workflow.list.js"
+import { workflowGetTask } from "../../src/core/contracts/tasks/workflow.get.js"
+import { workflowRunGetTask } from "../../src/core/contracts/tasks/workflow_run.get.js"
+import { workflowRunRerunAllTask } from "../../src/core/contracts/tasks/workflow_run.rerun_all.js"
+import { workflowRunCancelTask } from "../../src/core/contracts/tasks/workflow_run.cancel.js"
+import { workflowRunArtifactsListTask } from "../../src/core/contracts/tasks/workflow_run.artifacts.list.js"
+import { projectV2OrgGetTask } from "../../src/core/contracts/tasks/project_v2.org.get.js"
+import { projectV2UserGetTask } from "../../src/core/contracts/tasks/project_v2.user.get.js"
+import { projectV2FieldsListTask } from "../../src/core/contracts/tasks/project_v2.fields.list.js"
+import { projectV2ItemsListTask } from "../../src/core/contracts/tasks/project_v2.items.list.js"
+import { projectV2ItemAddIssueTask } from "../../src/core/contracts/tasks/project_v2.item.add_issue.js"
+import { projectV2ItemFieldUpdateTask } from "../../src/core/contracts/tasks/project_v2.item.field.update.js"
+import { repoLabelsListTask } from "../../src/core/contracts/tasks/repo.labels.list.js"
+import { repoIssueTypesListTask } from "../../src/core/contracts/tasks/repo.issue_types.list.js"
 import { repoViewTask } from "../../src/core/contracts/tasks/repo.view.js"
 import { routeReasonCodes } from "../../src/core/routing/reason-codes.js"
 import { runRestAdapter } from "../../src/core/execution/adapters/rest-adapter.js"
@@ -134,6 +148,20 @@ describe("scaffolds and constants", () => {
     expect(releasePublishDraftTask.id).toBe("release.publish_draft")
     expect(workflowDispatchRunTask.id).toBe("workflow_dispatch.run")
     expect(workflowRunRerunFailedTask.id).toBe("workflow_run.rerun_failed")
+    expect(workflowListTask.id).toBe("workflow.list")
+    expect(workflowGetTask.id).toBe("workflow.get")
+    expect(workflowRunGetTask.id).toBe("workflow_run.get")
+    expect(workflowRunRerunAllTask.id).toBe("workflow_run.rerun_all")
+    expect(workflowRunCancelTask.id).toBe("workflow_run.cancel")
+    expect(workflowRunArtifactsListTask.id).toBe("workflow_run.artifacts.list")
+    expect(projectV2OrgGetTask.id).toBe("project_v2.org.get")
+    expect(projectV2UserGetTask.id).toBe("project_v2.user.get")
+    expect(projectV2FieldsListTask.id).toBe("project_v2.fields.list")
+    expect(projectV2ItemsListTask.id).toBe("project_v2.items.list")
+    expect(projectV2ItemAddIssueTask.id).toBe("project_v2.item.add_issue")
+    expect(projectV2ItemFieldUpdateTask.id).toBe("project_v2.item.field.update")
+    expect(repoLabelsListTask.id).toBe("repo.labels.list")
+    expect(repoIssueTypesListTask.id).toBe("repo.issue_types.list")
     expect(repoViewTask.id).toBe("repo.view")
     expect(routeReasonCodes).toContain("CARD_FALLBACK")
   })

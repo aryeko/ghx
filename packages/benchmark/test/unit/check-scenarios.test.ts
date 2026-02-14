@@ -1,4 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
 const { loadScenariosMock, loadScenarioSetsMock } = vi.hoisted(() => ({
   loadScenariosMock: vi.fn(),
@@ -27,44 +30,40 @@ function createScenario(id: string, task: string) {
   }
 }
 
-describe("check-scenarios", () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+function createValidRoadmapFixture() {
+  const defaultIds = [
+    "repo-view-001",
+    "issue-view-001",
+    "issue-list-open-001",
+    "issue-comments-list-001",
+    "pr-view-001",
+    "pr-list-open-001"
+  ]
+  const baseScenarios = [
+    createScenario("repo-view-001", "repo.view"),
+    createScenario("issue-view-001", "issue.view"),
+    createScenario("issue-list-open-001", "issue.list"),
+    createScenario("issue-comments-list-001", "issue.comments.list"),
+    createScenario("pr-view-001", "pr.view"),
+    createScenario("pr-list-open-001", "pr.list")
+  ]
 
-  it("passes for valid scenarios and set mappings", async () => {
-    const defaultIds = [
-      "repo-view-001",
-      "issue-view-001",
-      "issue-list-open-001",
-      "issue-comments-list-001",
-      "pr-view-001",
-      "pr-list-open-001"
-    ]
-    const baseScenarios = [
-      createScenario("repo-view-001", "repo.view"),
-      createScenario("issue-view-001", "issue.view"),
-      createScenario("issue-list-open-001", "issue.list"),
-      createScenario("issue-comments-list-001", "issue.comments.list"),
-      createScenario("pr-view-001", "pr.view"),
-      createScenario("pr-list-open-001", "pr.list")
-    ]
+  const roadmapSets = Object.fromEntries(
+    Object.entries(ROADMAP_CAPABILITIES_BY_SET).map(([setName, capabilities]) => {
+      const ids = capabilities.map((capability, capabilityIndex) => `${setName}-${capabilityIndex + 1}-001`)
+      return [setName, ids]
+    })
+  ) as Record<string, string[]>
 
-    const roadmapSets = Object.fromEntries(
-      Object.entries(ROADMAP_CAPABILITIES_BY_SET).map(([setName, capabilities], batchIndex) => {
-        const ids = capabilities.map((capability, capabilityIndex) => `batch-${batchIndex}-${capabilityIndex}-001`)
-        return [setName, ids]
-      })
-    ) as Record<string, string[]>
-
-    const roadmapScenarios = Object.entries(ROADMAP_CAPABILITIES_BY_SET).flatMap(([setName, capabilities], batchIndex) =>
-      capabilities.map((capability, capabilityIndex) => createScenario((roadmapSets[setName] ?? [])[capabilityIndex] ?? `batch-${batchIndex}-${capabilityIndex}-001`, capability))
+  const roadmapScenarios = Object.entries(ROADMAP_CAPABILITIES_BY_SET).flatMap(([setName, capabilities]) =>
+    capabilities.map((capability, capabilityIndex) =>
+      createScenario((roadmapSets[setName] ?? [])[capabilityIndex] ?? `${setName}-${capabilityIndex + 1}-001`, capability)
     )
+  )
 
-    const roadmapAll = Array.from(new Set(Object.values(roadmapSets).flat()))
-
-    loadScenariosMock.mockResolvedValue([...baseScenarios, ...roadmapScenarios])
-    loadScenarioSetsMock.mockResolvedValue({
+  return {
+    scenarios: [...baseScenarios, ...roadmapScenarios],
+    sets: {
       default: defaultIds,
       "pr-operations-all": ["pr-view-001", "pr-list-open-001"],
       "pr-review-reads": [],
@@ -72,8 +71,47 @@ describe("check-scenarios", () => {
       "ci-diagnostics": [],
       "ci-log-analysis": [],
       ...roadmapSets,
-      all: roadmapAll
+      all: Array.from(new Set(Object.values(roadmapSets).flat()))
+    } as Record<string, string[]>,
+    roadmapCapabilityIds: Object.values(ROADMAP_CAPABILITIES_BY_SET).flat(),
+    allScenarioCapabilityIds: Array.from(new Set([...baseScenarios, ...roadmapScenarios].map((scenario) => scenario.task)))
+  }
+}
+
+async function createBenchmarkRootWithCards(capabilityIds: string[], malformedCard = false) {
+  const tempRoot = await mkdtemp(join(tmpdir(), "ghx-benchmark-check-"))
+  const benchmarkCwd = join(tempRoot, "packages", "benchmark")
+  const cardsDir = join(tempRoot, "packages", "core", "src", "core", "registry", "cards")
+  await mkdir(cardsDir, { recursive: true })
+
+  if (malformedCard) {
+    await writeFile(join(cardsDir, "malformed.yaml"), "name: missing capability id\n", "utf8")
+  }
+
+  await Promise.all(
+    capabilityIds.map(async (capabilityId, index) => {
+      const content = `capability_id: ${capabilityId}\nversion: 1.0.0\n`
+      await writeFile(join(cardsDir, `card-${String(index + 1).padStart(3, "0")}.yaml`), content, "utf8")
     })
+  )
+
+  return {
+    benchmarkCwd,
+    async cleanup() {
+      await rm(tempRoot, { recursive: true, force: true })
+    }
+  }
+}
+
+describe("check-scenarios", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("passes for valid scenarios and set mappings", async () => {
+    const fixture = createValidRoadmapFixture()
+    loadScenariosMock.mockResolvedValue(fixture.scenarios)
+    loadScenarioSetsMock.mockResolvedValue(fixture.sets)
 
     await expect(main("/tmp/benchmark")).resolves.toBeUndefined()
   })
@@ -212,5 +250,78 @@ describe("check-scenarios", () => {
     })
 
     await expect(main("/tmp/benchmark")).rejects.toThrow("exact union")
+  })
+
+  it("fails when roadmap set coverage is missing required capabilities", async () => {
+    loadScenariosMock.mockResolvedValue([createScenario("repo-view-001", "repo.view")])
+    loadScenarioSetsMock.mockResolvedValue({
+      default: ["repo-view-001"],
+      "pr-operations-all": ["repo-view-001"],
+      "pr-exec": [],
+      "issues": [],
+      "release-delivery": [],
+      workflows: [],
+      "projects-v2": [],
+      all: []
+    })
+
+    await expect(main("/tmp/benchmark")).rejects.toThrow("missing capability coverage")
+  })
+
+  it("validates registry capability coverage when cards directory exists", async () => {
+    const fixture = createValidRoadmapFixture()
+    const temp = await createBenchmarkRootWithCards(fixture.allScenarioCapabilityIds)
+
+    try {
+      loadScenariosMock.mockResolvedValue(fixture.scenarios)
+      loadScenarioSetsMock.mockResolvedValue(fixture.sets)
+
+      await expect(main(temp.benchmarkCwd)).resolves.toBeUndefined()
+    } finally {
+      await temp.cleanup()
+    }
+  })
+
+  it("fails when a registry card cannot be parsed for capability_id", async () => {
+    const fixture = createValidRoadmapFixture()
+    const temp = await createBenchmarkRootWithCards([], true)
+
+    try {
+      loadScenariosMock.mockResolvedValue(fixture.scenarios)
+      loadScenarioSetsMock.mockResolvedValue(fixture.sets)
+
+      await expect(main(temp.benchmarkCwd)).rejects.toThrow("Unable to parse capability_id")
+    } finally {
+      await temp.cleanup()
+    }
+  })
+
+  it("fails when capability registry contains capabilities with no benchmark coverage", async () => {
+    const fixture = createValidRoadmapFixture()
+    const temp = await createBenchmarkRootWithCards([...fixture.allScenarioCapabilityIds, "nonexistent.capability"])
+
+    try {
+      loadScenariosMock.mockResolvedValue(fixture.scenarios)
+      loadScenarioSetsMock.mockResolvedValue(fixture.sets)
+
+      await expect(main(temp.benchmarkCwd)).rejects.toThrow("Missing benchmark coverage for capabilities")
+    } finally {
+      await temp.cleanup()
+    }
+  })
+
+  it("fails when scenario tasks are not present in capability registry cards", async () => {
+    const fixture = createValidRoadmapFixture()
+    const reducedCapabilities = fixture.roadmapCapabilityIds.slice(0, -1)
+    const temp = await createBenchmarkRootWithCards(reducedCapabilities)
+
+    try {
+      loadScenariosMock.mockResolvedValue(fixture.scenarios)
+      loadScenarioSetsMock.mockResolvedValue(fixture.sets)
+
+      await expect(main(temp.benchmarkCwd)).rejects.toThrow("Scenario tasks not present in capability registry")
+    } finally {
+      await temp.cleanup()
+    }
   })
 })

@@ -1916,4 +1916,320 @@ describe("runCliCapability", () => {
     expect(invalidDispatchResult.ok).toBe(false)
     expect(invalidDispatchResult.error?.code).toBe("VALIDATION")
   })
+
+  it("maps release.publish_draft command failure after draft pre-check", async () => {
+    const runner = {
+      run: vi
+        .fn()
+        .mockResolvedValueOnce({
+          stdout: JSON.stringify({
+            id: 301,
+            tag_name: "v3.0.0-rc.1",
+            name: "v3.0.0-rc.1",
+            draft: true,
+            prerelease: true,
+            html_url: "https://github.com/acme/modkit/releases/tag/v3.0.0-rc.1",
+            target_commitish: "main",
+            created_at: "2026-02-10T00:00:00Z",
+            published_at: null
+          }),
+          stderr: "",
+          exitCode: 0
+        })
+        .mockResolvedValueOnce({
+          stdout: "",
+          stderr: "forbidden",
+          exitCode: 1
+        })
+    }
+
+    const result = await runCliCapability(runner, "release.publish_draft", {
+      owner: "acme",
+      name: "modkit",
+      releaseId: 301,
+      title: "v3.0.0"
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("AUTH")
+    expect(result.error?.details).toEqual(
+      expect.objectContaining({
+        capabilityId: "release.publish_draft",
+        exitCode: 1
+      })
+    )
+  })
+
+  it("rejects release.publish_draft when current release is not draft", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: JSON.stringify({
+          id: 401,
+          tag_name: "v4.0.0",
+          name: "v4.0.0",
+          draft: false,
+          prerelease: false,
+          html_url: "https://github.com/acme/modkit/releases/tag/v4.0.0",
+          target_commitish: "main",
+          created_at: "2026-02-12T00:00:00Z",
+          published_at: "2026-02-12T00:01:00Z"
+        }),
+        stderr: "",
+        exitCode: 0
+      }))
+    }
+
+    const result = await runCliCapability(runner, "release.publish_draft", {
+      owner: "acme",
+      name: "modkit",
+      releaseId: 401,
+      title: "v4.0.0"
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("VALIDATION")
+    expect(result.error?.message).toContain("requires an existing draft release")
+    expect(runner.run).toHaveBeenCalledTimes(1)
+  })
+
+  it("maps release.publish_draft pre-check read failure", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: "",
+        stderr: "unauthorized",
+        exitCode: 1
+      }))
+    }
+
+    const result = await runCliCapability(runner, "release.publish_draft", {
+      owner: "acme",
+      name: "modkit",
+      releaseId: 500,
+      title: "v5.0.0"
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("AUTH")
+    expect(result.error?.details).toEqual(
+      expect.objectContaining({
+        capabilityId: "release.publish_draft",
+        exitCode: 1
+      })
+    )
+    expect(runner.run).toHaveBeenCalledTimes(1)
+  })
+
+  it("rejects release.publish_draft when pre-check payload is not an object", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: JSON.stringify([]),
+        stderr: "",
+        exitCode: 0
+      }))
+    }
+
+    const result = await runCliCapability(runner, "release.publish_draft", {
+      owner: "acme",
+      name: "modkit",
+      releaseId: 501,
+      title: "v5.0.1"
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("VALIDATION")
+    expect(result.error?.message).toContain("requires an existing draft release")
+    expect(runner.run).toHaveBeenCalledTimes(1)
+  })
+
+  it("maps invalid JSON output to server error", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: "{invalid-json",
+        stderr: "",
+        exitCode: 0
+      }))
+    }
+
+    const result = await runCliCapability(runner, "repo.view", {
+      owner: "acme",
+      name: "modkit"
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("SERVER")
+    expect(result.error?.message).toBe("Failed to parse CLI JSON output")
+  })
+
+  it("returns validation error when release.publish_draft params are incomplete", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: "{}",
+        stderr: "",
+        exitCode: 0
+      }))
+    }
+
+    const result = await runCliCapability(runner, "release.publish_draft", {
+      owner: "acme",
+      name: "modkit"
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("UNKNOWN")
+    expect(result.error?.message).toContain("Missing owner/name/releaseId")
+    expect(runner.run).not.toHaveBeenCalled()
+  })
+
+  it("returns fallback defaults for malformed artifacts, project, and release payloads", async () => {
+    const runner = {
+      run: vi
+        .fn()
+        .mockResolvedValueOnce({
+          stdout: JSON.stringify({ artifacts: [null] }),
+          stderr: "",
+          exitCode: 0
+        })
+        .mockResolvedValueOnce({
+          stdout: JSON.stringify({ fields: [null] }),
+          stderr: "",
+          exitCode: 0
+        })
+        .mockResolvedValueOnce({
+          stdout: JSON.stringify({ items: [null] }),
+          stderr: "",
+          exitCode: 0
+        })
+        .mockResolvedValueOnce({
+          stdout: JSON.stringify([]),
+          stderr: "",
+          exitCode: 0
+        })
+        .mockResolvedValueOnce({
+          stdout: JSON.stringify([]),
+          stderr: "",
+          exitCode: 0
+        })
+    }
+
+    const artifactsResult = await runCliCapability(runner, "workflow_run.artifacts.list", {
+      owner: "acme",
+      name: "modkit",
+      runId: 123
+    })
+    const fieldsResult = await runCliCapability(runner, "project_v2.fields.list", {
+      owner: "acme",
+      projectNumber: 1
+    })
+    const itemsResult = await runCliCapability(runner, "project_v2.items.list", {
+      owner: "acme",
+      projectNumber: 1,
+      first: 10
+    })
+    const addIssueResult = await runCliCapability(runner, "project_v2.item.add_issue", {
+      owner: "acme",
+      projectNumber: 1,
+      issueUrl: "https://github.com/acme/modkit/issues/1"
+    })
+    const releaseGetResult = await runCliCapability(runner, "release.get", {
+      owner: "acme",
+      name: "modkit",
+      tagName: "v1.0.0"
+    })
+
+    expect(artifactsResult.ok).toBe(true)
+    expect(artifactsResult.data).toEqual(
+      expect.objectContaining({
+        items: [
+          {
+            id: 0,
+            name: null,
+            sizeInBytes: null,
+            archiveDownloadUrl: null
+          }
+        ]
+      })
+    )
+
+    expect(fieldsResult.ok).toBe(true)
+    expect(fieldsResult.data).toEqual(
+      expect.objectContaining({
+        items: [
+          {
+            id: null,
+            name: null,
+            dataType: null
+          }
+        ]
+      })
+    )
+
+    expect(itemsResult.ok).toBe(true)
+    expect(itemsResult.data).toEqual(
+      expect.objectContaining({
+        items: [
+          {
+            id: null,
+            contentType: null,
+            contentNumber: null,
+            contentTitle: null
+          }
+        ]
+      })
+    )
+
+    expect(addIssueResult.ok).toBe(true)
+    expect(addIssueResult.data).toEqual({ itemId: null, added: true })
+
+    expect(releaseGetResult.ok).toBe(true)
+    expect(releaseGetResult.data).toEqual({
+      id: 0,
+      tagName: null,
+      name: null,
+      isDraft: false,
+      isPrerelease: false,
+      url: null,
+      targetCommitish: null,
+      createdAt: null,
+      publishedAt: null
+    })
+  })
+
+  it("returns gh exit-code error message when stderr is empty", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: "",
+        stderr: "",
+        exitCode: 2
+      }))
+    }
+
+    const result = await runCliCapability(runner, "repo.view", {
+      owner: "acme",
+      name: "modkit"
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.message).toBe("gh exited with code 2")
+  })
+
+  it("returns validation error when repo-required capabilities miss owner/name", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: "[]",
+        stderr: "",
+        exitCode: 0
+      }))
+    }
+
+    const result = await runCliCapability(runner, "release.list", {
+      owner: "",
+      name: "",
+      first: 10
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("UNKNOWN")
+    expect(result.error?.message).toContain("Missing owner/name")
+    expect(runner.run).not.toHaveBeenCalled()
+  })
 })
