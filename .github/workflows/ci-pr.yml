@@ -74,8 +74,8 @@ jobs:
       - name: E2E tests
         run: pnpm run test:e2e
       - name: Benchmark gate (pr_fast)
-        if: "!startsWith(github.event.head_commit.message, 'chore: version packages')"
+        if: "!startsWith(github.event.pull_request.title, 'chore: version packages')"
         run: pnpm run benchmark:proof:pr-fast
       - name: Benchmark gate (release_strict)
-        if: "startsWith(github.event.head_commit.message, 'chore: version packages')"
+        if: "startsWith(github.event.pull_request.title, 'chore: version packages')"
         run: pnpm run benchmark:proof:release-strict
