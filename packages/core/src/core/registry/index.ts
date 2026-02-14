@@ -39,7 +39,14 @@ function loadCardsFromYaml(): OperationCard[] {
     "workflow_runs.list",
     "workflow_run.jobs.list",
     "workflow_job.logs.get",
-    "workflow_job.logs.analyze"
+    "workflow_job.logs.analyze",
+    "release.list",
+    "release.get",
+    "release.create_draft",
+    "release.update",
+    "release.publish_draft",
+    "workflow_dispatch.run",
+    "workflow_run.rerun_failed"
   ]
   const orderMap = new Map(preferredOrder.map((id, index) => [id, index]))
 

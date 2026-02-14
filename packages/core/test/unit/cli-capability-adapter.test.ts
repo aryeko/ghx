@@ -621,6 +621,35 @@ describe("runCliCapability", () => {
     expect(result.error?.message).toBe("forbidden")
   })
 
+  it("redacts sensitive stderr and omits command args in error details", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: "",
+        stderr: "authorization: Bearer ghp_supersecrettokenvalue123",
+        exitCode: 1
+      }))
+    }
+
+    const result = await runCliCapability(runner, "release.create_draft", {
+      owner: "acme",
+      name: "modkit",
+      tagName: "v1.2.3",
+      title: "Release",
+      notes: "token=supersecret"
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.message).toBe("gh command failed; stderr redacted for safety")
+    expect(result.error?.details).toEqual(
+      expect.objectContaining({
+        capabilityId: "release.create_draft",
+        exitCode: 1
+      })
+    )
+    expect(String(result.error?.details ?? "")).not.toContain("supersecret")
+    expect(String(result.error?.details ?? "")).not.toContain("ghp_supersecrettokenvalue123")
+  })
+
   it("normalizes pr.status.checks from gh pr checks output", async () => {
     const runner = {
       run: vi.fn(async () => ({
@@ -1235,5 +1264,353 @@ describe("runCliCapability", () => {
     expect(logsResult.ok).toBe(true)
     expect((logsResult.data as { truncated: boolean }).truncated).toBe(true)
     expect((logsResult.data as { log: string }).log.length).toBe(50_000)
+  })
+
+  it("normalizes release list and get responses", async () => {
+    const runner = {
+      run: vi
+        .fn()
+        .mockResolvedValueOnce({
+          stdout: JSON.stringify([
+            {
+              id: 101,
+              tag_name: "v1.0.0",
+              name: "v1.0.0",
+              draft: true,
+              prerelease: false,
+              html_url: "https://github.com/acme/modkit/releases/tag/v1.0.0",
+              target_commitish: "main",
+              created_at: "2026-02-01T00:00:00Z",
+              published_at: null
+            }
+          ]),
+          stderr: "",
+          exitCode: 0
+        })
+        .mockResolvedValueOnce({
+          stdout: JSON.stringify({
+            id: 102,
+            tag_name: "v1.0.1",
+            name: "v1.0.1",
+            draft: false,
+            prerelease: false,
+            html_url: "https://github.com/acme/modkit/releases/tag/v1.0.1",
+            target_commitish: "main",
+            created_at: "2026-02-02T00:00:00Z",
+            published_at: "2026-02-02T00:10:00Z"
+          }),
+          stderr: "",
+          exitCode: 0
+        })
+    }
+
+    const listResult = await runCliCapability(runner, "release.list", {
+      owner: "acme",
+      name: "modkit",
+      first: 10
+    })
+    const getResult = await runCliCapability(runner, "release.get", {
+      owner: "acme",
+      name: "modkit",
+      tagName: "v1.0.1"
+    })
+
+    expect(listResult.ok).toBe(true)
+    expect(listResult.data).toEqual({
+      items: [
+        {
+          id: 101,
+          tagName: "v1.0.0",
+          name: "v1.0.0",
+          isDraft: true,
+          isPrerelease: false,
+          url: "https://github.com/acme/modkit/releases/tag/v1.0.0",
+          targetCommitish: "main",
+          createdAt: "2026-02-01T00:00:00Z",
+          publishedAt: null
+        }
+      ],
+      pageInfo: {
+        hasNextPage: false,
+        endCursor: null
+      }
+    })
+
+    expect(getResult.ok).toBe(true)
+    expect(getResult.data).toEqual({
+      id: 102,
+      tagName: "v1.0.1",
+      name: "v1.0.1",
+      isDraft: false,
+      isPrerelease: false,
+      url: "https://github.com/acme/modkit/releases/tag/v1.0.1",
+      targetCommitish: "main",
+      createdAt: "2026-02-02T00:00:00Z",
+      publishedAt: "2026-02-02T00:10:00Z"
+    })
+
+    expect(runner.run).toHaveBeenNthCalledWith(
+      1,
+      "gh",
+      ["api", "repos/acme/modkit/releases", "-F", "per_page=10"],
+      10_000
+    )
+    expect(runner.run).toHaveBeenNthCalledWith(
+      2,
+      "gh",
+      ["api", "repos/acme/modkit/releases/tags/v1.0.1"],
+      10_000
+    )
+  })
+
+  it("enforces draft-first semantics for release create, update, and publish", async () => {
+    const runner = {
+      run: vi
+        .fn()
+        .mockResolvedValueOnce({
+          stdout: JSON.stringify({
+            id: 201,
+            tag_name: "v2.0.0-rc.1",
+            name: "v2.0.0-rc.1",
+            draft: true,
+            prerelease: true,
+            html_url: "https://github.com/acme/modkit/releases/tag/v2.0.0-rc.1",
+            target_commitish: "main",
+            created_at: "2026-02-05T00:00:00Z",
+            published_at: null
+          }),
+          stderr: "",
+          exitCode: 0
+        })
+        .mockResolvedValueOnce({
+          stdout: JSON.stringify({
+            id: 201,
+            tag_name: "v2.0.0-rc.1",
+            name: "v2.0.0-rc.1",
+            draft: true,
+            prerelease: true,
+            html_url: "https://github.com/acme/modkit/releases/tag/v2.0.0-rc.1",
+            target_commitish: "main",
+            created_at: "2026-02-05T00:00:00Z",
+            published_at: null
+          }),
+          stderr: "",
+          exitCode: 0
+        })
+        .mockResolvedValueOnce({
+          stdout: JSON.stringify({
+            id: 201,
+            tag_name: "v2.0.0-rc.1",
+            name: "v2.0.0",
+            draft: true,
+            prerelease: false,
+            html_url: "https://github.com/acme/modkit/releases/tag/v2.0.0",
+            target_commitish: "main",
+            created_at: "2026-02-05T00:00:00Z",
+            published_at: null
+          }),
+          stderr: "",
+          exitCode: 0
+        })
+        .mockResolvedValueOnce({
+          stdout: JSON.stringify({
+            id: 201,
+            tag_name: "v2.0.0-rc.1",
+            name: "v2.0.0",
+            draft: false,
+            prerelease: false,
+            html_url: "https://github.com/acme/modkit/releases/tag/v2.0.0",
+            target_commitish: "main",
+            created_at: "2026-02-05T00:00:00Z",
+            published_at: "2026-02-06T00:00:00Z"
+          }),
+          stderr: "",
+          exitCode: 0
+        })
+    }
+
+    const createResult = await runCliCapability(runner, "release.create_draft", {
+      owner: "acme",
+      name: "modkit",
+      tagName: "v2.0.0-rc.1",
+      title: "v2.0.0-rc.1",
+      notes: "release candidate",
+      prerelease: true
+    })
+
+    const updateResult = await runCliCapability(runner, "release.update", {
+      owner: "acme",
+      name: "modkit",
+      releaseId: 201,
+      title: "v2.0.0-rc.1",
+      notes: "updated notes",
+      draft: true
+    })
+
+    const publishResult = await runCliCapability(runner, "release.publish_draft", {
+      owner: "acme",
+      name: "modkit",
+      releaseId: 201,
+      title: "v2.0.0"
+    })
+
+    const invalidUpdateResult = await runCliCapability(runner, "release.update", {
+      owner: "acme",
+      name: "modkit",
+      releaseId: 201,
+      draft: false
+    })
+
+    expect(createResult.ok).toBe(true)
+    expect((createResult.data as { isDraft: boolean }).isDraft).toBe(true)
+    expect(updateResult.ok).toBe(true)
+    expect((updateResult.data as { isDraft: boolean }).isDraft).toBe(true)
+    expect(publishResult.ok).toBe(true)
+    expect(publishResult.data).toEqual(
+      expect.objectContaining({
+        id: 201,
+        isDraft: false,
+        publishedAt: "2026-02-06T00:00:00Z",
+        wasDraft: true
+      })
+    )
+
+    expect(invalidUpdateResult.ok).toBe(false)
+    expect(invalidUpdateResult.error?.code).toBe("VALIDATION")
+
+    expect(runner.run).toHaveBeenNthCalledWith(
+      1,
+      "gh",
+      expect.arrayContaining([
+        "api",
+        "repos/acme/modkit/releases",
+        "--method",
+        "POST",
+        "-f",
+        "tag_name=v2.0.0-rc.1",
+        "-F",
+        "draft=true"
+      ]),
+      10_000
+    )
+    expect(runner.run).toHaveBeenNthCalledWith(
+      2,
+      "gh",
+      expect.arrayContaining([
+        "api",
+        "repos/acme/modkit/releases/201",
+        "--method",
+        "PATCH",
+        "-F",
+        "draft=true"
+      ]),
+      10_000
+    )
+    expect(runner.run).toHaveBeenNthCalledWith(
+      3,
+      "gh",
+      ["api", "repos/acme/modkit/releases/201"],
+      10_000
+    )
+    expect(runner.run).toHaveBeenNthCalledWith(
+      4,
+      "gh",
+      expect.arrayContaining([
+        "api",
+        "repos/acme/modkit/releases/201",
+        "--method",
+        "PATCH",
+        "-F",
+        "draft=false"
+      ]),
+      10_000
+    )
+  })
+
+  it("dispatches workflows and reruns failed workflow jobs", async () => {
+    const runner = {
+      run: vi
+        .fn()
+        .mockResolvedValueOnce({
+          stdout: "",
+          stderr: "",
+          exitCode: 0
+        })
+        .mockResolvedValueOnce({
+          stdout: "",
+          stderr: "",
+          exitCode: 0
+        })
+    }
+
+    const dispatchResult = await runCliCapability(runner, "workflow_dispatch.run", {
+      owner: "acme",
+      name: "modkit",
+      workflowId: "release.yml",
+      ref: "main",
+      inputs: {
+        channel: "stable",
+        force: "true"
+      }
+    })
+
+    const rerunResult = await runCliCapability(runner, "workflow_run.rerun_failed", {
+      owner: "acme",
+      name: "modkit",
+      runId: 500
+    })
+
+    const invalidDispatchResult = await runCliCapability(runner, "workflow_dispatch.run", {
+      owner: "acme",
+      name: "modkit",
+      workflowId: "release.yml",
+      ref: "main",
+      inputs: "invalid"
+    })
+
+    expect(dispatchResult.ok).toBe(true)
+    expect(dispatchResult.data).toEqual({
+      workflowId: "release.yml",
+      ref: "main",
+      dispatched: true
+    })
+    expect(rerunResult.ok).toBe(true)
+    expect(rerunResult.data).toEqual({
+      runId: 500,
+      rerunFailed: true
+    })
+
+    expect(invalidDispatchResult.ok).toBe(false)
+    expect(invalidDispatchResult.error?.code).toBe("VALIDATION")
+
+    expect(runner.run).toHaveBeenNthCalledWith(
+      1,
+      "gh",
+      [
+        "api",
+        "repos/acme/modkit/actions/workflows/release.yml/dispatches",
+        "--method",
+        "POST",
+        "-f",
+        "ref=main",
+        "-f",
+        "inputs[channel]=stable",
+        "-f",
+        "inputs[force]=true"
+      ],
+      10_000
+    )
+
+    expect(runner.run).toHaveBeenNthCalledWith(
+      2,
+      "gh",
+      [
+        "api",
+        "repos/acme/modkit/actions/runs/500/rerun-failed-jobs",
+        "--method",
+        "POST"
+      ],
+      10_000
+    )
   })
 })

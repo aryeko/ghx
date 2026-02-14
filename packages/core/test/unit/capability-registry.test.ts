@@ -109,6 +109,41 @@ describe("capabilityRegistry", () => {
         task: "workflow_job.logs.analyze",
         defaultRoute: "cli",
         fallbackRoutes: [],
+      },
+      {
+        task: "release.list",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "release.get",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "release.create_draft",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "release.update",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "release.publish_draft",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "workflow_dispatch.run",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "workflow_run.rerun_failed",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
       }
     ])
   })
