@@ -1,14 +1,16 @@
 {
-  "name": "@ghx-router/benchmark",
+  "name": "@ghx/benchmark",
   "version": "0.1.0",
   "private": true,
+  "author": "Arye Kogan",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "build": "tsup \"src/**/*.ts\" --format esm --out-dir dist --clean --no-dts --sourcemap",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage --coverage.reporter=lcov --coverage.reporter=text-summary",
+    "test:coverage": "vitest run --coverage --coverage.reporter=text --coverage.reporter=text-summary --coverage.reporter=lcov",
     "test:watch": "vitest",
     "run": "tsx src/cli/benchmark.ts run",
     "check:scenarios": "tsx src/cli/check-scenarios.ts",
@@ -23,7 +25,7 @@
     }
   },
   "dependencies": {
-    "@ghx-router/core": "workspace:*",
+    "@ghx/core": "workspace:*",
     "@opencode-ai/sdk": "^1.1.64",
     "zod": "^3.24.1"
   },

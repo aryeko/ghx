@@ -47,7 +47,7 @@ describe("scaffolds and constants", () => {
   })
 
   it("exports shared utility primitives", () => {
-    expect(projectName).toBe("ghx-router")
+    expect(projectName).toBe("ghx")
     expect(isObject({})).toBe(true)
     expect(isObject([])).toBe(false)
     expect(isObject(null)).toBe(false)

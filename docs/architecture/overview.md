@@ -1,9 +1,9 @@
 # Architecture Overview
 
-`ghx-router` has three primary boundaries:
+`ghx` has three primary boundaries:
 
-- `packages/ghx-router/src/core/` - contracts, operation-card registry, execute orchestration, adapters, telemetry.
-- `packages/ghx-router/src/agent-interface/` - agent-facing tools (`execute`, `explain`, `list_capabilities`) and stable main-skill text.
+- `packages/core/src/core/` - contracts, operation-card registry, execute orchestration, adapters, telemetry.
+- `packages/core/src/agent-interface/` - agent-facing tools (`execute`, `explain`, `list_capabilities`) and stable main-skill text.
 - `packages/benchmark/` - benchmark scenarios, runner, extraction, and reporting.
 
 ```mermaid

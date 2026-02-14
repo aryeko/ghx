@@ -1,5 +1,5 @@
 {
-  "name": "ghx-router",
+  "name": "ghx",
   "version": "1.0.0",
   "private": true,
   "description": "CLI-first GitHub execution router for agents.",
@@ -21,26 +21,26 @@
     "changeset:publish": "changeset publish",
     "changeset:status": "changeset status",
     "changeset:version": "changeset version",
-    "benchmark:check": "nx run @ghx-router/benchmark:\"check:scenarios\"",
-    "benchmark:run": "nx run @ghx-router/benchmark:run",
-    "benchmark:report": "nx run @ghx-router/benchmark:report",
-    "benchmark:gate": "nx run @ghx-router/benchmark:\"report:gate\"",
-    "ghx:gql:check": "nx run @ghx-router/core:\"gql:check\"",
+    "benchmark:check": "nx run @ghx/benchmark:\"check:scenarios\"",
+    "benchmark:run": "nx run @ghx/benchmark:run",
+    "benchmark:report": "nx run @ghx/benchmark:report",
+    "benchmark:gate": "nx run @ghx/benchmark:\"report:gate\"",
+    "ghx:gql:check": "nx run @ghx/core:\"gql:check\"",
     "dep-graph": "nx graph",
     "cache:clean": "nx reset"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aryeko/ghx-router.git"
+    "url": "git+https://github.com/aryeko/ghx.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["github", "agent", "cli", "routing", "graphql", "ai", "llm", "agentic"],
+  "author": "Arye Kogan",
+  "license": "MIT",
   "type": "module",
   "bugs": {
-    "url": "https://github.com/aryeko/ghx-router/issues"
+    "url": "https://github.com/aryeko/ghx/issues"
   },
-  "homepage": "https://github.com/aryeko/ghx-router#readme",
+  "homepage": "https://github.com/aryeko/ghx#readme",
   "dependencies": {},
   "devDependencies": {
     "@changesets/cli": "^2.29.7",

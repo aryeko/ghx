@@ -15,8 +15,8 @@ Current normalized error codes:
 
 Source:
 
-- `packages/ghx-router/src/core/errors/codes.ts`
-- `packages/ghx-router/src/core/errors/map-error.ts`
+- `packages/core/src/core/errors/codes.ts`
+- `packages/core/src/core/errors/map-error.ts`
 
 ## Retryability
 
@@ -32,7 +32,7 @@ Non-retryable by default:
 
 Source:
 
-- `packages/ghx-router/src/core/errors/retryability.ts`
+- `packages/core/src/core/errors/retryability.ts`
 
 ## Fallback Behavior
 
@@ -48,4 +48,4 @@ Source:
 
 Source:
 
-- `packages/ghx-router/src/core/execute/execute.ts`
+- `packages/core/src/core/execute/execute.ts`

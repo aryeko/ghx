@@ -10,5 +10,5 @@ coverage:
 comment:
   layout: "reach,diff,flags,files"
 ignore:
-  - "packages/ghx-router/src/gql/generated/**"
-  - "packages/ghx-router/src/gql/operations/*.generated.ts"
+  - "packages/core/src/gql/generated/**"
+  - "packages/core/src/gql/operations/*.generated.ts"

@@ -14,10 +14,10 @@ The runtime exposes a compact agent-facing tool surface.
 
 ## Implementation
 
-- `packages/ghx-router/src/agent-interface/tools/execute-tool.ts`
-- `packages/ghx-router/src/agent-interface/tools/explain-tool.ts`
-- `packages/ghx-router/src/agent-interface/tools/list-capabilities-tool.ts`
-- `packages/ghx-router/src/agent-interface/prompt/main-skill.ts`
+- `packages/core/src/agent-interface/tools/execute-tool.ts`
+- `packages/core/src/agent-interface/tools/explain-tool.ts`
+- `packages/core/src/agent-interface/tools/list-capabilities-tool.ts`
+- `packages/core/src/agent-interface/prompt/main-skill.ts`
 
 ## CLI Safety Defaults
 
@@ -29,4 +29,4 @@ When `executeTask` is called without a custom CLI runner, the runtime uses a saf
 
 Source:
 
-- `packages/ghx-router/src/core/execution/cli/safe-runner.ts`
+- `packages/core/src/core/execution/cli/safe-runner.ts`

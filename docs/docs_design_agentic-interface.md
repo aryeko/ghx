@@ -1,4 +1,4 @@
-# Agentic Interface Design Spec (ghx-router)
+# Agentic Interface Design Spec (ghx)
 
 **Status:** Draft  
 **Audience:** Runtime/tooling engineers, agent prompt designers  
@@ -157,7 +157,7 @@ They enable:
 - Registry-driven routing with deterministic policy.
 
 ### 6.2 Card lifecycle
-- Cards live in the repo under `packages/core/src/registry/cards/`.
+- Cards live in the repo under `packages/core/src/core/registry/cards/`.
 - `execute` loads the card by `capability_id`.
 - `explain` returns a compact summary derived from the card.
 - Benchmarks validate card correctness (inputs/outputs) and route behavior.
@@ -419,7 +419,7 @@ Each CLI capability is a function that:
 ## 11) File Structure (Repo-ready)
 
 ```
-ghx-router/
+ghx/
   docs/
     design/
       agentic-interface.md       # THIS DOCUMENT

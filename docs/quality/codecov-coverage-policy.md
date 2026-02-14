@@ -12,8 +12,8 @@ Defined in `codecov.yml`:
 ## Scope
 
 - Only generated GraphQL files are excluded from Codecov status checks:
-  - `packages/ghx-router/src/gql/generated/**`
-  - `packages/ghx-router/src/gql/operations/*.generated.ts`
+  - `packages/core/src/gql/generated/**`
+  - `packages/core/src/gql/operations/*.generated.ts`
 
 ## CI Integration
 
@@ -24,6 +24,6 @@ Defined in `codecov.yml`:
 ## Local Verification
 
 ```bash
-pnpm --filter @ghx-router/core run test:coverage
-pnpm --filter @ghx-router/benchmark run test:coverage
+pnpm --filter @ghx/core run test:coverage
+pnpm --filter @ghx/benchmark run test:coverage
 ```

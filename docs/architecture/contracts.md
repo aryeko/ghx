@@ -15,7 +15,7 @@ All capability executions return:
 
 Source of truth:
 
-- `packages/ghx-router/src/core/contracts/envelope.ts`
+- `packages/core/src/core/contracts/envelope.ts`
 
 ## Operation Card Contract
 
@@ -34,9 +34,9 @@ Runtime schema enforcement:
 
 Source of truth:
 
-- `packages/ghx-router/src/core/registry/types.ts`
-- `packages/ghx-router/src/core/registry/cards/*.yaml`
-- `packages/ghx-router/src/core/registry/index.ts`
+- `packages/core/src/core/registry/types.ts`
+- `packages/core/src/core/registry/cards/*.yaml`
+- `packages/core/src/core/registry/index.ts`
 
 ## Agent Tool Surface Contract
 
@@ -46,4 +46,4 @@ Source of truth:
 
 Source of truth:
 
-- `packages/ghx-router/src/agent-interface/tools/`
+- `packages/core/src/agent-interface/tools/`

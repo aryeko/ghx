@@ -1,41 +1,33 @@
-# ghx-router
+# ghx
 
-CLI-first GitHub execution router for agents, with card-driven routing and a normalized runtime envelope.
+> A stable capability interface for AI agents that interact with GitHub.
 
-## Status
+[![CI](https://github.com/aryeko/ghx/actions/workflows/ci-pr.yml/badge.svg)](https://github.com/aryeko/ghx/actions/workflows/ci-pr.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-- v1 agentic interface is implemented for the thin-slice capabilities:
-  - `repo.view`
-  - `issue.view`
-  - `issue.list`
-  - `issue.comments.list`
-  - `pr.view`
-  - `pr.list`
-- Core runtime, benchmark harness, and architecture docs are aligned to the shipped contract.
+## The Problem
 
-## Core Idea
+AI agents that work with GitHub waste tokens re-discovering the API surface on every run. They re-fetch schemas, re-learn endpoints, and re-parse documentation—leading to higher latency, higher cost, and brittle behavior.
 
-Agents should not re-fetch GitHub schema/docs on every run. `ghx-router` provides:
+## The Solution
 
-- a stable capability interface,
-- deterministic route selection,
-- typed GraphQL + structured CLI adapters,
-- normalized output and error semantics.
+ghx provides a **card-driven capability router** that gives agents a stable, typed interface to GitHub operations. Agents call capabilities by ID; ghx handles route selection (GraphQL, CLI, REST), retries, fallbacks, and normalized output—so agents spend tokens on reasoning, not on API discovery.
 
-## Interface (v1)
-
-Primary command surface:
+## Quick Start
 
 ```bash
-ghx run <task-id> --input '<json>'
+# From the repo (CLI is in @ghx/core)
+pnpm install
+pnpm run build
+pnpm exec ghx run repo.view --input '{"owner":"aryeko","name":"ghx"}'
 ```
 
-Normalized runtime envelope:
+Normalized output:
 
 ```json
 {
   "ok": true,
-  "data": {},
+  "data": { "id": "...", "name": "ghx", "nameWithOwner": "aryeko/ghx", ... },
   "error": null,
   "meta": {
     "capability_id": "repo.view",
@@ -45,9 +37,9 @@ Normalized runtime envelope:
 }
 ```
 
-## Routing (v1)
+## How It Works
 
-- Capabilities are defined by runtime-loaded operation cards in `packages/ghx-router/src/core/registry/cards/*.yaml`.
+- Capabilities are defined by runtime-loaded operation cards in `packages/core/src/core/registry/cards/*.yaml`.
 - Route plan is deterministic: `preferred` then ordered `fallbacks`.
 - CLI-suitable capabilities (`repo.view`, `issue.view`, `issue.list`, `pr.view`, `pr.list`) prefer `cli` with `graphql` fallback.
 - `issue.comments.list` prefers `graphql` with `cli` fallback.
@@ -100,4 +92,21 @@ pnpm run ghx:gql:check
 pnpm run benchmark:check
 ```
 
-Codecov common recipes: https://docs.codecov.com/docs/common-recipe-list
+## Capabilities (v1)
+
+| Capability           | Description       | Preferred Route |
+| -------------------- | ----------------- | --------------- |
+| `repo.view`          | Repository metadata | CLI             |
+| `issue.view`         | Single issue      | CLI             |
+| `issue.list`         | Issue list        | CLI             |
+| `issue.comments.list`| Issue comments    | GraphQL         |
+| `pr.view`            | Single PR         | CLI             |
+| `pr.list`            | PR list           | CLI             |
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, testing, and PR guidelines.
+
+## License
+
+MIT © Arye Kogan

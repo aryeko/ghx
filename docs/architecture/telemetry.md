@@ -14,7 +14,7 @@ Telemetry context is sanitized by key-based redaction (`token`, `authorization`,
 
 Source:
 
-- `packages/ghx-router/src/core/telemetry/logger.ts`
+- `packages/core/src/core/telemetry/logger.ts`
 
 ## Enabling Output
 

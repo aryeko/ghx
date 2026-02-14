@@ -34,7 +34,7 @@ function row(overrides: Partial<BenchmarkRow>): BenchmarkRow {
       mode: null
     },
     git: {
-      repo: "aryeko/ghx-router",
+      repo: "aryeko/ghx",
       commit: "abc"
     },
     error: null,

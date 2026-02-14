@@ -1,6 +1,6 @@
 # System Design (v1)
 
-`ghx-router` moves GitHub execution policy into deterministic runtime behavior.
+`ghx` moves GitHub execution policy into deterministic runtime behavior.
 
 ## Goals
 
@@ -52,7 +52,7 @@ Every capability returns:
 
 ## Source References
 
-- `packages/ghx-router/src/core/execute/execute.ts`
-- `packages/ghx-router/src/core/registry/cards/*.yaml`
-- `packages/ghx-router/src/core/contracts/envelope.ts`
-- `packages/ghx-router/src/agent-interface/tools/`
+- `packages/core/src/core/execute/execute.ts`
+- `packages/core/src/core/registry/cards/*.yaml`
+- `packages/core/src/core/contracts/envelope.ts`
+- `packages/core/src/agent-interface/tools/`
