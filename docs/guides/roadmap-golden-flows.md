@@ -54,4 +54,4 @@ Notes:
 
 - Use dedicated fixtures for mutating capabilities.
 - Keep destructive operations (for example `issue.delete`) outside shared fixtures.
-- For benchmark parity, map flows to `batch-*` scenario sets.
+- For benchmark parity, map flows to `pr-exec`, `issues`, `release-delivery`, and `workflow-projects-v2` scenario sets.

@@ -5,10 +5,10 @@ Benchmark tooling for `ghx`.
 ## Commands
 
 - `pnpm --filter @ghx/benchmark run run -- agent_direct 1 --scenario pr-view-001`
-- `pnpm --filter @ghx/benchmark run run -- ghx_router 1 --scenario-set batch-a-pr-exec`
-- `pnpm --filter @ghx/benchmark run run -- ghx_router 1 --scenario-set batch-b-issues`
-- `pnpm --filter @ghx/benchmark run run -- ghx_router 1 --scenario-set batch-c-release-delivery`
-- `pnpm --filter @ghx/benchmark run run -- ghx_router 1 --scenario-set batch-d-workflow-projects-v2`
+- `pnpm --filter @ghx/benchmark run run -- ghx_router 1 --scenario-set pr-exec`
+- `pnpm --filter @ghx/benchmark run run -- ghx_router 1 --scenario-set issues`
+- `pnpm --filter @ghx/benchmark run run -- ghx_router 1 --scenario-set release-delivery`
+- `pnpm --filter @ghx/benchmark run run -- ghx_router 1 --scenario-set workflow-projects-v2`
 - `pnpm --filter @ghx/benchmark run report`
 - `pnpm --filter @ghx/benchmark run report:gate`
 - `pnpm --filter @ghx/benchmark run test`
@@ -17,10 +17,10 @@ Benchmark tooling for `ghx`.
 ## Roadmap Scenario Sets
 
 - `default` remains stable and mutation-free
-- `batch-a-pr-exec`
-- `batch-b-issues`
-- `batch-c-release-delivery`
-- `batch-d-workflow-projects-v2`
+- `pr-exec`
+- `issues`
+- `release-delivery`
+- `workflow-projects-v2`
 - `all` is the exact union of A-D
 
 ## Scope

@@ -95,10 +95,10 @@ describe("check-scenarios", () => {
     loadScenarioSetsMock.mockResolvedValue({
       default: ["missing-001"],
       "pr-operations-all": ["repo-view-001"],
-      "batch-a-pr-exec": ["repo-view-001"],
-      "batch-b-issues": ["repo-view-001"],
-      "batch-c-release-delivery": ["repo-view-001"],
-      "batch-d-workflow-projects-v2": ["repo-view-001"],
+      "pr-exec": ["repo-view-001"],
+      "issues": ["repo-view-001"],
+      "release-delivery": ["repo-view-001"],
+      "workflow-projects-v2": ["repo-view-001"],
       all: ["repo-view-001"]
     })
 
@@ -122,10 +122,10 @@ describe("check-scenarios", () => {
     loadScenarioSetsMock.mockResolvedValue({
       default: [],
       "pr-operations-all": [],
-      "batch-a-pr-exec": [],
-      "batch-b-issues": [],
-      "batch-c-release-delivery": [],
-      "batch-d-workflow-projects-v2": [],
+      "pr-exec": [],
+      "issues": [],
+      "release-delivery": [],
+      "workflow-projects-v2": [],
       all: []
     })
 
@@ -182,10 +182,10 @@ describe("check-scenarios", () => {
     loadScenarioSetsMock.mockResolvedValue({
       default: ["repo-view-001"],
       "pr-operations-all": ["repo-view-001"],
-      "batch-a-pr-exec": ["repo-view-001"],
-      "batch-b-issues": ["repo-view-001"],
-      "batch-c-release-delivery": ["repo-view-001"],
-      "batch-d-workflow-projects-v2": ["repo-view-001"],
+      "pr-exec": ["repo-view-001"],
+      "issues": ["repo-view-001"],
+      "release-delivery": ["repo-view-001"],
+      "workflow-projects-v2": ["repo-view-001"],
       all: ["repo-view-001"]
     })
 
@@ -195,15 +195,15 @@ describe("check-scenarios", () => {
   it("fails when all is not exact union of roadmap batch sets", async () => {
     loadScenariosMock.mockResolvedValue([
       createScenario("repo-view-001", "repo.view"),
-      createScenario("batch-a-pr-review-submit-approve-001", "pr.review.submit_approve")
+      createScenario("pr-review-submit-approve-001", "pr.review.submit_approve")
     ])
     loadScenarioSetsMock.mockResolvedValue({
       default: ["repo-view-001"],
       "pr-operations-all": ["repo-view-001"],
-      "batch-a-pr-exec": ["batch-a-pr-review-submit-approve-001"],
-      "batch-b-issues": [],
-      "batch-c-release-delivery": [],
-      "batch-d-workflow-projects-v2": [],
+      "pr-exec": ["pr-review-submit-approve-001"],
+      "issues": [],
+      "release-delivery": [],
+      "workflow-projects-v2": [],
       all: []
     })
 

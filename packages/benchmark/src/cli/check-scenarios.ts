@@ -7,15 +7,15 @@ import { loadScenarios, loadScenarioSets } from "../scenario/loader.js"
 export const REQUIRED_SCENARIO_SETS = [
   "default",
   "pr-operations-all",
-  "batch-a-pr-exec",
-  "batch-b-issues",
-  "batch-c-release-delivery",
-  "batch-d-workflow-projects-v2",
+  "pr-exec",
+  "issues",
+  "release-delivery",
+  "workflow-projects-v2",
   "all"
 ]
 
 export const ROADMAP_CAPABILITIES_BY_SET: Record<string, string[]> = {
-  "batch-a-pr-exec": [
+  "pr-exec": [
     "pr.review.submit_approve",
     "pr.review.submit_request_changes",
     "pr.review.submit_comment",
@@ -26,7 +26,7 @@ export const ROADMAP_CAPABILITIES_BY_SET: Record<string, string[]> = {
     "pr.assignees.update",
     "pr.branch.update"
   ],
-  "batch-b-issues": [
+  "issues": [
     "issue.create",
     "issue.update",
     "issue.close",
@@ -43,7 +43,7 @@ export const ROADMAP_CAPABILITIES_BY_SET: Record<string, string[]> = {
     "issue.blocked_by.add",
     "issue.blocked_by.remove"
   ],
-  "batch-c-release-delivery": [
+  "release-delivery": [
     "release.list",
     "release.get",
     "release.create_draft",
@@ -52,7 +52,7 @@ export const ROADMAP_CAPABILITIES_BY_SET: Record<string, string[]> = {
     "workflow_dispatch.run",
     "workflow_run.rerun_failed"
   ],
-  "batch-d-workflow-projects-v2": [
+  "workflow-projects-v2": [
     "workflow.list",
     "workflow.get",
     "workflow_run.get",
@@ -117,10 +117,10 @@ function assertNoOrphanScenarios(scenarioSets: Record<string, string[]>, scenari
 
 function assertAllSetExactUnion(scenarioSets: Record<string, string[]>): void {
   const expectedIds = new Set([
-    ...(scenarioSets["batch-a-pr-exec"] ?? []),
-    ...(scenarioSets["batch-b-issues"] ?? []),
-    ...(scenarioSets["batch-c-release-delivery"] ?? []),
-    ...(scenarioSets["batch-d-workflow-projects-v2"] ?? [])
+    ...(scenarioSets["pr-exec"] ?? []),
+    ...(scenarioSets["issues"] ?? []),
+    ...(scenarioSets["release-delivery"] ?? []),
+    ...(scenarioSets["workflow-projects-v2"] ?? [])
   ])
   const actualIds = new Set(scenarioSets["all"])
 
