@@ -1521,4 +1521,141 @@ describe("createGithubClient", () => {
       expect.objectContaining({ issueId: "issue-1", blockedByIssueId: "issue-blocker", removed: true })
     )
   })
+
+  it("covers issue mutation error branches for lookups and malformed payloads", async () => {
+    const createRepoMissingClient = createGithubClient({
+      execute: vi.fn(async () => ({ repository: { id: null } }))
+    } as never)
+    await expect(
+      createRepoMissingClient.createIssue({ owner: "acme", name: "repo", title: "hello" })
+    ).rejects.toThrow("Repository not found")
+
+    const createMalformedNodeClient = createGithubClient({
+      execute: vi
+        .fn()
+        .mockResolvedValueOnce({ repository: { id: "repo-1" } })
+        .mockResolvedValueOnce({ createIssue: { issue: { id: "issue-1" } } })
+    } as never)
+    await expect(
+      createMalformedNodeClient.createIssue({ owner: "acme", name: "repo", title: "hello" })
+    ).rejects.toThrow("Issue mutation failed")
+
+    const deleteMissingMutationClient = createGithubClient({
+      execute: vi.fn(async () => ({ deleteIssue: null }))
+    } as never)
+    await expect(deleteMissingMutationClient.deleteIssue({ issueId: "issue-1" })).rejects.toThrow("Issue deletion failed")
+
+    const labelsLookupMissingClient = createGithubClient({
+      execute: vi.fn(async () => ({ node: { repository: { labels: { nodes: [] } } } }))
+    } as never)
+    await expect(labelsLookupMissingClient.updateIssueLabels({ issueId: "issue-1", labels: ["bug"] })).rejects.toThrow(
+      "Label not found: bug"
+    )
+
+    const assigneesLookupMissingClient = createGithubClient({
+      execute: vi.fn(async () => ({ node: { repository: { assignableUsers: { nodes: [] } } } }))
+    } as never)
+    await expect(
+      assigneesLookupMissingClient.updateIssueAssignees({ issueId: "issue-1", assignees: ["octocat"] })
+    ).rejects.toThrow("Assignee not found: octocat")
+
+    const milestoneLookupMissingClient = createGithubClient({
+      execute: vi.fn(async () => ({ node: { repository: { milestone: null } } }))
+    } as never)
+    await expect(
+      milestoneLookupMissingClient.setIssueMilestone({ issueId: "issue-1", milestoneNumber: 2 })
+    ).rejects.toThrow("Milestone not found: 2")
+
+    const commentMalformedClient = createGithubClient({
+      execute: vi.fn(async () => ({ addComment: { commentEdge: { node: { id: "comment-1" } } } }))
+    } as never)
+    await expect(commentMalformedClient.createIssueComment({ issueId: "issue-1", body: "ack" })).rejects.toThrow(
+      "Issue comment creation failed"
+    )
+  })
+
+  it("covers issue relation and dependency failure paths", async () => {
+    const relationsMissingClient = createGithubClient({
+      execute: vi.fn(async () => ({ repository: { issue: null } }))
+    } as never)
+    await expect(relationsMissingClient.fetchIssueRelations({ owner: "acme", name: "repo", issueNumber: 1 })).rejects.toThrow(
+      "Issue relations not found"
+    )
+
+    const parentSetMissingIdsClient = createGithubClient({
+      execute: vi.fn(async () => ({ addSubIssue: { issue: {}, subIssue: {} } }))
+    } as never)
+    await expect(parentSetMissingIdsClient.setIssueParent({ issueId: "issue-1", parentIssueId: "issue-2" })).rejects.toThrow(
+      "Issue parent update failed"
+    )
+
+    const parentLookupMissingClient = createGithubClient({
+      execute: vi.fn(async () => ({ node: { parent: null } }))
+    } as never)
+    await expect(parentLookupMissingClient.removeIssueParent({ issueId: "issue-1" })).rejects.toThrow(
+      "Issue parent removal failed"
+    )
+
+    const parentRemoveMissingIdsClient = createGithubClient({
+      execute: vi
+        .fn()
+        .mockResolvedValueOnce({ node: { parent: { id: "issue-parent" } } })
+        .mockResolvedValueOnce({ removeSubIssue: { issue: {}, subIssue: {} } })
+    } as never)
+    await expect(parentRemoveMissingIdsClient.removeIssueParent({ issueId: "issue-1" })).rejects.toThrow(
+      "Issue parent removal failed"
+    )
+
+    const blockedByAddMissingIdsClient = createGithubClient({
+      execute: vi.fn(async () => ({ addBlockedBy: { issue: {}, blockingIssue: {} } }))
+    } as never)
+    await expect(
+      blockedByAddMissingIdsClient.addIssueBlockedBy({ issueId: "issue-1", blockedByIssueId: "issue-2" })
+    ).rejects.toThrow("Issue dependency mutation failed")
+
+    const blockedByRemoveMissingIdsClient = createGithubClient({
+      execute: vi.fn(async () => ({ removeBlockedBy: { issue: {}, blockingIssue: {} } }))
+    } as never)
+    await expect(
+      blockedByRemoveMissingIdsClient.removeIssueBlockedBy({ issueId: "issue-1", blockedByIssueId: "issue-2" })
+    ).rejects.toThrow("Issue dependency mutation failed")
+  })
+
+  it("filters malformed linked PR and issue relation nodes", async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({
+        repository: {
+          issue: {
+            timelineItems: {
+              nodes: [
+                { subject: { __typename: "PullRequest", id: "pr-1", number: 2, title: "ok", state: "OPEN", url: "u" } },
+                { subject: { __typename: "PullRequest", id: "pr-2", number: "bad", title: "skip", state: "OPEN", url: "u" } }
+              ]
+            }
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        repository: {
+          issue: {
+            id: "issue-1",
+            number: 10,
+            parent: { id: 1 },
+            subIssues: { nodes: [{ id: "issue-2", number: 11 }, { id: "bad" }] },
+            blockedBy: { nodes: [{ id: "issue-3", number: 7 }, { number: 9 }] }
+          }
+        }
+      })
+
+    const client = createGithubClient({ execute } as never)
+
+    const linked = await client.fetchIssueLinkedPrs({ owner: "acme", name: "repo", issueNumber: 10 })
+    const relations = await client.fetchIssueRelations({ owner: "acme", name: "repo", issueNumber: 10 })
+
+    expect(linked.items).toEqual([{ id: "pr-1", number: 2, title: "ok", state: "OPEN", url: "u" }])
+    expect(relations.parent).toBeNull()
+    expect(relations.children).toEqual([{ id: "issue-2", number: 11 }])
+    expect(relations.blockedBy).toEqual([{ id: "issue-3", number: 7 }])
+  })
 })
