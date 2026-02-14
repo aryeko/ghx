@@ -52,7 +52,7 @@ Exit criteria:
 Exit criteria:
 
 - All capabilities listed by `list_capabilities` and schema-validated.
-- Benchmark set `roadmap-batch-a-pr-exec` passes.
+- Benchmark set `pr-exec` passes.
 - Docs include one end-to-end PR execution golden flow.
 
 ### Batch B: Issue Lifecycle and Dependencies (`issue.*`)
@@ -76,7 +76,7 @@ Exit criteria:
 Exit criteria:
 
 - All issue lifecycle and dependency operations are contract-tested.
-- Benchmark set `roadmap-batch-b-issues` passes.
+- Benchmark set `issues` passes.
 - Mutation fixtures are isolated and stable.
 
 ### Batch C: Release and Delivery Operations
@@ -92,7 +92,7 @@ Exit criteria:
 Exit criteria:
 
 - Draft-first release semantics are validated.
-- Benchmark set `roadmap-batch-c-release-delivery` passes.
+- Benchmark set `release-delivery` passes.
 - Docs include a release lifecycle recipe.
 
 ### Batch D: Workflow Controls + Projects v2 + Repo Metadata
@@ -115,7 +115,7 @@ Exit criteria:
 Exit criteria:
 
 - Projects v2-only scope is preserved.
-- Benchmark set `roadmap-batch-d-workflow-projects-v2` passes.
+- Benchmark sets `workflows` and `projects-v2` pass.
 - Docs include workflow + project control examples.
 
 ## After A-D: Adoption-Prioritized Next Work

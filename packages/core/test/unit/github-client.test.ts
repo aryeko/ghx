@@ -1214,4 +1214,448 @@ describe("createGithubClient", () => {
       "Reply body is required"
     )
   })
+
+  it("supports issue lifecycle, metadata, and relation helpers", async () => {
+    const execute = vi.fn(async (query: string) => {
+      if (query.includes("query IssueCreateRepositoryId")) {
+        return {
+          repository: {
+            id: "repo-1"
+          }
+        }
+      }
+
+      if (query.includes("mutation IssueCreate")) {
+        return {
+          createIssue: {
+            issue: {
+              id: "issue-1",
+              number: 501,
+              title: "Created issue",
+              state: "OPEN",
+              url: "https://example.com/issues/501"
+            }
+          }
+        }
+      }
+
+      if (query.includes("mutation IssueUpdate")) {
+        return {
+          updateIssue: {
+            issue: {
+              id: "issue-1",
+              number: 501,
+              title: "Updated issue",
+              state: "OPEN",
+              url: "https://example.com/issues/501"
+            }
+          }
+        }
+      }
+
+      if (query.includes("mutation IssueClose")) {
+        return {
+          closeIssue: {
+            issue: {
+              id: "issue-1",
+              number: 501,
+              state: "CLOSED"
+            }
+          }
+        }
+      }
+
+      if (query.includes("mutation IssueReopen")) {
+        return {
+          reopenIssue: {
+            issue: {
+              id: "issue-1",
+              number: 501,
+              state: "OPEN"
+            }
+          }
+        }
+      }
+
+      if (query.includes("mutation IssueDelete")) {
+        return {
+          deleteIssue: {
+            clientMutationId: "ok"
+          }
+        }
+      }
+
+      if (query.includes("mutation IssueLabelsUpdate")) {
+        return {
+          updateIssue: {
+            issue: {
+              id: "issue-1",
+              labels: {
+                nodes: [{ name: "bug" }, { name: "batch-b" }]
+              }
+            }
+          }
+        }
+      }
+
+      if (query.includes("query IssueLabelsLookup")) {
+        return {
+          node: {
+            repository: {
+              labels: {
+                nodes: [
+                  { id: "label-bug", name: "bug" },
+                  { id: "label-batch-b", name: "batch-b" }
+                ]
+              }
+            }
+          }
+        }
+      }
+
+      if (query.includes("mutation IssueAssigneesUpdate")) {
+        return {
+          updateIssue: {
+            issue: {
+              id: "issue-1",
+              assignees: {
+                nodes: [{ login: "octocat" }]
+              }
+            }
+          }
+        }
+      }
+
+      if (query.includes("query IssueAssigneesLookup")) {
+        return {
+          node: {
+            repository: {
+              assignableUsers: {
+                nodes: [{ id: "user-octocat", login: "octocat" }]
+              }
+            }
+          }
+        }
+      }
+
+      if (query.includes("mutation IssueMilestoneSet")) {
+        return {
+          updateIssue: {
+            issue: {
+              id: "issue-1",
+              milestone: {
+                number: 3
+              }
+            }
+          }
+        }
+      }
+
+      if (query.includes("query IssueMilestoneLookup")) {
+        return {
+          node: {
+            repository: {
+              milestone: {
+                id: "milestone-3"
+              }
+            }
+          }
+        }
+      }
+
+      if (query.includes("mutation IssueCommentCreate")) {
+        return {
+          addComment: {
+            commentEdge: {
+              node: {
+                id: "comment-1",
+                body: "ack",
+                url: "https://example.com/comment/1"
+              }
+            }
+          }
+        }
+      }
+
+      if (query.includes("query IssueLinkedPrsList")) {
+        return {
+          repository: {
+            issue: {
+              timelineItems: {
+                nodes: [
+                  {
+                    __typename: "ConnectedEvent",
+                    subject: {
+                      __typename: "PullRequest",
+                      id: "pr-1",
+                      number: 42,
+                      title: "Fixes #501",
+                      state: "OPEN",
+                      url: "https://example.com/pull/42"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+
+      if (query.includes("query IssueRelationsGet")) {
+        return {
+          repository: {
+            issue: {
+              id: "issue-1",
+              number: 501,
+              parent: {
+                id: "issue-parent",
+                number: 500
+              },
+              subIssues: {
+                nodes: [{ id: "issue-child", number: 502 }]
+              },
+              blockedBy: {
+                nodes: [{ id: "issue-blocker", number: 499 }]
+              }
+            }
+          }
+        }
+      }
+
+      if (query.includes("mutation IssueParentSet")) {
+        return {
+          addSubIssue: {
+            issue: { id: "issue-parent" },
+            subIssue: { id: "issue-child" }
+          }
+        }
+      }
+
+      if (query.includes("query IssueParentLookup")) {
+        return {
+          node: {
+            id: "issue-child",
+            parent: { id: "issue-parent" }
+          }
+        }
+      }
+
+      if (query.includes("mutation IssueParentRemove")) {
+        return {
+          removeSubIssue: {
+            issue: { id: "issue-parent" },
+            subIssue: { id: "issue-child" }
+          }
+        }
+      }
+
+      if (query.includes("mutation IssueBlockedByAdd")) {
+        return {
+          addBlockedBy: {
+            issue: { id: "issue-1" },
+            blockingIssue: { id: "issue-blocker" }
+          }
+        }
+      }
+
+      if (query.includes("mutation IssueBlockedByRemove")) {
+        return {
+          removeBlockedBy: {
+            issue: { id: "issue-1" },
+            blockingIssue: { id: "issue-blocker" }
+          }
+        }
+      }
+
+      throw new Error("unexpected query")
+    })
+
+    const client = createGithubClient({ execute } as never)
+
+    await expect(client.createIssue({ owner: "acme", name: "modkit", title: "Created issue" })).resolves.toEqual(
+      expect.objectContaining({ id: "issue-1", number: 501, title: "Created issue" })
+    )
+    await expect(client.updateIssue({ issueId: "issue-1", title: "Updated issue" })).resolves.toEqual(
+      expect.objectContaining({ id: "issue-1", title: "Updated issue" })
+    )
+    await expect(client.closeIssue({ issueId: "issue-1" })).resolves.toEqual(
+      expect.objectContaining({ id: "issue-1", state: "CLOSED", closed: true })
+    )
+    await expect(client.reopenIssue({ issueId: "issue-1" })).resolves.toEqual(
+      expect.objectContaining({ id: "issue-1", state: "OPEN", reopened: true })
+    )
+    await expect(client.deleteIssue({ issueId: "issue-1" })).resolves.toEqual(
+      expect.objectContaining({ id: "issue-1", deleted: true })
+    )
+    await expect(client.updateIssueLabels({ issueId: "issue-1", labels: ["bug", "batch-b"] })).resolves.toEqual(
+      expect.objectContaining({ id: "issue-1", labels: ["bug", "batch-b"] })
+    )
+    await expect(client.updateIssueAssignees({ issueId: "issue-1", assignees: ["octocat"] })).resolves.toEqual(
+      expect.objectContaining({ id: "issue-1", assignees: ["octocat"] })
+    )
+    await expect(client.setIssueMilestone({ issueId: "issue-1", milestoneNumber: 3 })).resolves.toEqual(
+      expect.objectContaining({ id: "issue-1", milestoneNumber: 3 })
+    )
+    await expect(client.createIssueComment({ issueId: "issue-1", body: "ack" })).resolves.toEqual(
+      expect.objectContaining({ id: "comment-1", body: "ack" })
+    )
+    await expect(client.fetchIssueLinkedPrs({ owner: "acme", name: "modkit", issueNumber: 501 })).resolves.toEqual(
+      expect.objectContaining({ items: [expect.objectContaining({ id: "pr-1", number: 42 })] })
+    )
+    await expect(client.fetchIssueRelations({ owner: "acme", name: "modkit", issueNumber: 501 })).resolves.toEqual(
+      expect.objectContaining({
+        issue: expect.objectContaining({ id: "issue-1", number: 501 }),
+        parent: expect.objectContaining({ id: "issue-parent", number: 500 })
+      })
+    )
+    await expect(client.setIssueParent({ issueId: "issue-child", parentIssueId: "issue-parent" })).resolves.toEqual(
+      expect.objectContaining({ issueId: "issue-child", parentIssueId: "issue-parent" })
+    )
+    await expect(client.removeIssueParent({ issueId: "issue-child" })).resolves.toEqual(
+      expect.objectContaining({ issueId: "issue-child", parentRemoved: true })
+    )
+    await expect(client.addIssueBlockedBy({ issueId: "issue-1", blockedByIssueId: "issue-blocker" })).resolves.toEqual(
+      expect.objectContaining({ issueId: "issue-1", blockedByIssueId: "issue-blocker" })
+    )
+    await expect(client.removeIssueBlockedBy({ issueId: "issue-1", blockedByIssueId: "issue-blocker" })).resolves.toEqual(
+      expect.objectContaining({ issueId: "issue-1", blockedByIssueId: "issue-blocker", removed: true })
+    )
+  })
+
+  it("covers issue mutation error branches for lookups and malformed payloads", async () => {
+    const createRepoMissingClient = createGithubClient({
+      execute: vi.fn(async () => ({ repository: { id: null } }))
+    } as never)
+    await expect(
+      createRepoMissingClient.createIssue({ owner: "acme", name: "repo", title: "hello" })
+    ).rejects.toThrow("Repository not found")
+
+    const createMalformedNodeClient = createGithubClient({
+      execute: vi
+        .fn()
+        .mockResolvedValueOnce({ repository: { id: "repo-1" } })
+        .mockResolvedValueOnce({ createIssue: { issue: { id: "issue-1" } } })
+    } as never)
+    await expect(
+      createMalformedNodeClient.createIssue({ owner: "acme", name: "repo", title: "hello" })
+    ).rejects.toThrow("Issue mutation failed")
+
+    const deleteMissingMutationClient = createGithubClient({
+      execute: vi.fn(async () => ({ deleteIssue: null }))
+    } as never)
+    await expect(deleteMissingMutationClient.deleteIssue({ issueId: "issue-1" })).rejects.toThrow("Issue deletion failed")
+
+    const labelsLookupMissingClient = createGithubClient({
+      execute: vi.fn(async () => ({ node: { repository: { labels: { nodes: [] } } } }))
+    } as never)
+    await expect(labelsLookupMissingClient.updateIssueLabels({ issueId: "issue-1", labels: ["bug"] })).rejects.toThrow(
+      "Label not found: bug"
+    )
+
+    const assigneesLookupMissingClient = createGithubClient({
+      execute: vi.fn(async () => ({ node: { repository: { assignableUsers: { nodes: [] } } } }))
+    } as never)
+    await expect(
+      assigneesLookupMissingClient.updateIssueAssignees({ issueId: "issue-1", assignees: ["octocat"] })
+    ).rejects.toThrow("Assignee not found: octocat")
+
+    const milestoneLookupMissingClient = createGithubClient({
+      execute: vi.fn(async () => ({ node: { repository: { milestone: null } } }))
+    } as never)
+    await expect(
+      milestoneLookupMissingClient.setIssueMilestone({ issueId: "issue-1", milestoneNumber: 2 })
+    ).rejects.toThrow("Milestone not found: 2")
+
+    const commentMalformedClient = createGithubClient({
+      execute: vi.fn(async () => ({ addComment: { commentEdge: { node: { id: "comment-1" } } } }))
+    } as never)
+    await expect(commentMalformedClient.createIssueComment({ issueId: "issue-1", body: "ack" })).rejects.toThrow(
+      "Issue comment creation failed"
+    )
+  })
+
+  it("covers issue relation and dependency failure paths", async () => {
+    const relationsMissingClient = createGithubClient({
+      execute: vi.fn(async () => ({ repository: { issue: null } }))
+    } as never)
+    await expect(relationsMissingClient.fetchIssueRelations({ owner: "acme", name: "repo", issueNumber: 1 })).rejects.toThrow(
+      "Issue relations not found"
+    )
+
+    const parentSetMissingIdsClient = createGithubClient({
+      execute: vi.fn(async () => ({ addSubIssue: { issue: {}, subIssue: {} } }))
+    } as never)
+    await expect(parentSetMissingIdsClient.setIssueParent({ issueId: "issue-1", parentIssueId: "issue-2" })).rejects.toThrow(
+      "Issue parent update failed"
+    )
+
+    const parentLookupMissingClient = createGithubClient({
+      execute: vi.fn(async () => ({ node: { parent: null } }))
+    } as never)
+    await expect(parentLookupMissingClient.removeIssueParent({ issueId: "issue-1" })).rejects.toThrow(
+      "Issue parent removal failed"
+    )
+
+    const parentRemoveMissingIdsClient = createGithubClient({
+      execute: vi
+        .fn()
+        .mockResolvedValueOnce({ node: { parent: { id: "issue-parent" } } })
+        .mockResolvedValueOnce({ removeSubIssue: { issue: {}, subIssue: {} } })
+    } as never)
+    await expect(parentRemoveMissingIdsClient.removeIssueParent({ issueId: "issue-1" })).rejects.toThrow(
+      "Issue parent removal failed"
+    )
+
+    const blockedByAddMissingIdsClient = createGithubClient({
+      execute: vi.fn(async () => ({ addBlockedBy: { issue: {}, blockingIssue: {} } }))
+    } as never)
+    await expect(
+      blockedByAddMissingIdsClient.addIssueBlockedBy({ issueId: "issue-1", blockedByIssueId: "issue-2" })
+    ).rejects.toThrow("Issue dependency mutation failed")
+
+    const blockedByRemoveMissingIdsClient = createGithubClient({
+      execute: vi.fn(async () => ({ removeBlockedBy: { issue: {}, blockingIssue: {} } }))
+    } as never)
+    await expect(
+      blockedByRemoveMissingIdsClient.removeIssueBlockedBy({ issueId: "issue-1", blockedByIssueId: "issue-2" })
+    ).rejects.toThrow("Issue dependency mutation failed")
+  })
+
+  it("filters malformed linked PR and issue relation nodes", async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({
+        repository: {
+          issue: {
+            timelineItems: {
+              nodes: [
+                { subject: { __typename: "PullRequest", id: "pr-1", number: 2, title: "ok", state: "OPEN", url: "u" } },
+                { subject: { __typename: "PullRequest", id: "pr-2", number: "bad", title: "skip", state: "OPEN", url: "u" } }
+              ]
+            }
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        repository: {
+          issue: {
+            id: "issue-1",
+            number: 10,
+            parent: { id: 1 },
+            subIssues: { nodes: [{ id: "issue-2", number: 11 }, { id: "bad" }] },
+            blockedBy: { nodes: [{ id: "issue-3", number: 7 }, { number: 9 }] }
+          }
+        }
+      })
+
+    const client = createGithubClient({ execute } as never)
+
+    const linked = await client.fetchIssueLinkedPrs({ owner: "acme", name: "repo", issueNumber: 10 })
+    const relations = await client.fetchIssueRelations({ owner: "acme", name: "repo", issueNumber: 10 })
+
+    expect(linked.items).toEqual([{ id: "pr-1", number: 2, title: "ok", state: "OPEN", url: "u" }])
+    expect(relations.parent).toBeNull()
+    expect(relations.children).toEqual([{ id: "issue-2", number: 11 }])
+    expect(relations.blockedBy).toEqual([{ id: "issue-3", number: 7 }])
+  })
 })
