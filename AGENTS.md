@@ -152,5 +152,5 @@ Before final handoff on substantial changes, run:
 
 ```bash
 pnpm run ci:affected --parallel=3 --outputStyle=static
-pnpm run test:coverage --parallel=3 --outputStyle=static // <-- verify all modified or new files has >=90% coverage (aim for 95)
+pnpm run test:coverage --parallel=3 --outputStyle=static  # <-- verify all modified or new files has >=90% coverage (aim for 95)
 ```
