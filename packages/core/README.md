@@ -14,7 +14,7 @@ Public ghx package: CLI-first GitHub execution router for AI agents.
 
 `@ghx-dev/core` routes GitHub capabilities across CLI and GraphQL, validates inputs/outputs against operation cards, and returns a stable envelope contract for deterministic agent automation.
 
-> Beta: current dist-tag is `0.1.0-beta.0`.
+> Beta: current dist-tag is `beta`.
 
 ## Why @ghx-dev/core
 
