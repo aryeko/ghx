@@ -44,7 +44,7 @@ Per-mode profiling is emitted when rows include `timing_breakdown`.
 - `assistant_reasoning_ms`: sum of explicit reasoning-part durations.
 - `assistant_between_reasoning_and_tool_ms`: gap between reasoning end and first tool start.
 - `tool_total_ms` / `tool_bash_ms`: measured tool execution time from part state timestamps.
-- `assistant_post_tool_ms`: time from first tool completion to assistant completion.
+- `assistant_post_tool_ms`: time from last tool completion to assistant completion.
 
 Use this snapshot to diagnose whether latency is dominated by model-side turn processing or by tool execution.
 

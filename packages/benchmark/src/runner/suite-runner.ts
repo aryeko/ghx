@@ -707,12 +707,14 @@ function parseGhxCapabilities(raw: string): string[] {
   let parsed: unknown
   try {
     parsed = JSON.parse(trimmed)
-  } catch {
-    return []
+  } catch (error) {
+    throw new Error(
+      `ghx capabilities JSON invalid: ${error instanceof Error ? error.message : String(error)}`
+    )
   }
 
   if (!Array.isArray(parsed)) {
-    return []
+    throw new Error(`ghx capabilities JSON invalid: expected array but got ${typeof parsed}`)
   }
 
   return parsed
