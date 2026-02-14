@@ -70,6 +70,8 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
+      - name: Install opencode
+        run: curl -fsSL https://opencode.ai/install | bash
       - run: pnpm install --frozen-lockfile
       - name: E2E tests
         run: pnpm run test:e2e
