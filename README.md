@@ -1,5 +1,11 @@
 # ghx
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/branding/logos/ghx-logo-lockup-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="assets/branding/logos/ghx-logo-lockup-light.png">
+  <img src="assets/branding/logos/ghx-logo-lockup-dark.png" alt="ghx logo" width="420">
+</picture>
+
 > GitHub execution router for AI agents.
 > One typed capability interface over `gh` CLI + GraphQL.
 
@@ -139,6 +145,7 @@ For the full capability inventory, see https://github.com/aryeko/ghx/blob/main/p
 - Setup command design: `docs/architecture/setup-command-design.md`
 - Roadmap golden flows: `docs/guides/roadmap-golden-flows.md`
 - Publishing guide: `docs/guides/publishing.md`
+- Branding assets: `assets/branding/README.md`
 - CI workflows: `docs/engineering/ci-workflows.md`
 
 ## Verification

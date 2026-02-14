@@ -1,5 +1,11 @@
 # @ghx-dev/core
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/aryeko/ghx/main/assets/branding/logos/ghx-logo-lockup-dark.png">
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/aryeko/ghx/main/assets/branding/logos/ghx-logo-lockup-light.png">
+  <img src="https://raw.githubusercontent.com/aryeko/ghx/main/assets/branding/logos/ghx-logo-lockup-dark.png" alt="ghx logo" width="420">
+</picture>
+
 [![npm version](https://img.shields.io/npm/v/%40ghx-dev%2Fcore)](https://www.npmjs.com/package/@ghx-dev/core)
 [![npm downloads](https://img.shields.io/npm/dm/%40ghx-dev%2Fcore)](https://www.npmjs.com/package/@ghx-dev/core)
 [![CI (main)](https://github.com/aryeko/ghx/actions/workflows/ci-main.yml/badge.svg)](https://github.com/aryeko/ghx/actions/workflows/ci-main.yml)
