@@ -18,7 +18,6 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GITHUB_TOKEN: ${{ github.token }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     strategy:
       fail-fast: false
       matrix:
@@ -53,14 +52,13 @@ jobs:
           use_oidc: true
           fail_ci_if_error: true
 
-  benchmark-and-e2e:
+  e2e:
     runs-on: ubuntu-latest
     permissions:
       contents: read
     env:
       GH_TOKEN: ${{ github.token }}
       GITHUB_TOKEN: ${{ github.token }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -75,19 +73,3 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: E2E tests
         run: pnpm run test:e2e
-      - name: Benchmark verify (verify_pr)
-        if: "!startsWith(github.event.pull_request.title, 'chore: version packages')"
-        run: pnpm run benchmark:verify:pr
-      - name: Benchmark verify (verify_release)
-        if: "startsWith(github.event.pull_request.title, 'chore: version packages')"
-        run: pnpm run benchmark:verify:release
-      - name: Upload benchmark artifacts
-        if: ${{ always() && !cancelled() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: benchmark-artifacts-pr-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            packages/benchmark/results/*.jsonl
-            packages/benchmark/reports/latest-summary.json
-            packages/benchmark/reports/latest-summary.md
-          if-no-files-found: warn
