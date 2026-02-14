@@ -42,4 +42,18 @@ describe("scenario-sets manifest", () => {
       "batch-d-repo-issue-types-list-001"
     ])
   })
+
+  it("includes roadmap batch C release and delivery set", () => {
+    const scenarioSets = loadScenarioSets()
+
+    expect(scenarioSets["roadmap-batch-c-release-delivery"]).toEqual([
+      "batch-c-release-list-001",
+      "batch-c-release-get-001",
+      "batch-c-release-create-draft-001",
+      "batch-c-release-update-001",
+      "batch-c-release-publish-draft-001",
+      "batch-c-workflow-dispatch-run-001",
+      "batch-c-workflow-run-rerun-failed-001"
+    ])
+  })
 })

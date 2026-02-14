@@ -27,6 +27,13 @@ import { workflowRunsListTask } from "../../src/core/contracts/tasks/workflow_ru
 import { workflowRunJobsListTask } from "../../src/core/contracts/tasks/workflow_run.jobs.list.js"
 import { workflowJobLogsGetTask } from "../../src/core/contracts/tasks/workflow_job.logs.get.js"
 import { workflowJobLogsAnalyzeTask } from "../../src/core/contracts/tasks/workflow_job.logs.analyze.js"
+import { releaseListTask } from "../../src/core/contracts/tasks/release.list.js"
+import { releaseGetTask } from "../../src/core/contracts/tasks/release.get.js"
+import { releaseCreateDraftTask } from "../../src/core/contracts/tasks/release.create_draft.js"
+import { releaseUpdateTask } from "../../src/core/contracts/tasks/release.update.js"
+import { releasePublishDraftTask } from "../../src/core/contracts/tasks/release.publish_draft.js"
+import { workflowDispatchRunTask } from "../../src/core/contracts/tasks/workflow_dispatch.run.js"
+import { workflowRunRerunFailedTask } from "../../src/core/contracts/tasks/workflow_run.rerun_failed.js"
 import { repoViewTask } from "../../src/core/contracts/tasks/repo.view.js"
 import { routeReasonCodes } from "../../src/core/routing/reason-codes.js"
 import { runRestAdapter } from "../../src/core/execution/adapters/rest-adapter.js"
@@ -72,6 +79,13 @@ describe("scaffolds and constants", () => {
     expect(workflowRunJobsListTask.id).toBe("workflow_run.jobs.list")
     expect(workflowJobLogsGetTask.id).toBe("workflow_job.logs.get")
     expect(workflowJobLogsAnalyzeTask.id).toBe("workflow_job.logs.analyze")
+    expect(releaseListTask.id).toBe("release.list")
+    expect(releaseGetTask.id).toBe("release.get")
+    expect(releaseCreateDraftTask.id).toBe("release.create_draft")
+    expect(releaseUpdateTask.id).toBe("release.update")
+    expect(releasePublishDraftTask.id).toBe("release.publish_draft")
+    expect(workflowDispatchRunTask.id).toBe("workflow_dispatch.run")
+    expect(workflowRunRerunFailedTask.id).toBe("workflow_run.rerun_failed")
     expect(repoViewTask.id).toBe("repo.view")
     expect(routeReasonCodes).toContain("CARD_FALLBACK")
   })

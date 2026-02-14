@@ -41,8 +41,27 @@ describe("operation cards registry", () => {
       "project_v2.fields.list",
       "project_v2.items.list",
       "project_v2.item.add_issue",
-      "project_v2.item.field.update"
+      "project_v2.item.field.update",
+      "release.list",
+      "release.get",
+      "release.create_draft",
+      "release.update",
+      "release.publish_draft",
+      "workflow_dispatch.run",
+      "workflow_run.rerun_failed"
     ])
+  })
+
+  it("marks release and delivery batch cards as CLI-preferred", () => {
+    const releaseCreateDraft = getOperationCard("release.create_draft")
+    const releasePublishDraft = getOperationCard("release.publish_draft")
+    const workflowDispatchRun = getOperationCard("workflow_dispatch.run")
+    const workflowRunRerunFailed = getOperationCard("workflow_run.rerun_failed")
+
+    expect(releaseCreateDraft?.routing.preferred).toBe("cli")
+    expect(releasePublishDraft?.routing.preferred).toBe("cli")
+    expect(workflowDispatchRun?.routing.preferred).toBe("cli")
+    expect(workflowRunRerunFailed?.routing.preferred).toBe("cli")
   })
 
   it("resolves cards by capability id", () => {

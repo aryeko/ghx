@@ -46,6 +46,15 @@
     "batch-d-repo-labels-list-001",
     "batch-d-repo-issue-types-list-001"
   ],
+  "roadmap-batch-c-release-delivery": [
+    "batch-c-release-list-001",
+    "batch-c-release-get-001",
+    "batch-c-release-create-draft-001",
+    "batch-c-release-update-001",
+    "batch-c-release-publish-draft-001",
+    "batch-c-workflow-dispatch-run-001",
+    "batch-c-workflow-run-rerun-failed-001"
+  ],
   "pr-operations-all": [
     "pr-comments-unresolved-001",
     "pr-reviews-list-001",

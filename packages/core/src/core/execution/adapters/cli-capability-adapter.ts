@@ -35,6 +35,13 @@ export type CliCapabilityId =
   | "project_v2.items.list"
   | "project_v2.item.add_issue"
   | "project_v2.item.field.update"
+  | "release.list"
+  | "release.get"
+  | "release.create_draft"
+  | "release.update"
+  | "release.publish_draft"
+  | "workflow_dispatch.run"
+  | "workflow_run.rerun_failed"
 
 export type CliCommandRunner = {
   run(command: string, args: string[], timeoutMs: number): Promise<{ stdout: string; stderr: string; exitCode: number }>
@@ -87,6 +94,12 @@ function parseNonEmptyString(value: unknown): string | null {
 
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : null
+}
+
+function requireRepo(owner: string, name: string, capabilityId: CliCapabilityId): void {
+  if (!owner || !name) {
+    throw new Error(`Missing owner/name for ${capabilityId}`)
+  }
 }
 
 function commandTokens(card: OperationCard | undefined, fallbackCommand: string): string[] {
@@ -507,6 +520,207 @@ function buildArgs(capabilityId: CliCapabilityId, params: Record<string, unknown
     return args
   }
 
+  if (capabilityId === "release.list") {
+    requireRepo(owner, name, capabilityId)
+    const first = parseListFirst(params.first)
+    if (first === null) {
+      throw new Error("Missing or invalid first for release.list")
+    }
+
+    const args = [...commandTokens(card, "api"), `repos/${owner}/${name}/releases`, "-F", `per_page=${first}`]
+    return args
+  }
+
+  if (capabilityId === "release.get") {
+    requireRepo(owner, name, capabilityId)
+    const tagName = parseNonEmptyString(params.tagName)
+    if (tagName === null) {
+      throw new Error("Missing or invalid tagName for release.get")
+    }
+
+    const args = [...commandTokens(card, "api"), `repos/${owner}/${name}/releases/tags/${encodeURIComponent(tagName)}`]
+    return args
+  }
+
+  if (capabilityId === "release.create_draft") {
+    requireRepo(owner, name, capabilityId)
+    const tagName = parseNonEmptyString(params.tagName)
+    if (tagName === null) {
+      throw new Error("Missing or invalid tagName for release.create_draft")
+    }
+
+    const args = [
+      ...commandTokens(card, "api"),
+      `repos/${owner}/${name}/releases`,
+      "--method",
+      "POST",
+      "-f",
+      `tag_name=${tagName}`,
+      "-F",
+      "draft=true"
+    ]
+
+    const title = parseNonEmptyString(params.title)
+    if (title) {
+      args.push("-f", `name=${title}`)
+    }
+
+    const notes = parseNonEmptyString(params.notes)
+    if (notes) {
+      args.push("-f", `body=${notes}`)
+    }
+
+    const target = parseNonEmptyString(params.targetCommitish)
+    if (target) {
+      args.push("-f", `target_commitish=${target}`)
+    }
+
+    if (typeof params.prerelease === "boolean") {
+      args.push("-F", `prerelease=${params.prerelease ? "true" : "false"}`)
+    }
+
+    return args
+  }
+
+  if (capabilityId === "release.update") {
+    requireRepo(owner, name, capabilityId)
+    const releaseId = parseStrictPositiveInt(params.releaseId)
+    if (releaseId === null) {
+      throw new Error("Missing or invalid releaseId for release.update")
+    }
+
+    if (params.draft !== undefined && params.draft !== true) {
+      throw new Error("release.update only supports draft=true; use release.publish_draft to publish")
+    }
+
+    const args = [
+      ...commandTokens(card, "api"),
+      `repos/${owner}/${name}/releases/${releaseId}`,
+      "--method",
+      "PATCH",
+      "-F",
+      "draft=true"
+    ]
+
+    const tagName = parseNonEmptyString(params.tagName)
+    if (tagName) {
+      args.push("-f", `tag_name=${tagName}`)
+    }
+
+    const title = parseNonEmptyString(params.title)
+    if (title) {
+      args.push("-f", `name=${title}`)
+    }
+
+    const notes = parseNonEmptyString(params.notes)
+    if (notes) {
+      args.push("-f", `body=${notes}`)
+    }
+
+    const target = parseNonEmptyString(params.targetCommitish)
+    if (target) {
+      args.push("-f", `target_commitish=${target}`)
+    }
+
+    if (typeof params.prerelease === "boolean") {
+      args.push("-F", `prerelease=${params.prerelease ? "true" : "false"}`)
+    }
+
+    return args
+  }
+
+  if (capabilityId === "release.publish_draft") {
+    requireRepo(owner, name, capabilityId)
+    const releaseId = parseStrictPositiveInt(params.releaseId)
+    if (releaseId === null) {
+      throw new Error("Missing or invalid releaseId for release.publish_draft")
+    }
+
+    const args = [
+      ...commandTokens(card, "api"),
+      `repos/${owner}/${name}/releases/${releaseId}`,
+      "--method",
+      "PATCH",
+      "-F",
+      "draft=false"
+    ]
+
+    const title = parseNonEmptyString(params.title)
+    if (title) {
+      args.push("-f", `name=${title}`)
+    }
+
+    const notes = parseNonEmptyString(params.notes)
+    if (notes) {
+      args.push("-f", `body=${notes}`)
+    }
+
+    if (typeof params.prerelease === "boolean") {
+      args.push("-F", `prerelease=${params.prerelease ? "true" : "false"}`)
+    }
+
+    return args
+  }
+
+  if (capabilityId === "workflow_dispatch.run") {
+    requireRepo(owner, name, capabilityId)
+    const workflowId = parseNonEmptyString(params.workflowId)
+    if (workflowId === null) {
+      throw new Error("Missing or invalid workflowId for workflow_dispatch.run")
+    }
+
+    const ref = parseNonEmptyString(params.ref)
+    if (ref === null) {
+      throw new Error("Missing or invalid ref for workflow_dispatch.run")
+    }
+
+    const args = [
+      ...commandTokens(card, "api"),
+      `repos/${owner}/${name}/actions/workflows/${encodeURIComponent(workflowId)}/dispatches`,
+      "--method",
+      "POST",
+      "-f",
+      `ref=${ref}`
+    ]
+
+    if (params.inputs !== undefined) {
+      if (typeof params.inputs !== "object" || params.inputs === null || Array.isArray(params.inputs)) {
+        throw new Error("Missing or invalid inputs for workflow_dispatch.run")
+      }
+
+      const inputEntries = Object.entries(params.inputs as Record<string, unknown>)
+      for (const [key, value] of inputEntries) {
+        if (!key.trim()) {
+          throw new Error("Missing or invalid inputs for workflow_dispatch.run")
+        }
+
+        if (!(typeof value === "string" || typeof value === "number" || typeof value === "boolean")) {
+          throw new Error("Missing or invalid inputs for workflow_dispatch.run")
+        }
+
+        args.push("-f", `inputs[${key}]=${String(value)}`)
+      }
+    }
+
+    return args
+  }
+
+  if (capabilityId === "workflow_run.rerun_failed") {
+    requireRepo(owner, name, capabilityId)
+    const runId = parseStrictPositiveInt(params.runId)
+    if (runId === null) {
+      throw new Error("Missing or invalid runId for workflow_run.rerun_failed")
+    }
+
+    const args = [
+      ...commandTokens(card, "api"),
+      `repos/${owner}/${name}/actions/runs/${runId}/rerun-failed-jobs`,
+      "--method",
+      "POST"
+    ]
+    return args
+  }
+
   if (capabilityId === "project_v2.item.add_issue") {
     const projectNumber = parseStrictPositiveInt(params.projectNumber)
     const projectOwner = parseNonEmptyString(params.owner)
@@ -570,7 +784,6 @@ function buildArgs(capabilityId: CliCapabilityId, params: Record<string, unknown
 
     return args
   }
-
   throw new Error(`Unsupported CLI capability: ${capabilityId}`)
 }
 
@@ -689,6 +902,35 @@ function isCheckPassBucket(bucket: unknown): boolean {
 }
 
 function normalizeCliData(capabilityId: CliCapabilityId, data: unknown, params: Record<string, unknown>): unknown {
+  const normalizeRelease = (input: unknown): Record<string, unknown> => {
+    if (typeof input !== "object" || input === null || Array.isArray(input)) {
+      return {
+        id: 0,
+        tagName: null,
+        name: null,
+        isDraft: false,
+        isPrerelease: false,
+        url: null,
+        targetCommitish: null,
+        createdAt: null,
+        publishedAt: null
+      }
+    }
+
+    const record = input as Record<string, unknown>
+    return {
+      id: typeof record.id === "number" ? record.id : 0,
+      tagName: typeof record.tag_name === "string" ? record.tag_name : null,
+      name: typeof record.name === "string" ? record.name : null,
+      isDraft: typeof record.draft === "boolean" ? record.draft : false,
+      isPrerelease: typeof record.prerelease === "boolean" ? record.prerelease : false,
+      url: typeof record.html_url === "string" ? record.html_url : null,
+      targetCommitish: typeof record.target_commitish === "string" ? record.target_commitish : null,
+      createdAt: typeof record.created_at === "string" ? record.created_at : null,
+      publishedAt: typeof record.published_at === "string" ? record.published_at : null
+    }
+  }
+
   if (capabilityId === "repo.view") {
     const input = typeof data === "object" && data !== null && !Array.isArray(data)
       ? (data as Record<string, unknown>)
@@ -1056,6 +1298,17 @@ function normalizeCliData(capabilityId: CliCapabilityId, data: unknown, params: 
     }
   }
 
+  if (capabilityId === "release.list") {
+    const items = Array.isArray(data) ? data.map((item) => normalizeRelease(item)) : []
+    return {
+      items,
+      pageInfo: {
+        hasNextPage: false,
+        endCursor: null
+      }
+    }
+  }
+
   if (capabilityId === "workflow.get") {
     const input = normalizeWorkflowItem(data)
     const root = typeof data === "object" && data !== null && !Array.isArray(data)
@@ -1222,6 +1475,33 @@ function normalizeCliData(capabilityId: CliCapabilityId, data: unknown, params: 
     }
   }
 
+  if (capabilityId === "release.get" || capabilityId === "release.create_draft" || capabilityId === "release.update") {
+    return normalizeRelease(data)
+  }
+
+  if (capabilityId === "release.publish_draft") {
+    const release = normalizeRelease(data)
+    return {
+      ...release,
+      wasDraft: Boolean(params.__wasDraft)
+    }
+  }
+
+  if (capabilityId === "workflow_dispatch.run") {
+    return {
+      workflowId: String(params.workflowId),
+      ref: String(params.ref),
+      dispatched: true
+    }
+  }
+
+  if (capabilityId === "workflow_run.rerun_failed") {
+    return {
+      runId: Number(params.runId),
+      rerunFailed: true
+    }
+  }
+
   if (capabilityId === "issue.view" || capabilityId === "pr.view") {
     return normalizeListItem(data)
   }
@@ -1236,6 +1516,69 @@ export async function runCliCapability(
   card?: OperationCard
 ): Promise<ResultEnvelope> {
   try {
+    if (capabilityId === "release.publish_draft") {
+      const owner = String(params.owner ?? "")
+      const name = String(params.name ?? "")
+      const releaseId = parseStrictPositiveInt(params.releaseId)
+      if (!owner || !name || releaseId === null) {
+        throw new Error("Missing owner/name/releaseId for release.publish_draft")
+      }
+
+      const readArgs = [...commandTokens(card, "api"), `repos/${owner}/${name}/releases/${releaseId}`]
+      const readResult = await runner.run("gh", readArgs, DEFAULT_TIMEOUT_MS)
+      if (readResult.exitCode !== 0) {
+        const code = mapErrorToCode(readResult.stderr)
+        return normalizeError(
+          {
+            code,
+            message: sanitizeCliErrorMessage(readResult.stderr, readResult.exitCode),
+            retryable: isRetryableErrorCode(code),
+            details: { capabilityId, exitCode: readResult.exitCode }
+          },
+          "cli",
+          { capabilityId, reason: "CARD_FALLBACK" }
+        )
+      }
+
+      const currentRelease = parseCliData(readResult.stdout)
+      const currentDraftValue =
+        typeof currentRelease === "object" && currentRelease !== null && !Array.isArray(currentRelease)
+          ? (currentRelease as Record<string, unknown>).draft
+          : undefined
+
+      if (currentDraftValue !== true) {
+        return normalizeError(
+          {
+            code: errorCodes.Validation,
+            message: "release.publish_draft requires an existing draft release",
+            retryable: false
+          },
+          "cli",
+          { capabilityId, reason: "CARD_FALLBACK" }
+        )
+      }
+
+      const args = buildArgs(capabilityId, params, card)
+      const result = await runner.run("gh", args, DEFAULT_TIMEOUT_MS)
+
+      if (result.exitCode !== 0) {
+        const code = mapErrorToCode(result.stderr)
+        return normalizeError(
+          {
+            code,
+            message: sanitizeCliErrorMessage(result.stderr, result.exitCode),
+            retryable: isRetryableErrorCode(code),
+            details: { capabilityId, exitCode: result.exitCode }
+          },
+          "cli",
+          { capabilityId, reason: "CARD_FALLBACK" }
+        )
+      }
+
+      const normalized = normalizeCliData(capabilityId, parseCliData(result.stdout), { ...params, __wasDraft: true })
+      return normalizeResult(normalized, "cli", { capabilityId, reason: "CARD_FALLBACK" })
+    }
+
     const args = buildArgs(capabilityId, params, card)
     const result = await runner.run("gh", args, DEFAULT_TIMEOUT_MS)
 
@@ -1285,6 +1628,18 @@ export async function runCliCapability(
     }
 
     if (error instanceof Error && error.message.toLowerCase().includes("invalid after cursor")) {
+      return normalizeError(
+        {
+          code: errorCodes.Validation,
+          message: error.message,
+          retryable: false
+        },
+        "cli",
+        { capabilityId, reason: "CARD_FALLBACK" }
+      )
+    }
+
+    if (error instanceof Error && error.message.toLowerCase().includes("only supports draft=true")) {
       return normalizeError(
         {
           code: errorCodes.Validation,
