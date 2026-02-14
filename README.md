@@ -16,7 +16,7 @@ ghx provides a **card-driven capability router** that gives agents a stable, typ
 ## Quick Start
 
 ```bash
-# From the repo (CLI is in @ghx/core)
+# From the repo (CLI is in @ghx-dev/core)
 pnpm install
 pnpm run build
 ghx setup --platform claude-code --scope project --yes

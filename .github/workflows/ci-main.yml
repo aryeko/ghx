@@ -34,11 +34,20 @@ jobs:
       - run: pnpm run ci --parallel=3 --outputStyle=static
       - name: Generate coverage
         run: pnpm run test:coverage
-      - name: Upload coverage and test results to Codecov
-        if: ${{ !cancelled() }}
+      - name: Upload coverage to Codecov
+        if: ${{ always() && !cancelled() }}
         uses: codecov/codecov-action@v5
         with:
-          files: packages/*/coverage/lcov.info,packages/*/test-report.junit.xml
+          files: packages/*/coverage/lcov.info
+          flags: main
+          use_oidc: true
+          fail_ci_if_error: true
+      - name: Upload test results to Codecov
+        if: ${{ always() && !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          files: packages/*/test-report.junit.xml
+          report-type: test_results
           flags: main
           use_oidc: true
           fail_ci_if_error: true

@@ -1,6 +1,6 @@
 {
-  "name": "@ghx/core",
-  "version": "0.1.0",
+  "name": "@ghx-dev/core",
+  "version": "0.1.0-beta.0",
   "author": "Arye Kogan",
   "license": "MIT",
   "type": "module",
@@ -45,7 +45,13 @@
   "nx": {
     "targets": {
       "ci": {
-        "dependsOn": ["lint", "typecheck", "test", "build", "gql:check"]
+        "dependsOn": [
+          "lint",
+          "typecheck",
+          "test",
+          "build",
+          "gql:check"
+        ]
       }
     }
   },

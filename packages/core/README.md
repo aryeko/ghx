@@ -1,14 +1,14 @@
-# @ghx/core
+# @ghx-dev/core
 
-[![npm version](https://img.shields.io/npm/v/%40ghx%2Fcore)](https://www.npmjs.com/package/@ghx/core)
-[![npm downloads](https://img.shields.io/npm/dm/%40ghx%2Fcore)](https://www.npmjs.com/package/@ghx/core)
-[![License](https://img.shields.io/npm/l/%40ghx%2Fcore)](https://github.com/aryeko/ghx/blob/main/LICENSE)
+[![npm version](https://img.shields.io/npm/v/%40ghx-dev%2Fcore)](https://www.npmjs.com/package/@ghx-dev/core)
+[![npm downloads](https://img.shields.io/npm/dm/%40ghx-dev%2Fcore)](https://www.npmjs.com/package/@ghx-dev/core)
+[![License](https://img.shields.io/npm/l/%40ghx-dev%2Fcore)](https://github.com/aryeko/ghx/blob/main/LICENSE)
 
 CLI-first GitHub execution router for agents.
 
-`@ghx/core` exposes a typed execution engine that routes GitHub tasks across CLI and GraphQL, validates inputs/outputs against operation-card schemas, and returns a stable result envelope for deterministic agent workflows.
+`@ghx-dev/core` exposes a typed execution engine that routes GitHub tasks across CLI and GraphQL, validates inputs/outputs against operation-card schemas, and returns a stable result envelope for deterministic agent workflows.
 
-## Why @ghx/core
+## Why @ghx-dev/core
 
 - **Stable contract**: every task returns `{ ok, data, error, meta }`
 - **Route-aware execution**: preferred route + fallback routes per capability
@@ -19,21 +19,21 @@ CLI-first GitHub execution router for agents.
 ## Installation
 
 ```bash
-pnpm add @ghx/core
+pnpm add @ghx-dev/core
 ```
 
 Alternative package managers:
 
 ```bash
-npm i @ghx/core
+npm i @ghx-dev/core
 # or
-yarn add @ghx/core
+yarn add @ghx-dev/core
 ```
 
 ## Quick Start (Library API)
 
 ```ts
-import { createGithubClient, executeTask } from "@ghx/core"
+import { createGithubClient, executeTask } from "@ghx-dev/core"
 
 const githubToken = process.env.GITHUB_TOKEN
 
@@ -95,7 +95,7 @@ if (!result.ok) {
 console.log(result.data)
 ```
 
-## Agent Tools (`@ghx/core/agent`)
+## Agent Tools (`@ghx-dev/core/agent`)
 
 ```ts
 import {
@@ -103,7 +103,7 @@ import {
   explainCapability,
   listCapabilities,
   MAIN_SKILL_TEXT,
-} from "@ghx/core/agent"
+} from "@ghx-dev/core/agent"
 
 const executeTool = createExecuteTool({
   executeTask: async (request) => {
@@ -169,7 +169,7 @@ Environment variables used by the CLI path:
 
 ## Public Exports
 
-Root (`@ghx/core`):
+Root (`@ghx-dev/core`):
 
 - `executeTask`
 - `createGithubClient`, `createGraphqlClient`
@@ -179,8 +179,8 @@ Root (`@ghx/core`):
 
 Subpaths:
 
-- `@ghx/core/agent` - agent tooling exports
-- `@ghx/core/cli` - CLI entrypoint
+- `@ghx-dev/core/agent` - agent tooling exports
+- `@ghx-dev/core/cli` - CLI entrypoint
 
 ## Result Envelope
 
