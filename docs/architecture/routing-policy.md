@@ -22,12 +22,16 @@ Runtime reason codes:
 - `CAPABILITY_LIMIT`
 - `DEFAULT_POLICY`
 
-## Current v1 Shape
+## Current Shape
 
-- CLI-suitable capabilities (`repo.view`, `issue.view`, `issue.list`, `pr.view`, `pr.list`) use `preferred=cli`, `fallbacks=[graphql]`
-- `issue.comments.list` uses `preferred=graphql`, `fallbacks=[cli]`
-- global route preference order is `cli`, then `graphql`
-- REST is planned but not part of v1 preference ordering
+- Route policy is card-defined per capability; do not assume a single global pattern
+- Examples in current cards:
+  - `repo.view`, `issue.view`, `issue.list`, `pr.view`, `pr.list` use `preferred=cli`, `fallbacks=[graphql]`
+  - `issue.comments.list` uses `preferred=graphql`, `fallbacks=[cli]`
+  - PR review-read and PR thread mutation capabilities are GraphQL-only (`fallbacks=[]`)
+  - CI diagnostics/log capabilities are CLI-only (`fallbacks=[]`)
+- global route preference order remains `cli`, then `graphql` when policies allow both
+- REST is planned but not part of active preference ordering
 - `execute` performs bounded per-route retries and then fallback
 
 Source of truth:
