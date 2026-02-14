@@ -447,8 +447,8 @@ export function buildSummary(
     checks = [
       {
         name: "tokens_reduction",
-        passed: deltaVsAgentDirect.tokensReductionPct >= thresholds.minTokensReductionPct,
-        value: deltaVsAgentDirect.tokensReductionPct,
+        passed: deltaVsAgentDirect.tokensActiveReductionPct >= thresholds.minTokensReductionPct,
+        value: deltaVsAgentDirect.tokensActiveReductionPct,
         threshold: thresholds.minTokensReductionPct,
         operator: ">=",
       },

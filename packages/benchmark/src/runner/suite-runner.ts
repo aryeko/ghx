@@ -229,8 +229,6 @@ export function extractTimingBreakdown(messages: SessionMessageEntry[]): Benchma
         breakdown.assistant_reasoning_ms += Math.max(0, end - start)
         if (firstReasoningStart === null || start < firstReasoningStart) {
           firstReasoningStart = start
-        }
-        if (firstReasoningEnd === null || end < firstReasoningEnd) {
           firstReasoningEnd = end
         }
       }
@@ -257,8 +255,6 @@ export function extractTimingBreakdown(messages: SessionMessageEntry[]): Benchma
 
         if (firstToolStart === null || start < firstToolStart) {
           firstToolStart = start
-        }
-        if (firstToolEnd === null || end < firstToolEnd) {
           firstToolEnd = end
         }
       }

@@ -514,6 +514,62 @@ describe("executeTask repo.view", () => {
     }
   })
 
+  it("accepts supported GHX_SKIP_GH_PREFLIGHT truthy values", async () => {
+    const truthyValues = ["1", "true", "yes", "on"]
+    const previousSkip = process.env.GHX_SKIP_GH_PREFLIGHT
+
+    try {
+      for (const value of truthyValues) {
+        process.env.GHX_SKIP_GH_PREFLIGHT = value
+
+        const githubClient = createGithubClient({
+          async execute<TData>(): Promise<TData> {
+            return {} as TData
+          },
+        })
+
+        const calls: string[] = []
+        const cliRunner = {
+          run: async (_command: string, args: string[]) => {
+            calls.push(args.join(" "))
+
+            return {
+              stdout: JSON.stringify({
+                id: "repo-id",
+                name: "modkit",
+                nameWithOwner: "go-modkit/modkit",
+                isPrivate: false,
+                stargazerCount: 10,
+                forkCount: 2,
+                url: "https://github.com/go-modkit/modkit",
+                defaultBranchRef: { name: "main" },
+              }),
+              stderr: "",
+              exitCode: 0,
+            }
+          },
+        }
+
+        const request: TaskRequest = {
+          task: "repo.view",
+          input: { owner: "go-modkit", name: "modkit" },
+        }
+
+        const result = await executeTask(request, { githubClient, cliRunner })
+
+        expect(result.ok).toBe(true)
+        expect(calls.some((call) => call === "--version")).toBe(false)
+        expect(calls.some((call) => call === "auth status")).toBe(false)
+      }
+    } finally {
+      if (previousSkip === undefined) {
+        delete process.env.GHX_SKIP_GH_PREFLIGHT
+      } else {
+        process.env.GHX_SKIP_GH_PREFLIGHT = previousSkip
+      }
+    }
+  })
+
   it("reuses in-flight cli environment detection for concurrent requests", async () => {
     const githubClient = createGithubClient({
       async execute<TData>(): Promise<TData> {

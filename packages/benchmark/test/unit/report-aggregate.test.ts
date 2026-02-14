@@ -109,6 +109,36 @@ describe("buildSummary", () => {
     expect(summary.gate.checks.length).toBeGreaterThan(0)
   })
 
+  it("keeps legacy v1 token check based on active-token reduction", () => {
+    const summary = buildSummary(
+      [
+        row({
+          mode: "agent_direct",
+          latency_ms_wall: 100,
+          tool_calls: 10,
+          tokens: { input: 0, output: 0, reasoning: 0, cache_read: 90, cache_write: 0, total: 100 }
+        }),
+        row({
+          mode: "ghx_router",
+          latency_ms_wall: 90,
+          tool_calls: 8,
+          tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 95 }
+        })
+      ],
+      {
+        minTokensReductionPct: 1,
+        minLatencyReductionPct: 1,
+        minToolCallReductionPct: 1,
+        maxSuccessRateDropPct: 5,
+        minOutputValidityRatePct: 90
+      }
+    )
+
+    const tokenCheck = summary.gate.checks.find((check) => check.name === "tokens_reduction")
+    expect(tokenCheck?.value).toBeLessThan(0)
+    expect(tokenCheck?.passed).toBe(false)
+  })
+
   it("supports nightly profile with stricter sample requirements", () => {
     const summary = buildSummary(
       [

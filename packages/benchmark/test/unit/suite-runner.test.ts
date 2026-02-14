@@ -128,6 +128,31 @@ describe("suite-runner helpers", () => {
     })
   })
 
+  it("uses the earliest reasoning segment boundary for timing gaps", () => {
+    const breakdown = extractTimingBreakdown([
+      {
+        info: {
+          role: "assistant",
+          time: { created: 100, completed: 1200 }
+        },
+        parts: [
+          { type: "reasoning", time: { start: 200, end: 300 } },
+          { type: "reasoning", time: { start: 420, end: 700 } },
+          {
+            type: "tool",
+            tool: "bash",
+            state: { time: { start: 800, end: 950 } }
+          }
+        ]
+      }
+    ] as unknown as Parameters<typeof extractTimingBreakdown>[0])
+
+    expect(breakdown.assistant_pre_reasoning_ms).toBe(100)
+    expect(breakdown.assistant_reasoning_ms).toBe(380)
+    expect(breakdown.assistant_between_reasoning_and_tool_ms).toBe(500)
+    expect(breakdown.assistant_post_tool_ms).toBe(250)
+  })
+
   it("coerces assistant response and continuation behavior", () => {
     const parts = [
       { type: "text", text: '{"ok":true,"data":{},"error":null,"meta":{}}' },
