@@ -18,7 +18,11 @@ describe("operation cards registry", () => {
       "pr.diff.list_files",
       "pr.status.checks",
       "pr.checks.get_failed",
-      "pr.mergeability.view"
+      "pr.mergeability.view",
+      "pr.comment.reply",
+      "pr.comment.resolve",
+      "pr.comment.unresolve",
+      "pr.ready_for_review.set"
     ])
   })
 

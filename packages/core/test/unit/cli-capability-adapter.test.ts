@@ -725,4 +725,29 @@ describe("runCliCapability", () => {
       state: "OPEN"
     })
   })
+
+  it("executes ready-for-review mutation through gh pr ready", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: "",
+        stderr: "",
+        exitCode: 0
+      }))
+    }
+
+    const result = await runCliCapability(runner, "pr.ready_for_review.set", {
+      owner: "acme",
+      name: "modkit",
+      prNumber: 10,
+      ready: true
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.data).toEqual({ prNumber: 10, isDraft: false })
+    expect(runner.run).toHaveBeenCalledWith(
+      "gh",
+      ["pr", "ready", "10", "--repo", "acme/modkit"],
+      10_000
+    )
+  })
 })

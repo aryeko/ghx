@@ -22,7 +22,10 @@ describe("runGraphqlCapability", () => {
       fetchPrList: vi.fn(),
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
-      fetchPrDiffListFiles: vi.fn()
+      fetchPrDiffListFiles: vi.fn(),
+      replyToReviewThread: vi.fn(),
+      resolveReviewThread: vi.fn(),
+      unresolveReviewThread: vi.fn()
     }
 
     const result = await runGraphqlCapability(client, "repo.view", {
@@ -52,7 +55,10 @@ describe("runGraphqlCapability", () => {
       fetchPrList: vi.fn(),
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
-      fetchPrDiffListFiles: vi.fn()
+      fetchPrDiffListFiles: vi.fn(),
+      replyToReviewThread: vi.fn(),
+      resolveReviewThread: vi.fn(),
+      unresolveReviewThread: vi.fn()
     }
 
     const result = await runGraphqlCapability(client, "repo.view", {
@@ -89,7 +95,10 @@ describe("runGraphqlCapability", () => {
       fetchPrList: vi.fn(),
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
-      fetchPrDiffListFiles: vi.fn()
+      fetchPrDiffListFiles: vi.fn(),
+      replyToReviewThread: vi.fn(),
+      resolveReviewThread: vi.fn(),
+      unresolveReviewThread: vi.fn()
     }
 
     const result = await runGraphqlCapability(client, "issue.comments.list", {
@@ -123,7 +132,10 @@ describe("runGraphqlCapability", () => {
         scan: { pagesScanned: 1, sourceItemsScanned: 0, scanTruncated: false }
       })),
       fetchPrReviewsList: vi.fn(async () => ({ items: [], pageInfo: { hasNextPage: false, endCursor: null } })),
-      fetchPrDiffListFiles: vi.fn(async () => ({ items: [], pageInfo: { hasNextPage: false, endCursor: null } }))
+      fetchPrDiffListFiles: vi.fn(async () => ({ items: [], pageInfo: { hasNextPage: false, endCursor: null } })),
+      replyToReviewThread: vi.fn(),
+      resolveReviewThread: vi.fn(),
+      unresolveReviewThread: vi.fn()
     }
 
     await runGraphqlCapability(client, "issue.list", {
@@ -185,7 +197,10 @@ describe("runGraphqlCapability", () => {
           sourceItemsScanned: 1,
           scanTruncated: false
         }
-      }))
+      })),
+      replyToReviewThread: vi.fn(),
+      resolveReviewThread: vi.fn(),
+      unresolveReviewThread: vi.fn()
     }
 
     const result = await runGraphqlCapability(client, "pr.comments.list", {
@@ -235,7 +250,10 @@ describe("runGraphqlCapability", () => {
           endCursor: null
         }
       })),
-      fetchPrDiffListFiles: vi.fn()
+      fetchPrDiffListFiles: vi.fn(),
+      replyToReviewThread: vi.fn(),
+      resolveReviewThread: vi.fn(),
+      unresolveReviewThread: vi.fn()
     }
 
     const result = await runGraphqlCapability(client, "pr.reviews.list", {
@@ -276,7 +294,10 @@ describe("runGraphqlCapability", () => {
           hasNextPage: false,
           endCursor: null
         }
-      }))
+      })),
+      replyToReviewThread: vi.fn(),
+      resolveReviewThread: vi.fn(),
+      unresolveReviewThread: vi.fn()
     }
 
     const result = await runGraphqlCapability(client, "pr.diff.list_files", {
@@ -293,5 +314,59 @@ describe("runGraphqlCapability", () => {
         items: [expect.objectContaining({ path: "src/index.ts" })]
       })
     )
+  })
+
+  it("routes pr.comment.reply through the GraphQL client", async () => {
+    const client = {
+      fetchRepoView: vi.fn(),
+      fetchIssueView: vi.fn(),
+      fetchIssueList: vi.fn(),
+      fetchIssueCommentsList: vi.fn(),
+      fetchPrView: vi.fn(),
+      fetchPrList: vi.fn(),
+      fetchPrCommentsList: vi.fn(),
+      fetchPrReviewsList: vi.fn(),
+      fetchPrDiffListFiles: vi.fn(),
+      replyToReviewThread: vi.fn(async () => ({ id: "thread-1", isResolved: false })),
+      resolveReviewThread: vi.fn(),
+      unresolveReviewThread: vi.fn()
+    }
+
+    const result = await runGraphqlCapability(client, "pr.comment.reply", {
+      threadId: "thread-1",
+      body: "Thanks, addressed"
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.data).toEqual({ id: "thread-1", isResolved: false })
+  })
+
+  it("routes pr.comment.resolve and pr.comment.unresolve through the GraphQL client", async () => {
+    const client = {
+      fetchRepoView: vi.fn(),
+      fetchIssueView: vi.fn(),
+      fetchIssueList: vi.fn(),
+      fetchIssueCommentsList: vi.fn(),
+      fetchPrView: vi.fn(),
+      fetchPrList: vi.fn(),
+      fetchPrCommentsList: vi.fn(),
+      fetchPrReviewsList: vi.fn(),
+      fetchPrDiffListFiles: vi.fn(),
+      replyToReviewThread: vi.fn(),
+      resolveReviewThread: vi.fn(async () => ({ id: "thread-1", isResolved: true })),
+      unresolveReviewThread: vi.fn(async () => ({ id: "thread-1", isResolved: false }))
+    }
+
+    const resolveResult = await runGraphqlCapability(client, "pr.comment.resolve", {
+      threadId: "thread-1"
+    })
+    const unresolveResult = await runGraphqlCapability(client, "pr.comment.unresolve", {
+      threadId: "thread-1"
+    })
+
+    expect(resolveResult.ok).toBe(true)
+    expect(unresolveResult.ok).toBe(true)
+    expect(resolveResult.data).toEqual({ id: "thread-1", isResolved: true })
+    expect(unresolveResult.data).toEqual({ id: "thread-1", isResolved: false })
   })
 })

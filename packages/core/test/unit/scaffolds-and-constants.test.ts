@@ -18,6 +18,10 @@ import { prDiffListFilesTask } from "../../src/core/contracts/tasks/pr.diff.list
 import { prStatusChecksTask } from "../../src/core/contracts/tasks/pr.status.checks.js"
 import { prChecksGetFailedTask } from "../../src/core/contracts/tasks/pr.checks.get_failed.js"
 import { prMergeabilityViewTask } from "../../src/core/contracts/tasks/pr.mergeability.view.js"
+import { prCommentReplyTask } from "../../src/core/contracts/tasks/pr.comment.reply.js"
+import { prCommentResolveTask } from "../../src/core/contracts/tasks/pr.comment.resolve.js"
+import { prCommentUnresolveTask } from "../../src/core/contracts/tasks/pr.comment.unresolve.js"
+import { prReadyForReviewSetTask } from "../../src/core/contracts/tasks/pr.ready_for_review.set.js"
 import { repoViewTask } from "../../src/core/contracts/tasks/repo.view.js"
 import { routeReasonCodes } from "../../src/core/routing/reason-codes.js"
 import { runRestAdapter } from "../../src/core/execution/adapters/rest-adapter.js"
@@ -54,6 +58,10 @@ describe("scaffolds and constants", () => {
     expect(prStatusChecksTask.id).toBe("pr.status.checks")
     expect(prChecksGetFailedTask.id).toBe("pr.checks.get_failed")
     expect(prMergeabilityViewTask.id).toBe("pr.mergeability.view")
+    expect(prCommentReplyTask.id).toBe("pr.comment.reply")
+    expect(prCommentResolveTask.id).toBe("pr.comment.resolve")
+    expect(prCommentUnresolveTask.id).toBe("pr.comment.unresolve")
+    expect(prReadyForReviewSetTask.id).toBe("pr.ready_for_review.set")
     expect(repoViewTask.id).toBe("repo.view")
     expect(routeReasonCodes).toContain("CARD_FALLBACK")
   })

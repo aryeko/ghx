@@ -224,6 +224,19 @@ export type PrDiffListFilesData = {
   }
 }
 
+export type ReviewThreadMutationInput = {
+  threadId: string
+}
+
+export type ReplyToReviewThreadInput = ReviewThreadMutationInput & {
+  body: string
+}
+
+export type ReviewThreadMutationData = {
+  id: string
+  isResolved: boolean
+}
+
 export interface GithubClient extends GraphqlClient {
   fetchRepoView(input: RepoViewInput): Promise<RepoViewData>
   fetchIssueCommentsList(input: IssueCommentsListInput): Promise<IssueCommentsListData>
@@ -234,6 +247,9 @@ export interface GithubClient extends GraphqlClient {
   fetchPrCommentsList(input: PrCommentsListInput): Promise<PrCommentsListData>
   fetchPrReviewsList(input: PrReviewsListInput): Promise<PrReviewsListData>
   fetchPrDiffListFiles(input: PrDiffListFilesInput): Promise<PrDiffListFilesData>
+  replyToReviewThread(input: ReplyToReviewThreadInput): Promise<ReviewThreadMutationData>
+  resolveReviewThread(input: ReviewThreadMutationInput): Promise<ReviewThreadMutationData>
+  unresolveReviewThread(input: ReviewThreadMutationInput): Promise<ReviewThreadMutationData>
 }
 
 function assertRepoInput(input: RepoViewInput): void {
@@ -368,6 +384,38 @@ const PR_COMMENTS_LIST_QUERY = `
             hasNextPage
           }
         }
+      }
+    }
+  }
+`
+
+const PR_COMMENT_REPLY_MUTATION = `
+  mutation PrCommentReply($threadId: ID!, $body: String!) {
+    addPullRequestReviewThreadReply(input: { pullRequestReviewThreadId: $threadId, body: $body }) {
+      comment {
+        id
+      }
+    }
+  }
+`
+
+const PR_COMMENT_RESOLVE_MUTATION = `
+  mutation PrCommentResolve($threadId: ID!) {
+    resolveReviewThread(input: { threadId: $threadId }) {
+      thread {
+        id
+        isResolved
+      }
+    }
+  }
+`
+
+const PR_COMMENT_UNRESOLVE_MUTATION = `
+  mutation PrCommentUnresolve($threadId: ID!) {
+    unresolveReviewThread(input: { threadId: $threadId }) {
+      thread {
+        id
+        isResolved
       }
     }
   }
@@ -767,6 +815,80 @@ async function runPrCommentsList(
   }
 }
 
+function assertReviewThreadInput(input: ReviewThreadMutationInput): void {
+  if (input.threadId.trim().length === 0) {
+    throw new Error("Review thread id is required")
+  }
+}
+
+function assertReplyToReviewThreadInput(input: ReplyToReviewThreadInput): void {
+  assertReviewThreadInput(input)
+  if (input.body.trim().length === 0) {
+    throw new Error("Reply body is required")
+  }
+}
+
+function parseReviewThreadMutationResult(result: unknown, mutationKey: string): ReviewThreadMutationData {
+  const root = asRecord(result)
+  const mutation = asRecord(root?.[mutationKey])
+  const thread = asRecord(mutation?.thread)
+  if (!thread || typeof thread.id !== "string") {
+    throw new Error("Review thread mutation failed")
+  }
+
+  return {
+    id: thread.id,
+    isResolved: Boolean(thread.isResolved)
+  }
+}
+
+async function runReplyToReviewThread(
+  graphqlClient: GraphqlClient,
+  input: ReplyToReviewThreadInput
+): Promise<ReviewThreadMutationData> {
+  assertReplyToReviewThreadInput(input)
+
+  const result = await graphqlClient.query<unknown, GraphqlVariables>(PR_COMMENT_REPLY_MUTATION, {
+    threadId: input.threadId,
+    body: input.body
+  })
+  const root = asRecord(result)
+  const mutation = asRecord(root?.addPullRequestReviewThreadReply)
+  const comment = asRecord(mutation?.comment)
+  if (!comment || typeof comment.id !== "string") {
+    throw new Error("Review thread mutation failed")
+  }
+
+  return {
+    id: input.threadId,
+    isResolved: false
+  }
+}
+
+async function runResolveReviewThread(
+  graphqlClient: GraphqlClient,
+  input: ReviewThreadMutationInput
+): Promise<ReviewThreadMutationData> {
+  assertReviewThreadInput(input)
+
+  const result = await graphqlClient.query<unknown, GraphqlVariables>(PR_COMMENT_RESOLVE_MUTATION, {
+    threadId: input.threadId
+  })
+  return parseReviewThreadMutationResult(result, "resolveReviewThread")
+}
+
+async function runUnresolveReviewThread(
+  graphqlClient: GraphqlClient,
+  input: ReviewThreadMutationInput
+): Promise<ReviewThreadMutationData> {
+  assertReviewThreadInput(input)
+
+  const result = await graphqlClient.query<unknown, GraphqlVariables>(PR_COMMENT_UNRESOLVE_MUTATION, {
+    threadId: input.threadId
+  })
+  return parseReviewThreadMutationResult(result, "unresolveReviewThread")
+}
+
 function queryToString(query: QueryLike): string {
   if (typeof query === "string") {
     return query
@@ -812,6 +934,9 @@ export function createGithubClient(transport: GraphqlTransport): GithubClient {
     fetchPrView: (input) => runPrView(sdk.pr, input),
     fetchPrCommentsList: (input) => runPrCommentsList(graphqlClient, input),
     fetchPrReviewsList: (input) => runPrReviewsList(sdk.prReviewsList, input),
-    fetchPrDiffListFiles: (input) => runPrDiffListFiles(sdk.prDiffListFiles, input)
+    fetchPrDiffListFiles: (input) => runPrDiffListFiles(sdk.prDiffListFiles, input),
+    replyToReviewThread: (input) => runReplyToReviewThread(graphqlClient, input),
+    resolveReviewThread: (input) => runResolveReviewThread(graphqlClient, input),
+    unresolveReviewThread: (input) => runUnresolveReviewThread(graphqlClient, input)
   }
 }

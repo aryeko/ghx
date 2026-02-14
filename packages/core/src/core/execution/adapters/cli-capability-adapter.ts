@@ -15,6 +15,7 @@ export type CliCapabilityId =
   | "pr.status.checks"
   | "pr.checks.get_failed"
   | "pr.mergeability.view"
+  | "pr.ready_for_review.set"
 
 export type CliCommandRunner = {
   run(command: string, args: string[], timeoutMs: number): Promise<{ stdout: string; stderr: string; exitCode: number }>
@@ -191,6 +192,28 @@ function buildArgs(capabilityId: CliCapabilityId, params: Record<string, unknown
     }
 
     args.push("--json", jsonFieldsFromCard(card, "mergeable,mergeStateStatus,reviewDecision,isDraft,state"))
+    return args
+  }
+
+  if (capabilityId === "pr.ready_for_review.set") {
+    const prNumber = parseStrictPositiveInt(params.prNumber)
+    if (prNumber === null) {
+      throw new Error("Missing or invalid prNumber for pr.ready_for_review.set")
+    }
+
+    if (typeof params.ready !== "boolean") {
+      throw new Error("Missing or invalid ready for pr.ready_for_review.set")
+    }
+
+    const args = [...commandTokens(card, "pr ready"), String(prNumber)]
+    if (repo) {
+      args.push("--repo", repo)
+    }
+
+    if (!params.ready) {
+      args.push("--undo")
+    }
+
     return args
   }
 
@@ -403,6 +426,22 @@ function normalizeCliData(capabilityId: CliCapabilityId, data: unknown, params: 
       reviewDecision: typeof input.reviewDecision === "string" ? input.reviewDecision : null,
       isDraft: Boolean(input.isDraft),
       state: typeof input.state === "string" ? input.state : "UNKNOWN"
+    }
+  }
+
+  if (capabilityId === "pr.ready_for_review.set") {
+    const prNumber = parseStrictPositiveInt(params.prNumber)
+    if (prNumber === null) {
+      throw new Error("Missing or invalid prNumber for pr.ready_for_review.set")
+    }
+
+    if (typeof params.ready !== "boolean") {
+      throw new Error("Missing or invalid ready for pr.ready_for_review.set")
+    }
+
+    return {
+      prNumber,
+      isDraft: !params.ready
     }
   }
 

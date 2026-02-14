@@ -26,6 +26,9 @@ export type GraphqlCapabilityId =
   | "pr.comments.list"
   | "pr.reviews.list"
   | "pr.diff.list_files"
+  | "pr.comment.reply"
+  | "pr.comment.resolve"
+  | "pr.comment.unresolve"
 
 const DEFAULT_LIST_FIRST = 30
 
@@ -44,7 +47,8 @@ export async function runGraphqlCapability(
   client: Pick<
     GithubClient,
     "fetchRepoView" | "fetchIssueView" | "fetchIssueList" | "fetchIssueCommentsList" | "fetchPrView" | "fetchPrList"
-      | "fetchPrCommentsList" | "fetchPrReviewsList" | "fetchPrDiffListFiles"
+      | "fetchPrCommentsList" | "fetchPrReviewsList" | "fetchPrDiffListFiles" | "replyToReviewThread"
+      | "resolveReviewThread" | "unresolveReviewThread"
   >,
   capabilityId: GraphqlCapabilityId,
   params: Record<string, unknown>
@@ -92,6 +96,25 @@ export async function runGraphqlCapability(
 
     if (capabilityId === "pr.diff.list_files") {
       const data = await client.fetchPrDiffListFiles(withDefaultFirst(params) as PrDiffListFilesInput)
+      return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
+    }
+
+    if (capabilityId === "pr.comment.reply") {
+      const threadId = typeof params.threadId === "string" ? params.threadId : ""
+      const body = typeof params.body === "string" ? params.body : ""
+      const data = await client.replyToReviewThread({ threadId, body })
+      return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
+    }
+
+    if (capabilityId === "pr.comment.resolve") {
+      const threadId = typeof params.threadId === "string" ? params.threadId : ""
+      const data = await client.resolveReviewThread({ threadId })
+      return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
+    }
+
+    if (capabilityId === "pr.comment.unresolve") {
+      const threadId = typeof params.threadId === "string" ? params.threadId : ""
+      const data = await client.unresolveReviewThread({ threadId })
       return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
     }
 

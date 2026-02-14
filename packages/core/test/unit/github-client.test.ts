@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { createGithubClient } from "../../src/gql/client.js"
 
@@ -465,5 +465,50 @@ describe("createGithubClient", () => {
         first: 10
       })
     ).rejects.toThrow("Pull request files not found")
+  })
+
+  it("supports pr review-thread mutations", async () => {
+    const execute = vi.fn(async (query: string) => {
+      if (query.includes("mutation PrCommentReply")) {
+        return {
+          addPullRequestReviewThreadReply: {
+            comment: { id: "comment-1" }
+          }
+        }
+      }
+
+      if (query.includes("mutation PrCommentResolve")) {
+        return {
+          resolveReviewThread: {
+            thread: { id: "thread-1", isResolved: true }
+          }
+        }
+      }
+
+      if (query.includes("mutation PrCommentUnresolve")) {
+        return {
+          unresolveReviewThread: {
+            thread: { id: "thread-1", isResolved: false }
+          }
+        }
+      }
+
+      throw new Error("unexpected query")
+    })
+
+    const client = createGithubClient({ execute } as never)
+
+    await expect(client.replyToReviewThread({ threadId: "thread-1", body: "done" })).resolves.toEqual({
+      id: "thread-1",
+      isResolved: false
+    })
+    await expect(client.resolveReviewThread({ threadId: "thread-1" })).resolves.toEqual({
+      id: "thread-1",
+      isResolved: true
+    })
+    await expect(client.unresolveReviewThread({ threadId: "thread-1" })).resolves.toEqual({
+      id: "thread-1",
+      isResolved: false
+    })
   })
 })
