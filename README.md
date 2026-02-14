@@ -1,10 +1,6 @@
 # ghx
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/branding/logos/ghx-logo-lockup-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="assets/branding/logos/ghx-logo-lockup-light.png">
-  <img src="assets/branding/logos/ghx-logo-lockup-dark.png" alt="ghx logo" width="420">
-</picture>
+![ghx social preview](assets/branding/social/ghx-social-dark-1280x640.png)
 
 > GitHub execution router for AI agents.
 > One typed capability interface over `gh` CLI + GraphQL.
