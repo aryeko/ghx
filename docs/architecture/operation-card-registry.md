@@ -20,8 +20,8 @@ Operation cards are the runtime source of truth for capabilities.
 
 ## Runtime Behavior
 
-- cards are loaded from `packages/ghx-router/src/core/registry/cards/*.yaml`
-- cards are schema-validated at startup in `packages/ghx-router/src/core/registry/index.ts`
+- cards are loaded from `packages/core/src/core/registry/cards/*.yaml`
+- cards are schema-validated at startup in `packages/core/src/core/registry/index.ts`
 - routing registry derives from cards
 
 ## Adding a Capability

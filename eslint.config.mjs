@@ -8,8 +8,8 @@ export default tseslint.config(
       "**/node_modules/**",
       "**/dist/**",
       "**/.nx/**",
-      "packages/ghx-router/src/gql/generated/**",
-      "packages/ghx-router/src/gql/operations/*.generated.ts"
+      "packages/core/src/gql/generated/**",
+      "packages/core/src/gql/operations/*.generated.ts"
     ]
   },
   js.configs.recommended,

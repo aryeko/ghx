@@ -1,5 +1,5 @@
 {
-  "name": "@ghx-router/core",
+  "name": "@ghx/core",
   "version": "0.1.0",
   "private": true,
   "type": "module",

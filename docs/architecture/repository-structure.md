@@ -2,15 +2,15 @@
 
 ## Runtime Package
 
-- `packages/ghx-router/src/core/contracts/` - result envelope + task contracts.
-- `packages/ghx-router/src/core/errors/` - error codes, mapping, retryability.
-- `packages/ghx-router/src/core/registry/` - operation-card types, YAML cards, schema validation, lookup.
-- `packages/ghx-router/src/core/execute/` - execute orchestration (validation, preflight, retry, fallback).
-- `packages/ghx-router/src/core/execution/adapters/` - GraphQL and CLI adapters.
-- `packages/ghx-router/src/core/routing/` - engine entrypoint and policy helpers.
-- `packages/ghx-router/src/core/telemetry/` - structured metric logging with redaction.
-- `packages/ghx-router/src/agent-interface/` - tool surface and main-skill text.
-- `packages/ghx-router/src/gql/` - GraphQL client and generated operation types.
+- `packages/core/src/core/contracts/` - result envelope + task contracts.
+- `packages/core/src/core/errors/` - error codes, mapping, retryability.
+- `packages/core/src/core/registry/` - operation-card types, YAML cards, schema validation, lookup.
+- `packages/core/src/core/execute/` - execute orchestration (validation, preflight, retry, fallback).
+- `packages/core/src/core/execution/adapters/` - GraphQL and CLI adapters.
+- `packages/core/src/core/routing/` - engine entrypoint and policy helpers.
+- `packages/core/src/core/telemetry/` - structured metric logging with redaction.
+- `packages/core/src/agent-interface/` - tool surface and main-skill text.
+- `packages/core/src/gql/` - GraphQL client and generated operation types.
 
 ## Benchmark Package
 

@@ -1,4 +1,4 @@
-# Agentic Interface Design Spec (ghx-router)
+# Agentic Interface Design Spec (ghx)
 
 **Status:** Draft  
 **Audience:** Runtime/tooling engineers, agent prompt designers  
@@ -419,7 +419,7 @@ Each CLI capability is a function that:
 ## 11) File Structure (Repo-ready)
 
 ```
-ghx-router/
+ghx/
   docs/
     design/
       agentic-interface.md       # THIS DOCUMENT
