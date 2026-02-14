@@ -229,6 +229,10 @@ function buildArgs(capabilityId: CliCapabilityId, params: Record<string, unknown
       throw new Error("Missing or invalid checkRunId for check_run.annotations.list")
     }
 
+    if (!owner || !name) {
+      throw new Error("Missing owner/name for check_run.annotations.list")
+    }
+
     const args = [...commandTokens(card, "api"), `repos/${owner}/${name}/check-runs/${checkRunId}/annotations`]
     return args
   }

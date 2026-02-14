@@ -310,7 +310,12 @@ function assertPrListInput(input: PrListInput): void {
 }
 
 function assertPrReviewsListInput(input: PrReviewsListInput): void {
-  if (input.owner.trim().length === 0 || input.name.trim().length === 0) {
+  if (
+    typeof input.owner !== "string"
+    || typeof input.name !== "string"
+    || input.owner.trim().length === 0
+    || input.name.trim().length === 0
+  ) {
     throw new Error("Repository owner and name are required")
   }
   if (!Number.isInteger(input.prNumber) || input.prNumber <= 0) {
@@ -322,7 +327,12 @@ function assertPrReviewsListInput(input: PrReviewsListInput): void {
 }
 
 function assertPrDiffListFilesInput(input: PrDiffListFilesInput): void {
-  if (input.owner.trim().length === 0 || input.name.trim().length === 0) {
+  if (
+    typeof input.owner !== "string"
+    || typeof input.name !== "string"
+    || input.owner.trim().length === 0
+    || input.name.trim().length === 0
+  ) {
     throw new Error("Repository owner and name are required")
   }
   if (!Number.isInteger(input.prNumber) || input.prNumber <= 0) {
@@ -334,7 +344,12 @@ function assertPrDiffListFilesInput(input: PrDiffListFilesInput): void {
 }
 
 function assertPrCommentsListInput(input: PrCommentsListInput): void {
-  if (input.owner.trim().length === 0 || input.name.trim().length === 0) {
+  if (
+    typeof input.owner !== "string"
+    || typeof input.name !== "string"
+    || input.owner.trim().length === 0
+    || input.name.trim().length === 0
+  ) {
     throw new Error("Repository owner and name are required")
   }
   if (!Number.isInteger(input.prNumber) || input.prNumber <= 0) {
@@ -342,6 +357,12 @@ function assertPrCommentsListInput(input: PrCommentsListInput): void {
   }
   if (!Number.isInteger(input.first) || input.first <= 0) {
     throw new Error("List page size must be a positive integer")
+  }
+  if (input.unresolvedOnly !== undefined && typeof input.unresolvedOnly !== "boolean") {
+    throw new Error("unresolvedOnly must be a boolean")
+  }
+  if (input.includeOutdated !== undefined && typeof input.includeOutdated !== "boolean") {
+    throw new Error("includeOutdated must be a boolean")
   }
   if (input.after !== undefined && input.after !== null && typeof input.after !== "string") {
     throw new Error("After cursor must be a string")
@@ -853,14 +874,14 @@ async function runPrCommentsList(
 }
 
 function assertReviewThreadInput(input: ReviewThreadMutationInput): void {
-  if (input.threadId.trim().length === 0) {
+  if (typeof input.threadId !== "string" || input.threadId.trim().length === 0) {
     throw new Error("Review thread id is required")
   }
 }
 
 function assertReplyToReviewThreadInput(input: ReplyToReviewThreadInput): void {
   assertReviewThreadInput(input)
-  if (input.body.trim().length === 0) {
+  if (typeof input.body !== "string" || input.body.trim().length === 0) {
     throw new Error("Reply body is required")
   }
 }

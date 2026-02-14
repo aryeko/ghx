@@ -1,4 +1,5 @@
 import type { BenchmarkMode } from "../domain/types.js"
+import { z } from "zod"
 
 export type ParsedCliArgs = {
   command: "run"
@@ -75,6 +76,18 @@ function parseScenarioSet(flags: string[]): string | null {
   return null
 }
 
+const parsedCliArgsSchema = z
+  .object({
+    command: z.literal("run"),
+    mode: z.enum(["agent_direct", "mcp", "ghx_router"]),
+    repetitions: z.number().int().min(1),
+    scenarioFilter: z.string().min(1).nullable(),
+    scenarioSet: z.string().min(1).nullable()
+  })
+  .refine((value) => !(value.scenarioFilter && value.scenarioSet), {
+    message: "--scenario and --scenario-set cannot be used together"
+  })
+
 export function parseCliArgs(argv: string[]): ParsedCliArgs {
   const normalized = stripForwardingSeparator(argv)
   const [maybeCommand, ...rest] = normalized
@@ -97,11 +110,13 @@ export function parseCliArgs(argv: string[]): ParsedCliArgs {
     throw new Error(`Invalid repetitions: ${repetitionsRaw}`)
   }
 
-  return {
+  const parsed = parsedCliArgsSchema.parse({
     command,
     mode,
     repetitions,
     scenarioFilter: parseScenarioFilter(flags),
     scenarioSet: parseScenarioSet(flags)
-  }
+  })
+
+  return parsed
 }

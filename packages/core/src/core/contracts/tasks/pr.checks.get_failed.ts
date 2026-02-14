@@ -1,3 +1,3 @@
 export const prChecksGetFailedTask = {
-  id: "pr.checks.get_failed"
+  id: "pr.checks.get_failed",
 } as const

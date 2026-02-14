@@ -1,3 +1,3 @@
 export const prCommentsListTask = {
-  id: "pr.comments.list"
+  id: "pr.comments.list",
 } as const

@@ -1,3 +1,3 @@
 export const prStatusChecksTask = {
-  id: "pr.status.checks"
+  id: "pr.status.checks",
 } as const

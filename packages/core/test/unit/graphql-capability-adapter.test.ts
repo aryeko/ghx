@@ -369,4 +369,35 @@ describe("runGraphqlCapability", () => {
     expect(resolveResult.data).toEqual({ id: "thread-1", isResolved: true })
     expect(unresolveResult.data).toEqual({ id: "thread-1", isResolved: false })
   })
+
+  it("returns validation error for missing thread mutation inputs", async () => {
+    const client = {
+      fetchRepoView: vi.fn(),
+      fetchIssueView: vi.fn(),
+      fetchIssueList: vi.fn(),
+      fetchIssueCommentsList: vi.fn(),
+      fetchPrView: vi.fn(),
+      fetchPrList: vi.fn(),
+      fetchPrCommentsList: vi.fn(),
+      fetchPrReviewsList: vi.fn(),
+      fetchPrDiffListFiles: vi.fn(),
+      replyToReviewThread: vi.fn(),
+      resolveReviewThread: vi.fn(),
+      unresolveReviewThread: vi.fn()
+    }
+
+    const replyResult = await runGraphqlCapability(client, "pr.comment.reply", {
+      threadId: "",
+      body: "ok"
+    })
+
+    const resolveResult = await runGraphqlCapability(client, "pr.comment.resolve", {
+      threadId: ""
+    })
+
+    expect(replyResult.ok).toBe(false)
+    expect(resolveResult.ok).toBe(false)
+    expect(replyResult.error?.code).toBe("VALIDATION")
+    expect(resolveResult.error?.code).toBe("VALIDATION")
+  })
 })

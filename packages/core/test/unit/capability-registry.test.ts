@@ -38,77 +38,77 @@ describe("capabilityRegistry", () => {
       {
         task: "pr.comments.list",
         defaultRoute: "graphql",
-        fallbackRoutes: []
+        fallbackRoutes: [],
       },
       {
         task: "pr.reviews.list",
         defaultRoute: "graphql",
-        fallbackRoutes: []
+        fallbackRoutes: [],
       },
       {
         task: "pr.diff.list_files",
         defaultRoute: "graphql",
-        fallbackRoutes: []
+        fallbackRoutes: [],
       },
       {
         task: "pr.status.checks",
         defaultRoute: "cli",
-        fallbackRoutes: []
+        fallbackRoutes: [],
       },
       {
         task: "pr.checks.get_failed",
         defaultRoute: "cli",
-        fallbackRoutes: []
+        fallbackRoutes: [],
       },
       {
         task: "pr.mergeability.view",
         defaultRoute: "cli",
-        fallbackRoutes: []
+        fallbackRoutes: [],
       },
       {
         task: "pr.comment.reply",
         defaultRoute: "graphql",
-        fallbackRoutes: []
+        fallbackRoutes: [],
       },
       {
         task: "pr.comment.resolve",
         defaultRoute: "graphql",
-        fallbackRoutes: []
+        fallbackRoutes: [],
       },
       {
         task: "pr.comment.unresolve",
         defaultRoute: "graphql",
-        fallbackRoutes: []
+        fallbackRoutes: [],
       },
       {
         task: "pr.ready_for_review.set",
         defaultRoute: "cli",
-        fallbackRoutes: []
+        fallbackRoutes: [],
       },
       {
         task: "check_run.annotations.list",
         defaultRoute: "cli",
-        fallbackRoutes: []
+        fallbackRoutes: [],
       },
       {
         task: "workflow_runs.list",
         defaultRoute: "cli",
-        fallbackRoutes: []
+        fallbackRoutes: [],
       },
       {
         task: "workflow_run.jobs.list",
         defaultRoute: "cli",
-        fallbackRoutes: []
+        fallbackRoutes: [],
       },
       {
         task: "workflow_job.logs.get",
         defaultRoute: "cli",
-        fallbackRoutes: []
+        fallbackRoutes: [],
       },
       {
         task: "workflow_job.logs.analyze",
         defaultRoute: "cli",
-        fallbackRoutes: []
+        fallbackRoutes: [],
       }
     ])
   })

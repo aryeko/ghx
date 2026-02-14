@@ -784,6 +784,26 @@ describe("runCliCapability", () => {
     )
   })
 
+  it("returns validation error when check run annotations owner/name is missing", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: "[]",
+        stderr: "",
+        exitCode: 0
+      }))
+    }
+
+    const result = await runCliCapability(runner, "check_run.annotations.list", {
+      owner: "",
+      name: "",
+      checkRunId: 100
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.message).toContain("Missing owner/name for check_run.annotations.list")
+    expect(runner.run).not.toHaveBeenCalled()
+  })
+
   it("normalizes workflow runs list", async () => {
     const runner = {
       run: vi.fn(async () => ({

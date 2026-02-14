@@ -43,6 +43,15 @@ function withDefaultFirst(params: Record<string, unknown>): Record<string, unkno
   return params
 }
 
+function requireNonEmptyString(params: Record<string, unknown>, field: string, capabilityId: GraphqlCapabilityId): string {
+  const value = params[field]
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(`Missing or invalid ${field} for ${capabilityId}`)
+  }
+
+  return value
+}
+
 export async function runGraphqlCapability(
   client: Pick<
     GithubClient,
@@ -100,20 +109,20 @@ export async function runGraphqlCapability(
     }
 
     if (capabilityId === "pr.comment.reply") {
-      const threadId = typeof params.threadId === "string" ? params.threadId : ""
-      const body = typeof params.body === "string" ? params.body : ""
+      const threadId = requireNonEmptyString(params, "threadId", capabilityId)
+      const body = requireNonEmptyString(params, "body", capabilityId)
       const data = await client.replyToReviewThread({ threadId, body })
       return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
     }
 
     if (capabilityId === "pr.comment.resolve") {
-      const threadId = typeof params.threadId === "string" ? params.threadId : ""
+      const threadId = requireNonEmptyString(params, "threadId", capabilityId)
       const data = await client.resolveReviewThread({ threadId })
       return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
     }
 
     if (capabilityId === "pr.comment.unresolve") {
-      const threadId = typeof params.threadId === "string" ? params.threadId : ""
+      const threadId = requireNonEmptyString(params, "threadId", capabilityId)
       const data = await client.unresolveReviewThread({ threadId })
       return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
     }

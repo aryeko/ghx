@@ -512,6 +512,46 @@ describe("createGithubClient", () => {
     ).rejects.toThrow("Pull request review threads not found")
   })
 
+  it("throws when pr.comments.list unresolvedOnly/includeOutdated has invalid type", async () => {
+    const client = createGithubClient({
+      async execute<TData>(): Promise<TData> {
+        return {
+          repository: {
+            pullRequest: {
+              reviewThreads: {
+                edges: [],
+                pageInfo: {
+                  endCursor: null,
+                  hasNextPage: false
+                }
+              }
+            }
+          }
+        } as TData
+      }
+    })
+
+    await expect(
+      client.fetchPrCommentsList({
+        owner: "go-modkit",
+        name: "modkit",
+        prNumber: 232,
+        first: 1,
+        unresolvedOnly: "yes" as unknown as boolean
+      })
+    ).rejects.toThrow("unresolvedOnly must be a boolean")
+
+    await expect(
+      client.fetchPrCommentsList({
+        owner: "go-modkit",
+        name: "modkit",
+        prNumber: 232,
+        first: 1,
+        includeOutdated: "no" as unknown as boolean
+      })
+    ).rejects.toThrow("includeOutdated must be a boolean")
+  })
+
   it("exposes typed pr.reviews.list helper", async () => {
     const client = createGithubClient({
       async execute<TData>(): Promise<TData> {
@@ -759,6 +799,9 @@ describe("createGithubClient", () => {
     })
 
     await expect(client.resolveReviewThread({ threadId: " " })).rejects.toThrow("Review thread id is required")
+    await expect(client.resolveReviewThread({ threadId: 1 as unknown as string })).rejects.toThrow(
+      "Review thread id is required"
+    )
   })
 
   it("validates non-empty body for pr.comment.reply", async () => {
@@ -773,6 +816,9 @@ describe("createGithubClient", () => {
     })
 
     await expect(client.replyToReviewThread({ threadId: "thread-1", body: "   " })).rejects.toThrow(
+      "Reply body is required"
+    )
+    await expect(client.replyToReviewThread({ threadId: "thread-1", body: 1 as unknown as string })).rejects.toThrow(
       "Reply body is required"
     )
   })
