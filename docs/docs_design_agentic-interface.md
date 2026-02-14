@@ -505,7 +505,7 @@ Each scenario should define:
 - `pnpm run ci:affected` on pull requests
 - `pnpm run ci` on main
 - `pnpm run ghx:gql:check` (codegen drift)
-- `pnpm run benchmark:check` (scenario validation)
+- `pnpm --filter @ghx-dev/benchmark run check:scenarios` (scenario validation)
 - coverage upload via Codecov with project and patch thresholds
 
 ---

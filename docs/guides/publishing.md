@@ -29,9 +29,9 @@ No `NPM_TOKEN` is required for CI publish.
 
 ```bash
 npm login
-pnpm run ghx:publish
+pnpm --filter @ghx-dev/core publish --no-git-checks
 ```
 
-`ghx:publish` builds `@ghx-dev/core` before publishing so tarballs always include fresh `dist/` artifacts.
+`@ghx-dev/core` runs `prepack` on publish, which builds fresh `dist/` artifacts before packaging.
 
 Use manual publish only when CI release automation is not appropriate.

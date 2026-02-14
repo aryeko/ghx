@@ -256,7 +256,7 @@ pnpm --filter @ghx-dev/core run typecheck
 pnpm --filter @ghx-dev/core run lint
 pnpm --filter @ghx-dev/core run test
 pnpm --filter @ghx-dev/core run gql:check
-pnpm run benchmark:check
+pnpm --filter @ghx-dev/benchmark run check:scenarios
 ```
 
 For full branch verification:

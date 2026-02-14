@@ -44,7 +44,7 @@ Thank you for your interest in contributing to ghx. This document provides guide
 ## Additional Checks
 
 - GraphQL codegen drift: `pnpm run ghx:gql:check`
-- Benchmark scenario validation: `pnpm run benchmark:check`
+- Benchmark scenario validation: `pnpm --filter @ghx-dev/benchmark run check:scenarios`
 
 ## Branch Naming
 
