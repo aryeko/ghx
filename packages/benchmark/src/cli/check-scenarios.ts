@@ -1,3 +1,4 @@
+import { access, readFile, readdir } from "node:fs/promises"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
 
@@ -6,15 +7,15 @@ import { loadScenarios, loadScenarioSets } from "../scenario/loader.js"
 export const REQUIRED_SCENARIO_SETS = [
   "default",
   "pr-operations-all",
-  "roadmap-batch-a-pr-exec",
-  "roadmap-batch-b-issues",
-  "roadmap-batch-c-release-delivery",
-  "roadmap-batch-d-workflow-projects-v2",
-  "roadmap-all"
+  "batch-a-pr-exec",
+  "batch-b-issues",
+  "batch-c-release-delivery",
+  "batch-d-workflow-projects-v2",
+  "all"
 ]
 
 export const ROADMAP_CAPABILITIES_BY_SET: Record<string, string[]> = {
-  "roadmap-batch-a-pr-exec": [
+  "batch-a-pr-exec": [
     "pr.review.submit_approve",
     "pr.review.submit_request_changes",
     "pr.review.submit_comment",
@@ -25,7 +26,7 @@ export const ROADMAP_CAPABILITIES_BY_SET: Record<string, string[]> = {
     "pr.assignees.update",
     "pr.branch.update"
   ],
-  "roadmap-batch-b-issues": [
+  "batch-b-issues": [
     "issue.create",
     "issue.update",
     "issue.close",
@@ -42,7 +43,7 @@ export const ROADMAP_CAPABILITIES_BY_SET: Record<string, string[]> = {
     "issue.blocked_by.add",
     "issue.blocked_by.remove"
   ],
-  "roadmap-batch-c-release-delivery": [
+  "batch-c-release-delivery": [
     "release.list",
     "release.get",
     "release.create_draft",
@@ -51,7 +52,7 @@ export const ROADMAP_CAPABILITIES_BY_SET: Record<string, string[]> = {
     "workflow_dispatch.run",
     "workflow_run.rerun_failed"
   ],
-  "roadmap-batch-d-workflow-projects-v2": [
+  "batch-d-workflow-projects-v2": [
     "workflow.list",
     "workflow.get",
     "workflow_run.get",
@@ -114,22 +115,66 @@ function assertNoOrphanScenarios(scenarioSets: Record<string, string[]>, scenari
   }
 }
 
-function assertRoadmapAllExactUnion(scenarioSets: Record<string, string[]>): void {
+function assertAllSetExactUnion(scenarioSets: Record<string, string[]>): void {
   const expectedIds = new Set([
-    ...(scenarioSets["roadmap-batch-a-pr-exec"] ?? []),
-    ...(scenarioSets["roadmap-batch-b-issues"] ?? []),
-    ...(scenarioSets["roadmap-batch-c-release-delivery"] ?? []),
-    ...(scenarioSets["roadmap-batch-d-workflow-projects-v2"] ?? [])
+    ...(scenarioSets["batch-a-pr-exec"] ?? []),
+    ...(scenarioSets["batch-b-issues"] ?? []),
+    ...(scenarioSets["batch-c-release-delivery"] ?? []),
+    ...(scenarioSets["batch-d-workflow-projects-v2"] ?? [])
   ])
-  const actualIds = new Set(scenarioSets["roadmap-all"])
+  const actualIds = new Set(scenarioSets["all"])
 
   const missingIds = Array.from(expectedIds).filter((id) => !actualIds.has(id))
   const extraIds = Array.from(actualIds).filter((id) => !expectedIds.has(id))
 
   if (missingIds.length > 0 || extraIds.length > 0) {
     throw new Error(
-      `Scenario set 'roadmap-all' must be exact union of roadmap batch sets (missing: ${missingIds.join(", ") || "none"}; extra: ${extraIds.join(", ") || "none"})`
+      `Scenario set 'all' must be exact union of roadmap batch sets (missing: ${missingIds.join(", ") || "none"}; extra: ${extraIds.join(", ") || "none"})`
     )
+  }
+}
+
+async function tryLoadRegistryCapabilityIds(benchmarkRoot: string): Promise<string[] | null> {
+  const cardsDirectory = resolve(benchmarkRoot, "../core/src/core/registry/cards")
+
+  try {
+    await access(cardsDirectory)
+  } catch {
+    return null
+  }
+
+  const cardFiles = (await readdir(cardsDirectory)).filter((fileName) => fileName.endsWith(".yaml"))
+  const capabilityIds: string[] = []
+
+  for (const cardFile of cardFiles) {
+    const cardPath = resolve(cardsDirectory, cardFile)
+    const cardContent = await readFile(cardPath, "utf8")
+    const capabilityMatch = cardContent.match(/^capability_id:\s*([^\s]+)\s*$/m)
+
+    if (!capabilityMatch?.[1]) {
+      throw new Error(`Unable to parse capability_id from registry card: ${cardPath}`)
+    }
+
+    capabilityIds.push(capabilityMatch[1])
+  }
+
+  return capabilityIds
+}
+
+function assertAllCapabilitiesCoveredByBenchmarks(
+  scenarioTasks: Set<string>,
+  capabilityIds: string[]
+): void {
+  const capabilitySet = new Set(capabilityIds)
+  const missingCapabilityIds = capabilityIds.filter((capabilityId) => !scenarioTasks.has(capabilityId))
+  const unknownScenarioTasks = Array.from(scenarioTasks).filter((task) => !capabilitySet.has(task))
+
+  if (missingCapabilityIds.length > 0) {
+    throw new Error(`Missing benchmark coverage for capabilities: ${missingCapabilityIds.join(", ")}`)
+  }
+
+  if (unknownScenarioTasks.length > 0) {
+    throw new Error(`Scenario tasks not present in capability registry: ${unknownScenarioTasks.join(", ")}`)
   }
 }
 
@@ -164,6 +209,7 @@ export async function main(cwd: string = process.cwd()): Promise<void> {
   }
 
   const scenarioIds = scenarios.map((scenario) => scenario.id)
+  const scenarioTasks = new Set(scenarios.map((scenario) => scenario.task))
   const knownScenarioIds = new Set(scenarioIds)
   const scenariosById = new Map(scenarios.map((scenario) => [scenario.id, { task: scenario.task }]))
 
@@ -171,8 +217,13 @@ export async function main(cwd: string = process.cwd()): Promise<void> {
   assertRequiredScenarioSetsExist(scenarioSets)
   assertSetReferencesAreKnown(scenarioSets, knownScenarioIds)
   assertNoOrphanScenarios(scenarioSets, scenarioIds)
-  assertRoadmapAllExactUnion(scenarioSets)
+  assertAllSetExactUnion(scenarioSets)
   assertRoadmapBatchCoverage(scenarioSets, scenariosById)
+
+  const registryCapabilityIds = await tryLoadRegistryCapabilityIds(benchmarkRoot)
+  if (registryCapabilityIds) {
+    assertAllCapabilitiesCoveredByBenchmarks(scenarioTasks, registryCapabilityIds)
+  }
 
   console.log(`Validated ${scenarios.length} benchmark scenarios across ${Object.keys(scenarioSets).length} sets`)
 }

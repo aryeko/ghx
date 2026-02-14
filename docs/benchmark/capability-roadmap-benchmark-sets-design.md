@@ -43,11 +43,11 @@ Set definitions are maintained in `packages/benchmark/scenario-sets.json`.
 ### 4.1 Required sets
 
 - `default` (unchanged baseline)
-- `roadmap-batch-a-pr-exec`
-- `roadmap-batch-b-issues`
-- `roadmap-batch-c-release-delivery`
-- `roadmap-batch-d-workflow-projects-v2`
-- `roadmap-all` (union of all roadmap batch sets)
+- `batch-a-pr-exec`
+- `batch-b-issues`
+- `batch-c-release-delivery`
+- `batch-d-workflow-projects-v2`
+- `all` (union of all roadmap batch sets)
 
 ### 4.2 Selection precedence
 
@@ -61,7 +61,7 @@ Set definitions are maintained in `packages/benchmark/scenario-sets.json`.
 
 Scenario IDs below define the intended coverage shape. Exact fixture repo/PR/issue identifiers are environment-specific and remain externalized.
 
-### 5.1 Batch A set (`roadmap-batch-a-pr-exec`)
+### 5.1 Batch A set (`batch-a-pr-exec`)
 
 Coverage targets:
 
@@ -93,7 +93,7 @@ Assertions:
 - expected state transition markers (for example merge status changed),
 - route and reason metadata present.
 
-### 5.2 Batch B set (`roadmap-batch-b-issues`)
+### 5.2 Batch B set (`batch-b-issues`)
 
 Coverage targets (all `issue.*` in roadmap):
 
@@ -128,7 +128,7 @@ Assertions:
 - mutation scenarios verify changed state via follow-up read checks,
 - expected canonical errors for unsupported mutations are mapped.
 
-### 5.3 Batch C set (`roadmap-batch-c-release-delivery`)
+### 5.3 Batch C set (`batch-c-release-delivery`)
 
 Coverage targets:
 
@@ -156,7 +156,7 @@ Assertions:
 - publish scenario validates transition from draft to published,
 - workflow dispatch/rerun returns run identifiers and queued/executing status fields.
 
-### 5.4 Batch D set (`roadmap-batch-d-workflow-projects-v2`)
+### 5.4 Batch D set (`batch-d-workflow-projects-v2`)
 
 Coverage targets:
 
@@ -194,7 +194,7 @@ Assertions:
 ### 6.1 Functional requirements
 
 1. Each new capability in roadmap batches A-D maps to at least one scenario in its batch set.
-2. `roadmap-all` is an exact union of batch sets (A-D).
+2. `all` is an exact union of batch sets (A-D).
 3. `default` does not include roadmap mutation scenarios.
 4. Scenario-set resolution remains deterministic.
 5. Scenario errors for unknown set names are explicit and actionable.
@@ -250,10 +250,10 @@ pnpm --filter @ghx/benchmark run lint
 Optional batch run commands:
 
 ```bash
-pnpm --filter @ghx/benchmark run run -- ghx_router 1 --scenario-set roadmap-batch-a-pr-exec
-pnpm --filter @ghx/benchmark run run -- ghx_router 1 --scenario-set roadmap-batch-b-issues
-pnpm --filter @ghx/benchmark run run -- ghx_router 1 --scenario-set roadmap-batch-c-release-delivery
-pnpm --filter @ghx/benchmark run run -- ghx_router 1 --scenario-set roadmap-batch-d-workflow-projects-v2
+pnpm --filter @ghx/benchmark run run -- ghx_router 1 --scenario-set batch-a-pr-exec
+pnpm --filter @ghx/benchmark run run -- ghx_router 1 --scenario-set batch-b-issues
+pnpm --filter @ghx/benchmark run run -- ghx_router 1 --scenario-set batch-c-release-delivery
+pnpm --filter @ghx/benchmark run run -- ghx_router 1 --scenario-set batch-d-workflow-projects-v2
 ```
 
 ---
@@ -272,6 +272,6 @@ pnpm --filter @ghx/benchmark run run -- ghx_router 1 --scenario-set roadmap-batc
 
 1. Scenario sets for batches A-D exist and validate.
 2. Every roadmap capability has at least one mapped scenario in its batch set.
-3. `roadmap-all` equals the union of A-D sets.
+3. `all` equals the union of A-D sets.
 4. Default set remains stable and mutation-free.
 5. Batch runs produce benchmark rows with set metadata and pass benchmark checks.

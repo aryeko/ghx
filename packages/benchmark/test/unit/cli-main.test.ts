@@ -138,7 +138,7 @@ describe("benchmark cli mains", () => {
       "ci-diagnostics": [],
       "ci-log-analysis": [],
       ...roadmapSets,
-      "roadmap-all": Array.from(new Set(Object.values(roadmapSets).flat()))
+      all: Array.from(new Set(Object.values(roadmapSets).flat()))
     })
 
     await expect(checkScenariosMain("/tmp/test-cwd")).resolves.toBeUndefined()

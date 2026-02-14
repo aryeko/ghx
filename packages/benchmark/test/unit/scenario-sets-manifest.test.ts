@@ -25,7 +25,7 @@ describe("scenario-sets manifest", () => {
   it("defines roadmap batch D workflow and projects v2 set", () => {
     const scenarioSets = loadScenarioSets()
 
-    expect(scenarioSets["roadmap-batch-d-workflow-projects-v2"]).toEqual([
+    expect(scenarioSets["batch-d-workflow-projects-v2"]).toEqual([
       "batch-d-workflow-list-001",
       "batch-d-workflow-get-001",
       "batch-d-workflow-run-get-001",
@@ -46,7 +46,7 @@ describe("scenario-sets manifest", () => {
   it("includes roadmap batch C release and delivery set", () => {
     const scenarioSets = loadScenarioSets()
 
-    expect(scenarioSets["roadmap-batch-c-release-delivery"]).toEqual([
+    expect(scenarioSets["batch-c-release-delivery"]).toEqual([
       "batch-c-release-list-001",
       "batch-c-release-get-001",
       "batch-c-release-create-draft-001",
@@ -60,7 +60,7 @@ describe("scenario-sets manifest", () => {
   it("includes roadmap batch A and B sets", () => {
     const scenarioSets = loadScenarioSets()
 
-    expect(scenarioSets["roadmap-batch-a-pr-exec"]).toEqual([
+    expect(scenarioSets["batch-a-pr-exec"]).toEqual([
       "batch-a-pr-review-submit-approve-001",
       "batch-a-pr-review-submit-request-changes-001",
       "batch-a-pr-review-submit-comment-001",
@@ -72,7 +72,7 @@ describe("scenario-sets manifest", () => {
       "batch-a-pr-branch-update-001"
     ])
 
-    expect(scenarioSets["roadmap-batch-b-issues"]).toEqual([
+    expect(scenarioSets["batch-b-issues"]).toEqual([
       "batch-b-issue-create-001",
       "batch-b-issue-update-001",
       "batch-b-issue-close-001",
@@ -91,16 +91,44 @@ describe("scenario-sets manifest", () => {
     ])
   })
 
-  it("defines roadmap-all as exact union of roadmap A-D sets", () => {
+  it("defines all as exact union of roadmap A-D sets", () => {
     const scenarioSets = loadScenarioSets()
 
     const expectedUnion = new Set([
-      ...(scenarioSets["roadmap-batch-a-pr-exec"] ?? []),
-      ...(scenarioSets["roadmap-batch-b-issues"] ?? []),
-      ...(scenarioSets["roadmap-batch-c-release-delivery"] ?? []),
-      ...(scenarioSets["roadmap-batch-d-workflow-projects-v2"] ?? [])
+      ...(scenarioSets["batch-a-pr-exec"] ?? []),
+      ...(scenarioSets["batch-b-issues"] ?? []),
+      ...(scenarioSets["batch-c-release-delivery"] ?? []),
+      ...(scenarioSets["batch-d-workflow-projects-v2"] ?? [])
     ])
 
-    expect(new Set(scenarioSets["roadmap-all"] ?? [])).toEqual(expectedUnion)
+    expect(new Set(scenarioSets.all ?? [])).toEqual(expectedUnion)
+  })
+
+  it("keeps pr-operations-all scoped to PR capabilities only", () => {
+    const scenarioSets = loadScenarioSets()
+
+    expect(scenarioSets["pr-operations-all"]).toEqual([
+      "pr-comments-unresolved-001",
+      "pr-reviews-list-001",
+      "pr-diff-list-files-001",
+      "pr-status-checks-001",
+      "pr-checks-get-failed-001",
+      "pr-mergeability-view-001",
+      "pr-comment-reply-001",
+      "pr-comment-resolve-001",
+      "pr-comment-unresolve-001",
+      "pr-ready-for-review-set-001",
+      "batch-a-pr-review-submit-approve-001",
+      "batch-a-pr-review-submit-request-changes-001",
+      "batch-a-pr-review-submit-comment-001",
+      "batch-a-pr-merge-execute-001",
+      "batch-a-pr-checks-rerun-failed-001",
+      "batch-a-pr-checks-rerun-all-001",
+      "batch-a-pr-reviewers-request-001",
+      "batch-a-pr-assignees-update-001",
+      "batch-a-pr-branch-update-001",
+      "pr-view-001",
+      "pr-list-open-001"
+    ])
   })
 })

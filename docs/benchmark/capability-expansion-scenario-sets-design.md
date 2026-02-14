@@ -225,7 +225,7 @@ pnpm --filter @ghx/benchmark run typecheck
 - `pr-thread-mutations`: populated with thread mutation/ready scenarios
 - `ci-diagnostics`: populated with annotations/runs/jobs/log retrieval scenarios
 - `ci-log-analysis`: populated with workflow log analysis scenario
-- `pr-operations-all`: populated with the union of PR and CI operation scenarios (PR and PR-adjacent workflow diagnostics)
+- `pr-operations-all`: populated with the union of all `pr.*` operation scenarios only
 
 ### Verification evidence
 

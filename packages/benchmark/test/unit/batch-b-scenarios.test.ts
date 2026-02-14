@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises"
 import { describe, expect, it } from "vitest"
 
 describe("roadmap batch b benchmark scenarios", () => {
-  it("adds roadmap-batch-b-issues set without mutating default set", async () => {
+  it("adds batch-b-issues set without mutating default set", async () => {
     const benchmarkRoot = process.cwd()
     const scenarioSetsPath = `${benchmarkRoot}/scenario-sets.json`
     const raw = await readFile(scenarioSetsPath, "utf8")
@@ -18,7 +18,7 @@ describe("roadmap batch b benchmark scenarios", () => {
       "pr-list-open-001"
     ])
 
-    expect(scenarioSets["roadmap-batch-b-issues"]).toEqual([
+    expect(scenarioSets["batch-b-issues"]).toEqual([
       "batch-b-issue-create-001",
       "batch-b-issue-update-001",
       "batch-b-issue-close-001",

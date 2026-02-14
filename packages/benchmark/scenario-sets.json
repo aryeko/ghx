@@ -30,7 +30,7 @@
   "ci-log-analysis": [
     "workflow-job-logs-analyze-001"
   ],
-  "roadmap-batch-d-workflow-projects-v2": [
+  "batch-d-workflow-projects-v2": [
     "batch-d-workflow-list-001",
     "batch-d-workflow-get-001",
     "batch-d-workflow-run-get-001",
@@ -46,7 +46,7 @@
     "batch-d-repo-labels-list-001",
     "batch-d-repo-issue-types-list-001"
   ],
-  "roadmap-batch-c-release-delivery": [
+  "batch-c-release-delivery": [
     "batch-c-release-list-001",
     "batch-c-release-get-001",
     "batch-c-release-create-draft-001",
@@ -66,15 +66,19 @@
     "pr-comment-resolve-001",
     "pr-comment-unresolve-001",
     "pr-ready-for-review-set-001",
-    "check-run-annotations-list-001",
-    "workflow-runs-list-001",
-    "workflow-run-jobs-list-001",
-    "workflow-job-logs-get-001",
-    "workflow-job-logs-analyze-001",
+    "batch-a-pr-review-submit-approve-001",
+    "batch-a-pr-review-submit-request-changes-001",
+    "batch-a-pr-review-submit-comment-001",
+    "batch-a-pr-merge-execute-001",
+    "batch-a-pr-checks-rerun-failed-001",
+    "batch-a-pr-checks-rerun-all-001",
+    "batch-a-pr-reviewers-request-001",
+    "batch-a-pr-assignees-update-001",
+    "batch-a-pr-branch-update-001",
     "pr-view-001",
     "pr-list-open-001"
   ],
-  "roadmap-batch-a-pr-exec": [
+  "batch-a-pr-exec": [
     "batch-a-pr-review-submit-approve-001",
     "batch-a-pr-review-submit-request-changes-001",
     "batch-a-pr-review-submit-comment-001",
@@ -85,7 +89,7 @@
     "batch-a-pr-assignees-update-001",
     "batch-a-pr-branch-update-001"
   ],
-  "roadmap-batch-b-issues": [
+  "batch-b-issues": [
     "batch-b-issue-create-001",
     "batch-b-issue-update-001",
     "batch-b-issue-close-001",
@@ -102,7 +106,7 @@
     "batch-b-issue-blocked-by-add-001",
     "batch-b-issue-blocked-by-remove-001"
   ],
-  "roadmap-all": [
+  "all": [
     "batch-a-pr-review-submit-approve-001",
     "batch-a-pr-review-submit-request-changes-001",
     "batch-a-pr-review-submit-comment-001",

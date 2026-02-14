@@ -72,7 +72,7 @@ describe("check-scenarios", () => {
       "ci-diagnostics": [],
       "ci-log-analysis": [],
       ...roadmapSets,
-      "roadmap-all": roadmapAll
+      all: roadmapAll
     })
 
     await expect(main("/tmp/benchmark")).resolves.toBeUndefined()
@@ -95,11 +95,11 @@ describe("check-scenarios", () => {
     loadScenarioSetsMock.mockResolvedValue({
       default: ["missing-001"],
       "pr-operations-all": ["repo-view-001"],
-      "roadmap-batch-a-pr-exec": ["repo-view-001"],
-      "roadmap-batch-b-issues": ["repo-view-001"],
-      "roadmap-batch-c-release-delivery": ["repo-view-001"],
-      "roadmap-batch-d-workflow-projects-v2": ["repo-view-001"],
-      "roadmap-all": ["repo-view-001"]
+      "batch-a-pr-exec": ["repo-view-001"],
+      "batch-b-issues": ["repo-view-001"],
+      "batch-c-release-delivery": ["repo-view-001"],
+      "batch-d-workflow-projects-v2": ["repo-view-001"],
+      all: ["repo-view-001"]
     })
 
     await expect(main("/tmp/benchmark")).rejects.toThrow("unknown scenario id")
@@ -122,11 +122,11 @@ describe("check-scenarios", () => {
     loadScenarioSetsMock.mockResolvedValue({
       default: [],
       "pr-operations-all": [],
-      "roadmap-batch-a-pr-exec": [],
-      "roadmap-batch-b-issues": [],
-      "roadmap-batch-c-release-delivery": [],
-      "roadmap-batch-d-workflow-projects-v2": [],
-      "roadmap-all": []
+      "batch-a-pr-exec": [],
+      "batch-b-issues": [],
+      "batch-c-release-delivery": [],
+      "batch-d-workflow-projects-v2": [],
+      all: []
     })
 
     await expect(main("/tmp/benchmark")).rejects.toThrow("orphan scenario")
@@ -182,17 +182,17 @@ describe("check-scenarios", () => {
     loadScenarioSetsMock.mockResolvedValue({
       default: ["repo-view-001"],
       "pr-operations-all": ["repo-view-001"],
-      "roadmap-batch-a-pr-exec": ["repo-view-001"],
-      "roadmap-batch-b-issues": ["repo-view-001"],
-      "roadmap-batch-c-release-delivery": ["repo-view-001"],
-      "roadmap-batch-d-workflow-projects-v2": ["repo-view-001"],
-      "roadmap-all": ["repo-view-001"]
+      "batch-a-pr-exec": ["repo-view-001"],
+      "batch-b-issues": ["repo-view-001"],
+      "batch-c-release-delivery": ["repo-view-001"],
+      "batch-d-workflow-projects-v2": ["repo-view-001"],
+      all: ["repo-view-001"]
     })
 
     await expect(main("/tmp/benchmark")).rejects.toThrow("Duplicate scenario id")
   })
 
-  it("fails when roadmap-all is not exact union of roadmap batch sets", async () => {
+  it("fails when all is not exact union of roadmap batch sets", async () => {
     loadScenariosMock.mockResolvedValue([
       createScenario("repo-view-001", "repo.view"),
       createScenario("batch-a-pr-review-submit-approve-001", "pr.review.submit_approve")
@@ -200,11 +200,11 @@ describe("check-scenarios", () => {
     loadScenarioSetsMock.mockResolvedValue({
       default: ["repo-view-001"],
       "pr-operations-all": ["repo-view-001"],
-      "roadmap-batch-a-pr-exec": ["batch-a-pr-review-submit-approve-001"],
-      "roadmap-batch-b-issues": [],
-      "roadmap-batch-c-release-delivery": [],
-      "roadmap-batch-d-workflow-projects-v2": [],
-      "roadmap-all": []
+      "batch-a-pr-exec": ["batch-a-pr-review-submit-approve-001"],
+      "batch-b-issues": [],
+      "batch-c-release-delivery": [],
+      "batch-d-workflow-projects-v2": [],
+      all: []
     })
 
     await expect(main("/tmp/benchmark")).rejects.toThrow("exact union")
