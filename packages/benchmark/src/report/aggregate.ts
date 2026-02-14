@@ -12,6 +12,7 @@ type GateCheck = {
 
 type ModeSummary = {
   mode: BenchmarkMode
+  modelSignature: string
   runs: number
   successRate: number
   outputValidityRate: number
@@ -182,8 +183,15 @@ function isStableEfficiencyRow(row: BenchmarkRow): boolean {
 }
 
 function summarizeMode(mode: BenchmarkMode, rows: BenchmarkRow[]): ModeSummary {
+  const modelSignature = Array.from(
+    new Set(rows.map((row) => `${row.model.provider_id}/${row.model.model_id}/${row.model.mode ?? "<null>"}`)),
+  )
+    .sort()
+    .join(",")
+
   return {
     mode,
+    modelSignature,
     runs: rows.length,
     successRate: pct(rows.filter((row) => row.success).length, rows.length),
     outputValidityRate: pct(rows.filter((row) => row.output_valid).length, rows.length),
@@ -504,14 +512,14 @@ export function toMarkdown(summary: BenchmarkSummary): string {
   lines.push("")
   lines.push("## Mode Metrics")
   lines.push("")
-  lines.push("| Mode | Runs | Success % | Output Valid % | Runner Error % | Timeout/Stall % | Retry % | Median Latency (ms) | Median Tokens (Total) | Median Tokens (Active) | Median Tool Calls |")
-  lines.push("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
+  lines.push("| Mode | Model | Runs | Success % | Output Valid % | Runner Error % | Timeout/Stall % | Retry % | Median Latency (ms) | Median Tokens (Total) | Median Tokens (Active) | Median Tool Calls |")
+  lines.push("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|")
 
   for (const mode of ["agent_direct", "mcp", "ghx"] as const) {
     const item = summary.modes[mode]
     if (!item) continue
     lines.push(
-      `| ${mode} | ${item.runs} | ${item.successRate.toFixed(2)} | ${item.outputValidityRate.toFixed(2)} | ${item.runnerFailureRate.toFixed(2)} | ${item.timeoutStallRate.toFixed(2)} | ${item.retryRate.toFixed(2)} | ${item.medianLatencyMs.toFixed(0)} | ${item.medianTokensTotal.toFixed(0)} | ${item.medianTokensActive.toFixed(0)} | ${item.medianToolCalls.toFixed(1)} |`,
+      `| ${mode} | ${item.modelSignature} | ${item.runs} | ${item.successRate.toFixed(2)} | ${item.outputValidityRate.toFixed(2)} | ${item.runnerFailureRate.toFixed(2)} | ${item.timeoutStallRate.toFixed(2)} | ${item.retryRate.toFixed(2)} | ${item.medianLatencyMs.toFixed(0)} | ${item.medianTokensTotal.toFixed(0)} | ${item.medianTokensActive.toFixed(0)} | ${item.medianToolCalls.toFixed(1)} |`,
     )
   }
 

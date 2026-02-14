@@ -162,6 +162,30 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
   console.log(`Wrote reports/latest-summary.json`)
   console.log(`Wrote reports/latest-summary.md`)
 
+  if (gate) {
+    const status = summary.gateV2.passed ? "PASS" : "FAIL"
+    console.log(`Benchmark verify profile: ${gateProfile}`)
+    const modeModels = ["agent_direct", "ghx"]
+      .map((mode) => {
+        const modelSignature = summary.modes[mode as BenchmarkMode]?.modelSignature
+        return modelSignature ? `${mode}=${modelSignature}` : null
+      })
+      .filter((entry): entry is string => entry !== null)
+    if (modeModels.length > 0) {
+      console.log(`Benchmark model(s): ${modeModels.join("; ")}`)
+    }
+    console.log(`Benchmark verify result: ${status}`)
+
+    if (summary.gateV2.checks.length > 0) {
+      for (const check of summary.gateV2.checks) {
+        const marker = check.passed ? "PASS" : "FAIL"
+        console.log(
+          ` - [${marker}] ${check.name}: value=${check.value.toFixed(2)} ${check.operator} threshold=${check.threshold.toFixed(2)}`,
+        )
+      }
+    }
+  }
+
   if (gate && !summary.gateV2.passed) {
     throw new Error(`Benchmark gate failed for profile ${gateProfile}`)
   }

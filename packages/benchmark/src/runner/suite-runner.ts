@@ -540,7 +540,7 @@ export async function waitForAssistantFromMessages(
   previousAssistantId?: string
 ): Promise<PromptResponse> {
   const started = Date.now()
-  let pollCount = 0
+  let lastWaitLogAt = started
 
   const getCreatedAt = (entry: SessionMessageEntry): number => {
     if (!entry.info || !isObject(entry.info)) {
@@ -552,7 +552,6 @@ export async function waitForAssistantFromMessages(
   }
 
   while (Date.now() - started < timeoutMs) {
-    pollCount += 1
     const messages = await fetchSessionMessages(sessionApi, sessionId, 50)
 
     const candidates = previousAssistantId
@@ -646,8 +645,10 @@ export async function waitForAssistantFromMessages(
       }
     }
 
-    if (pollCount % 5 === 0) {
-      console.log(`[benchmark] waiting: scenario=${scenarioId} session=${sessionId} elapsed_ms=${Date.now() - started}`)
+    const now = Date.now()
+    if (now - lastWaitLogAt >= 5000) {
+      console.log(`[benchmark] waiting: scenario=${scenarioId} session=${sessionId} elapsed_ms=${now - started}`)
+      lastWaitLogAt = now
     }
 
     await new Promise((resolve) => setTimeout(resolve, 300))
@@ -1534,6 +1535,18 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
   const outFile = join(
     RESULTS_DIR,
     `${new Date().toISOString().replace(/[:.]/g, "-")}-${mode}-suite.jsonl`
+  )
+
+  const selectedScenarioIds = selectedScenarios.map((scenario) => scenario.id)
+  console.log(
+    `[benchmark] start: mode=${mode} provider=${PROVIDER_ID} model=${MODEL_ID} opencode_mode=${OPEN_CODE_MODE ?? "<null>"}`
+  )
+  console.log(
+    `[benchmark] config: repetitions=${repetitions} scenario_set=${resolvedScenarioSet ?? "<null>"} scenario_filter=${scenarioFilter ?? "<null>"} scenarios=${selectedScenarios.length}`
+  )
+  console.log(`[benchmark] scenarios: ${selectedScenarioIds.join(",")}`)
+  console.log(
+    `[benchmark] context: opencode_port=${OPENCODE_PORT} git_repo=${GIT_REPO ?? "<null>"} git_commit=${GIT_COMMIT ?? "<null>"} out_file=${outFile}`
   )
 
   for (const scenario of selectedScenarios) {

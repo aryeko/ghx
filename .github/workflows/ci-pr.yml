@@ -81,3 +81,13 @@ jobs:
       - name: Benchmark verify (verify_release)
         if: "startsWith(github.event.pull_request.title, 'chore: version packages')"
         run: pnpm run benchmark:verify:release
+      - name: Upload benchmark artifacts
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-artifacts-pr-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            packages/benchmark/results/*.jsonl
+            packages/benchmark/reports/latest-summary.json
+            packages/benchmark/reports/latest-summary.md
+          if-no-files-found: warn
