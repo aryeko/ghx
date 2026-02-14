@@ -11,6 +11,16 @@ describe("capabilityRegistry", () => {
         fallbackRoutes: ["graphql"]
       },
       {
+        task: "repo.labels.list",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "repo.issue_types.list",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
         task: "issue.view",
         defaultRoute: "cli",
         fallbackRoutes: ["graphql"]
@@ -24,6 +34,81 @@ describe("capabilityRegistry", () => {
         task: "issue.comments.list",
         defaultRoute: "graphql",
         fallbackRoutes: ["cli"]
+      },
+      {
+        task: "issue.create",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
+        task: "issue.update",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
+        task: "issue.close",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
+        task: "issue.reopen",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
+        task: "issue.delete",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
+        task: "issue.labels.update",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
+        task: "issue.assignees.update",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
+        task: "issue.milestone.set",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
+        task: "issue.comments.create",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
+        task: "issue.linked_prs.list",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
+        task: "issue.relations.get",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
+        task: "issue.parent.set",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
+        task: "issue.parent.remove",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
+        task: "issue.blocked_by.add",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
+        task: "issue.blocked_by.remove",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
       },
       {
         task: "pr.view",
@@ -86,6 +171,51 @@ describe("capabilityRegistry", () => {
         fallbackRoutes: [],
       },
       {
+        task: "pr.review.submit_approve",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "pr.review.submit_request_changes",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "pr.review.submit_comment",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "pr.merge.execute",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "pr.checks.rerun_failed",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "pr.checks.rerun_all",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "pr.reviewers.request",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "pr.assignees.update",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "pr.branch.update",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
         task: "check_run.annotations.list",
         defaultRoute: "cli",
         fallbackRoutes: [],
@@ -107,6 +237,101 @@ describe("capabilityRegistry", () => {
       },
       {
         task: "workflow_job.logs.analyze",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "workflow.list",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "workflow.get",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "workflow_run.get",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "workflow_run.rerun_all",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "workflow_run.cancel",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "workflow_run.artifacts.list",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "project_v2.org.get",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "project_v2.user.get",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "project_v2.fields.list",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "project_v2.items.list",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "project_v2.item.add_issue",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "project_v2.item.field.update",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "release.list",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "release.get",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "release.create_draft",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "release.update",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "release.publish_draft",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "workflow_dispatch.run",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "workflow_run.rerun_failed",
         defaultRoute: "cli",
         fallbackRoutes: [],
       }

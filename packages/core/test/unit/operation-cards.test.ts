@@ -8,9 +8,26 @@ describe("operation cards registry", () => {
 
     expect(capabilities).toEqual([
       "repo.view",
+      "repo.labels.list",
+      "repo.issue_types.list",
       "issue.view",
       "issue.list",
       "issue.comments.list",
+      "issue.create",
+      "issue.update",
+      "issue.close",
+      "issue.reopen",
+      "issue.delete",
+      "issue.labels.update",
+      "issue.assignees.update",
+      "issue.milestone.set",
+      "issue.comments.create",
+      "issue.linked_prs.list",
+      "issue.relations.get",
+      "issue.parent.set",
+      "issue.parent.remove",
+      "issue.blocked_by.add",
+      "issue.blocked_by.remove",
       "pr.view",
       "pr.list",
       "pr.comments.list",
@@ -23,20 +40,60 @@ describe("operation cards registry", () => {
       "pr.comment.resolve",
       "pr.comment.unresolve",
       "pr.ready_for_review.set",
+      "pr.review.submit_approve",
+      "pr.review.submit_request_changes",
+      "pr.review.submit_comment",
+      "pr.merge.execute",
+      "pr.checks.rerun_failed",
+      "pr.checks.rerun_all",
+      "pr.reviewers.request",
+      "pr.assignees.update",
+      "pr.branch.update",
       "check_run.annotations.list",
       "workflow_runs.list",
       "workflow_run.jobs.list",
       "workflow_job.logs.get",
-      "workflow_job.logs.analyze"
+      "workflow_job.logs.analyze",
+      "workflow.list",
+      "workflow.get",
+      "workflow_run.get",
+      "workflow_run.rerun_all",
+      "workflow_run.cancel",
+      "workflow_run.artifacts.list",
+      "project_v2.org.get",
+      "project_v2.user.get",
+      "project_v2.fields.list",
+      "project_v2.items.list",
+      "project_v2.item.add_issue",
+      "project_v2.item.field.update",
+      "release.list",
+      "release.get",
+      "release.create_draft",
+      "release.update",
+      "release.publish_draft",
+      "workflow_dispatch.run",
+      "workflow_run.rerun_failed"
     ])
   })
 
+  it("marks release and delivery batch cards as CLI-preferred", () => {
+    const releaseCreateDraft = getOperationCard("release.create_draft")
+    const releasePublishDraft = getOperationCard("release.publish_draft")
+    const workflowDispatchRun = getOperationCard("workflow_dispatch.run")
+    const workflowRunRerunFailed = getOperationCard("workflow_run.rerun_failed")
+
+    expect(releaseCreateDraft?.routing.preferred).toBe("cli")
+    expect(releasePublishDraft?.routing.preferred).toBe("cli")
+    expect(workflowDispatchRun?.routing.preferred).toBe("cli")
+    expect(workflowRunRerunFailed?.routing.preferred).toBe("cli")
+  })
+
   it("resolves cards by capability id", () => {
-    const card = getOperationCard("issue.view")
+    const card = getOperationCard("issue.create")
 
     expect(card).toBeDefined()
-    expect(card?.routing.preferred).toBe("cli")
-    expect(card?.routing.fallbacks).toEqual(["graphql"])
+    expect(card?.routing.preferred).toBe("graphql")
+    expect(card?.routing.fallbacks).toEqual([])
   })
 
   it("requires explicit pagination input for issue.comments.list", () => {
@@ -113,5 +170,28 @@ describe("operation cards registry", () => {
     })
 
     expect(result.ok).toBe(false)
+  })
+
+  it("documents Batch A execution capabilities as mutating CLI operations", () => {
+    const batchACapabilities = [
+      "pr.review.submit_approve",
+      "pr.review.submit_request_changes",
+      "pr.review.submit_comment",
+      "pr.merge.execute",
+      "pr.checks.rerun_failed",
+      "pr.checks.rerun_all",
+      "pr.reviewers.request",
+      "pr.assignees.update",
+      "pr.branch.update"
+    ]
+
+    for (const capabilityId of batchACapabilities) {
+      const card = getOperationCard(capabilityId)
+
+      expect(card).toBeDefined()
+      expect(card?.routing.preferred).toBe("cli")
+      expect(card?.routing.fallbacks).toEqual([])
+      expect(card?.cli?.command).toMatch(/^pr |^run /)
+    }
   })
 })
