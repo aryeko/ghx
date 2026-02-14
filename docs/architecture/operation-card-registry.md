@@ -9,7 +9,7 @@ Operation cards are the runtime source of truth for capabilities.
 - routing policy (`preferred`, `fallbacks`)
 - optional GraphQL/CLI metadata (CLI metadata is optional and non-executable in v1)
 
-## Current v1 Capabilities
+## Current Capabilities
 
 - `repo.view`
 - `issue.view`
@@ -17,6 +17,21 @@ Operation cards are the runtime source of truth for capabilities.
 - `issue.comments.list`
 - `pr.view`
 - `pr.list`
+- `pr.comments.list`
+- `pr.reviews.list`
+- `pr.diff.list_files`
+- `pr.status.checks`
+- `pr.checks.get_failed`
+- `pr.mergeability.view`
+- `pr.comment.reply`
+- `pr.comment.resolve`
+- `pr.comment.unresolve`
+- `pr.ready_for_review.set`
+- `check_run.annotations.list`
+- `workflow_runs.list`
+- `workflow_run.jobs.list`
+- `workflow_job.logs.get`
+- `workflow_job.logs.analyze`
 
 ## Runtime Behavior
 

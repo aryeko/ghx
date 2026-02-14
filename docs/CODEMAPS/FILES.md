@@ -46,6 +46,8 @@ ghx/
 
 ### Core Router Package (`packages/core`)
 
+- `packages/core/src/index.ts` - package public exports for library consumers (`executeTask`, adapters, registry helpers)
+- `packages/core/src/agent.ts` - package public agent-interface exports (`listCapabilities`, `createExecuteTool`)
 - `packages/core/src/cli/index.ts` - `ghx` executable entrypoint
 - `packages/core/src/cli/commands/run.ts` - task parsing + execution entry
 - `packages/core/src/core/routing/engine.ts` - route selection + preflight orchestration
@@ -57,14 +59,17 @@ ghx/
 - `packages/core/src/gql/client.ts` - typed GitHub GraphQL client + operation wrappers
 - `packages/core/src/agent-interface/tools/list-capabilities-tool.ts` - capability listing tool for agents
 - `packages/core/src/agent-interface/tools/execute-tool.ts` - capability execution wrapper for agent tooling
+- `packages/core/README.md` - npm-facing package usage and API surface overview
+- `packages/core/LICENSE` - package-level MIT license for publish artifacts
 
 ### Benchmark Package (`packages/benchmark`)
 
 - `packages/benchmark/src/cli/benchmark.ts` - benchmark run command
-- `packages/benchmark/src/cli/args.ts` - argument parsing (`mode`, `repetitions`, `scenario`)
+- `packages/benchmark/src/cli/args.ts` - argument parsing (`mode`, `repetitions`, `scenario`, `scenario-set`)
 - `packages/benchmark/src/runner/suite-runner.ts` - end-to-end scenario execution orchestrator
 - `packages/benchmark/src/scenario/schema.ts` - Zod scenario schema and validation
 - `packages/benchmark/src/scenario/loader.ts` - scenario file loading
+- `packages/benchmark/scenario-sets.json` - explicit scenario set membership manifest
 - `packages/benchmark/src/extract/envelope.ts` - envelope extraction and output checks
 - `packages/benchmark/src/report/aggregate.ts` - summary metrics and gating logic
 - `packages/benchmark/scenarios/*.json` - benchmark scenarios (task + assertions + fixtures)

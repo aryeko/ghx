@@ -1,0 +1,25 @@
+query PrReviewsList($owner: String!, $name: String!, $prNumber: Int!, $first: Int!, $after: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $prNumber) {
+      reviews(first: $first, after: $after) {
+        nodes {
+          id
+          author {
+            login
+          }
+          body
+          state
+          submittedAt
+          url
+          commit {
+            oid
+          }
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  }
+}

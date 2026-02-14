@@ -7,7 +7,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   return runSuite({
     mode: parsed.mode,
     repetitions: parsed.repetitions,
-    scenarioFilter: parsed.scenarioFilter
+    scenarioFilter: parsed.scenarioFilter,
+    scenarioSet: parsed.scenarioSet
   })
 }
 

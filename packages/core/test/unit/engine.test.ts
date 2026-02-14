@@ -51,7 +51,13 @@ describe("executeTask engine wiring", () => {
           fetchIssueList: vi.fn(),
           fetchIssueView: vi.fn(),
           fetchPrList: vi.fn(),
-          fetchPrView: vi.fn()
+          fetchPrView: vi.fn(),
+          fetchPrCommentsList: vi.fn(),
+          fetchPrReviewsList: vi.fn(),
+          fetchPrDiffListFiles: vi.fn(),
+          replyToReviewThread: vi.fn(),
+          resolveReviewThread: vi.fn(),
+          unresolveReviewThread: vi.fn()
         }
       }
     )

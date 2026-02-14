@@ -5,11 +5,12 @@ vi.mock("../../src/runner/suite-runner.js", () => ({
 }))
 
 vi.mock("../../src/scenario/loader.js", () => ({
-  loadScenarios: vi.fn()
+  loadScenarios: vi.fn(),
+  loadScenarioSets: vi.fn()
 }))
 
 import { runSuite } from "../../src/runner/suite-runner.js"
-import { loadScenarios } from "../../src/scenario/loader.js"
+import { loadScenarios, loadScenarioSets } from "../../src/scenario/loader.js"
 import { main as benchmarkMain } from "../../src/cli/benchmark.js"
 import { main as checkScenariosMain } from "../../src/cli/check-scenarios.js"
 
@@ -19,12 +20,13 @@ describe("benchmark cli mains", () => {
   })
 
   it("parses args and delegates benchmark main", async () => {
-    await benchmarkMain(["run", "ghx_router", "2", "--scenario", "repo-view-001"])
+    await benchmarkMain(["run", "ghx_router", "2", "--scenario-set", "pr-review-reads"])
 
     expect(runSuite).toHaveBeenCalledWith({
       mode: "ghx_router",
       repetitions: 2,
-      scenarioFilter: "repo-view-001"
+      scenarioFilter: null,
+      scenarioSet: "pr-review-reads"
     })
   })
 
@@ -42,6 +44,14 @@ describe("benchmark cli mains", () => {
         tags: []
       }
     ] as never)
+    vi.mocked(loadScenarioSets).mockResolvedValueOnce({
+      default: ["repo-view-001"],
+      "pr-operations-all": ["repo-view-001"],
+      "pr-review-reads": [],
+      "pr-thread-mutations": [],
+      "ci-diagnostics": [],
+      "ci-log-analysis": []
+    })
 
     await expect(checkScenariosMain("/tmp/test-cwd")).resolves.toBeUndefined()
 

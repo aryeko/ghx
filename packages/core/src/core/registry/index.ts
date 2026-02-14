@@ -24,7 +24,22 @@ function loadCardsFromYaml(): OperationCard[] {
     "issue.list",
     "issue.comments.list",
     "pr.view",
-    "pr.list"
+    "pr.list",
+    "pr.comments.list",
+    "pr.reviews.list",
+    "pr.diff.list_files",
+    "pr.status.checks",
+    "pr.checks.get_failed",
+    "pr.mergeability.view",
+    "pr.comment.reply",
+    "pr.comment.resolve",
+    "pr.comment.unresolve",
+    "pr.ready_for_review.set",
+    "check_run.annotations.list",
+    "workflow_runs.list",
+    "workflow_run.jobs.list",
+    "workflow_job.logs.get",
+    "workflow_job.logs.analyze"
   ]
   const orderMap = new Map(preferredOrder.map((id, index) => [id, index]))
 

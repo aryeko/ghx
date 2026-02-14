@@ -13,3 +13,6 @@ export type Scalars = {
 // Keep enums lightweight for operation result typing.
 export type IssueState = string
 export type PullRequestState = string
+export type DiffSide = string
+export type PullRequestReviewThreadSubjectType = string
+export type PullRequestReviewState = string

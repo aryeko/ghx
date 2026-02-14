@@ -12,7 +12,22 @@ describe("operation cards registry", () => {
       "issue.list",
       "issue.comments.list",
       "pr.view",
-      "pr.list"
+      "pr.list",
+      "pr.comments.list",
+      "pr.reviews.list",
+      "pr.diff.list_files",
+      "pr.status.checks",
+      "pr.checks.get_failed",
+      "pr.mergeability.view",
+      "pr.comment.reply",
+      "pr.comment.resolve",
+      "pr.comment.unresolve",
+      "pr.ready_for_review.set",
+      "check_run.annotations.list",
+      "workflow_runs.list",
+      "workflow_run.jobs.list",
+      "workflow_job.logs.get",
+      "workflow_job.logs.analyze"
     ])
   })
 
@@ -32,9 +47,19 @@ describe("operation cards registry", () => {
   it("requires explicit pagination input for list capabilities", () => {
     const issueListCard = getOperationCard("issue.list")
     const prListCard = getOperationCard("pr.list")
+    const prCommentsCard = getOperationCard("pr.comments.list")
 
     expect(issueListCard?.input_schema.required).toEqual(["owner", "name"])
     expect(prListCard?.input_schema.required).toEqual(["owner", "name"])
+    expect(prCommentsCard?.input_schema.required).toEqual(["owner", "name", "prNumber"])
+  })
+
+  it("supports unresolved and outdated filters for pr.comments.list", () => {
+    const card = getOperationCard("pr.comments.list")
+    const properties = card?.input_schema.properties as Record<string, unknown>
+
+    expect(properties.unresolvedOnly).toEqual({ type: "boolean" })
+    expect(properties.includeOutdated).toEqual({ type: "boolean" })
   })
 
   it("exposes CLI command metadata for card-driven adapter execution", () => {

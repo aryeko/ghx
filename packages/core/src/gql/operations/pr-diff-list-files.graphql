@@ -1,0 +1,17 @@
+query PrDiffListFiles($owner: String!, $name: String!, $prNumber: Int!, $first: Int!, $after: String) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $prNumber) {
+      files(first: $first, after: $after) {
+        nodes {
+          path
+          additions
+          deletions
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+      }
+    }
+  }
+}

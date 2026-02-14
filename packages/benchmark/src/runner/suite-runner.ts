@@ -15,12 +15,13 @@ import type {
   SessionMessageEntry,
   SessionMessagePart
 } from "../domain/types.js"
-import { loadScenarios } from "../scenario/loader.js"
+import { loadScenarios, loadScenarioSets } from "../scenario/loader.js"
 
 type RunSuiteOptions = {
   mode: BenchmarkMode
   repetitions: number
   scenarioFilter: string | null
+  scenarioSet?: string | null
 }
 
 type AssistantMessage = {
@@ -1023,7 +1024,8 @@ export async function runScenario(
   client: unknown,
   scenario: Scenario,
   mode: BenchmarkMode,
-  iteration: number
+  iteration: number,
+  scenarioSet: string | null = null
 ): Promise<BenchmarkRow> {
   const startedAt = Date.now()
   let sessionId: string | null = null
@@ -1220,6 +1222,7 @@ export async function runScenario(
       run_id: randomUUID(),
       mode,
       scenario_id: scenario.id,
+      scenario_set: scenarioSet,
       iteration,
       session_id: sessionId,
       success,
@@ -1266,6 +1269,7 @@ export async function runScenario(
       run_id: randomUUID(),
       mode,
       scenario_id: scenario.id,
+      scenario_set: scenarioSet,
       iteration,
       session_id: sessionId,
       success: false,
@@ -1303,18 +1307,51 @@ export async function runScenario(
 }
 
 export async function runSuite(options: RunSuiteOptions): Promise<void> {
-  const { mode, repetitions, scenarioFilter } = options
+  const { mode, repetitions, scenarioFilter, scenarioSet = null } = options
 
   await mkdir(RESULTS_DIR, { recursive: true })
   const scenarios = await loadScenarios(SCENARIOS_DIR)
-  const selectedScenarios = scenarioFilter
-    ? scenarios.filter((scenario) => scenario.id === scenarioFilter)
-    : scenarios
 
-  if (selectedScenarios.length === 0) {
+  if (scenarios.length === 0) {
     throw new Error(
       scenarioFilter ? `No scenarios matched filter: ${scenarioFilter}` : "No benchmark scenarios found"
     )
+  }
+
+  let selectedScenarios: Scenario[]
+  let resolvedScenarioSet: string | null
+
+  if (scenarioFilter) {
+    selectedScenarios = scenarios.filter((scenario) => scenario.id === scenarioFilter)
+    resolvedScenarioSet = null
+  } else {
+    const scenarioSets = await loadScenarioSets(process.cwd())
+    const selectedSetName = scenarioSet ?? "default"
+    const selectedScenarioIds = scenarioSets[selectedSetName]
+    if (!selectedScenarioIds) {
+      throw new Error(`Unknown scenario set: ${selectedSetName}`)
+    }
+
+    const unknownScenarioIds = selectedScenarioIds.filter(
+      (scenarioId) => !scenarios.some((scenario) => scenario.id === scenarioId)
+    )
+    if (unknownScenarioIds.length > 0) {
+      throw new Error(`Scenario set '${selectedSetName}' references unknown scenario id(s): ${unknownScenarioIds.join(", ")}`)
+    }
+
+    selectedScenarios = selectedScenarioIds.map((scenarioId) => {
+      const matchedScenario = scenarios.find((scenario) => scenario.id === scenarioId)
+      if (!matchedScenario) {
+        throw new Error(`Scenario set '${selectedSetName}' references unknown scenario id(s): ${scenarioId}`)
+      }
+
+      return matchedScenario
+    })
+    resolvedScenarioSet = selectedSetName
+  }
+
+  if (selectedScenarios.length === 0) {
+    throw new Error(`No scenarios matched filter: ${scenarioFilter ?? scenarioSet ?? "default"}`)
   }
 
   const outFile = join(
@@ -1328,8 +1365,10 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
     for (let iteration = 1; iteration <= repetitions; iteration += 1) {
       let latestResult: BenchmarkRow | null = null
 
-      for (let attempt = 0; attempt <= scenario.allowed_retries; attempt += 1) {
-        const result = await withIsolatedBenchmarkClient((client) => runScenario(client, scenario, mode, iteration))
+        for (let attempt = 0; attempt <= scenario.allowed_retries; attempt += 1) {
+        const result = await withIsolatedBenchmarkClient((client) =>
+          runScenario(client, scenario, mode, iteration, resolvedScenarioSet)
+        )
         latestResult = {
           ...result,
           external_retry_count: attempt

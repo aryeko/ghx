@@ -13,9 +13,12 @@
 - `docs/architecture/overview.md` - architecture baseline and system context.
 - `docs/architecture/repository-structure.md` - detailed repository structure notes.
 - `docs/architecture/system-design.md` - deeper design rationale and tradeoffs.
+- `docs/architecture/capability-expansion-pr-review-ci-design.md` - implemented PR review + CI capability expansion record.
 - `docs/benchmark/methodology.md` - benchmark approach and assumptions.
 - `docs/benchmark/harness-design.md` - benchmark harness architecture.
 - `docs/benchmark/reporting.md` - benchmark output and reporting flow.
+- `docs/benchmark/capability-expansion-scenario-sets-design.md` - implemented scenario-set expansion record.
+- `docs/guides/publishing.md` - release and publish workflow for `@ghx/core`.
 
 ## Suggested Reading Paths
 

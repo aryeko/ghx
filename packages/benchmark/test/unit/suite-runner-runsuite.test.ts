@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const createOpencodeMock = vi.fn()
 const loadScenariosMock = vi.fn()
+const loadScenarioSetsMock = vi.fn()
 const appendFileMock = vi.fn(async () => undefined)
 const mkdirMock = vi.fn(async () => undefined)
 
@@ -10,7 +11,8 @@ vi.mock("@opencode-ai/sdk", () => ({
 }))
 
 vi.mock("../../src/scenario/loader.js", () => ({
-  loadScenarios: loadScenariosMock
+  loadScenarios: loadScenariosMock,
+  loadScenarioSets: loadScenarioSetsMock
 }))
 
 vi.mock("node:fs/promises", async (importOriginal) => {
@@ -74,6 +76,14 @@ function createSessionMocks(options?: { firstPromptFails?: boolean }) {
 describe("runSuite", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    loadScenarioSetsMock.mockResolvedValue({
+      default: ["repo-view-001"],
+      "pr-operations-all": ["repo-view-001"],
+      "pr-review-reads": [],
+      "pr-thread-mutations": [],
+      "ci-diagnostics": [],
+      "ci-log-analysis": []
+    })
   })
 
   it("runs suite and appends rows", async () => {
@@ -105,7 +115,220 @@ describe("runSuite", () => {
 
     expect(mkdirMock).toHaveBeenCalled()
     expect(appendFileMock).toHaveBeenCalled()
+    const appendCalls = appendFileMock.mock.calls as unknown[][]
+    expect(appendCalls.length).toBeGreaterThan(0)
+    const firstWrite = appendCalls[0]?.[1]
+    expect(typeof firstWrite).toBe("string")
+    const row = JSON.parse(firstWrite as string)
+    expect(row.scenario_set).toBe("default")
     expect(close).toHaveBeenCalled()
+  })
+
+  it("runs selected scenario set and records scenario_set metadata", async () => {
+    const session = createSessionMocks()
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+
+    loadScenariosMock.mockResolvedValue([
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "run {{task}} {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        fixture: { repo: "a/b" },
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"]
+        },
+        tags: []
+      },
+      {
+        id: "pr-view-001",
+        name: "PR view",
+        task: "pr.view",
+        input: { owner: "a", name: "b", prNumber: 1 },
+        prompt_template: "run {{task}} {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        fixture: { repo: "a/b" },
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"]
+        },
+        tags: []
+      }
+    ])
+
+    loadScenarioSetsMock.mockResolvedValue({
+      default: ["repo-view-001"],
+      "pr-operations-all": ["repo-view-001", "pr-view-001"],
+      "pr-review-reads": ["pr-view-001"],
+      "pr-thread-mutations": [],
+      "ci-diagnostics": [],
+      "ci-log-analysis": []
+    })
+
+    const mod = await import("../../src/runner/suite-runner.js")
+    await mod.runSuite({ mode: "ghx_router", repetitions: 1, scenarioFilter: null, scenarioSet: "pr-review-reads" })
+
+    expect(appendFileMock).toHaveBeenCalledTimes(1)
+    const appendCalls = appendFileMock.mock.calls as unknown[][]
+    const firstWrite = appendCalls[0]?.[1]
+    const row = JSON.parse(firstWrite as string)
+    expect(row.scenario_id).toBe("pr-view-001")
+    expect(row.scenario_set).toBe("pr-review-reads")
+  })
+
+  it("lets --scenario override scenario-set selection", async () => {
+    const session = createSessionMocks()
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+
+    loadScenariosMock.mockResolvedValue([
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "run {{task}} {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        fixture: { repo: "a/b" },
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"]
+        },
+        tags: []
+      }
+    ])
+
+    const mod = await import("../../src/runner/suite-runner.js")
+    await mod.runSuite({
+      mode: "ghx_router",
+      repetitions: 1,
+      scenarioFilter: "repo-view-001",
+      scenarioSet: "pr-review-reads"
+    })
+
+    const appendCalls = appendFileMock.mock.calls as unknown[][]
+    const firstWrite = appendCalls[0]?.[1]
+    const row = JSON.parse(firstWrite as string)
+    expect(row.scenario_set).toBeNull()
+  })
+
+  it("throws for unknown scenario set name", async () => {
+    const session = createSessionMocks()
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+
+    loadScenariosMock.mockResolvedValue([
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "run {{task}} {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        fixture: { repo: "a/b" },
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"]
+        },
+        tags: []
+      }
+    ])
+
+    const mod = await import("../../src/runner/suite-runner.js")
+    await expect(mod.runSuite({ mode: "ghx_router", repetitions: 1, scenarioFilter: null, scenarioSet: "missing" })).rejects.toThrow(
+      "Unknown scenario set: missing"
+    )
+    expect(close).not.toHaveBeenCalled()
+  })
+
+  it("throws when scenario set references unknown scenario ids", async () => {
+    const session = createSessionMocks()
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+
+    loadScenariosMock.mockResolvedValue([
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "run {{task}} {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        fixture: { repo: "a/b" },
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"]
+        },
+        tags: []
+      }
+    ])
+    loadScenarioSetsMock.mockResolvedValue({
+      default: ["missing-scenario-id"],
+      "pr-operations-all": ["repo-view-001"],
+      "pr-review-reads": [],
+      "pr-thread-mutations": [],
+      "ci-diagnostics": [],
+      "ci-log-analysis": []
+    })
+
+    const mod = await import("../../src/runner/suite-runner.js")
+    await expect(mod.runSuite({ mode: "ghx_router", repetitions: 1, scenarioFilter: null })).rejects.toThrow(
+      "references unknown scenario id"
+    )
+    expect(close).not.toHaveBeenCalled()
+  })
+
+  it("throws when selected scenario set is empty", async () => {
+    const session = createSessionMocks()
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+
+    loadScenariosMock.mockResolvedValue([
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "run {{task}} {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        fixture: { repo: "a/b" },
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"]
+        },
+        tags: []
+      }
+    ])
+    loadScenarioSetsMock.mockResolvedValue({
+      default: [],
+      "pr-operations-all": ["repo-view-001"],
+      "pr-review-reads": [],
+      "pr-thread-mutations": [],
+      "ci-diagnostics": [],
+      "ci-log-analysis": []
+    })
+
+    const mod = await import("../../src/runner/suite-runner.js")
+    await expect(mod.runSuite({ mode: "ghx_router", repetitions: 1, scenarioFilter: null })).rejects.toThrow(
+      "No scenarios matched filter: default"
+    )
+    expect(close).not.toHaveBeenCalled()
   })
 
   it("throws when scenario filter matches nothing", async () => {

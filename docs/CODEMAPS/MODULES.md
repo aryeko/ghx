@@ -74,6 +74,8 @@
 
 | Module | Purpose | Key Exports | Depends On |
 |---|---|---|---|
+| `index.ts` | Package entrypoint for npm consumers | `executeTask()`, `routePreferenceOrder`, adapters, registry helpers | `cli`, `core/*`, `gql/client` |
+| `agent.ts` | Package entrypoint for agent integration helpers | `listCapabilities()`, `createExecuteTool()` | `agent-interface/tools/*` |
 | `cli/index.ts` | CLI command router (`ghx run`) | `main()` | `cli/commands/run` |
 | `cli/commands/run.ts` | Parses args + invokes execution engine | `runCommand()` | `gql/client`, `routing/engine` |
 | `agent-interface/tools/list-capabilities-tool.ts` | Exposes card list to agents | `listCapabilities()` | `registry/index` |
@@ -91,7 +93,7 @@
 |---|---|---|---|
 | `domain/types.ts` | Benchmark row + scenario + message types | `BenchmarkMode`, `Scenario`, `BenchmarkRow`, etc. | none |
 | `scenario/schema.ts` | Zod scenario validation | `validateScenario()` | `zod`, `domain/types` |
-| `scenario/loader.ts` | Filesystem loader for scenario JSON | `loadScenarios()` | `scenario/schema` |
+| `scenario/loader.ts` | Filesystem loader for scenario JSON + set manifest | `loadScenarios()`, `loadScenarioSets()` | `scenario/schema` |
 
 ### Runner + Extraction Layer
 
@@ -100,7 +102,7 @@
 
 | Module | Purpose | Key Exports | Depends On |
 |---|---|---|---|
-| `runner/suite-runner.ts` | Main orchestrator for scenarios/retries/output files | `runSuite()`, `runScenario()`, `renderPrompt()` | OpenCode SDK, scenario loader, extraction modules |
+| `runner/suite-runner.ts` | Main orchestrator for scenario/set selection, retries, output files | `runSuite()`, `runScenario()`, `renderPrompt()` | OpenCode SDK, scenario loader, extraction modules |
 | `extract/envelope.ts` | JSON envelope extraction + assertions | `extractFirstJsonObject()`, `validateEnvelope()` | `domain/types` |
 | `extract/attempts.ts` | Retry/attempt metric extraction | `extractAttemptMetrics()` | none |
 | `extract/tool-usage.ts` | Tool call aggregation from message parts | `aggregateToolCounts()` | `domain/types` |
@@ -113,6 +115,6 @@
 | Module | Purpose | Key Exports | Depends On |
 |---|---|---|---|
 | `report/aggregate.ts` | Per-mode summaries and gate checks | `buildSummary()`, `toMarkdown()` | `domain/types` |
-| `cli/benchmark.ts` | Bench run command entrypoint | `main()` | `cli/args`, `runner/suite-runner` |
-| `cli/check-scenarios.ts` | Scenario validation command | `main()` | `scenario/loader` |
+| `cli/benchmark.ts` | Bench run command entrypoint (`--scenario`, `--scenario-set`) | `main()` | `cli/args`, `runner/suite-runner` |
+| `cli/check-scenarios.ts` | Scenario + set validation command | `main()` | `scenario/loader` |
 | `cli/report.ts` | Report and gate CLI | `main()` | `report/aggregate` |

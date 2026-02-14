@@ -3,7 +3,10 @@ import type {
   IssueCommentsListInput,
   IssueListInput,
   IssueViewInput,
+  PrCommentsListInput,
+  PrDiffListFilesInput,
   PrListInput,
+  PrReviewsListInput,
   PrViewInput,
   RepoViewInput
 } from "../../../gql/client.js"
@@ -20,6 +23,12 @@ export type GraphqlCapabilityId =
   | "issue.comments.list"
   | "pr.view"
   | "pr.list"
+  | "pr.comments.list"
+  | "pr.reviews.list"
+  | "pr.diff.list_files"
+  | "pr.comment.reply"
+  | "pr.comment.resolve"
+  | "pr.comment.unresolve"
 
 const DEFAULT_LIST_FIRST = 30
 
@@ -34,10 +43,21 @@ function withDefaultFirst(params: Record<string, unknown>): Record<string, unkno
   return params
 }
 
+function requireNonEmptyString(params: Record<string, unknown>, field: string, capabilityId: GraphqlCapabilityId): string {
+  const value = params[field]
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(`Missing or invalid ${field} for ${capabilityId}`)
+  }
+
+  return value
+}
+
 export async function runGraphqlCapability(
   client: Pick<
     GithubClient,
     "fetchRepoView" | "fetchIssueView" | "fetchIssueList" | "fetchIssueCommentsList" | "fetchPrView" | "fetchPrList"
+      | "fetchPrCommentsList" | "fetchPrReviewsList" | "fetchPrDiffListFiles" | "replyToReviewThread"
+      | "resolveReviewThread" | "unresolveReviewThread"
   >,
   capabilityId: GraphqlCapabilityId,
   params: Record<string, unknown>
@@ -70,6 +90,40 @@ export async function runGraphqlCapability(
 
     if (capabilityId === "pr.list") {
       const data = await client.fetchPrList(withDefaultFirst(params) as PrListInput)
+      return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
+    }
+
+    if (capabilityId === "pr.comments.list") {
+      const data = await client.fetchPrCommentsList(withDefaultFirst(params) as PrCommentsListInput)
+      return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
+    }
+
+    if (capabilityId === "pr.reviews.list") {
+      const data = await client.fetchPrReviewsList(withDefaultFirst(params) as PrReviewsListInput)
+      return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
+    }
+
+    if (capabilityId === "pr.diff.list_files") {
+      const data = await client.fetchPrDiffListFiles(withDefaultFirst(params) as PrDiffListFilesInput)
+      return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
+    }
+
+    if (capabilityId === "pr.comment.reply") {
+      const threadId = requireNonEmptyString(params, "threadId", capabilityId)
+      const body = requireNonEmptyString(params, "body", capabilityId)
+      const data = await client.replyToReviewThread({ threadId, body })
+      return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
+    }
+
+    if (capabilityId === "pr.comment.resolve") {
+      const threadId = requireNonEmptyString(params, "threadId", capabilityId)
+      const data = await client.resolveReviewThread({ threadId })
+      return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
+    }
+
+    if (capabilityId === "pr.comment.unresolve") {
+      const threadId = requireNonEmptyString(params, "threadId", capabilityId)
+      const data = await client.unresolveReviewThread({ threadId })
       return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
     }
 

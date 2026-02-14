@@ -1,0 +1,52 @@
+{
+  "default": [
+    "repo-view-001",
+    "issue-view-001",
+    "issue-list-open-001",
+    "issue-comments-list-001",
+    "pr-view-001",
+    "pr-list-open-001"
+  ],
+  "pr-review-reads": [
+    "pr-comments-unresolved-001",
+    "pr-reviews-list-001",
+    "pr-diff-list-files-001",
+    "pr-status-checks-001",
+    "pr-checks-get-failed-001",
+    "pr-mergeability-view-001"
+  ],
+  "pr-thread-mutations": [
+    "pr-comment-reply-001",
+    "pr-comment-resolve-001",
+    "pr-comment-unresolve-001",
+    "pr-ready-for-review-set-001"
+  ],
+  "ci-diagnostics": [
+    "check-run-annotations-list-001",
+    "workflow-runs-list-001",
+    "workflow-run-jobs-list-001",
+    "workflow-job-logs-get-001"
+  ],
+  "ci-log-analysis": [
+    "workflow-job-logs-analyze-001"
+  ],
+  "pr-operations-all": [
+    "pr-comments-unresolved-001",
+    "pr-reviews-list-001",
+    "pr-diff-list-files-001",
+    "pr-status-checks-001",
+    "pr-checks-get-failed-001",
+    "pr-mergeability-view-001",
+    "pr-comment-reply-001",
+    "pr-comment-resolve-001",
+    "pr-comment-unresolve-001",
+    "pr-ready-for-review-set-001",
+    "check-run-annotations-list-001",
+    "workflow-runs-list-001",
+    "workflow-run-jobs-list-001",
+    "workflow-job-logs-get-001",
+    "workflow-job-logs-analyze-001",
+    "pr-view-001",
+    "pr-list-open-001"
+  ]
+}

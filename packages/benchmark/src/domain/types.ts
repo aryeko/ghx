@@ -52,6 +52,7 @@ export type BenchmarkRow = {
   run_id: string
   mode: BenchmarkMode
   scenario_id: string
+  scenario_set: string | null
   iteration: number
   session_id: string | null
   success: boolean

@@ -80,15 +80,17 @@ The core package provides a normalized `ResultEnvelope` contract and routes each
 
 ## Benchmark Data Flow
 
-1. `packages/benchmark/src/cli/benchmark.ts` parses mode/repetitions.
-2. `runSuite()` loads JSON scenarios from `packages/benchmark/scenarios/`.
-3. `runScenario()` sends prompts through OpenCode SDK sessions and captures assistant output.
-4. Envelope extraction + assertion validation runs via `src/extract/*`.
-5. Result rows are appended to `packages/benchmark/results/*.jsonl`.
-6. `src/cli/report.ts` aggregates rows into summary markdown/json artifacts.
+1. `packages/benchmark/src/cli/benchmark.ts` parses mode/repetitions and optional scenario selectors.
+2. `runSuite()` resolves scenario selection by precedence: `--scenario`, then `--scenario-set`, then implicit `default` from `packages/benchmark/scenario-sets.json`.
+3. `runSuite()` loads JSON scenarios from `packages/benchmark/scenarios/`.
+4. `runScenario()` sends prompts through OpenCode SDK sessions and captures assistant output.
+5. Envelope extraction + assertion validation runs via `src/extract/*`.
+6. Result rows are appended to `packages/benchmark/results/*.jsonl`, including `scenario_set` metadata when set-based selection is used.
+7. `src/cli/report.ts` aggregates rows into summary markdown/json artifacts.
 
 ## Entry Points
 
+- `packages/core/src/index.ts` - public `@ghx/core` package API entrypoint
 - `packages/core/src/cli/index.ts` - `ghx` executable entrypoint
 - `packages/benchmark/src/cli/benchmark.ts` - benchmark runner CLI
 - `packages/benchmark/src/cli/check-scenarios.ts` - scenario validity check
@@ -99,3 +101,4 @@ The core package provides a normalized `ResultEnvelope` contract and routes each
 - `docs/architecture/overview.md`
 - `docs/architecture/system-design.md`
 - `docs/benchmark/harness-design.md`
+- `docs/guides/publishing.md`

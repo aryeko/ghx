@@ -10,6 +10,14 @@ describe("parseCliArgs", () => {
     expect(parsed.mode).toBe("agent_direct")
     expect(parsed.repetitions).toBe(3)
     expect(parsed.scenarioFilter).toBe("pr-view-001")
+    expect(parsed.scenarioSet).toBeNull()
+  })
+
+  it("parses scenario-set flag", () => {
+    const parsed = parseCliArgs(["run", "ghx_router", "1", "--scenario-set", "pr-review-reads"])
+
+    expect(parsed.scenarioSet).toBe("pr-review-reads")
+    expect(parsed.scenarioFilter).toBeNull()
   })
 
   it("defaults repetitions to 1 when omitted", () => {
@@ -32,6 +40,19 @@ describe("parseCliArgs", () => {
     expect(parsed.mode).toBe("ghx_router")
     expect(parsed.repetitions).toBe(1)
     expect(parsed.scenarioFilter).toBe("issue-view-001")
+  })
+
+  it("supports inline scenario-set flag", () => {
+    const parsed = parseCliArgs(["run", "--scenario-set=ci-diagnostics"])
+
+    expect(parsed.mode).toBe("ghx_router")
+    expect(parsed.repetitions).toBe(1)
+    expect(parsed.scenarioSet).toBe("ci-diagnostics")
+  })
+
+  it("treats --scenario-set with missing value as unset", () => {
+    const parsed = parseCliArgs(["run", "--scenario-set"])
+    expect(parsed.scenarioSet).toBeNull()
   })
 
   it("rejects unsupported commands and modes", () => {
