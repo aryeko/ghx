@@ -19,18 +19,18 @@ pnpm run benchmark:proof:pr-fast
 pnpm run benchmark:gate:release-strict
 
 # package-level commands
-pnpm --filter @ghx-dev/benchmark run run -- agent_direct 1 --scenario pr-view-001
+pnpm --filter @ghx-dev/benchmark run benchmark -- agent_direct 1 --scenario pr-view-001
 
-pnpm --filter @ghx-dev/benchmark run run -- ghx 1 --scenario-set pr-exec
-pnpm --filter @ghx-dev/benchmark run run -- ghx 1 --scenario-set issues
-pnpm --filter @ghx-dev/benchmark run run -- ghx 1 --scenario-set release-delivery
-pnpm --filter @ghx-dev/benchmark run run -- ghx 1 --scenario-set workflows
-pnpm --filter @ghx-dev/benchmark run run -- ghx 1 --scenario-set projects-v2
+pnpm --filter @ghx-dev/benchmark run benchmark -- ghx 1 --scenario-set pr-exec
+pnpm --filter @ghx-dev/benchmark run benchmark -- ghx 1 --scenario-set issues
+pnpm --filter @ghx-dev/benchmark run benchmark -- ghx 1 --scenario-set release-delivery
+pnpm --filter @ghx-dev/benchmark run benchmark -- ghx 1 --scenario-set workflows
+pnpm --filter @ghx-dev/benchmark run benchmark -- ghx 1 --scenario-set projects-v2
 
 pnpm --filter @ghx-dev/benchmark run report
 pnpm --filter @ghx-dev/benchmark run report:gate
 
-GHX_SKIP_GH_PREFLIGHT=1 pnpm --filter @ghx-dev/benchmark run run -- ghx 3 --scenario-set pr-exec
+GHX_SKIP_GH_PREFLIGHT=1 pnpm --filter @ghx-dev/benchmark run benchmark -- ghx 3 --scenario-set pr-exec
 pnpm --filter @ghx-dev/benchmark exec tsx src/cli/report.ts --gate --gate-profile pr_fast
 
 pnpm --filter @ghx-dev/benchmark run test
