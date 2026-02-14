@@ -49,9 +49,9 @@ Recommended verify sequence for PR validation:
 2. `pnpm --filter @ghx-dev/benchmark run benchmark -- agent_direct 4 --scenario-set ci-verify-pr`
 3. `GHX_SKIP_GH_PREFLIGHT=1 pnpm --filter @ghx-dev/benchmark run benchmark -- ghx 4 --scenario-set ci-verify-pr`
 4. `pnpm --filter @ghx-dev/benchmark run report`
-5. `pnpm --filter @ghx-dev/benchmark exec tsx src/cli/report.ts --gate --gate-profile pr_fast`
+5. `pnpm --filter @ghx-dev/benchmark exec tsx src/cli/report.ts --gate --gate-profile verify_pr`
 
-Expected outcome: both reliability and efficiency checks pass for `pr_fast` on stable runs.
+Expected outcome: both reliability and efficiency checks pass for `verify_pr` on stable runs.
 
 ## Output Validation
 

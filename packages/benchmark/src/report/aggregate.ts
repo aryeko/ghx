@@ -1,6 +1,6 @@
 import type { BenchmarkMode, BenchmarkRow } from "../domain/types.js"
 
-export type GateProfile = "pr_fast" | "release_strict"
+export type GateProfile = "verify_pr" | "verify_release"
 
 type GateCheck = {
   name: string
@@ -113,7 +113,7 @@ const DEFAULT_THRESHOLDS: GateThresholds = {
 }
 
 const GATE_V2_THRESHOLDS: Record<GateProfile, GateV2Thresholds> = {
-  pr_fast: {
+  verify_pr: {
     minTokensActiveReductionPct: 15,
     minLatencyReductionPct: 15,
     minToolCallReductionPct: 20,
@@ -125,7 +125,7 @@ const GATE_V2_THRESHOLDS: Record<GateProfile, GateV2Thresholds> = {
     maxRetryRatePct: 15,
     minSamplesPerScenarioPerMode: 1,
   },
-  release_strict: {
+  verify_release: {
     minTokensActiveReductionPct: 22,
     minLatencyReductionPct: 20,
     minToolCallReductionPct: 30,
@@ -409,7 +409,7 @@ function buildGateV2(
 export function buildSummary(
   rows: BenchmarkRow[],
   thresholds: GateThresholds = DEFAULT_THRESHOLDS,
-  gateProfile: GateProfile = "pr_fast",
+  gateProfile: GateProfile = "verify_pr",
 ): BenchmarkSummary {
   const grouped: Partial<Record<BenchmarkMode, BenchmarkRow[]>> = {}
   for (const row of rows) {

@@ -11,7 +11,7 @@ Gate v2 has two parts:
 
 Both must pass.
 
-### Profile: `pr_fast`
+### Profile: `verify_pr`
 
 Reliability:
 
@@ -28,7 +28,7 @@ Efficiency (stable sample):
 - median latency reduction >= 15%
 - median tool-call reduction >= 20%
 
-### Profile: `release_strict`
+### Profile: `verify_release`
 
 Reliability:
 

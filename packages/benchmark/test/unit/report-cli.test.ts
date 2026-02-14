@@ -23,9 +23,9 @@ describe("report cli", () => {
     const report = await importReportModule(root)
 
     expect(report.parseArgs(["--gate"]).gate).toBe(true)
-    expect(report.parseArgs([]).gateProfile).toBe("pr_fast")
-    expect(report.parseArgs(["--gate-profile", "release_strict"]).gateProfile).toBe("release_strict")
-    expect(report.parseArgs(["--gate-profile=pr_fast"]).gateProfile).toBe("pr_fast")
+    expect(report.parseArgs([]).gateProfile).toBe("verify_pr")
+    expect(report.parseArgs(["--gate-profile", "verify_release"]).gateProfile).toBe("verify_release")
+    expect(report.parseArgs(["--gate-profile=verify_pr"]).gateProfile).toBe("verify_pr")
     expect(report.modeFromFilename("x-agent_direct-suite.jsonl")).toBe("agent_direct")
     expect(report.modeFromFilename("x-mcp-suite.jsonl")).toBe("mcp")
     expect(report.modeFromFilename("x-ghx-suite.jsonl")).toBe("ghx")

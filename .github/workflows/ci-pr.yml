@@ -75,9 +75,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: E2E tests
         run: pnpm run test:e2e
-      - name: Benchmark gate (pr_fast)
+      - name: Benchmark verify (verify_pr)
         if: "!startsWith(github.event.pull_request.title, 'chore: version packages')"
         run: pnpm run benchmark:verify:pr
-      - name: Benchmark gate (release_strict)
+      - name: Benchmark verify (verify_release)
         if: "startsWith(github.event.pull_request.title, 'chore: version packages')"
         run: pnpm run benchmark:verify:release

@@ -13,7 +13,7 @@
 - success and output-validity rates
 - runner-failure and timeout/stall rates
 - tool-call and retry trends
-- v2 gate outcome with profile (`pr_fast` or `release_strict`)
+- v2 gate outcome with profile (`verify_pr` or `verify_release`)
 - stable-sample efficiency coverage and reductions
 - legacy v1 gate outcome (compatibility visibility)
 - profiling snapshot (assistant reasoning, reasoning->tool gap, tool runtime, post-tool)
@@ -24,14 +24,14 @@
 - `pnpm --filter @ghx-dev/benchmark run report:gate`
 - `pnpm run benchmark:verify:release`
 
-Main-branch release automation runs `release_strict` before publish in CI (`.github/workflows/ci-main.yml`).
+Main-branch release automation runs `verify_release` before publish in CI (`.github/workflows/ci-main.yml`).
 
 ## Gate Profile Selection
 
 `report` supports profile selection:
 
-- `--gate-profile pr_fast` (default)
-- `--gate-profile release_strict`
+- `--gate-profile verify_pr` (default)
+- `--gate-profile verify_release`
 
 `--gate` evaluates gate v2 for the selected profile.
 
@@ -54,6 +54,6 @@ For `pr-exec` with 3 repetitions per scenario (`agent_direct` vs `ghx`), recent 
 
 - reliability: `100%` success, `100%` output validity, `0%` runner failures/timeouts/retries
 - efficiency: active-token reduction `> 15%`, latency reduction `> 15%`, tool-call reduction `> 20%`
-- gate v2 (`pr_fast`): `PASS`
+- gate v2 (`verify_pr`): `PASS`
 
 Treat this as a reference snapshot; re-run proof commands for release decisions.

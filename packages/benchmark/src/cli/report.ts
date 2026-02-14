@@ -13,23 +13,23 @@ function parseGateProfile(args: string[]): GateProfile {
   const inline = args.find((arg) => arg.startsWith("--gate-profile="))
   if (inline) {
     const value = inline.slice("--gate-profile=".length)
-    if (value === "pr_fast" || value === "release_strict") {
+    if (value === "verify_pr" || value === "verify_release") {
       return value
     }
-    throw new Error("Unknown gate profile. Expected pr_fast or release_strict")
+    throw new Error("Unknown gate profile. Expected verify_pr or verify_release")
   }
 
   const index = args.findIndex((arg) => arg === "--gate-profile")
   if (index === -1) {
-    return "pr_fast"
+    return "verify_pr"
   }
 
   const value = args[index + 1]
-  if (value === "pr_fast" || value === "release_strict") {
+  if (value === "verify_pr" || value === "verify_release") {
     return value
   }
 
-  throw new Error("Unknown gate profile. Expected pr_fast or release_strict")
+  throw new Error("Unknown gate profile. Expected verify_pr or verify_release")
 }
 
 export function parseArgs(args: string[]): { gate: boolean; gateProfile: GateProfile } {

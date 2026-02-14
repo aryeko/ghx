@@ -33,7 +33,7 @@ pnpm --filter @ghx-dev/benchmark run report
 pnpm --filter @ghx-dev/benchmark run report:gate
 
 GHX_SKIP_GH_PREFLIGHT=1 pnpm --filter @ghx-dev/benchmark run benchmark -- ghx 3 --scenario-set pr-exec
-pnpm --filter @ghx-dev/benchmark exec tsx src/cli/report.ts --gate --gate-profile pr_fast
+pnpm --filter @ghx-dev/benchmark exec tsx src/cli/report.ts --gate --gate-profile verify_pr
 
 pnpm --filter @ghx-dev/benchmark run test
 pnpm --filter @ghx-dev/benchmark run typecheck
