@@ -19,4 +19,4 @@ export type {
 export { getOperationCard, listOperationCards } from "./core/registry/index.js"
 
 export { createSafeCliCommandRunner } from "./core/execution/cli/safe-runner.js"
-export type { CliCommandRunner } from "./core/execution/cli/types.js"
+export type { CliCommandRunner } from "./core/execution/adapters/cli-capability-adapter.js"
