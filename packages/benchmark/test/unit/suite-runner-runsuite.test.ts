@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { spawnSync } from "node:child_process"
 
 const createOpencodeMock = vi.fn()
 const loadScenariosMock = vi.fn()
@@ -25,8 +26,17 @@ vi.mock("node:fs/promises", async (importOriginal) => {
 })
 
 vi.mock("node:child_process", () => ({
-  spawnSync: vi.fn(() => ({ status: 0 }))
+  spawnSync: vi.fn(() => ({
+    status: 0,
+    stdout: JSON.stringify([
+      { capability_id: "repo.view", description: "Repo view" },
+      { capability_id: "pr.view", description: "PR view" }
+    ]),
+    stderr: ""
+  }))
 }))
+
+const spawnSyncMock = vi.mocked(spawnSync)
 
 function createSessionMocks(options?: { firstPromptFails?: boolean }) {
   let promptCount = 0
@@ -111,7 +121,7 @@ describe("runSuite", () => {
     ])
 
     const mod = await import("../../src/runner/suite-runner.js")
-    await mod.runSuite({ mode: "ghx_router", repetitions: 1, scenarioFilter: null })
+    await mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null })
 
     expect(mkdirMock).toHaveBeenCalled()
     expect(appendFileMock).toHaveBeenCalled()
@@ -174,7 +184,7 @@ describe("runSuite", () => {
     })
 
     const mod = await import("../../src/runner/suite-runner.js")
-    await mod.runSuite({ mode: "ghx_router", repetitions: 1, scenarioFilter: null, scenarioSet: "pr-review-reads" })
+    await mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null, scenarioSet: "pr-review-reads" })
 
     expect(appendFileMock).toHaveBeenCalledTimes(1)
     const appendCalls = appendFileMock.mock.calls as unknown[][]
@@ -210,7 +220,7 @@ describe("runSuite", () => {
 
     const mod = await import("../../src/runner/suite-runner.js")
     await mod.runSuite({
-      mode: "ghx_router",
+      mode: "ghx",
       repetitions: 1,
       scenarioFilter: "repo-view-001",
       scenarioSet: "pr-review-reads"
@@ -247,10 +257,45 @@ describe("runSuite", () => {
     ])
 
     const mod = await import("../../src/runner/suite-runner.js")
-    await expect(mod.runSuite({ mode: "ghx_router", repetitions: 1, scenarioFilter: null, scenarioSet: "missing" })).rejects.toThrow(
+    await expect(mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null, scenarioSet: "missing" })).rejects.toThrow(
       "Unknown scenario set: missing"
     )
     expect(close).not.toHaveBeenCalled()
+  })
+
+  it("fails ghx runSuite early when capability preflight fails", async () => {
+    const session = createSessionMocks()
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+
+    loadScenariosMock.mockResolvedValue([
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "run {{task}} {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        fixture: { repo: "a/b" },
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"]
+        },
+        tags: []
+      }
+    ])
+
+    spawnSyncMock
+      .mockReturnValueOnce({ status: 0, stdout: "", stderr: "" } as never)
+      .mockReturnValueOnce({ status: 0, stdout: "[]", stderr: "" } as never)
+
+    const mod = await import("../../src/runner/suite-runner.js")
+    await expect(mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null })).rejects.toThrow(
+      "ghx_preflight_failed"
+    )
+    expect(appendFileMock).not.toHaveBeenCalled()
   })
 
   it("throws when scenario set references unknown scenario ids", async () => {
@@ -286,7 +331,7 @@ describe("runSuite", () => {
     })
 
     const mod = await import("../../src/runner/suite-runner.js")
-    await expect(mod.runSuite({ mode: "ghx_router", repetitions: 1, scenarioFilter: null })).rejects.toThrow(
+    await expect(mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null })).rejects.toThrow(
       "references unknown scenario id"
     )
     expect(close).not.toHaveBeenCalled()
@@ -325,7 +370,7 @@ describe("runSuite", () => {
     })
 
     const mod = await import("../../src/runner/suite-runner.js")
-    await expect(mod.runSuite({ mode: "ghx_router", repetitions: 1, scenarioFilter: null })).rejects.toThrow(
+    await expect(mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null })).rejects.toThrow(
       "No scenarios matched filter: default"
     )
     expect(close).not.toHaveBeenCalled()
@@ -338,7 +383,7 @@ describe("runSuite", () => {
     loadScenariosMock.mockResolvedValue([])
 
     const mod = await import("../../src/runner/suite-runner.js")
-    await expect(mod.runSuite({ mode: "ghx_router", repetitions: 1, scenarioFilter: "none" })).rejects.toThrow(
+    await expect(mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: "none" })).rejects.toThrow(
       "No scenarios matched filter"
     )
     expect(close).not.toHaveBeenCalled()
@@ -352,7 +397,7 @@ describe("runSuite", () => {
     loadScenariosMock.mockResolvedValue([])
 
     const mod = await import("../../src/runner/suite-runner.js")
-    await expect(mod.runSuite({ mode: "ghx_router", repetitions: 1, scenarioFilter: null })).rejects.toThrow(
+    await expect(mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null })).rejects.toThrow(
       "No benchmark scenarios found"
     )
     expect(close).not.toHaveBeenCalled()
@@ -384,7 +429,7 @@ describe("runSuite", () => {
     ])
 
     const mod = await import("../../src/runner/suite-runner.js")
-    await mod.runSuite({ mode: "ghx_router", repetitions: 1, scenarioFilter: null })
+    await mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null })
 
     expect(session.promptAsync).toHaveBeenCalledTimes(2)
     expect(appendFileMock).toHaveBeenCalledTimes(1)
@@ -415,7 +460,7 @@ describe("runSuite", () => {
     ])
 
     const mod = await import("../../src/runner/suite-runner.js")
-    await expect(mod.runSuite({ mode: "ghx_router", repetitions: 1, scenarioFilter: null })).rejects.toThrow(
+    await expect(mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null })).rejects.toThrow(
       "No benchmark result produced"
     )
     expect(close).not.toHaveBeenCalled()
@@ -462,7 +507,7 @@ describe("runSuite", () => {
     const mod = await import("../../src/runner/suite-runner.js")
 
     try {
-      await mod.runSuite({ mode: "ghx_router", repetitions: 1, scenarioFilter: null })
+      await mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null })
 
       expect(process.env.OPENCODE_CONFIG).toBe("from-test-config")
       expect(process.env.OPENCODE_CONFIG_DIR).toBe("from-test-config-dir")
@@ -519,8 +564,20 @@ describe("runSuite", () => {
 
     const spawnSync = await import("node:child_process")
     vi.mocked(spawnSync.spawnSync).mockImplementation((_cmd, args) => {
-      if (Array.isArray(args) && args[0] === "auth") {
+      if (Array.isArray(args) && args[0] === "auth" && args[1] === "status") {
+        return { status: 0, stdout: "ok", stderr: "" } as never
+      }
+
+      if (Array.isArray(args) && args[0] === "auth" && args[1] === "token") {
         return { status: 1 } as never
+      }
+
+      if (Array.isArray(args) && args.includes("capabilities") && args.includes("list")) {
+        return {
+          status: 0,
+          stdout: JSON.stringify([{ capability_id: "repo.view", description: "Repo view" }]),
+          stderr: ""
+        } as never
       }
 
       return { status: 0 } as never
@@ -552,7 +609,7 @@ describe("runSuite", () => {
     const mod = await import("../../src/runner/suite-runner.js")
 
     try {
-      await mod.runSuite({ mode: "ghx_router", repetitions: 1, scenarioFilter: null })
+      await mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null })
 
       expect(process.env.OPENCODE_CONFIG).toBeUndefined()
       expect(process.env.OPENCODE_CONFIG_DIR).toBeUndefined()

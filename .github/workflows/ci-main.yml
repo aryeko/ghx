@@ -18,26 +18,21 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GITHUB_TOKEN: ${{ github.token }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          persist-credentials: false
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm run ci --parallel=3 --outputStyle=static
-      - name: Run core E2E local
-        run: pnpm --filter @ghx-dev/core run test:e2e:local
-      - name: Run core E2E SDK (secret-gated)
-        if: ${{ env.OPENAI_API_KEY != '' }}
-        run: pnpm --filter @ghx-dev/core run test:e2e:sdk
-      - name: Generate coverage
-        run: pnpm run test:coverage
+      - run: pnpm run ci
+      - name: Install opencode
+        run: curl -fsSL https://opencode.ai/install | bash
+      - name: Run core E2E
+        run: pnpm run test:e2e
       - name: Upload coverage to Codecov
         if: ${{ always() && !cancelled() }}
         uses: codecov/codecov-action@v5
@@ -55,14 +50,19 @@ jobs:
           flags: main
           use_oidc: true
           fail_ci_if_error: true
+
   release:
-    needs: build-and-test
+    needs:
+      - build-and-test
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
       id-token: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -85,4 +85,5 @@ jobs:
           commit: "chore: version packages"
           title: "chore: version packages"
         env:
+          GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}

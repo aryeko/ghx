@@ -23,10 +23,20 @@ describe("report cli", () => {
     const report = await importReportModule(root)
 
     expect(report.parseArgs(["--gate"]).gate).toBe(true)
+    expect(report.parseArgs([]).gateProfile).toBe("verify_pr")
+    expect(report.parseArgs(["--gate-profile", "verify_release"]).gateProfile).toBe("verify_release")
+    expect(report.parseArgs(["--gate-profile=verify_pr"]).gateProfile).toBe("verify_pr")
     expect(report.modeFromFilename("x-agent_direct-suite.jsonl")).toBe("agent_direct")
     expect(report.modeFromFilename("x-mcp-suite.jsonl")).toBe("mcp")
-    expect(report.modeFromFilename("x-ghx_router-suite.jsonl")).toBe("ghx_router")
+    expect(report.modeFromFilename("x-ghx-suite.jsonl")).toBe("ghx")
     expect(report.modeFromFilename("x-unknown.jsonl")).toBeNull()
+  })
+
+  it("rejects unknown gate profiles", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ghx-bench-report-"))
+    const report = await importReportModule(root)
+
+    expect(() => report.parseArgs(["--gate-profile", "invalid"])).toThrow("Unknown gate profile")
   })
 
   it("loads latest rows and writes report outputs", async () => {
@@ -58,7 +68,7 @@ describe("report cli", () => {
     })
 
     await writeFile(join(results, "2026-01-01-agent_direct-suite.jsonl"), `${row}\n`, "utf8")
-    await writeFile(join(results, "2026-01-02-ghx_router-suite.jsonl"), `${row.replace('agent_direct', 'ghx_router')}\n`, "utf8")
+    await writeFile(join(results, "2026-01-02-ghx-suite.jsonl"), `${row.replace("agent_direct", "ghx")}\n`, "utf8")
 
     const report = await importReportModule(root)
     const rows = await report.loadLatestRowsPerMode()
@@ -105,5 +115,63 @@ describe("report cli", () => {
     await expect(report.main(["--gate"]))
       .rejects.toThrow("Benchmark gate failed")
     process.chdir(previous)
+  })
+
+  it("rejects mixed latest cohorts across modes", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ghx-bench-report-"))
+    const results = join(root, "results")
+    await mkdir(results, { recursive: true })
+
+    const agentRow = JSON.stringify({
+      timestamp: "2026-02-13T00:00:00.000Z",
+      run_id: "r-agent",
+      mode: "agent_direct",
+      scenario_id: "s1",
+      scenario_set: "pr-exec",
+      iteration: 1,
+      session_id: "ss-agent",
+      success: true,
+      output_valid: true,
+      latency_ms_wall: 100,
+      sdk_latency_ms: 90,
+      tokens: { input: 1, output: 1, reasoning: 1, cache_read: 0, cache_write: 0, total: 3 },
+      cost: 0,
+      tool_calls: 1,
+      api_calls: 1,
+      internal_retry_count: 0,
+      external_retry_count: 0,
+      model: { provider_id: "x", model_id: "y", mode: null },
+      git: { repo: "ghx", commit: "abc123" },
+      error: null,
+    })
+
+    const ghxRow = JSON.stringify({
+      timestamp: "2026-02-13T00:00:00.000Z",
+      run_id: "r-ghx",
+      mode: "ghx",
+      scenario_id: "s2",
+      scenario_set: "default",
+      iteration: 1,
+      session_id: "ss-ghx",
+      success: true,
+      output_valid: true,
+      latency_ms_wall: 100,
+      sdk_latency_ms: 90,
+      tokens: { input: 1, output: 1, reasoning: 1, cache_read: 0, cache_write: 0, total: 3 },
+      cost: 0,
+      tool_calls: 1,
+      api_calls: 1,
+      internal_retry_count: 0,
+      external_retry_count: 0,
+      model: { provider_id: "x", model_id: "y", mode: null },
+      git: { repo: "ghx", commit: "def456" },
+      error: null,
+    })
+
+    await writeFile(join(results, "2026-01-03-agent_direct-suite.jsonl"), `${agentRow}\n`, "utf8")
+    await writeFile(join(results, "2026-01-04-ghx-suite.jsonl"), `${ghxRow}\n`, "utf8")
+
+    const report = await importReportModule(root)
+    await expect(report.loadLatestRowsPerMode()).rejects.toThrow("not comparable across modes")
   })
 })

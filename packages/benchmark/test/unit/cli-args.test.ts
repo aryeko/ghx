@@ -14,7 +14,7 @@ describe("parseCliArgs", () => {
   })
 
   it("parses scenario-set flag", () => {
-    const parsed = parseCliArgs(["run", "ghx_router", "1", "--scenario-set", "pr-review-reads"])
+    const parsed = parseCliArgs(["run", "ghx", "1", "--scenario-set", "pr-review-reads"])
 
     expect(parsed.scenarioSet).toBe("pr-review-reads")
     expect(parsed.scenarioFilter).toBeNull()
@@ -29,7 +29,7 @@ describe("parseCliArgs", () => {
   it("supports pnpm forwarded args with separator", () => {
     const parsed = parseCliArgs(["run", "--", "--scenario", "pr-view-001"])
 
-    expect(parsed.mode).toBe("ghx_router")
+    expect(parsed.mode).toBe("ghx")
     expect(parsed.repetitions).toBe(1)
     expect(parsed.scenarioFilter).toBe("pr-view-001")
   })
@@ -37,7 +37,7 @@ describe("parseCliArgs", () => {
   it("supports inline scenario flag without positional args", () => {
     const parsed = parseCliArgs(["run", "--scenario=issue-view-001"])
 
-    expect(parsed.mode).toBe("ghx_router")
+    expect(parsed.mode).toBe("ghx")
     expect(parsed.repetitions).toBe(1)
     expect(parsed.scenarioFilter).toBe("issue-view-001")
   })
@@ -45,7 +45,7 @@ describe("parseCliArgs", () => {
   it("supports inline scenario-set flag", () => {
     const parsed = parseCliArgs(["run", "--scenario-set=ci-diagnostics"])
 
-    expect(parsed.mode).toBe("ghx_router")
+    expect(parsed.mode).toBe("ghx")
     expect(parsed.repetitions).toBe(1)
     expect(parsed.scenarioSet).toBe("ci-diagnostics")
   })
@@ -61,7 +61,7 @@ describe("parseCliArgs", () => {
   })
 
   it("rejects invalid repetitions", () => {
-    expect(() => parseCliArgs(["run", "ghx_router", "0"])).toThrow("Invalid repetitions")
-    expect(() => parseCliArgs(["run", "ghx_router", "1.5"])).toThrow("Invalid repetitions")
+    expect(() => parseCliArgs(["run", "ghx", "0"])).toThrow("Invalid repetitions")
+    expect(() => parseCliArgs(["run", "ghx", "1.5"])).toThrow("Invalid repetitions")
   })
 })

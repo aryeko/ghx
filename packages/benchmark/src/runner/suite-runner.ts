@@ -9,6 +9,7 @@ import { extractFirstJsonObject, validateEnvelope } from "../extract/envelope.js
 import { extractAttemptMetrics } from "../extract/attempts.js"
 import { aggregateToolCounts } from "../extract/tool-usage.js"
 import type {
+  BenchmarkTimingBreakdown,
   BenchmarkMode,
   BenchmarkRow,
   Scenario,
@@ -82,8 +83,8 @@ const modePromptPrefix: Record<BenchmarkMode, string> = {
   agent_direct:
     "You are running a benchmark in agent_direct mode. Use GitHub CLI (`gh`) commands directly to complete the task. Do not use any `ghx` command.",
   mcp: "You are running a benchmark in mcp mode. Prefer MCP tools when available.",
-  ghx_router:
-    "You are running a benchmark in ghx_router mode. Use `pnpm exec ghx run <task> --input '<json>'` as the primary execution path and do not use direct `gh` commands unless explicitly asked."
+  ghx:
+    "You are running a benchmark in ghx mode. Use `GHX_SKIP_GH_PREFLIGHT=1 node ../core/dist/cli/index.js run <task> --input '<json>'` as the primary execution path and do not use direct `gh` commands unless explicitly asked."
 }
 
 export function isObject(value: unknown): value is Record<string, unknown> {
@@ -184,6 +185,99 @@ export function hasAssistantSignalParts(parts: SessionMessagePart[]): boolean {
 
 export function hasTextPart(parts: SessionMessagePart[]): boolean {
   return parts.some((part) => part.type === "text" && typeof part.text === "string")
+}
+
+export function extractTimingBreakdown(messages: SessionMessageEntry[]): BenchmarkTimingBreakdown {
+  const breakdown: BenchmarkTimingBreakdown = {
+    assistant_total_ms: 0,
+    assistant_pre_reasoning_ms: 0,
+    assistant_reasoning_ms: 0,
+    assistant_between_reasoning_and_tool_ms: 0,
+    assistant_post_tool_ms: 0,
+    tool_total_ms: 0,
+    tool_bash_ms: 0,
+    tool_structured_output_ms: 0,
+    observed_assistant_turns: 0,
+  }
+
+  for (const message of messages) {
+    const info = isObject(message.info) ? (message.info as Record<string, unknown>) : null
+    if (!info || info.role !== "assistant") {
+      continue
+    }
+
+    const infoTime = isObject(info.time) ? info.time : null
+    const created = asNumber((infoTime?.created as unknown) ?? null)
+    const completed = asNumber((infoTime?.completed as unknown) ?? null)
+    const parts = Array.isArray(message.parts) ? message.parts : []
+
+    if (typeof created === "number" && typeof completed === "number") {
+      breakdown.assistant_total_ms += Math.max(0, completed - created)
+    }
+    breakdown.observed_assistant_turns += 1
+
+    const reasoningParts = parts.filter((part) => part.type === "reasoning")
+    const toolParts = parts.filter((part) => part.type === "tool")
+
+    let firstReasoningStart: number | null = null
+    let lastReasoningEnd: number | null = null
+    for (const part of reasoningParts) {
+      const time = isObject(part.time) ? part.time : null
+      const start = asNumber((time?.start as unknown) ?? null)
+      const end = asNumber((time?.end as unknown) ?? null)
+      if (typeof start === "number" && typeof end === "number") {
+        breakdown.assistant_reasoning_ms += Math.max(0, end - start)
+        if (firstReasoningStart === null || start < firstReasoningStart) {
+          firstReasoningStart = start
+        }
+        if (lastReasoningEnd === null || end > lastReasoningEnd) {
+          lastReasoningEnd = end
+        }
+      }
+    }
+
+    let firstToolStart: number | null = null
+    let lastToolEnd: number | null = null
+    for (const part of toolParts) {
+      const state = isObject(part.state) ? part.state : null
+      const time = isObject(state?.time) ? state.time : null
+      const tool = typeof part.tool === "string" ? part.tool : ""
+      const start = asNumber((time?.start as unknown) ?? null)
+      const end = asNumber((time?.end as unknown) ?? null)
+
+      if (typeof start === "number" && typeof end === "number") {
+        const duration = Math.max(0, end - start)
+        breakdown.tool_total_ms += duration
+        if (tool === "bash") {
+          breakdown.tool_bash_ms += duration
+        }
+        if (tool === "StructuredOutput") {
+          breakdown.tool_structured_output_ms += duration
+        }
+
+        if (firstToolStart === null || start < firstToolStart) {
+          firstToolStart = start
+        }
+        if (lastToolEnd === null || end > lastToolEnd) {
+          lastToolEnd = end
+        }
+      }
+    }
+
+    if (typeof created === "number" && firstReasoningStart !== null) {
+      breakdown.assistant_pre_reasoning_ms += Math.max(0, firstReasoningStart - created)
+    }
+
+    if (lastReasoningEnd !== null && firstToolStart !== null) {
+      breakdown.assistant_between_reasoning_and_tool_ms += Math.max(0, firstToolStart - lastReasoningEnd)
+    }
+
+    if (typeof completed === "number" && lastToolEnd !== null) {
+      breakdown.assistant_post_tool_ms += Math.max(0, completed - lastToolEnd)
+    }
+  }
+
+  return breakdown
 }
 
 export function extractSnapshotFromParts(parts: SessionMessagePart[]): {
@@ -446,7 +540,7 @@ export async function waitForAssistantFromMessages(
   previousAssistantId?: string
 ): Promise<PromptResponse> {
   const started = Date.now()
-  let pollCount = 0
+  let lastWaitLogAt = started
 
   const getCreatedAt = (entry: SessionMessageEntry): number => {
     if (!entry.info || !isObject(entry.info)) {
@@ -458,7 +552,6 @@ export async function waitForAssistantFromMessages(
   }
 
   while (Date.now() - started < timeoutMs) {
-    pollCount += 1
     const messages = await fetchSessionMessages(sessionApi, sessionId, 50)
 
     const candidates = previousAssistantId
@@ -552,8 +645,10 @@ export async function waitForAssistantFromMessages(
       }
     }
 
-    if (pollCount % 5 === 0) {
-      console.log(`[benchmark] waiting: scenario=${scenarioId} session=${sessionId} elapsed_ms=${Date.now() - started}`)
+    const now = Date.now()
+    if (now - lastWaitLogAt >= 5000) {
+      console.log(`[benchmark] waiting: scenario=${scenarioId} session=${sessionId} elapsed_ms=${now - started}`)
+      lastWaitLogAt = now
     }
 
     await new Promise((resolve) => setTimeout(resolve, 300))
@@ -593,6 +688,77 @@ export function extractPromptResponseFromPromptResult(value: unknown): PromptRes
 export function ghOk(args: string[]): boolean {
   const result = spawnSync("gh", args, { encoding: "utf8" })
   return result.status === 0
+}
+
+type CapabilityListItem = {
+  capability_id: string
+}
+
+function ghxCliPath(): string {
+  return join(process.cwd(), "../core/dist/cli/index.js")
+}
+
+function parseGhxCapabilities(raw: string): string[] {
+  const trimmed = raw.trim()
+  if (trimmed.length === 0) {
+    return []
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(trimmed)
+  } catch (error) {
+    throw new Error(
+      `ghx capabilities JSON invalid: ${error instanceof Error ? error.message : String(error)}`
+    )
+  }
+
+  if (!Array.isArray(parsed)) {
+    throw new Error(`ghx capabilities JSON invalid: expected array but got ${typeof parsed}`)
+  }
+
+  return parsed
+    .map((item) => (isObject(item) ? (item as CapabilityListItem).capability_id : null))
+    .filter((item): item is string => typeof item === "string" && item.length > 0)
+}
+
+export function assertGhxRouterPreflight(scenarios: Scenario[]): void {
+  const authStatus = spawnSync("gh", ["auth", "status"], { encoding: "utf8" })
+  if (authStatus.status !== 0) {
+    const stderr = typeof authStatus.stderr === "string" ? authStatus.stderr.trim() : ""
+    const message = stderr.length > 0 ? stderr : "gh auth status failed"
+    throw new Error(`ghx_preflight_failed: ${message}`)
+  }
+
+  const result = spawnSync("node", [ghxCliPath(), "capabilities", "list", "--json"], {
+    encoding: "utf8"
+  })
+
+  if (result.status !== 0) {
+    const stderr = typeof result.stderr === "string" ? result.stderr.trim() : ""
+    const message = stderr.length > 0 ? stderr : "failed to list ghx capabilities"
+    throw new Error(`ghx_preflight_failed: ${message}`)
+  }
+
+  const stdout = typeof result.stdout === "string" ? result.stdout : ""
+  const capabilities = parseGhxCapabilities(stdout)
+  if (capabilities.length === 0) {
+    throw new Error(
+      "ghx_preflight_failed: ghx capabilities list returned no capabilities; run pnpm --filter @ghx-dev/core run build"
+    )
+  }
+
+  const capabilitySet = new Set(capabilities)
+  const missingTasks = scenarios
+    .map((scenario) => scenario.task)
+    .filter((task, index, all) => all.indexOf(task) === index)
+    .filter((task) => !capabilitySet.has(task))
+
+  if (missingTasks.length > 0) {
+    throw new Error(
+      `ghx_preflight_failed: missing capabilities for selected scenarios: ${missingTasks.join(", ")}`
+    )
+  }
 }
 
 function resolveGhTokenFromCli(): string | null {
@@ -759,10 +925,14 @@ export function renderPrompt(scenario: Scenario, mode: BenchmarkMode, benchmarkN
     scopedAssertions.expected_route_used !== undefined
       ? `meta.route_used MUST be exactly "${scopedAssertions.expected_route_used}".`
       : ""
+  const failFastContract =
+    mode === "ghx"
+      ? "If the ghx command fails, return the final envelope JSON immediately. Do not run extra debugging commands."
+      : ""
 
   const nonceLine = benchmarkNonce ? `Benchmark nonce: ${benchmarkNonce}` : ""
 
-  return `${modePromptPrefix[mode]}\n${fixtureNote}\n${nonceLine}\nYou MUST use real tools to gather data. Do not fabricate outputs.\nReturn STRICT JSON only. No markdown fences.\nOutput must be exactly one JSON object with keys: ok, data, error, meta.\n${dataContract}\n${metaContract}\n${routeContract}\n\n${rendered}`
+  return `${modePromptPrefix[mode]}\n${fixtureNote}\n${nonceLine}\nYou MUST use real tools to gather data. Do not fabricate outputs.\nReturn STRICT JSON only. No markdown fences.\nOutput must be exactly one JSON object with keys: ok, data, error, meta.\n${dataContract}\n${metaContract}\n${routeContract}\n${failFastContract}\n\n${rendered}`
 }
 
 function buildOutputSchema(assertions: Scenario["assertions"]): Record<string, unknown> {
@@ -831,8 +1001,12 @@ function buildOutputSchema(assertions: Scenario["assertions"]): Record<string, u
 }
 
 function modeScopedAssertions(scenario: Scenario, mode: BenchmarkMode): Scenario["assertions"] {
-  if (mode === "ghx_router") {
-    if (scenario.assertions.expected_route_used === "graphql" && !process.env.GITHUB_TOKEN) {
+  if (mode === "ghx") {
+    const hasGithubToken =
+      typeof process.env.GITHUB_TOKEN === "string" && process.env.GITHUB_TOKEN.trim().length > 0
+    const hasGhToken = typeof process.env.GH_TOKEN === "string" && process.env.GH_TOKEN.trim().length > 0
+
+    if (scenario.assertions.expected_route_used === "graphql" && !hasGithubToken && !hasGhToken) {
       const { expected_route_used: _expectedRoute, ...base } = scenario.assertions
       return base
     }
@@ -857,8 +1031,8 @@ function forcedToolCommandHint(scenario: Scenario, mode: BenchmarkMode): string 
   const issueNumber = typeof scenario.input.issueNumber === "number" ? scenario.input.issueNumber : 1
   const prNumber = typeof scenario.input.prNumber === "number" ? scenario.input.prNumber : 1
 
-  if (mode === "ghx_router") {
-    return `pnpm exec ghx run ${scenario.task} --input '${JSON.stringify(scenario.input)}'`
+  if (mode === "ghx") {
+    return `GHX_SKIP_GH_PREFLIGHT=1 node ../core/dist/cli/index.js run ${scenario.task} --input '${JSON.stringify(scenario.input)}'`
   }
 
   switch (scenario.task) {
@@ -917,7 +1091,7 @@ function tryWrapRawDataAsEnvelope(
         }
       },
       error: null,
-      meta: mode === "ghx_router" ? { route_used: "cli" } : {}
+      meta: mode === "ghx" ? { route_used: "cli" } : {}
     }
   }
 
@@ -944,7 +1118,7 @@ function tryWrapRawDataAsEnvelope(
           : { hasNextPage: false, endCursor: null }
       },
       error: null,
-      meta: mode === "ghx_router" ? { route_used: "cli" } : {}
+      meta: mode === "ghx" ? { route_used: "cli" } : {}
     }
   }
 
@@ -962,7 +1136,7 @@ function tryWrapRawDataAsEnvelope(
           : { hasNextPage: false, endCursor: null }
       },
       error: null,
-      meta: mode === "ghx_router" ? { route_used: "cli" } : {}
+      meta: mode === "ghx" ? { route_used: "cli" } : {}
     }
   }
 
@@ -980,7 +1154,7 @@ function tryWrapRawDataAsEnvelope(
           : { hasNextPage: false, endCursor: null }
       },
       error: null,
-      meta: mode === "ghx_router" ? { route_used: "cli" } : {}
+      meta: mode === "ghx" ? { route_used: "cli" } : {}
     }
   }
 
@@ -988,7 +1162,7 @@ function tryWrapRawDataAsEnvelope(
     const nextEnvelope: Record<string, unknown> = { ...envelope }
 
     if (!("meta" in nextEnvelope) || !isObject(nextEnvelope.meta)) {
-      nextEnvelope.meta = mode === "ghx_router" ? { route_used: "cli" } : {}
+      nextEnvelope.meta = mode === "ghx" ? { route_used: "cli" } : {}
     }
 
     if (!("error" in nextEnvelope)) {
@@ -1008,7 +1182,7 @@ function tryWrapRawDataAsEnvelope(
   }
 
   const meta: Record<string, unknown> = {}
-  if (mode === "ghx_router") {
+  if (mode === "ghx") {
     meta.route_used = "cli"
   }
 
@@ -1196,6 +1370,7 @@ export async function runScenario(
       assistant.tokens.reasoning +
       assistant.tokens.cache.read +
       assistant.tokens.cache.write
+    const timingBreakdown = extractTimingBreakdown(allMessages)
 
     const minToolCalls = scopedAssertions.min_tool_calls ?? 1
     const maxToolCalls = scopedAssertions.max_tool_calls
@@ -1229,6 +1404,7 @@ export async function runScenario(
       output_valid: outputValid,
       latency_ms_wall: latencyWall,
       sdk_latency_ms: sdkLatency,
+      timing_breakdown: timingBreakdown,
       tokens: {
         input: assistant.tokens.input,
         output: assistant.tokens.output,
@@ -1354,9 +1530,25 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
     throw new Error(`No scenarios matched filter: ${scenarioFilter ?? scenarioSet ?? "default"}`)
   }
 
+  if (mode === "ghx") {
+    assertGhxRouterPreflight(selectedScenarios)
+  }
+
   const outFile = join(
     RESULTS_DIR,
     `${new Date().toISOString().replace(/[:.]/g, "-")}-${mode}-suite.jsonl`
+  )
+
+  const selectedScenarioIds = selectedScenarios.map((scenario) => scenario.id)
+  console.log(
+    `[benchmark] start: mode=${mode} provider=${PROVIDER_ID} model=${MODEL_ID} opencode_mode=${OPEN_CODE_MODE ?? "<null>"}`
+  )
+  console.log(
+    `[benchmark] config: repetitions=${repetitions} scenario_set=${resolvedScenarioSet ?? "<null>"} scenario_filter=${scenarioFilter ?? "<null>"} scenarios=${selectedScenarios.length}`
+  )
+  console.log(`[benchmark] scenarios: ${selectedScenarioIds.join(",")}`)
+  console.log(
+    `[benchmark] context: opencode_port=${OPENCODE_PORT} git_repo=${GIT_REPO ?? "<null>"} git_commit=${GIT_COMMIT ?? "<null>"} out_file=${outFile}`
   )
 
   for (const scenario of selectedScenarios) {

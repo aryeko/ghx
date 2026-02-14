@@ -15,8 +15,8 @@ Root scripts map to Nx targets and are the preferred local/CI entrypoints.
 ## Project-Specific Commands
 
 - `pnpm run ghx:gql:check` - enforce generated GraphQL artifacts are in sync.
-- `pnpm run benchmark:check` - validate benchmark scenarios.
-- `pnpm run benchmark:run`, `pnpm run benchmark:report`, `pnpm run benchmark:gate`
+- `pnpm --filter @ghx-dev/benchmark run check:scenarios` - validate benchmark scenarios.
+- `pnpm run benchmark`, `pnpm --filter @ghx-dev/benchmark run report`, `pnpm --filter @ghx-dev/benchmark run report:gate`
 
 ## Utility Commands
 

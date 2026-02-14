@@ -54,10 +54,10 @@ Project-specific checks:
 
 ```bash
 pnpm run ghx:gql:check
-pnpm run benchmark:check
-pnpm run benchmark:run
-pnpm run benchmark:report
-pnpm run benchmark:gate
+pnpm --filter @ghx-dev/benchmark run check:scenarios
+pnpm run benchmark
+pnpm --filter @ghx-dev/benchmark run report
+pnpm --filter @ghx-dev/benchmark run report:gate
 ```
 
 ## Single-Test Workflows (Vitest)

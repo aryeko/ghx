@@ -11,13 +11,13 @@ This repo uses two workflows:
 - Installs dependencies with pnpm and configures Nx SHAs.
 - Runs affected validation via `pnpm run ci:affected`.
 - Enforces GraphQL codegen drift check with `pnpm run ghx:gql:check`.
-- Validates benchmark scenarios with `pnpm run benchmark:check`.
+- Validates benchmark scenarios with `pnpm --filter @ghx-dev/benchmark run check:scenarios`.
 - Generates and uploads coverage on Node `24`.
 
 ## Main Workflow
 
 - Runs full validation via `pnpm run ci`.
-- Runs `pnpm run ghx:gql:check` and `pnpm run benchmark:check`.
+- Runs `pnpm run ghx:gql:check` and `pnpm --filter @ghx-dev/benchmark run check:scenarios`.
 - Generates coverage and uploads to Codecov.
 - On version commits (`chore: version packages`), uploads dist artifacts and runs release steps with Changesets.
 

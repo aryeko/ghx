@@ -1,7 +1,7 @@
 {
   "name": "@ghx-dev/benchmark",
   "version": "0.1.0",
-  "description": "Internal benchmark harness for comparing ghx_router against agent_direct runs.",
+  "description": "Internal benchmark harness for comparing ghx against agent_direct runs.",
   "private": true,
   "author": "Arye Kogan",
   "license": "MIT",
@@ -10,18 +10,84 @@
     "build": "tsup \"src/**/*.ts\" --format esm --out-dir dist --clean --no-dts --sourcemap",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage --coverage.reporter=text --coverage.reporter=text-summary --coverage.reporter=lcov",
-    "test:watch": "vitest",
-    "run": "tsx src/cli/benchmark.ts run",
+    "test": "vitest run --project unit",
+    "test:watch": "vitest watch --project unit",
+    "test:coverage": "vitest run --project unit --coverage",
+    "test:e2e:local": "vitest run --project e2e:local --passWithNoTests",
+    "test:e2e:sdk": "vitest run --project e2e:sdk --passWithNoTests",
+    "benchmark": "tsx src/cli/benchmark.ts run",
     "check:scenarios": "tsx src/cli/check-scenarios.ts",
     "report": "tsx src/cli/report.ts",
-    "report:gate": "tsx src/cli/report.ts --gate"
+    "report:gate": "pnpm run report -- --gate",
+    "verify:pr:direct": "BENCH_OPENCODE_PORT=3002 pnpm run benchmark -- agent_direct 3 --scenario-set ci-verify-pr",
+    "verify:pr:ghx": "GHX_SKIP_GH_PREFLIGHT=1 BENCH_OPENCODE_PORT=3001 pnpm run benchmark -- ghx 3 --scenario-set ci-verify-pr",
+    "verify:pr:report": "pnpm run report:gate --gate-profile verify_pr",
+    "verify:release:direct": "BENCH_OPENCODE_PORT=3004 pnpm run benchmark -- agent_direct 4 --scenario-set ci-verify-release",
+    "verify:release:ghx": "GHX_SKIP_GH_PREFLIGHT=1 BENCH_OPENCODE_PORT=3003 pnpm run benchmark -- ghx 4 --scenario-set ci-verify-release",
+    "verify:release:report": "pnpm run report:gate --gate-profile verify_release"
   },
   "nx": {
     "targets": {
       "ci": {
-        "dependsOn": ["lint", "typecheck", "test", "build", "check:scenarios"]
+        "dependsOn": [
+          "lint",
+          "typecheck",
+          "test:coverage",
+          "build",
+          "check:scenarios"
+        ]
+      },
+      "verify:pr:direct": {
+        "dependsOn": [
+          "build"
+        ],
+        "cache": false
+      },
+      "verify:pr:ghx": {
+        "dependsOn": [
+          "build"
+        ],
+        "cache": false
+      },
+      "verify:pr:report": {
+        "dependsOn": [
+          "verify:pr:direct",
+          "verify:pr:ghx"
+        ],
+        "cache": false
+      },
+      "verify:pr": {
+        "dependsOn": [
+          "verify:pr:direct",
+          "verify:pr:ghx",
+          "verify:pr:report"
+        ]
+      },
+      "verify:release:direct": {
+        "dependsOn": [
+          "build"
+        ],
+        "cache": false
+      },
+      "verify:release:ghx": {
+        "dependsOn": [
+          "build"
+        ],
+        "cache": false
+      },
+      "verify:release:report": {
+        "dependsOn": [
+          "verify:release:direct",
+          "verify:release:ghx"
+        ],
+        "cache": false
+      },
+      "verify:release": {
+        "dependsOn": [
+          "verify:release:direct",
+          "verify:release:ghx",
+          "verify:release:report"
+        ]
       }
     }
   },

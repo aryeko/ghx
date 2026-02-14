@@ -153,7 +153,7 @@ pnpm run build
 pnpm run lint
 pnpm run ci
 pnpm run ghx:gql:check
-pnpm run benchmark:check
+pnpm --filter @ghx-dev/benchmark run check:scenarios
 ```
 
 ## Roadmap

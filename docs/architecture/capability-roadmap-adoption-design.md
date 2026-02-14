@@ -223,7 +223,7 @@ pnpm run lint
 pnpm run typecheck
 pnpm run test
 pnpm run ghx:gql:check
-pnpm run benchmark:check
+pnpm --filter @ghx-dev/benchmark run check:scenarios
 pnpm run ci:affected --parallel=3 --outputStyle=static
 ```
 

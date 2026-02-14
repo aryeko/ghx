@@ -8,10 +8,12 @@ import { spawnSync } from "node:child_process"
 
 import {
   asNumber,
+  assertGhxRouterPreflight,
   coercePromptResponse,
   extractPromptResponseFromPromptResult,
   extractEnvelopeFromParts,
   extractSnapshotFromParts,
+  extractTimingBreakdown,
   fetchSessionMessages,
   getSessionApi,
   ghOk,
@@ -93,6 +95,90 @@ describe("suite-runner helpers", () => {
       cost: 0,
       completed: null
     })
+  })
+
+  it("extracts timing breakdown from assistant messages", () => {
+    const breakdown = extractTimingBreakdown([
+      {
+        info: {
+          role: "assistant",
+          time: { created: 100, completed: 1000 }
+        },
+        parts: [
+          { type: "reasoning", time: { start: 250, end: 500 } },
+          {
+            type: "tool",
+            tool: "bash",
+            state: { time: { start: 550, end: 800 } }
+          }
+        ]
+      }
+    ] as unknown as Parameters<typeof extractTimingBreakdown>[0])
+
+    expect(breakdown).toEqual({
+      assistant_total_ms: 900,
+      assistant_pre_reasoning_ms: 150,
+      assistant_reasoning_ms: 250,
+      assistant_between_reasoning_and_tool_ms: 50,
+      assistant_post_tool_ms: 200,
+      tool_total_ms: 250,
+      tool_bash_ms: 250,
+      tool_structured_output_ms: 0,
+      observed_assistant_turns: 1
+    })
+  })
+
+  it("uses the earliest reasoning segment boundary for timing gaps", () => {
+    const breakdown = extractTimingBreakdown([
+      {
+        info: {
+          role: "assistant",
+          time: { created: 100, completed: 1200 }
+        },
+        parts: [
+          { type: "reasoning", time: { start: 200, end: 300 } },
+          { type: "reasoning", time: { start: 420, end: 700 } },
+          {
+            type: "tool",
+            tool: "bash",
+            state: { time: { start: 800, end: 950 } }
+          }
+        ]
+      }
+    ] as unknown as Parameters<typeof extractTimingBreakdown>[0])
+
+    expect(breakdown.assistant_pre_reasoning_ms).toBe(100)
+    expect(breakdown.assistant_reasoning_ms).toBe(380)
+    expect(breakdown.assistant_between_reasoning_and_tool_ms).toBe(100)
+    expect(breakdown.assistant_post_tool_ms).toBe(250)
+  })
+
+  it("uses the latest tool completion for post-tool timing", () => {
+    const breakdown = extractTimingBreakdown([
+      {
+        info: {
+          role: "assistant",
+          time: { created: 100, completed: 1300 }
+        },
+        parts: [
+          { type: "reasoning", time: { start: 200, end: 300 } },
+          {
+            type: "tool",
+            tool: "bash",
+            state: { time: { start: 400, end: 600 } }
+          },
+          {
+            type: "tool",
+            tool: "StructuredOutput",
+            state: { time: { start: 700, end: 1000 } }
+          }
+        ]
+      }
+    ] as unknown as Parameters<typeof extractTimingBreakdown>[0])
+
+    expect(breakdown.tool_total_ms).toBe(500)
+    expect(breakdown.tool_structured_output_ms).toBe(300)
+    expect(breakdown.assistant_post_tool_ms).toBe(300)
   })
 
   it("coerces assistant response and continuation behavior", () => {
@@ -590,10 +676,106 @@ describe("suite-runner helpers", () => {
         assertions: { must_succeed: true, required_data_fields: ["id"] },
         tags: []
       },
-      "ghx_router"
+      "ghx"
     )
-    expect(prompt).toContain("pnpm exec ghx run")
+    expect(prompt).toContain("GHX_SKIP_GH_PREFLIGHT=1 node ../core/dist/cli/index.js run")
     expect(prompt).toContain("id")
+    expect(prompt).toContain("If the ghx command fails")
+  })
+
+  it("validates ghx preflight capabilities for selected scenarios", () => {
+    spawnSyncMock
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: "",
+        stderr: ""
+      } as never)
+      .mockReturnValueOnce({
+      status: 0,
+      stdout: JSON.stringify([
+        { capability_id: "repo.view", description: "Repo view" },
+        { capability_id: "pr.view", description: "PR view" }
+      ]),
+      stderr: ""
+    } as never)
+
+    expect(() =>
+      assertGhxRouterPreflight([
+        {
+          id: "repo-view-001",
+          name: "Repo view",
+          task: "repo.view",
+          input: {},
+          prompt_template: "x",
+          timeout_ms: 1000,
+          allowed_retries: 0,
+          assertions: { must_succeed: true },
+          tags: []
+        }
+      ])
+    ).not.toThrow()
+
+    expect(spawnSyncMock).toHaveBeenNthCalledWith(1, "gh", ["auth", "status"], { encoding: "utf8" })
+    expect(spawnSyncMock).toHaveBeenNthCalledWith(
+      2,
+      "node",
+      [expect.stringContaining("/core/dist/cli/index.js"), "capabilities", "list", "--json"],
+      { encoding: "utf8" },
+    )
+  })
+
+  it("fails ghx preflight when gh auth status fails", () => {
+    spawnSyncMock.mockReturnValue({
+      status: 1,
+      stdout: "",
+      stderr: "not logged in"
+    } as never)
+
+    expect(() =>
+      assertGhxRouterPreflight([
+        {
+          id: "repo-view-001",
+          name: "Repo view",
+          task: "repo.view",
+          input: {},
+          prompt_template: "x",
+          timeout_ms: 1000,
+          allowed_retries: 0,
+          assertions: { must_succeed: true },
+          tags: []
+        }
+      ])
+    ).toThrow("ghx_preflight_failed: not logged in")
+  })
+
+  it("fails ghx preflight when required capability is unavailable", () => {
+    spawnSyncMock
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: "",
+        stderr: ""
+      } as never)
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: JSON.stringify([{ capability_id: "repo.view", description: "Repo view" }]),
+        stderr: ""
+      } as never)
+
+    expect(() =>
+      assertGhxRouterPreflight([
+        {
+          id: "pr-view-001",
+          name: "PR view",
+          task: "pr.view",
+          input: {},
+          prompt_template: "x",
+          timeout_ms: 1000,
+          allowed_retries: 0,
+          assertions: { must_succeed: true },
+          tags: []
+        }
+      ])
+    ).toThrow("ghx_preflight_failed")
   })
 
   it("returns false when gh command invocation fails", () => {
@@ -602,7 +784,7 @@ describe("suite-runner helpers", () => {
     expect(ghOk(["auth", "status"])).toBe(false)
   })
 
-  it("omits route_used assertions outside ghx_router mode", () => {
+  it("omits route_used assertions outside ghx mode", () => {
     const prompt = renderPrompt(
       {
         id: "s",
@@ -626,9 +808,11 @@ describe("suite-runner helpers", () => {
     expect(prompt).toContain("The JSON meta object can include optional diagnostic fields.")
   })
 
-  it("drops graphql route expectation in ghx_router mode when GITHUB_TOKEN is missing", () => {
-    const previousToken = process.env.GITHUB_TOKEN
+  it("drops graphql route expectation in ghx mode when GitHub tokens are missing", () => {
+    const previousGithubToken = process.env.GITHUB_TOKEN
+    const previousGhToken = process.env.GH_TOKEN
     delete process.env.GITHUB_TOKEN
+    delete process.env.GH_TOKEN
 
     try {
       const prompt = renderPrompt(
@@ -647,16 +831,22 @@ describe("suite-runner helpers", () => {
           },
           tags: []
         },
-        "ghx_router"
+        "ghx"
       )
 
       expect(prompt).not.toContain("meta.route_used MUST be exactly")
       expect(prompt).toContain("The JSON meta object MUST include: route_used.")
     } finally {
-      if (previousToken === undefined) {
+      if (previousGithubToken === undefined) {
         delete process.env.GITHUB_TOKEN
       } else {
-        process.env.GITHUB_TOKEN = previousToken
+        process.env.GITHUB_TOKEN = previousGithubToken
+      }
+
+      if (previousGhToken === undefined) {
+        delete process.env.GH_TOKEN
+      } else {
+        process.env.GH_TOKEN = previousGhToken
       }
     }
   })
@@ -809,7 +999,7 @@ describe("suite-runner helpers", () => {
         },
         tags: []
       },
-      "ghx_router",
+      "ghx",
       1
     )
 
@@ -864,7 +1054,7 @@ describe("suite-runner helpers", () => {
         },
         tags: []
       },
-      "ghx_router",
+      "ghx",
       1
     )
 
@@ -958,7 +1148,7 @@ describe("suite-runner helpers", () => {
         },
         tags: []
       },
-      "ghx_router",
+      "ghx",
       1
     )
 
@@ -1012,7 +1202,7 @@ describe("suite-runner helpers", () => {
         },
         tags: []
       },
-      "ghx_router",
+      "ghx",
       1
     )
 
@@ -1066,7 +1256,7 @@ describe("suite-runner helpers", () => {
         },
         tags: []
       },
-      "ghx_router",
+      "ghx",
       1
     )
 
@@ -1114,14 +1304,14 @@ describe("suite-runner helpers", () => {
         },
         tags: []
       },
-      "ghx_router",
+      "ghx",
       1
     )
 
     expect(result.success).toBe(true)
   })
 
-  it("wraps raw data object into a valid envelope for ghx_router mode", async () => {
+  it("wraps raw data object into a valid envelope for ghx mode", async () => {
     const session = {
       create: vi.fn(async () => ({ data: { id: "s1" } })),
       promptAsync: vi.fn(async () => ({ data: {} })),
@@ -1161,7 +1351,7 @@ describe("suite-runner helpers", () => {
         },
         tags: []
       },
-      "ghx_router",
+      "ghx",
       1
     )
 
@@ -1224,7 +1414,7 @@ describe("suite-runner helpers", () => {
         },
         tags: []
       },
-      "ghx_router",
+      "ghx",
       1
     )
 
@@ -1272,7 +1462,7 @@ describe("suite-runner helpers", () => {
         },
         tags: []
       },
-      "ghx_router",
+      "ghx",
       1
     )
 
@@ -1304,7 +1494,7 @@ describe("suite-runner helpers", () => {
         assertions: { must_succeed: true },
         tags: []
       },
-      "ghx_router",
+      "ghx",
       1
     )
 
@@ -1336,7 +1526,7 @@ describe("suite-runner helpers", () => {
         assertions: { must_succeed: true },
         tags: []
       },
-      "ghx_router",
+      "ghx",
       1
     )
 

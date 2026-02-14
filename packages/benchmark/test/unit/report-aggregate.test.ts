@@ -44,28 +44,41 @@ function row(overrides: Partial<BenchmarkRow>): BenchmarkRow {
 }
 
 describe("buildSummary", () => {
-  it("computes gate pass when ghx_router beats baseline", () => {
+  it("computes v2 gate pass when ghx beats baseline", () => {
     const rows: BenchmarkRow[] = [
       row({ mode: "agent_direct", latency_ms_wall: 100, tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 100 }, tool_calls: 10, success: true, output_valid: true }),
-      row({ mode: "ghx_router", latency_ms_wall: 70, tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 70 }, tool_calls: 6, success: true, output_valid: true })
+      row({ mode: "ghx", latency_ms_wall: 70, tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 70 }, tool_calls: 6, success: true, output_valid: true })
     ]
 
     const summary = buildSummary(rows)
 
     expect(summary.deltaVsAgentDirect).not.toBeNull()
-    expect(summary.gate.passed).toBe(true)
+    expect(summary.gateV2.passed).toBe(true)
+    expect(summary.gateV2.checks.find((check) => check.name === "efficiency_tokens_active_reduction")?.passed).toBe(true)
   })
 
-  it("computes gate fail when thresholds not met", () => {
+  it("computes v2 gate fail when reliability regresses", () => {
     const rows: BenchmarkRow[] = [
       row({ mode: "agent_direct", latency_ms_wall: 100, tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 100 }, tool_calls: 10, success: true, output_valid: true }),
-      row({ mode: "ghx_router", latency_ms_wall: 95, tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 99 }, tool_calls: 9, success: false, output_valid: false })
+      row({ mode: "ghx", latency_ms_wall: 70, tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 70 }, tool_calls: 6, success: true, output_valid: true }),
+      row({
+        mode: "ghx",
+        scenario_id: "repo-view-001",
+        success: false,
+        output_valid: false,
+        latency_ms_wall: 60000,
+        error: {
+          type: "runner_error",
+          message: "Timed out waiting for assistant message in session.messages"
+        }
+      })
     ]
 
     const summary = buildSummary(rows)
 
-    expect(summary.gate.passed).toBe(false)
-    expect(summary.gate.checks.some((check) => check.passed === false)).toBe(true)
+    expect(summary.gateV2.passed).toBe(false)
+    expect(summary.gateV2.checks.find((check) => check.name === "reliability_runner_failure_rate")?.passed).toBe(false)
+    expect(summary.gateV2.checks.find((check) => check.name === "reliability_timeout_stall_rate")?.passed).toBe(false)
   })
 
   it("handles missing comparison mode and renders markdown", () => {
@@ -78,11 +91,11 @@ describe("buildSummary", () => {
     expect(markdown).toContain("Insufficient data")
   })
 
-  it("supports custom thresholds", () => {
+  it("supports custom v1 thresholds", () => {
     const summary = buildSummary(
       [
         row({ mode: "agent_direct", latency_ms_wall: 100, tool_calls: 10, tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 100 } }),
-        row({ mode: "ghx_router", latency_ms_wall: 90, tool_calls: 8, tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 95 } })
+        row({ mode: "ghx", latency_ms_wall: 90, tool_calls: 8, tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 95 } })
       ],
       {
         minTokensReductionPct: 1,
@@ -94,5 +107,89 @@ describe("buildSummary", () => {
     )
 
     expect(summary.gate.checks.length).toBeGreaterThan(0)
+  })
+
+  it("keeps legacy v1 token check based on active-token reduction", () => {
+    const summary = buildSummary(
+      [
+        row({
+          mode: "agent_direct",
+          latency_ms_wall: 100,
+          tool_calls: 10,
+          tokens: { input: 0, output: 0, reasoning: 0, cache_read: 90, cache_write: 0, total: 100 }
+        }),
+        row({
+          mode: "ghx",
+          latency_ms_wall: 90,
+          tool_calls: 8,
+          tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 95 }
+        })
+      ],
+      {
+        minTokensReductionPct: 1,
+        minLatencyReductionPct: 1,
+        minToolCallReductionPct: 1,
+        maxSuccessRateDropPct: 5,
+        minOutputValidityRatePct: 90
+      }
+    )
+
+    const tokenCheck = summary.gate.checks.find((check) => check.name === "tokens_reduction")
+    expect(tokenCheck?.value).toBeLessThan(0)
+    expect(tokenCheck?.passed).toBe(false)
+  })
+
+  it("supports verify_release profile with stricter sample requirements", () => {
+    const summary = buildSummary(
+      [
+        row({ mode: "agent_direct", scenario_id: "s1", latency_ms_wall: 100, tool_calls: 5, tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 100 } }),
+        row({ mode: "ghx", scenario_id: "s1", latency_ms_wall: 70, tool_calls: 3, tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 70 } })
+      ],
+      undefined,
+      "verify_release"
+    )
+
+    expect(summary.gateV2.profile).toBe("verify_release")
+    expect(summary.gateV2.checks.find((check) => check.name === "efficiency_coverage")?.passed).toBe(false)
+  })
+
+  it("summarizes profiling timing when timing_breakdown is present", () => {
+    const summary = buildSummary([
+      row({
+        mode: "agent_direct",
+        timing_breakdown: {
+          assistant_total_ms: 6000,
+          assistant_pre_reasoning_ms: 2500,
+          assistant_reasoning_ms: 2000,
+          assistant_between_reasoning_and_tool_ms: 200,
+          assistant_post_tool_ms: 100,
+          tool_total_ms: 700,
+          tool_bash_ms: 650,
+          tool_structured_output_ms: 2,
+          observed_assistant_turns: 2
+        }
+      }),
+      row({
+        mode: "ghx",
+        timing_breakdown: {
+          assistant_total_ms: 9000,
+          assistant_pre_reasoning_ms: 4000,
+          assistant_reasoning_ms: 2800,
+          assistant_between_reasoning_and_tool_ms: 300,
+          assistant_post_tool_ms: 100,
+          tool_total_ms: 1600,
+          tool_bash_ms: 1500,
+          tool_structured_output_ms: 1,
+          observed_assistant_turns: 2
+        }
+      })
+    ])
+
+    expect(summary.profiling.agent_direct?.medianToolBashMs).toBe(650)
+    expect(summary.profiling.ghx?.medianAssistantReasoningMs).toBe(2800)
+
+    const markdown = toMarkdown(summary)
+    expect(markdown).toContain("## Profiling Snapshot")
+    expect(markdown).toContain("| ghx | 1 | 9000 | 2800")
   })
 })

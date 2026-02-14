@@ -267,10 +267,10 @@ Use this command set as a release gate for each milestone:
 pnpm run ci
 pnpm run ci:affected
 pnpm run ghx:gql:check
-pnpm run benchmark:check
-pnpm run benchmark:run
-pnpm run benchmark:report
-pnpm run benchmark:gate
+pnpm --filter @ghx-dev/benchmark run check:scenarios
+pnpm run benchmark
+pnpm --filter @ghx-dev/benchmark run report
+pnpm --filter @ghx-dev/benchmark run report:gate
 ```
 
 If any command fails, halt rollout progression until the failure is resolved and re-verified.

@@ -4,20 +4,45 @@ import { pathToFileURL } from "node:url"
 
 import type { BenchmarkMode, BenchmarkRow } from "../domain/types.js"
 import { buildSummary, toMarkdown } from "../report/aggregate.js"
+import type { GateProfile } from "../report/aggregate.js"
 
 const RESULTS_DIR = join(process.cwd(), "results")
 const REPORTS_DIR = join(process.cwd(), "reports")
 
-export function parseArgs(args: string[]): { gate: boolean } {
+function parseGateProfile(args: string[]): GateProfile {
+  const inline = args.find((arg) => arg.startsWith("--gate-profile="))
+  if (inline) {
+    const value = inline.slice("--gate-profile=".length)
+    if (value === "verify_pr" || value === "verify_release") {
+      return value
+    }
+    throw new Error("Unknown gate profile. Expected verify_pr or verify_release")
+  }
+
+  const index = args.findIndex((arg) => arg === "--gate-profile")
+  if (index === -1) {
+    return "verify_pr"
+  }
+
+  const value = args[index + 1]
+  if (value === "verify_pr" || value === "verify_release") {
+    return value
+  }
+
+  throw new Error("Unknown gate profile. Expected verify_pr or verify_release")
+}
+
+export function parseArgs(args: string[]): { gate: boolean; gateProfile: GateProfile } {
   return {
-    gate: args.includes("--gate")
+    gate: args.includes("--gate"),
+    gateProfile: parseGateProfile(args)
   }
 }
 
 export function modeFromFilename(name: string): BenchmarkMode | null {
   if (name.includes("-agent_direct-suite.jsonl")) return "agent_direct"
   if (name.includes("-mcp-suite.jsonl")) return "mcp"
-  if (name.includes("-ghx_router-suite.jsonl")) return "ghx_router"
+  if (name.includes("-ghx-suite.jsonl")) return "ghx"
   return null
 }
 
@@ -42,23 +67,92 @@ export async function loadLatestRowsPerMode(): Promise<BenchmarkRow[]> {
   }
 
   const rows: BenchmarkRow[] = []
+  const rowsByMode = new Map<BenchmarkMode, BenchmarkRow[]>()
   for (const file of latestByMode.values()) {
+    const mode = modeFromFilename(file)
+    if (!mode) {
+      continue
+    }
     const fileRows = await readRows(join(RESULTS_DIR, file))
     rows.push(...fileRows)
+    rowsByMode.set(mode, fileRows)
+  }
+
+  const agentRows = rowsByMode.get("agent_direct")
+  const ghxRows = rowsByMode.get("ghx")
+  if (agentRows && ghxRows) {
+    validateComparableCohort(agentRows, ghxRows)
   }
 
   return rows
 }
 
+function uniqueScenarioSets(rows: BenchmarkRow[]): string {
+  const values = Array.from(
+    new Set(rows.map((row) => (row.scenario_set === null ? "<null>" : row.scenario_set))),
+  ).sort()
+  return values.join(",")
+}
+
+function uniqueScenarioIds(rows: BenchmarkRow[]): string {
+  return Array.from(new Set(rows.map((row) => row.scenario_id))).sort().join(",")
+}
+
+function uniqueModelSignature(rows: BenchmarkRow[]): string {
+  return Array.from(
+    new Set(rows.map((row) => `${row.model.provider_id}/${row.model.model_id}/${row.model.mode ?? "<null>"}`)),
+  )
+    .sort()
+    .join(",")
+}
+
+function uniqueGitCommits(rows: BenchmarkRow[]): string {
+  return Array.from(new Set(rows.map((row) => row.git.commit ?? "<null>"))).sort().join(",")
+}
+
+function validateComparableCohort(agentRows: BenchmarkRow[], ghxRows: BenchmarkRow[]): void {
+  const checks: Array<{ name: string; left: string; right: string }> = [
+    {
+      name: "scenario_set",
+      left: uniqueScenarioSets(agentRows),
+      right: uniqueScenarioSets(ghxRows),
+    },
+    {
+      name: "scenario_ids",
+      left: uniqueScenarioIds(agentRows),
+      right: uniqueScenarioIds(ghxRows),
+    },
+    {
+      name: "model",
+      left: uniqueModelSignature(agentRows),
+      right: uniqueModelSignature(ghxRows),
+    },
+  ]
+
+  const agentCommit = uniqueGitCommits(agentRows)
+  const ghxCommit = uniqueGitCommits(ghxRows)
+  if (agentCommit !== "<null>" && ghxCommit !== "<null>") {
+    checks.push({ name: "git_commit", left: agentCommit, right: ghxCommit })
+  }
+
+  const mismatches = checks.filter((check) => check.left !== check.right)
+  if (mismatches.length > 0) {
+    const details = mismatches
+      .map((mismatch) => `${mismatch.name}: agent_direct=${mismatch.left} ghx=${mismatch.right}`)
+      .join("; ")
+    throw new Error(`Latest benchmark files are not comparable across modes: ${details}`)
+  }
+}
+
 export async function main(args: string[] = process.argv.slice(2)): Promise<void> {
-  const { gate } = parseArgs(args)
+  const { gate, gateProfile } = parseArgs(args)
   const rows = await loadLatestRowsPerMode()
 
   if (rows.length === 0) {
     throw new Error("No benchmark result rows found")
   }
 
-  const summary = buildSummary(rows)
+  const summary = buildSummary(rows, undefined, gateProfile)
   const markdown = toMarkdown(summary)
 
   await mkdir(REPORTS_DIR, { recursive: true })
@@ -68,8 +162,32 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
   console.log(`Wrote reports/latest-summary.json`)
   console.log(`Wrote reports/latest-summary.md`)
 
-  if (gate && !summary.gate.passed) {
-    throw new Error("Benchmark gate failed")
+  if (gate) {
+    const status = summary.gateV2.passed ? "PASS" : "FAIL"
+    console.log(`Benchmark verify profile: ${gateProfile}`)
+    const modeModels = ["agent_direct", "ghx"]
+      .map((mode) => {
+        const modelSignature = summary.modes[mode as BenchmarkMode]?.modelSignature
+        return modelSignature ? `${mode}=${modelSignature}` : null
+      })
+      .filter((entry): entry is string => entry !== null)
+    if (modeModels.length > 0) {
+      console.log(`Benchmark model(s): ${modeModels.join("; ")}`)
+    }
+    console.log(`Benchmark verify result: ${status}`)
+
+    if (summary.gateV2.checks.length > 0) {
+      for (const check of summary.gateV2.checks) {
+        const marker = check.passed ? "PASS" : "FAIL"
+        console.log(
+          ` - [${marker}] ${check.name}: value=${check.value.toFixed(2)} ${check.operator} threshold=${check.threshold.toFixed(2)}`,
+        )
+      }
+    }
+  }
+
+  if (gate && !summary.gateV2.passed) {
+    throw new Error(`Benchmark gate failed for profile ${gateProfile}`)
   }
 }
 

@@ -1,42 +1,42 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultBase": "main",
+  "parallel": 3,
   "targetDefaults": {
-    "build": {
-      "dependsOn": [
-        "^build"
-      ],
-      "outputs": [
-        "{projectRoot}/dist"
-      ],
-      "cache": true
-    },
     "lint": {
-      "dependsOn": [
-        "^lint"
-      ],
-      "cache": true
-    },
-    "test": {
-      "dependsOn": [
-        "^test"
-      ],
+      "dependsOn": ["^lint"],
       "cache": true
     },
     "typecheck": {
-      "dependsOn": [
-        "^typecheck"
-      ],
+      "dependsOn": ["^typecheck"],
       "cache": true
     },
-    "ci": {
-      "dependsOn": [
-        "lint",
-        "typecheck",
-        "test",
-        "build"
-      ],
+    "build": {
+      "dependsOn": ["^build", "typecheck"],
+      "outputs": ["{projectRoot}/dist"],
+      "cache": true
+    },
+    "test": {
+      "dependsOn": ["^test", "typecheck"],
+      "cache": true
+    },
+    "test:coverage": {
+      "dependsOn": ["^test:coverage", "typecheck"],
       "cache": false
+    },
+    "ci": {
+      "dependsOn": ["lint", "typecheck", "test:coverage", "build"],
+      "cache": false
+    },
+    "test:e2e": {
+      "dependsOn": ["test:e2e:local", "test:e2e:sdk"],
+      "cache": false
+    },
+    "test:e2e:sdk": {
+      "dependsOn": ["build"]
+    },
+    "test:e2e:local": {
+      "dependsOn": ["build"]
     }
   },
   "plugins": [
