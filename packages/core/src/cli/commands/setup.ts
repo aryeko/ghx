@@ -39,13 +39,18 @@ const SKILL_CONTENT = `# ghx skill
 
 Use ghx capabilities to execute GitHub operations through a stable capability interface.
 
+Session bootstrap (run once at start):
+- gh auth status
+
+If bootstrap fails, stop and request authentication before continuing.
+
 Quick commands:
 - ghx capabilities list
 - ghx capabilities explain <capability_id>
-- ghx run <capability_id> --input '<json>'
+- GHX_SKIP_GH_PREFLIGHT=1 ghx run <capability_id> --input '<json>'
 
 Example:
-- ghx run repo.view --input '{"owner":"aryeko","name":"ghx"}'
+- GHX_SKIP_GH_PREFLIGHT=1 ghx run repo.view --input '{"owner":"aryeko","name":"ghx"}'
 `
 
 function usage(): string {

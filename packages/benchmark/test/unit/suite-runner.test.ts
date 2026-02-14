@@ -625,13 +625,19 @@ describe("suite-runner helpers", () => {
       },
       "ghx_router"
     )
-    expect(prompt).toContain("node ../core/dist/cli/index.js run")
+    expect(prompt).toContain("GHX_SKIP_GH_PREFLIGHT=1 node ../core/dist/cli/index.js run")
     expect(prompt).toContain("id")
     expect(prompt).toContain("If the ghx command fails")
   })
 
   it("validates ghx_router preflight capabilities for selected scenarios", () => {
-    spawnSyncMock.mockReturnValue({
+    spawnSyncMock
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: "",
+        stderr: ""
+      } as never)
+      .mockReturnValueOnce({
       status: 0,
       stdout: JSON.stringify([
         { capability_id: "repo.view", description: "Repo view" },
@@ -655,14 +661,52 @@ describe("suite-runner helpers", () => {
         }
       ])
     ).not.toThrow()
+
+    expect(spawnSyncMock).toHaveBeenNthCalledWith(1, "gh", ["auth", "status"], { encoding: "utf8" })
+    expect(spawnSyncMock).toHaveBeenNthCalledWith(
+      2,
+      "node",
+      [expect.stringContaining("/core/dist/cli/index.js"), "capabilities", "list", "--json"],
+      { encoding: "utf8" },
+    )
+  })
+
+  it("fails ghx_router preflight when gh auth status fails", () => {
+    spawnSyncMock.mockReturnValue({
+      status: 1,
+      stdout: "",
+      stderr: "not logged in"
+    } as never)
+
+    expect(() =>
+      assertGhxRouterPreflight([
+        {
+          id: "repo-view-001",
+          name: "Repo view",
+          task: "repo.view",
+          input: {},
+          prompt_template: "x",
+          timeout_ms: 1000,
+          allowed_retries: 0,
+          assertions: { must_succeed: true },
+          tags: []
+        }
+      ])
+    ).toThrow("ghx_router_preflight_failed: not logged in")
   })
 
   it("fails ghx_router preflight when required capability is unavailable", () => {
-    spawnSyncMock.mockReturnValue({
-      status: 0,
-      stdout: JSON.stringify([{ capability_id: "repo.view", description: "Repo view" }]),
-      stderr: ""
-    } as never)
+    spawnSyncMock
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: "",
+        stderr: ""
+      } as never)
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: JSON.stringify([{ capability_id: "repo.view", description: "Repo view" }]),
+        stderr: ""
+      } as never)
 
     expect(() =>
       assertGhxRouterPreflight([

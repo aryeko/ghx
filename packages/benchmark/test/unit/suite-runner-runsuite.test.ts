@@ -287,7 +287,9 @@ describe("runSuite", () => {
       }
     ])
 
-    spawnSyncMock.mockReturnValueOnce({ status: 0, stdout: "[]", stderr: "" } as never)
+    spawnSyncMock
+      .mockReturnValueOnce({ status: 0, stdout: "", stderr: "" } as never)
+      .mockReturnValueOnce({ status: 0, stdout: "[]", stderr: "" } as never)
 
     const mod = await import("../../src/runner/suite-runner.js")
     await expect(mod.runSuite({ mode: "ghx_router", repetitions: 1, scenarioFilter: null })).rejects.toThrow(
@@ -562,7 +564,11 @@ describe("runSuite", () => {
 
     const spawnSync = await import("node:child_process")
     vi.mocked(spawnSync.spawnSync).mockImplementation((_cmd, args) => {
-      if (Array.isArray(args) && args[0] === "auth") {
+      if (Array.isArray(args) && args[0] === "auth" && args[1] === "status") {
+        return { status: 0, stdout: "ok", stderr: "" } as never
+      }
+
+      if (Array.isArray(args) && args[0] === "auth" && args[1] === "token") {
         return { status: 1 } as never
       }
 

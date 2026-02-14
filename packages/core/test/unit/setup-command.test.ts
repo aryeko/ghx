@@ -73,6 +73,8 @@ describe("setupCommand", () => {
     const skillPath = join(tempRoot, ".agents", "skill", "ghx", "SKILL.md")
     const content = readFileSync(skillPath, "utf8")
     expect(content).toContain("Use ghx capabilities")
+    expect(content).toContain("gh auth status")
+    expect(content).toContain("GHX_SKIP_GH_PREFLIGHT=1 ghx run")
     expect(stdout.mock.calls.map((call) => String(call[0])).join("")).toContain("Setup complete")
   })
 

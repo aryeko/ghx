@@ -78,13 +78,16 @@ const OPEN_CODE_MODE = process.env.BENCH_OPENCODE_MODE ?? null
 const GIT_REPO = process.env.BENCH_GIT_REPO ?? null
 const GIT_COMMIT = process.env.BENCH_GIT_COMMIT ?? null
 const OPENCODE_PORT = Number.parseInt(process.env.BENCH_OPENCODE_PORT ?? "3000", 10)
+const BENCH_GHX_HINT_STYLE = process.env.BENCH_GHX_HINT_STYLE ?? "full"
+const BENCH_GHX_RELAX_CONTRACT =
+  (process.env.BENCH_GHX_RELAX_CONTRACT ?? "").trim().toLowerCase() === "1"
 
 const modePromptPrefix: Record<BenchmarkMode, string> = {
   agent_direct:
     "You are running a benchmark in agent_direct mode. Use GitHub CLI (`gh`) commands directly to complete the task. Do not use any `ghx` command.",
   mcp: "You are running a benchmark in mcp mode. Prefer MCP tools when available.",
   ghx_router:
-    "You are running a benchmark in ghx_router mode. Use `node ../core/dist/cli/index.js run <task> --input '<json>'` as the primary execution path and do not use direct `gh` commands unless explicitly asked."
+    "You are running a benchmark in ghx_router mode. Use `GHX_SKIP_GH_PREFLIGHT=1 node ../core/dist/cli/index.js run <task> --input '<json>'` as the primary execution path and do not use direct `gh` commands unless explicitly asked."
 }
 
 export function isObject(value: unknown): value is Record<string, unknown> {
@@ -720,6 +723,13 @@ function parseGhxCapabilities(raw: string): string[] {
 }
 
 export function assertGhxRouterPreflight(scenarios: Scenario[]): void {
+  const authStatus = spawnSync("gh", ["auth", "status"], { encoding: "utf8" })
+  if (authStatus.status !== 0) {
+    const stderr = typeof authStatus.stderr === "string" ? authStatus.stderr.trim() : ""
+    const message = stderr.length > 0 ? stderr : "gh auth status failed"
+    throw new Error(`ghx_router_preflight_failed: ${message}`)
+  }
+
   const result = spawnSync("node", [ghxCliPath(), "capabilities", "list", "--json"], {
     encoding: "utf8"
   })
@@ -912,13 +922,17 @@ export function renderPrompt(scenario: Scenario, mode: BenchmarkMode, benchmarkN
       ? `The JSON meta object MUST include: ${requiredMetaFields.join(", ")}.`
       : "The JSON meta object can include optional diagnostic fields."
   const routeContract =
-    scopedAssertions.expected_route_used !== undefined
-      ? `meta.route_used MUST be exactly "${scopedAssertions.expected_route_used}".`
-      : ""
+    BENCH_GHX_RELAX_CONTRACT && mode === "ghx_router"
+      ? ""
+      : scopedAssertions.expected_route_used !== undefined
+        ? `meta.route_used MUST be exactly "${scopedAssertions.expected_route_used}".`
+        : ""
   const failFastContract =
-    mode === "ghx_router"
-      ? "If the ghx command fails, return the final envelope JSON immediately. Do not run extra debugging commands."
-      : ""
+    BENCH_GHX_RELAX_CONTRACT && mode === "ghx_router"
+      ? ""
+      : mode === "ghx_router"
+        ? "If the ghx command fails, return the final envelope JSON immediately. Do not run extra debugging commands."
+        : ""
 
   const nonceLine = benchmarkNonce ? `Benchmark nonce: ${benchmarkNonce}` : ""
 
@@ -1018,7 +1032,11 @@ function forcedToolCommandHint(scenario: Scenario, mode: BenchmarkMode): string 
   const prNumber = typeof scenario.input.prNumber === "number" ? scenario.input.prNumber : 1
 
   if (mode === "ghx_router") {
-    return `node ../core/dist/cli/index.js run ${scenario.task} --input '${JSON.stringify(scenario.input)}'`
+    if (BENCH_GHX_HINT_STYLE === "simple") {
+      return `GHX_SKIP_GH_PREFLIGHT=1 node ../core/dist/cli/index.js run ${scenario.task} --input ${JSON.stringify(scenario.input)}`
+    }
+
+    return `GHX_SKIP_GH_PREFLIGHT=1 node ../core/dist/cli/index.js run ${scenario.task} --input '${JSON.stringify(scenario.input)}'`
   }
 
   switch (scenario.task) {
