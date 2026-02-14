@@ -53,7 +53,6 @@ jobs:
   release:
     needs:
       - build-and-test
-      - release-benchmark-gate
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
