@@ -61,10 +61,11 @@ ghx/
 ### Benchmark Package (`packages/benchmark`)
 
 - `packages/benchmark/src/cli/benchmark.ts` - benchmark run command
-- `packages/benchmark/src/cli/args.ts` - argument parsing (`mode`, `repetitions`, `scenario`)
+- `packages/benchmark/src/cli/args.ts` - argument parsing (`mode`, `repetitions`, `scenario`, `scenario-set`)
 - `packages/benchmark/src/runner/suite-runner.ts` - end-to-end scenario execution orchestrator
 - `packages/benchmark/src/scenario/schema.ts` - Zod scenario schema and validation
 - `packages/benchmark/src/scenario/loader.ts` - scenario file loading
+- `packages/benchmark/scenario-sets.json` - explicit scenario set membership manifest
 - `packages/benchmark/src/extract/envelope.ts` - envelope extraction and output checks
 - `packages/benchmark/src/report/aggregate.ts` - summary metrics and gating logic
 - `packages/benchmark/scenarios/*.json` - benchmark scenarios (task + assertions + fixtures)
