@@ -153,6 +153,34 @@ describe("suite-runner helpers", () => {
     expect(breakdown.assistant_post_tool_ms).toBe(250)
   })
 
+  it("uses the latest tool completion for post-tool timing", () => {
+    const breakdown = extractTimingBreakdown([
+      {
+        info: {
+          role: "assistant",
+          time: { created: 100, completed: 1300 }
+        },
+        parts: [
+          { type: "reasoning", time: { start: 200, end: 300 } },
+          {
+            type: "tool",
+            tool: "bash",
+            state: { time: { start: 400, end: 600 } }
+          },
+          {
+            type: "tool",
+            tool: "StructuredOutput",
+            state: { time: { start: 700, end: 1000 } }
+          }
+        ]
+      }
+    ] as unknown as Parameters<typeof extractTimingBreakdown>[0])
+
+    expect(breakdown.tool_total_ms).toBe(500)
+    expect(breakdown.tool_structured_output_ms).toBe(300)
+    expect(breakdown.assistant_post_tool_ms).toBe(300)
+  })
+
   it("coerces assistant response and continuation behavior", () => {
     const parts = [
       { type: "text", text: '{"ok":true,"data":{},"error":null,"meta":{}}' },

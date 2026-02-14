@@ -237,7 +237,7 @@ export function extractTimingBreakdown(messages: SessionMessageEntry[]): Benchma
     }
 
     let firstToolStart: number | null = null
-    let firstToolEnd: number | null = null
+    let lastToolEnd: number | null = null
     for (const part of toolParts) {
       const state = isObject(part.state) ? part.state : null
       const time = isObject(state?.time) ? state.time : null
@@ -257,7 +257,9 @@ export function extractTimingBreakdown(messages: SessionMessageEntry[]): Benchma
 
         if (firstToolStart === null || start < firstToolStart) {
           firstToolStart = start
-          firstToolEnd = end
+        }
+        if (lastToolEnd === null || end > lastToolEnd) {
+          lastToolEnd = end
         }
       }
     }
@@ -270,8 +272,8 @@ export function extractTimingBreakdown(messages: SessionMessageEntry[]): Benchma
       breakdown.assistant_between_reasoning_and_tool_ms += Math.max(0, firstToolStart - lastReasoningEnd)
     }
 
-    if (typeof completed === "number" && firstToolEnd !== null) {
-      breakdown.assistant_post_tool_ms += Math.max(0, completed - firstToolEnd)
+    if (typeof completed === "number" && lastToolEnd !== null) {
+      breakdown.assistant_post_tool_ms += Math.max(0, completed - lastToolEnd)
     }
   }
 

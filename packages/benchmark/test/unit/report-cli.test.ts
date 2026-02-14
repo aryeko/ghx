@@ -68,7 +68,7 @@ describe("report cli", () => {
     })
 
     await writeFile(join(results, "2026-01-01-agent_direct-suite.jsonl"), `${row}\n`, "utf8")
-    await writeFile(join(results, "2026-01-02-ghx-suite.jsonl"), `${row.replace('agent_direct', 'ghx')}\n`, "utf8")
+    await writeFile(join(results, "2026-01-02-ghx-suite.jsonl"), `${row.replace("agent_direct", "ghx")}\n`, "utf8")
 
     const report = await importReportModule(root)
     const rows = await report.loadLatestRowsPerMode()

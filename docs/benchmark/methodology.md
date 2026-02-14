@@ -43,6 +43,8 @@ This avoids one noisy scenario dominating suite-level medians and improves compa
 
 Recommended proof sequence for PR validation:
 
+- quick path (repo root): `pnpm run benchmark:proof:pr-fast`
+
 1. `pnpm --filter @ghx-dev/core run build`
 2. `pnpm --filter @ghx-dev/benchmark run run -- agent_direct 3 --scenario-set pr-exec`
 3. `GHX_SKIP_GH_PREFLIGHT=1 pnpm --filter @ghx-dev/benchmark run run -- ghx 3 --scenario-set pr-exec`

@@ -28,6 +28,8 @@
     "benchmark:run": "nx run @ghx-dev/benchmark:run",
     "benchmark:report": "nx run @ghx-dev/benchmark:report",
     "benchmark:gate": "nx run @ghx-dev/benchmark:\"report:gate\"",
+    "benchmark:proof:pr-fast": "pnpm --filter @ghx-dev/core run build && pnpm --filter @ghx-dev/benchmark run run -- agent_direct 1 --scenario-set pr-exec && GHX_SKIP_GH_PREFLIGHT=1 pnpm --filter @ghx-dev/benchmark run run -- ghx 1 --scenario-set pr-exec && pnpm --filter @ghx-dev/benchmark exec tsx src/cli/report.ts --gate --gate-profile pr_fast",
+    "benchmark:gate:release-strict": "pnpm --filter @ghx-dev/core run build && pnpm --filter @ghx-dev/benchmark run run -- agent_direct 3 --scenario-set pr-exec && GHX_SKIP_GH_PREFLIGHT=1 pnpm --filter @ghx-dev/benchmark run run -- ghx 3 --scenario-set pr-exec && pnpm --filter @ghx-dev/benchmark exec tsx src/cli/report.ts --gate --gate-profile release_strict",
     "ghx:publish": "pnpm --filter @ghx-dev/core run build && pnpm --filter @ghx-dev/core publish --no-git-checks",
     "ghx:gql:check": "nx run @ghx-dev/core:\"gql:check\"",
     "dep-graph": "nx graph",

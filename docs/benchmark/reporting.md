@@ -22,6 +22,9 @@
 
 - `docs/benchmark/efficiency-criteria.md`
 - `pnpm run benchmark:gate`
+- `pnpm run benchmark:gate:release-strict`
+
+Main-branch release automation runs `release_strict` before publish in CI (`.github/workflows/ci-main.yml`).
 
 ## Gate Profile Selection
 

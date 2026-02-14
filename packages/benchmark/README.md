@@ -14,6 +14,11 @@ This package is intentionally **private** and is not published to npm. It compar
 ## Common Commands
 
 ```bash
+# from repo root (recommended shortcuts)
+pnpm run benchmark:proof:pr-fast
+pnpm run benchmark:gate:release-strict
+
+# package-level commands
 pnpm --filter @ghx-dev/benchmark run run -- agent_direct 1 --scenario pr-view-001
 
 pnpm --filter @ghx-dev/benchmark run run -- ghx 1 --scenario-set pr-exec
