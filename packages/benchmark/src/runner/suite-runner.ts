@@ -78,9 +78,6 @@ const OPEN_CODE_MODE = process.env.BENCH_OPENCODE_MODE ?? null
 const GIT_REPO = process.env.BENCH_GIT_REPO ?? null
 const GIT_COMMIT = process.env.BENCH_GIT_COMMIT ?? null
 const OPENCODE_PORT = Number.parseInt(process.env.BENCH_OPENCODE_PORT ?? "3000", 10)
-const BENCH_GHX_HINT_STYLE = process.env.BENCH_GHX_HINT_STYLE ?? "full"
-const BENCH_GHX_RELAX_CONTRACT =
-  (process.env.BENCH_GHX_RELAX_CONTRACT ?? "").trim().toLowerCase() === "1"
 
 const modePromptPrefix: Record<BenchmarkMode, string> = {
   agent_direct:
@@ -922,17 +919,13 @@ export function renderPrompt(scenario: Scenario, mode: BenchmarkMode, benchmarkN
       ? `The JSON meta object MUST include: ${requiredMetaFields.join(", ")}.`
       : "The JSON meta object can include optional diagnostic fields."
   const routeContract =
-    BENCH_GHX_RELAX_CONTRACT && mode === "ghx_router"
-      ? ""
-      : scopedAssertions.expected_route_used !== undefined
-        ? `meta.route_used MUST be exactly "${scopedAssertions.expected_route_used}".`
-        : ""
+    scopedAssertions.expected_route_used !== undefined
+      ? `meta.route_used MUST be exactly "${scopedAssertions.expected_route_used}".`
+      : ""
   const failFastContract =
-    BENCH_GHX_RELAX_CONTRACT && mode === "ghx_router"
-      ? ""
-      : mode === "ghx_router"
-        ? "If the ghx command fails, return the final envelope JSON immediately. Do not run extra debugging commands."
-        : ""
+    mode === "ghx_router"
+      ? "If the ghx command fails, return the final envelope JSON immediately. Do not run extra debugging commands."
+      : ""
 
   const nonceLine = benchmarkNonce ? `Benchmark nonce: ${benchmarkNonce}` : ""
 
@@ -1032,10 +1025,6 @@ function forcedToolCommandHint(scenario: Scenario, mode: BenchmarkMode): string 
   const prNumber = typeof scenario.input.prNumber === "number" ? scenario.input.prNumber : 1
 
   if (mode === "ghx_router") {
-    if (BENCH_GHX_HINT_STYLE === "simple") {
-      return `GHX_SKIP_GH_PREFLIGHT=1 node ../core/dist/cli/index.js run ${scenario.task} --input ${JSON.stringify(scenario.input)}`
-    }
-
     return `GHX_SKIP_GH_PREFLIGHT=1 node ../core/dist/cli/index.js run ${scenario.task} --input '${JSON.stringify(scenario.input)}'`
   }
 
