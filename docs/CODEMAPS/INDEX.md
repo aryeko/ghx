@@ -18,6 +18,7 @@
 - `docs/benchmark/harness-design.md` - benchmark harness architecture.
 - `docs/benchmark/reporting.md` - benchmark output and reporting flow.
 - `docs/benchmark/capability-expansion-scenario-sets-design.md` - implemented scenario-set expansion record.
+- `docs/guides/publishing.md` - release and publish workflow for `@ghx/core`.
 
 ## Suggested Reading Paths
 

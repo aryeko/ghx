@@ -90,6 +90,7 @@ The core package provides a normalized `ResultEnvelope` contract and routes each
 
 ## Entry Points
 
+- `packages/core/src/index.ts` - public `@ghx/core` package API entrypoint
 - `packages/core/src/cli/index.ts` - `ghx` executable entrypoint
 - `packages/benchmark/src/cli/benchmark.ts` - benchmark runner CLI
 - `packages/benchmark/src/cli/check-scenarios.ts` - scenario validity check
@@ -100,3 +101,4 @@ The core package provides a normalized `ResultEnvelope` contract and routes each
 - `docs/architecture/overview.md`
 - `docs/architecture/system-design.md`
 - `docs/benchmark/harness-design.md`
+- `docs/guides/publishing.md`

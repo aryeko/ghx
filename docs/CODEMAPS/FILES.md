@@ -46,6 +46,8 @@ ghx/
 
 ### Core Router Package (`packages/core`)
 
+- `packages/core/src/index.ts` - package public exports for library consumers (`executeTask`, adapters, registry helpers)
+- `packages/core/src/agent.ts` - package public agent-interface exports (`listCapabilities`, `createExecuteTool`)
 - `packages/core/src/cli/index.ts` - `ghx` executable entrypoint
 - `packages/core/src/cli/commands/run.ts` - task parsing + execution entry
 - `packages/core/src/core/routing/engine.ts` - route selection + preflight orchestration
@@ -57,6 +59,8 @@ ghx/
 - `packages/core/src/gql/client.ts` - typed GitHub GraphQL client + operation wrappers
 - `packages/core/src/agent-interface/tools/list-capabilities-tool.ts` - capability listing tool for agents
 - `packages/core/src/agent-interface/tools/execute-tool.ts` - capability execution wrapper for agent tooling
+- `packages/core/README.md` - npm-facing package usage and API surface overview
+- `packages/core/LICENSE` - package-level MIT license for publish artifacts
 
 ### Benchmark Package (`packages/benchmark`)
 

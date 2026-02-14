@@ -74,6 +74,8 @@
 
 | Module | Purpose | Key Exports | Depends On |
 |---|---|---|---|
+| `index.ts` | Package entrypoint for npm consumers | `executeTask()`, `routePreferenceOrder`, adapters, registry helpers | `cli`, `core/*`, `gql/client` |
+| `agent.ts` | Package entrypoint for agent integration helpers | `listCapabilities()`, `createExecuteTool()` | `agent-interface/tools/*` |
 | `cli/index.ts` | CLI command router (`ghx run`) | `main()` | `cli/commands/run` |
 | `cli/commands/run.ts` | Parses args + invokes execution engine | `runCommand()` | `gql/client`, `routing/engine` |
 | `agent-interface/tools/list-capabilities-tool.ts` | Exposes card list to agents | `listCapabilities()` | `registry/index` |
