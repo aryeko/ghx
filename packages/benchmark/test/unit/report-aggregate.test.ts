@@ -9,6 +9,7 @@ function row(overrides: Partial<BenchmarkRow>): BenchmarkRow {
     run_id: "run",
     mode: "agent_direct",
     scenario_id: "repo-view-001",
+    scenario_set: null,
     iteration: 1,
     session_id: "session",
     success: true,

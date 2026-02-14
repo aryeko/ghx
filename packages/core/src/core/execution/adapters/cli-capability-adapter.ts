@@ -5,7 +5,16 @@ import type { ResultEnvelope } from "../../contracts/envelope.js"
 import type { OperationCard } from "../../registry/types.js"
 import { normalizeError, normalizeResult } from "../normalizer.js"
 
-export type CliCapabilityId = "repo.view" | "issue.view" | "issue.list" | "issue.comments.list" | "pr.view" | "pr.list"
+export type CliCapabilityId =
+  | "repo.view"
+  | "issue.view"
+  | "issue.list"
+  | "issue.comments.list"
+  | "pr.view"
+  | "pr.list"
+  | "pr.status.checks"
+  | "pr.checks.get_failed"
+  | "pr.mergeability.view"
 
 export type CliCommandRunner = {
   run(command: string, args: string[], timeoutMs: number): Promise<{ stdout: string; stderr: string; exitCode: number }>
@@ -155,6 +164,36 @@ function buildArgs(capabilityId: CliCapabilityId, params: Record<string, unknown
     return args
   }
 
+  if (capabilityId === "pr.status.checks" || capabilityId === "pr.checks.get_failed") {
+    const prNumber = parseStrictPositiveInt(params.prNumber)
+    if (prNumber === null) {
+      throw new Error(`Missing or invalid prNumber for ${capabilityId}`)
+    }
+
+    const args = [...commandTokens(card, "pr checks"), String(prNumber)]
+    if (repo) {
+      args.push("--repo", repo)
+    }
+
+    args.push("--json", jsonFieldsFromCard(card, "name,state,workflow,link"))
+    return args
+  }
+
+  if (capabilityId === "pr.mergeability.view") {
+    const prNumber = parseStrictPositiveInt(params.prNumber)
+    if (prNumber === null) {
+      throw new Error("Missing or invalid prNumber for pr.mergeability.view")
+    }
+
+    const args = [...commandTokens(card, "pr view"), String(prNumber)]
+    if (repo) {
+      args.push("--repo", repo)
+    }
+
+    args.push("--json", jsonFieldsFromCard(card, "mergeable,mergeStateStatus,reviewDecision,isDraft,state"))
+    return args
+  }
+
   throw new Error(`Unsupported CLI capability: ${capabilityId}`)
 }
 
@@ -180,6 +219,52 @@ function normalizeListItem(item: unknown): Record<string, unknown> {
     state: input.state,
     url: input.url
   }
+}
+
+function normalizeCheckItem(item: unknown): Record<string, unknown> {
+  if (typeof item !== "object" || item === null || Array.isArray(item)) {
+    return {
+      name: null,
+      state: null,
+      workflow: null,
+      link: null
+    }
+  }
+
+  const input = item as Record<string, unknown>
+  return {
+    name: typeof input.name === "string" ? input.name : null,
+    state: typeof input.state === "string" ? input.state : null,
+    workflow: typeof input.workflow === "string" ? input.workflow : null,
+    link: typeof input.link === "string" ? input.link : null
+  }
+}
+
+function isCheckFailureState(state: unknown): boolean {
+  if (typeof state !== "string") {
+    return false
+  }
+
+  const normalized = state.toUpperCase()
+  return ["FAILURE", "ERROR", "TIMED_OUT", "ACTION_REQUIRED", "CANCELLED", "STARTUP_FAILURE"].includes(normalized)
+}
+
+function isCheckPendingState(state: unknown): boolean {
+  if (typeof state !== "string") {
+    return false
+  }
+
+  const normalized = state.toUpperCase()
+  return ["PENDING", "IN_PROGRESS", "QUEUED", "WAITING", "REQUESTED"].includes(normalized)
+}
+
+function isCheckPassState(state: unknown): boolean {
+  if (typeof state !== "string") {
+    return false
+  }
+
+  const normalized = state.toUpperCase()
+  return ["SUCCESS", "NEUTRAL", "SKIPPED"].includes(normalized)
 }
 
 function normalizeCliData(capabilityId: CliCapabilityId, data: unknown, params: Record<string, unknown>): unknown {
@@ -287,6 +372,37 @@ function normalizeCliData(capabilityId: CliCapabilityId, data: unknown, params: 
         hasNextPage: pageInfo.hasNextPage,
         endCursor: typeof pageInfo.endCursor === "string" ? pageInfo.endCursor : null
       }
+    }
+  }
+
+  if (capabilityId === "pr.status.checks" || capabilityId === "pr.checks.get_failed") {
+    const checks = Array.isArray(data) ? data.map((entry) => normalizeCheckItem(entry)) : []
+    const failed = checks.filter((entry) => isCheckFailureState(entry.state))
+    const pending = checks.filter((entry) => isCheckPendingState(entry.state))
+    const passed = checks.filter((entry) => isCheckPassState(entry.state))
+
+    return {
+      items: capabilityId === "pr.checks.get_failed" ? failed : checks,
+      summary: {
+        total: checks.length,
+        failed: failed.length,
+        pending: pending.length,
+        passed: passed.length
+      }
+    }
+  }
+
+  if (capabilityId === "pr.mergeability.view") {
+    const input = typeof data === "object" && data !== null && !Array.isArray(data)
+      ? (data as Record<string, unknown>)
+      : {}
+
+    return {
+      mergeable: typeof input.mergeable === "string" ? input.mergeable : null,
+      mergeStateStatus: typeof input.mergeStateStatus === "string" ? input.mergeStateStatus : null,
+      reviewDecision: typeof input.reviewDecision === "string" ? input.reviewDecision : null,
+      isDraft: Boolean(input.isDraft),
+      state: typeof input.state === "string" ? input.state : "UNKNOWN"
     }
   }
 

@@ -1,0 +1,31 @@
+{
+  "default": [
+    "repo-view-001",
+    "issue-view-001",
+    "issue-list-open-001",
+    "issue-comments-list-001",
+    "pr-view-001",
+    "pr-list-open-001"
+  ],
+  "pr-review-reads": [
+    "pr-comments-unresolved-001",
+    "pr-reviews-list-001",
+    "pr-diff-list-files-001",
+    "pr-status-checks-001",
+    "pr-checks-get-failed-001",
+    "pr-mergeability-view-001"
+  ],
+  "pr-thread-mutations": [],
+  "ci-diagnostics": [],
+  "ci-log-analysis": [],
+  "pr-operations-all": [
+    "pr-comments-unresolved-001",
+    "pr-reviews-list-001",
+    "pr-diff-list-files-001",
+    "pr-status-checks-001",
+    "pr-checks-get-failed-001",
+    "pr-mergeability-view-001",
+    "pr-view-001",
+    "pr-list-open-001"
+  ]
+}

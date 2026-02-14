@@ -34,6 +34,36 @@ describe("capabilityRegistry", () => {
         task: "pr.list",
         defaultRoute: "cli",
         fallbackRoutes: ["graphql"]
+      },
+      {
+        task: "pr.comments.list",
+        defaultRoute: "graphql",
+        fallbackRoutes: ["cli"]
+      },
+      {
+        task: "pr.reviews.list",
+        defaultRoute: "graphql",
+        fallbackRoutes: []
+      },
+      {
+        task: "pr.diff.list_files",
+        defaultRoute: "graphql",
+        fallbackRoutes: []
+      },
+      {
+        task: "pr.status.checks",
+        defaultRoute: "cli",
+        fallbackRoutes: []
+      },
+      {
+        task: "pr.checks.get_failed",
+        defaultRoute: "cli",
+        fallbackRoutes: []
+      },
+      {
+        task: "pr.mergeability.view",
+        defaultRoute: "cli",
+        fallbackRoutes: []
       }
     ])
   })

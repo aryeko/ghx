@@ -3,7 +3,10 @@ import type {
   IssueCommentsListInput,
   IssueListInput,
   IssueViewInput,
+  PrCommentsListInput,
+  PrDiffListFilesInput,
   PrListInput,
+  PrReviewsListInput,
   PrViewInput,
   RepoViewInput
 } from "../../../gql/client.js"
@@ -20,6 +23,9 @@ export type GraphqlCapabilityId =
   | "issue.comments.list"
   | "pr.view"
   | "pr.list"
+  | "pr.comments.list"
+  | "pr.reviews.list"
+  | "pr.diff.list_files"
 
 const DEFAULT_LIST_FIRST = 30
 
@@ -38,6 +44,7 @@ export async function runGraphqlCapability(
   client: Pick<
     GithubClient,
     "fetchRepoView" | "fetchIssueView" | "fetchIssueList" | "fetchIssueCommentsList" | "fetchPrView" | "fetchPrList"
+      | "fetchPrCommentsList" | "fetchPrReviewsList" | "fetchPrDiffListFiles"
   >,
   capabilityId: GraphqlCapabilityId,
   params: Record<string, unknown>
@@ -70,6 +77,21 @@ export async function runGraphqlCapability(
 
     if (capabilityId === "pr.list") {
       const data = await client.fetchPrList(withDefaultFirst(params) as PrListInput)
+      return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
+    }
+
+    if (capabilityId === "pr.comments.list") {
+      const data = await client.fetchPrCommentsList(withDefaultFirst(params) as PrCommentsListInput)
+      return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
+    }
+
+    if (capabilityId === "pr.reviews.list") {
+      const data = await client.fetchPrReviewsList(withDefaultFirst(params) as PrReviewsListInput)
+      return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
+    }
+
+    if (capabilityId === "pr.diff.list_files") {
+      const data = await client.fetchPrDiffListFiles(withDefaultFirst(params) as PrDiffListFilesInput)
       return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
     }
 

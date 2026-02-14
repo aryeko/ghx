@@ -225,4 +225,245 @@ describe("createGithubClient", () => {
     expect(list.items[0]?.number).toBe(232)
     expect(list.pageInfo.hasNextPage).toBe(true)
   })
+
+  it("exposes typed pr.comments.list helper with unresolved filtering", async () => {
+    const execute = async <TData>(_query: string, variables?: Record<string, unknown>): Promise<TData> => {
+      const after = (variables?.after as string | null | undefined) ?? null
+      if (after === null) {
+        return {
+          repository: {
+            pullRequest: {
+              reviewThreads: {
+                nodes: [
+                  {
+                    id: "thread-1",
+                    path: "src/a.ts",
+                    line: 10,
+                    startLine: null,
+                    diffSide: "RIGHT",
+                    subjectType: "LINE",
+                    isResolved: true,
+                    isOutdated: false,
+                    viewerCanResolve: true,
+                    viewerCanUnresolve: false,
+                    resolvedBy: { login: "octocat" },
+                    comments: {
+                      nodes: [
+                        {
+                          id: "comment-1",
+                          body: "resolved",
+                          createdAt: "2025-01-01T00:00:00Z",
+                          url: "https://example.com/comment-1",
+                          author: { login: "octocat" }
+                        }
+                      ]
+                    }
+                  }
+                ],
+                pageInfo: {
+                  endCursor: "cursor-1",
+                  hasNextPage: true
+                }
+              }
+            }
+          }
+        } as TData
+      }
+
+      return {
+        repository: {
+          pullRequest: {
+            reviewThreads: {
+              nodes: [
+                {
+                  id: "thread-2",
+                  path: "src/b.ts",
+                  line: 20,
+                  startLine: null,
+                  diffSide: "RIGHT",
+                  subjectType: "LINE",
+                  isResolved: false,
+                  isOutdated: false,
+                  viewerCanResolve: true,
+                  viewerCanUnresolve: true,
+                  resolvedBy: null,
+                  comments: {
+                    nodes: [
+                      {
+                        id: "comment-2",
+                        body: "needs work",
+                        createdAt: "2025-01-02T00:00:00Z",
+                        url: "https://example.com/comment-2",
+                        author: { login: "hubot" }
+                      }
+                    ]
+                  }
+                }
+              ],
+              pageInfo: {
+                endCursor: null,
+                hasNextPage: false
+              }
+            }
+          }
+        }
+      } as TData
+    }
+
+    const client = createGithubClient({ execute })
+    const list = await client.fetchPrCommentsList({
+      owner: "go-modkit",
+      name: "modkit",
+      prNumber: 232,
+      first: 1,
+      unresolvedOnly: true,
+      includeOutdated: false
+    })
+
+    expect(list.items).toHaveLength(1)
+    expect(list.items[0]?.id).toBe("thread-2")
+    expect(list.filterApplied).toEqual({ unresolvedOnly: true, includeOutdated: false })
+    expect(list.scan.pagesScanned).toBe(2)
+  })
+
+  it("throws when pr.comments.list payload is missing threads", async () => {
+    const client = createGithubClient({
+      async execute<TData>(): Promise<TData> {
+        return {
+          repository: {
+            pullRequest: null
+          }
+        } as TData
+      }
+    })
+
+    await expect(
+      client.fetchPrCommentsList({
+        owner: "go-modkit",
+        name: "modkit",
+        prNumber: 232,
+        first: 1
+      })
+    ).rejects.toThrow("Pull request review threads not found")
+  })
+
+  it("exposes typed pr.reviews.list helper", async () => {
+    const client = createGithubClient({
+      async execute<TData>(): Promise<TData> {
+        return {
+          repository: {
+            pullRequest: {
+              reviews: {
+                nodes: [
+                  {
+                    id: "review-1",
+                    body: "looks good",
+                    state: "APPROVED",
+                    submittedAt: "2025-01-01T00:00:00Z",
+                    url: "https://example.com/review-1",
+                    author: { login: "octocat" },
+                    commit: { oid: "abc123" }
+                  }
+                ],
+                pageInfo: {
+                  hasNextPage: false,
+                  endCursor: null
+                }
+              }
+            }
+          }
+        } as TData
+      }
+    })
+
+    const reviews = await client.fetchPrReviewsList({
+      owner: "go-modkit",
+      name: "modkit",
+      prNumber: 232,
+      first: 10
+    })
+
+    expect(reviews.items[0]?.id).toBe("review-1")
+    expect(reviews.items[0]?.authorLogin).toBe("octocat")
+  })
+
+  it("exposes typed pr.diff.list_files helper", async () => {
+    const client = createGithubClient({
+      async execute<TData>(): Promise<TData> {
+        return {
+          repository: {
+            pullRequest: {
+              files: {
+                nodes: [
+                  {
+                    path: "src/index.ts",
+                    additions: 5,
+                    deletions: 1
+                  }
+                ],
+                pageInfo: {
+                  hasNextPage: false,
+                  endCursor: null
+                }
+              }
+            }
+          }
+        } as TData
+      }
+    })
+
+    const files = await client.fetchPrDiffListFiles({
+      owner: "go-modkit",
+      name: "modkit",
+      prNumber: 232,
+      first: 10
+    })
+
+    expect(files.items[0]?.path).toBe("src/index.ts")
+    expect(files.items[0]?.additions).toBe(5)
+  })
+
+  it("throws when pr.reviews.list payload is missing reviews", async () => {
+    const client = createGithubClient({
+      async execute<TData>(): Promise<TData> {
+        return {
+          repository: {
+            pullRequest: null
+          }
+        } as TData
+      }
+    })
+
+    await expect(
+      client.fetchPrReviewsList({
+        owner: "go-modkit",
+        name: "modkit",
+        prNumber: 232,
+        first: 10
+      })
+    ).rejects.toThrow("Pull request reviews not found")
+  })
+
+  it("throws when pr.diff.list_files payload is missing files", async () => {
+    const client = createGithubClient({
+      async execute<TData>(): Promise<TData> {
+        return {
+          repository: {
+            pullRequest: {
+              files: null
+            }
+          }
+        } as TData
+      }
+    })
+
+    await expect(
+      client.fetchPrDiffListFiles({
+        owner: "go-modkit",
+        name: "modkit",
+        prNumber: 232,
+        first: 10
+      })
+    ).rejects.toThrow("Pull request files not found")
+  })
 })

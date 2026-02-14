@@ -620,4 +620,109 @@ describe("runCliCapability", () => {
     expect(result.error?.code).toBe("AUTH")
     expect(result.error?.message).toBe("forbidden")
   })
+
+  it("normalizes pr.status.checks from gh pr checks output", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: JSON.stringify([
+          {
+            name: "unit-tests",
+            state: "SUCCESS",
+            workflow: "ci",
+            link: "https://example.com/check/1"
+          },
+          {
+            name: "lint",
+            state: "FAILURE",
+            workflow: "ci",
+            link: "https://example.com/check/2"
+          }
+        ]),
+        stderr: "",
+        exitCode: 0
+      }))
+    }
+
+    const result = await runCliCapability(runner, "pr.status.checks", {
+      owner: "acme",
+      name: "modkit",
+      prNumber: 10
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.data).toEqual(
+      expect.objectContaining({
+        items: [expect.objectContaining({ name: "unit-tests" }), expect.objectContaining({ name: "lint" })],
+        summary: expect.objectContaining({ total: 2, failed: 1, passed: 1 })
+      })
+    )
+  })
+
+  it("filters failed checks for pr.checks.get_failed", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: JSON.stringify([
+          {
+            name: "unit-tests",
+            state: "SUCCESS",
+            workflow: "ci",
+            link: "https://example.com/check/1"
+          },
+          {
+            name: "lint",
+            state: "FAILURE",
+            workflow: "ci",
+            link: "https://example.com/check/2"
+          }
+        ]),
+        stderr: "",
+        exitCode: 0
+      }))
+    }
+
+    const result = await runCliCapability(runner, "pr.checks.get_failed", {
+      owner: "acme",
+      name: "modkit",
+      prNumber: 10
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.data).toEqual(
+      expect.objectContaining({
+        items: [expect.objectContaining({ name: "lint", state: "FAILURE" })],
+        summary: expect.objectContaining({ total: 2, failed: 1 })
+      })
+    )
+  })
+
+  it("normalizes mergeability fields for pr.mergeability.view", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: JSON.stringify({
+          mergeable: "MERGEABLE",
+          mergeStateStatus: "CLEAN",
+          reviewDecision: "APPROVED",
+          isDraft: false,
+          state: "OPEN"
+        }),
+        stderr: "",
+        exitCode: 0
+      }))
+    }
+
+    const result = await runCliCapability(runner, "pr.mergeability.view", {
+      owner: "acme",
+      name: "modkit",
+      prNumber: 10
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.data).toEqual({
+      mergeable: "MERGEABLE",
+      mergeStateStatus: "CLEAN",
+      reviewDecision: "APPROVED",
+      isDraft: false,
+      state: "OPEN"
+    })
+  })
 })

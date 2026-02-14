@@ -5,6 +5,7 @@ export type ParsedCliArgs = {
   mode: BenchmarkMode
   repetitions: number
   scenarioFilter: string | null
+  scenarioSet: string | null
 }
 
 function isBenchmarkMode(value: string): value is BenchmarkMode {
@@ -60,6 +61,20 @@ function parseScenarioFilter(flags: string[]): string | null {
   return null
 }
 
+function parseScenarioSet(flags: string[]): string | null {
+  const index = flags.findIndex((arg) => arg === "--scenario-set")
+  if (index !== -1) {
+    return flags[index + 1] ?? null
+  }
+
+  const inline = flags.find((arg) => arg.startsWith("--scenario-set="))
+  if (inline) {
+    return inline.slice("--scenario-set=".length)
+  }
+
+  return null
+}
+
 export function parseCliArgs(argv: string[]): ParsedCliArgs {
   const normalized = stripForwardingSeparator(argv)
   const [maybeCommand, ...rest] = normalized
@@ -86,6 +101,7 @@ export function parseCliArgs(argv: string[]): ParsedCliArgs {
     command,
     mode,
     repetitions,
-    scenarioFilter: parseScenarioFilter(flags)
+    scenarioFilter: parseScenarioFilter(flags),
+    scenarioSet: parseScenarioSet(flags)
   }
 }
