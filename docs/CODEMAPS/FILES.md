@@ -51,7 +51,8 @@ ghx/
 - `packages/core/src/cli/index.ts` - `ghx` executable entrypoint
 - `packages/core/src/cli/commands/run.ts` - task parsing + execution entry
 - `packages/core/src/cli/commands/setup.ts` - setup/verify skill profile installation for claude-code/opencode
-- `packages/core/src/cli/commands/capabilities.ts` - CLI capability discovery commands (`list`, `explain`)
+- `packages/core/src/cli/commands/capabilities-list.ts` - CLI capability list command
+- `packages/core/src/cli/commands/capabilities-explain.ts` - CLI capability explain command
 - `packages/core/src/core/routing/engine.ts` - route selection + preflight orchestration
 - `packages/core/src/core/execute/execute.ts` - route attempts, retry loop, schema validation
 - `packages/core/src/core/registry/index.ts` - operation card loading/validation from YAML
