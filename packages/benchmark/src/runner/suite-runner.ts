@@ -220,7 +220,7 @@ export function extractTimingBreakdown(messages: SessionMessageEntry[]): Benchma
     const toolParts = parts.filter((part) => part.type === "tool")
 
     let firstReasoningStart: number | null = null
-    let firstReasoningEnd: number | null = null
+    let lastReasoningEnd: number | null = null
     for (const part of reasoningParts) {
       const time = isObject(part.time) ? part.time : null
       const start = asNumber((time?.start as unknown) ?? null)
@@ -229,7 +229,9 @@ export function extractTimingBreakdown(messages: SessionMessageEntry[]): Benchma
         breakdown.assistant_reasoning_ms += Math.max(0, end - start)
         if (firstReasoningStart === null || start < firstReasoningStart) {
           firstReasoningStart = start
-          firstReasoningEnd = end
+        }
+        if (lastReasoningEnd === null || end > lastReasoningEnd) {
+          lastReasoningEnd = end
         }
       }
     }
@@ -264,8 +266,8 @@ export function extractTimingBreakdown(messages: SessionMessageEntry[]): Benchma
       breakdown.assistant_pre_reasoning_ms += Math.max(0, firstReasoningStart - created)
     }
 
-    if (firstReasoningEnd !== null && firstToolStart !== null) {
-      breakdown.assistant_between_reasoning_and_tool_ms += Math.max(0, firstToolStart - firstReasoningEnd)
+    if (lastReasoningEnd !== null && firstToolStart !== null) {
+      breakdown.assistant_between_reasoning_and_tool_ms += Math.max(0, firstToolStart - lastReasoningEnd)
     }
 
     if (typeof completed === "number" && firstToolEnd !== null) {
@@ -995,7 +997,11 @@ function buildOutputSchema(assertions: Scenario["assertions"]): Record<string, u
 
 function modeScopedAssertions(scenario: Scenario, mode: BenchmarkMode): Scenario["assertions"] {
   if (mode === "ghx") {
-    if (scenario.assertions.expected_route_used === "graphql" && !process.env.GITHUB_TOKEN) {
+    const hasGithubToken =
+      typeof process.env.GITHUB_TOKEN === "string" && process.env.GITHUB_TOKEN.trim().length > 0
+    const hasGhToken = typeof process.env.GH_TOKEN === "string" && process.env.GH_TOKEN.trim().length > 0
+
+    if (scenario.assertions.expected_route_used === "graphql" && !hasGithubToken && !hasGhToken) {
       const { expected_route_used: _expectedRoute, ...base } = scenario.assertions
       return base
     }

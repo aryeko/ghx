@@ -149,7 +149,7 @@ describe("suite-runner helpers", () => {
 
     expect(breakdown.assistant_pre_reasoning_ms).toBe(100)
     expect(breakdown.assistant_reasoning_ms).toBe(380)
-    expect(breakdown.assistant_between_reasoning_and_tool_ms).toBe(500)
+    expect(breakdown.assistant_between_reasoning_and_tool_ms).toBe(100)
     expect(breakdown.assistant_post_tool_ms).toBe(250)
   })
 
@@ -780,9 +780,11 @@ describe("suite-runner helpers", () => {
     expect(prompt).toContain("The JSON meta object can include optional diagnostic fields.")
   })
 
-  it("drops graphql route expectation in ghx mode when GITHUB_TOKEN is missing", () => {
-    const previousToken = process.env.GITHUB_TOKEN
+  it("drops graphql route expectation in ghx mode when GitHub tokens are missing", () => {
+    const previousGithubToken = process.env.GITHUB_TOKEN
+    const previousGhToken = process.env.GH_TOKEN
     delete process.env.GITHUB_TOKEN
+    delete process.env.GH_TOKEN
 
     try {
       const prompt = renderPrompt(
@@ -807,10 +809,16 @@ describe("suite-runner helpers", () => {
       expect(prompt).not.toContain("meta.route_used MUST be exactly")
       expect(prompt).toContain("The JSON meta object MUST include: route_used.")
     } finally {
-      if (previousToken === undefined) {
+      if (previousGithubToken === undefined) {
         delete process.env.GITHUB_TOKEN
       } else {
-        process.env.GITHUB_TOKEN = previousToken
+        process.env.GITHUB_TOKEN = previousGithubToken
+      }
+
+      if (previousGhToken === undefined) {
+        delete process.env.GH_TOKEN
+      } else {
+        process.env.GH_TOKEN = previousGhToken
       }
     }
   })

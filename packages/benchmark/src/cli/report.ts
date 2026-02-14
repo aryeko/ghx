@@ -67,12 +67,81 @@ export async function loadLatestRowsPerMode(): Promise<BenchmarkRow[]> {
   }
 
   const rows: BenchmarkRow[] = []
+  const rowsByMode = new Map<BenchmarkMode, BenchmarkRow[]>()
   for (const file of latestByMode.values()) {
+    const mode = modeFromFilename(file)
+    if (!mode) {
+      continue
+    }
     const fileRows = await readRows(join(RESULTS_DIR, file))
     rows.push(...fileRows)
+    rowsByMode.set(mode, fileRows)
+  }
+
+  const agentRows = rowsByMode.get("agent_direct")
+  const ghxRows = rowsByMode.get("ghx")
+  if (agentRows && ghxRows) {
+    validateComparableCohort(agentRows, ghxRows)
   }
 
   return rows
+}
+
+function uniqueScenarioSets(rows: BenchmarkRow[]): string {
+  const values = Array.from(
+    new Set(rows.map((row) => (row.scenario_set === null ? "<null>" : row.scenario_set))),
+  ).sort()
+  return values.join(",")
+}
+
+function uniqueScenarioIds(rows: BenchmarkRow[]): string {
+  return Array.from(new Set(rows.map((row) => row.scenario_id))).sort().join(",")
+}
+
+function uniqueModelSignature(rows: BenchmarkRow[]): string {
+  return Array.from(
+    new Set(rows.map((row) => `${row.model.provider_id}/${row.model.model_id}/${row.model.mode ?? "<null>"}`)),
+  )
+    .sort()
+    .join(",")
+}
+
+function uniqueGitCommits(rows: BenchmarkRow[]): string {
+  return Array.from(new Set(rows.map((row) => row.git.commit ?? "<null>"))).sort().join(",")
+}
+
+function validateComparableCohort(agentRows: BenchmarkRow[], ghxRows: BenchmarkRow[]): void {
+  const checks: Array<{ name: string; left: string; right: string }> = [
+    {
+      name: "scenario_set",
+      left: uniqueScenarioSets(agentRows),
+      right: uniqueScenarioSets(ghxRows),
+    },
+    {
+      name: "scenario_ids",
+      left: uniqueScenarioIds(agentRows),
+      right: uniqueScenarioIds(ghxRows),
+    },
+    {
+      name: "model",
+      left: uniqueModelSignature(agentRows),
+      right: uniqueModelSignature(ghxRows),
+    },
+  ]
+
+  const agentCommit = uniqueGitCommits(agentRows)
+  const ghxCommit = uniqueGitCommits(ghxRows)
+  if (agentCommit !== "<null>" && ghxCommit !== "<null>") {
+    checks.push({ name: "git_commit", left: agentCommit, right: ghxCommit })
+  }
+
+  const mismatches = checks.filter((check) => check.left !== check.right)
+  if (mismatches.length > 0) {
+    const details = mismatches
+      .map((mismatch) => `${mismatch.name}: agent_direct=${mismatch.left} ghx=${mismatch.right}`)
+      .join("; ")
+    throw new Error(`Latest benchmark files are not comparable across modes: ${details}`)
+  }
 }
 
 export async function main(args: string[] = process.argv.slice(2)): Promise<void> {

@@ -116,4 +116,62 @@ describe("report cli", () => {
       .rejects.toThrow("Benchmark gate failed")
     process.chdir(previous)
   })
+
+  it("rejects mixed latest cohorts across modes", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ghx-bench-report-"))
+    const results = join(root, "results")
+    await mkdir(results, { recursive: true })
+
+    const agentRow = JSON.stringify({
+      timestamp: "2026-02-13T00:00:00.000Z",
+      run_id: "r-agent",
+      mode: "agent_direct",
+      scenario_id: "s1",
+      scenario_set: "pr-exec",
+      iteration: 1,
+      session_id: "ss-agent",
+      success: true,
+      output_valid: true,
+      latency_ms_wall: 100,
+      sdk_latency_ms: 90,
+      tokens: { input: 1, output: 1, reasoning: 1, cache_read: 0, cache_write: 0, total: 3 },
+      cost: 0,
+      tool_calls: 1,
+      api_calls: 1,
+      internal_retry_count: 0,
+      external_retry_count: 0,
+      model: { provider_id: "x", model_id: "y", mode: null },
+      git: { repo: "ghx", commit: "abc123" },
+      error: null,
+    })
+
+    const ghxRow = JSON.stringify({
+      timestamp: "2026-02-13T00:00:00.000Z",
+      run_id: "r-ghx",
+      mode: "ghx",
+      scenario_id: "s2",
+      scenario_set: "default",
+      iteration: 1,
+      session_id: "ss-ghx",
+      success: true,
+      output_valid: true,
+      latency_ms_wall: 100,
+      sdk_latency_ms: 90,
+      tokens: { input: 1, output: 1, reasoning: 1, cache_read: 0, cache_write: 0, total: 3 },
+      cost: 0,
+      tool_calls: 1,
+      api_calls: 1,
+      internal_retry_count: 0,
+      external_retry_count: 0,
+      model: { provider_id: "x", model_id: "y", mode: null },
+      git: { repo: "ghx", commit: "def456" },
+      error: null,
+    })
+
+    await writeFile(join(results, "2026-01-03-agent_direct-suite.jsonl"), `${agentRow}\n`, "utf8")
+    await writeFile(join(results, "2026-01-04-ghx-suite.jsonl"), `${ghxRow}\n`, "utf8")
+
+    const report = await importReportModule(root)
+    await expect(report.loadLatestRowsPerMode()).rejects.toThrow("not comparable across modes")
+  })
 })
