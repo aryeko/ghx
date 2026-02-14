@@ -873,4 +873,32 @@ describe("runCliCapability", () => {
       truncated: false
     })
   })
+
+  it("analyzes workflow job logs into structured summary", async () => {
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: "ERROR test failed\nwarning: flaky\nError: compile failed",
+        stderr: "",
+        exitCode: 0
+      }))
+    }
+
+    const result = await runCliCapability(runner, "workflow_job.logs.analyze", {
+      owner: "acme",
+      name: "modkit",
+      jobId: 300
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.data).toEqual(
+      expect.objectContaining({
+        jobId: 300,
+        summary: expect.objectContaining({
+          errorCount: 2,
+          warningCount: 1,
+          topErrorLines: expect.arrayContaining(["ERROR test failed", "Error: compile failed"])
+        })
+      })
+    )
+  })
 })

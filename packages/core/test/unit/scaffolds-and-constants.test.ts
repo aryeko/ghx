@@ -26,6 +26,7 @@ import { checkRunAnnotationsListTask } from "../../src/core/contracts/tasks/chec
 import { workflowRunsListTask } from "../../src/core/contracts/tasks/workflow_runs.list.js"
 import { workflowRunJobsListTask } from "../../src/core/contracts/tasks/workflow_run.jobs.list.js"
 import { workflowJobLogsGetTask } from "../../src/core/contracts/tasks/workflow_job.logs.get.js"
+import { workflowJobLogsAnalyzeTask } from "../../src/core/contracts/tasks/workflow_job.logs.analyze.js"
 import { repoViewTask } from "../../src/core/contracts/tasks/repo.view.js"
 import { routeReasonCodes } from "../../src/core/routing/reason-codes.js"
 import { runRestAdapter } from "../../src/core/execution/adapters/rest-adapter.js"
@@ -70,6 +71,7 @@ describe("scaffolds and constants", () => {
     expect(workflowRunsListTask.id).toBe("workflow_runs.list")
     expect(workflowRunJobsListTask.id).toBe("workflow_run.jobs.list")
     expect(workflowJobLogsGetTask.id).toBe("workflow_job.logs.get")
+    expect(workflowJobLogsAnalyzeTask.id).toBe("workflow_job.logs.analyze")
     expect(repoViewTask.id).toBe("repo.view")
     expect(routeReasonCodes).toContain("CARD_FALLBACK")
   })

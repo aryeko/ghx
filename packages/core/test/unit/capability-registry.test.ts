@@ -104,6 +104,11 @@ describe("capabilityRegistry", () => {
         task: "workflow_job.logs.get",
         defaultRoute: "cli",
         fallbackRoutes: []
+      },
+      {
+        task: "workflow_job.logs.analyze",
+        defaultRoute: "cli",
+        fallbackRoutes: []
       }
     ])
   })

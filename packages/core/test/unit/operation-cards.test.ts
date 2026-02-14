@@ -26,7 +26,8 @@ describe("operation cards registry", () => {
       "check_run.annotations.list",
       "workflow_runs.list",
       "workflow_run.jobs.list",
-      "workflow_job.logs.get"
+      "workflow_job.logs.get",
+      "workflow_job.logs.analyze"
     ])
   })
 

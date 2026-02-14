@@ -20,6 +20,7 @@ export type CliCapabilityId =
   | "workflow_runs.list"
   | "workflow_run.jobs.list"
   | "workflow_job.logs.get"
+  | "workflow_job.logs.analyze"
 
 export type CliCommandRunner = {
   run(command: string, args: string[], timeoutMs: number): Promise<{ stdout: string; stderr: string; exitCode: number }>
@@ -272,10 +273,10 @@ function buildArgs(capabilityId: CliCapabilityId, params: Record<string, unknown
     return args
   }
 
-  if (capabilityId === "workflow_job.logs.get") {
+  if (capabilityId === "workflow_job.logs.get" || capabilityId === "workflow_job.logs.analyze") {
     const jobId = parseStrictPositiveInt(params.jobId)
     if (jobId === null) {
-      throw new Error("Missing or invalid jobId for workflow_job.logs.get")
+      throw new Error(`Missing or invalid jobId for ${capabilityId}`)
     }
 
     const args = [...commandTokens(card, "run view"), "--job", String(jobId), "--log"]
@@ -628,6 +629,31 @@ function normalizeCliData(capabilityId: CliCapabilityId, data: unknown, params: 
     }
   }
 
+  if (capabilityId === "workflow_job.logs.analyze") {
+    const jobId = parseStrictPositiveInt(params.jobId)
+    if (jobId === null) {
+      throw new Error("Missing or invalid jobId for workflow_job.logs.analyze")
+    }
+
+    const rawLog = typeof data === "string" ? data : String(data)
+    const truncated = rawLog.length > MAX_WORKFLOW_JOB_LOG_CHARS
+    const boundedLog = truncated ? rawLog.slice(0, MAX_WORKFLOW_JOB_LOG_CHARS) : rawLog
+
+    const lines = boundedLog.split(/\r?\n/)
+    const errorLines = lines.filter((line) => /\berror\b/i.test(line)).slice(0, 10)
+    const warningLines = lines.filter((line) => /\bwarn(ing)?\b/i.test(line))
+
+    return {
+      jobId,
+      truncated,
+      summary: {
+        errorCount: errorLines.length,
+        warningCount: warningLines.length,
+        topErrorLines: errorLines
+      }
+    }
+  }
+
   if (capabilityId === "issue.view" || capabilityId === "pr.view") {
     return normalizeListItem(data)
   }
@@ -659,7 +685,10 @@ export async function runCliCapability(
       )
     }
 
-    const data = capabilityId === "workflow_job.logs.get" ? result.stdout : parseCliData(result.stdout)
+    const data =
+      capabilityId === "workflow_job.logs.get" || capabilityId === "workflow_job.logs.analyze"
+        ? result.stdout
+        : parseCliData(result.stdout)
     const normalized = normalizeCliData(capabilityId, data, params)
     return normalizeResult(normalized, "cli", { capabilityId, reason: "CARD_FALLBACK" })
   } catch (error: unknown) {
