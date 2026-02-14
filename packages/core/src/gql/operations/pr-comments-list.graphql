@@ -2,29 +2,32 @@ query PrCommentsList($owner: String!, $name: String!, $prNumber: Int!, $first: I
   repository(owner: $owner, name: $name) {
     pullRequest(number: $prNumber) {
       reviewThreads(first: $first, after: $after) {
-        nodes {
-          id
-          path
-          line
-          startLine
-          diffSide
-          subjectType
-          isResolved
-          isOutdated
-          viewerCanReply
-          viewerCanResolve
-          viewerCanUnresolve
-          resolvedBy {
-            login
-          }
-          comments(first: 20) {
-            nodes {
-              id
-              body
-              createdAt
-              url
-              author {
-                login
+        edges {
+          cursor
+          node {
+            id
+            path
+            line
+            startLine
+            diffSide
+            subjectType
+            isResolved
+            isOutdated
+            viewerCanReply
+            viewerCanResolve
+            viewerCanUnresolve
+            resolvedBy {
+              login
+            }
+            comments(first: 20) {
+              nodes {
+                id
+                body
+                createdAt
+                url
+                author {
+                  login
+                }
               }
             }
           }

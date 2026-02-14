@@ -353,29 +353,32 @@ const PR_COMMENTS_LIST_QUERY = `
     repository(owner: $owner, name: $name) {
       pullRequest(number: $prNumber) {
         reviewThreads(first: $first, after: $after) {
-          nodes {
-            id
-            path
-            line
-            startLine
-            diffSide
-            subjectType
-            isResolved
-            isOutdated
-            viewerCanReply
-            viewerCanResolve
-            viewerCanUnresolve
-            resolvedBy {
-              login
-            }
-            comments(first: 20) {
-              nodes {
-                id
-                body
-                createdAt
-                url
-                author {
-                  login
+          edges {
+            cursor
+            node {
+              id
+              path
+              line
+              startLine
+              diffSide
+              subjectType
+              isResolved
+              isOutdated
+              viewerCanReply
+              viewerCanResolve
+              viewerCanUnresolve
+              resolvedBy {
+                login
+              }
+              comments(first: 20) {
+                nodes {
+                  id
+                  body
+                  createdAt
+                  url
+                  author {
+                    login
+                  }
                 }
               }
             }
@@ -753,7 +756,7 @@ async function runPrCommentsList(
   const unresolvedOnly = input.unresolvedOnly ?? false
   const includeOutdated = input.includeOutdated ?? true
 
-  const filteredThreads: PrReviewThreadData[] = []
+  const filteredThreads: Array<{ thread: PrReviewThreadData; cursor: string | null }> = []
   let sourceEndCursor: string | null = input.after ?? null
   let sourceHasNextPage = false
   let pagesScanned = 0
@@ -776,13 +779,31 @@ async function runPrCommentsList(
     }
 
     const pageInfo = asRecord(reviewThreads.pageInfo)
-    const threadNodes = Array.isArray(reviewThreads.nodes) ? reviewThreads.nodes : []
+    const threadEdges = Array.isArray(reviewThreads.edges)
+      ? reviewThreads.edges
+          .map((edge) => {
+            const edgeRecord = asRecord(edge)
+            if (!edgeRecord) {
+              return null
+            }
+
+            return {
+              cursor: typeof edgeRecord.cursor === "string" ? edgeRecord.cursor : null,
+              node: edgeRecord.node
+            }
+          })
+          .flatMap((edge) => (edge ? [edge] : []))
+      : []
+
+    const threadNodes = threadEdges.length > 0
+      ? threadEdges
+      : (Array.isArray(reviewThreads.nodes) ? reviewThreads.nodes.map((node) => ({ cursor: null, node })) : [])
 
     pagesScanned += 1
     sourceItemsScanned += threadNodes.length
 
     for (const threadNode of threadNodes) {
-      const normalized = normalizePrReviewThread(threadNode)
+      const normalized = normalizePrReviewThread(threadNode.node)
       if (!normalized) {
         continue
       }
@@ -791,11 +812,11 @@ async function runPrCommentsList(
         continue
       }
 
-      if (!includeOutdated && normalized.isOutdated) {
+      if (unresolvedOnly && !includeOutdated && normalized.isOutdated) {
         continue
       }
 
-      filteredThreads.push(normalized)
+      filteredThreads.push({ thread: normalized, cursor: threadNode.cursor })
     }
 
     sourceHasNextPage = Boolean(pageInfo?.hasNextPage)
@@ -807,13 +828,17 @@ async function runPrCommentsList(
   }
 
   const hasBufferedFilteredItems = filteredThreads.length > input.first
+  const returnedThreads = filteredThreads.slice(0, input.first)
+  const endCursor = returnedThreads.length > 0
+    ? (returnedThreads[returnedThreads.length - 1]?.cursor ?? sourceEndCursor)
+    : sourceEndCursor
   const scanTruncated = sourceHasNextPage && pagesScanned >= MAX_PR_REVIEW_THREAD_SCAN_PAGES
 
   return {
-    items: filteredThreads.slice(0, input.first),
+    items: returnedThreads.map((entry) => entry.thread),
     pageInfo: {
       hasNextPage: hasBufferedFilteredItems || sourceHasNextPage,
-      endCursor: hasBufferedFilteredItems || sourceHasNextPage ? sourceEndCursor : null
+      endCursor: hasBufferedFilteredItems || sourceHasNextPage ? endCursor : null
     },
     filterApplied: {
       unresolvedOnly,

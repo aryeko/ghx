@@ -234,29 +234,33 @@ describe("createGithubClient", () => {
           repository: {
             pullRequest: {
               reviewThreads: {
-                nodes: [
+                edges: [
                   {
-                    id: "thread-1",
-                    path: "src/a.ts",
-                    line: 10,
-                    startLine: null,
-                    diffSide: "RIGHT",
-                    subjectType: "LINE",
-                    isResolved: true,
-                    isOutdated: false,
-                    viewerCanResolve: true,
-                    viewerCanUnresolve: false,
-                    resolvedBy: { login: "octocat" },
-                    comments: {
-                      nodes: [
-                        {
-                          id: "comment-1",
-                          body: "resolved",
-                          createdAt: "2025-01-01T00:00:00Z",
-                          url: "https://example.com/comment-1",
-                          author: { login: "octocat" }
-                        }
-                      ]
+                    cursor: "cursor-0",
+                    node: {
+                      id: "thread-1",
+                      path: "src/a.ts",
+                      line: 10,
+                      startLine: null,
+                      diffSide: "RIGHT",
+                      subjectType: "LINE",
+                      isResolved: true,
+                      isOutdated: false,
+                      viewerCanReply: true,
+                      viewerCanResolve: true,
+                      viewerCanUnresolve: false,
+                      resolvedBy: { login: "octocat" },
+                      comments: {
+                        nodes: [
+                          {
+                            id: "comment-1",
+                            body: "resolved",
+                            createdAt: "2025-01-01T00:00:00Z",
+                            url: "https://example.com/comment-1",
+                            author: { login: "octocat" }
+                          }
+                        ]
+                      }
                     }
                   }
                 ],
@@ -274,29 +278,33 @@ describe("createGithubClient", () => {
         repository: {
           pullRequest: {
             reviewThreads: {
-              nodes: [
+              edges: [
                 {
-                  id: "thread-2",
-                  path: "src/b.ts",
-                  line: 20,
-                  startLine: null,
-                  diffSide: "RIGHT",
-                  subjectType: "LINE",
-                  isResolved: false,
-                  isOutdated: false,
-                  viewerCanResolve: true,
-                  viewerCanUnresolve: true,
-                  resolvedBy: null,
-                  comments: {
-                    nodes: [
-                      {
-                        id: "comment-2",
-                        body: "needs work",
-                        createdAt: "2025-01-02T00:00:00Z",
-                        url: "https://example.com/comment-2",
-                        author: { login: "hubot" }
-                      }
-                    ]
+                  cursor: "cursor-2",
+                  node: {
+                    id: "thread-2",
+                    path: "src/b.ts",
+                    line: 20,
+                    startLine: null,
+                    diffSide: "RIGHT",
+                    subjectType: "LINE",
+                    isResolved: false,
+                    isOutdated: false,
+                    viewerCanReply: false,
+                    viewerCanResolve: true,
+                    viewerCanUnresolve: true,
+                    resolvedBy: null,
+                    comments: {
+                      nodes: [
+                        {
+                          id: "comment-2",
+                          body: "needs work",
+                          createdAt: "2025-01-02T00:00:00Z",
+                          url: "https://example.com/comment-2",
+                          author: { login: "hubot" }
+                        }
+                      ]
+                    }
                   }
                 }
               ],
@@ -322,8 +330,165 @@ describe("createGithubClient", () => {
 
     expect(list.items).toHaveLength(1)
     expect(list.items[0]?.id).toBe("thread-2")
+    expect(list.items[0]?.viewerCanReply).toBe(false)
     expect(list.filterApplied).toEqual({ unresolvedOnly: true, includeOutdated: false })
     expect(list.scan.pagesScanned).toBe(2)
+  })
+
+  it("keeps outdated threads when unresolvedOnly is false", async () => {
+    const client = createGithubClient({
+      async execute<TData>(): Promise<TData> {
+        return {
+          repository: {
+            pullRequest: {
+              reviewThreads: {
+                edges: [
+                  {
+                    cursor: "cursor-1",
+                    node: {
+                      id: "thread-outdated",
+                      path: "src/a.ts",
+                      line: 10,
+                      startLine: null,
+                      diffSide: "RIGHT",
+                      subjectType: "LINE",
+                      isResolved: true,
+                      isOutdated: true,
+                      viewerCanReply: true,
+                      viewerCanResolve: false,
+                      viewerCanUnresolve: false,
+                      resolvedBy: null,
+                      comments: { nodes: [] }
+                    }
+                  }
+                ],
+                pageInfo: {
+                  endCursor: null,
+                  hasNextPage: false
+                }
+              }
+            }
+          }
+        } as TData
+      }
+    })
+
+    const list = await client.fetchPrCommentsList({
+      owner: "go-modkit",
+      name: "modkit",
+      prNumber: 232,
+      first: 10,
+      unresolvedOnly: false,
+      includeOutdated: false
+    })
+
+    expect(list.items).toHaveLength(1)
+    expect(list.items[0]?.id).toBe("thread-outdated")
+  })
+
+  it("returns cursor for last returned filtered item", async () => {
+    const execute = async <TData>(_query: string, variables?: Record<string, unknown>): Promise<TData> => {
+      const after = (variables?.after as string | null | undefined) ?? null
+      if (after === null) {
+        return {
+          repository: {
+            pullRequest: {
+              reviewThreads: {
+                edges: [
+                  {
+                    cursor: "cursor-1",
+                    node: {
+                      id: "thread-1",
+                      path: "src/a.ts",
+                      line: 10,
+                      startLine: null,
+                      diffSide: "RIGHT",
+                      subjectType: "LINE",
+                      isResolved: false,
+                      isOutdated: false,
+                      viewerCanReply: true,
+                      viewerCanResolve: true,
+                      viewerCanUnresolve: false,
+                      resolvedBy: null,
+                      comments: { nodes: [] }
+                    }
+                  }
+                ],
+                pageInfo: {
+                  endCursor: "page-end-1",
+                  hasNextPage: true
+                }
+              }
+            }
+          }
+        } as TData
+      }
+
+      return {
+        repository: {
+          pullRequest: {
+            reviewThreads: {
+              edges: [
+                {
+                  cursor: "cursor-2",
+                  node: {
+                    id: "thread-2",
+                    path: "src/b.ts",
+                    line: 20,
+                    startLine: null,
+                    diffSide: "RIGHT",
+                    subjectType: "LINE",
+                    isResolved: false,
+                    isOutdated: false,
+                    viewerCanReply: true,
+                    viewerCanResolve: true,
+                    viewerCanUnresolve: false,
+                    resolvedBy: null,
+                    comments: { nodes: [] }
+                  }
+                },
+                {
+                  cursor: "cursor-3",
+                  node: {
+                    id: "thread-3",
+                    path: "src/c.ts",
+                    line: 30,
+                    startLine: null,
+                    diffSide: "RIGHT",
+                    subjectType: "LINE",
+                    isResolved: false,
+                    isOutdated: false,
+                    viewerCanReply: true,
+                    viewerCanResolve: true,
+                    viewerCanUnresolve: false,
+                    resolvedBy: null,
+                    comments: { nodes: [] }
+                  }
+                }
+              ],
+              pageInfo: {
+                endCursor: "page-end-2",
+                hasNextPage: true
+              }
+            }
+          }
+        }
+      } as TData
+    }
+
+    const client = createGithubClient({ execute })
+    const list = await client.fetchPrCommentsList({
+      owner: "go-modkit",
+      name: "modkit",
+      prNumber: 232,
+      first: 2,
+      unresolvedOnly: true,
+      includeOutdated: true
+    })
+
+    expect(list.items.map((item) => item.id)).toEqual(["thread-1", "thread-2"])
+    expect(list.pageInfo.hasNextPage).toBe(true)
+    expect(list.pageInfo.endCursor).toBe("cursor-2")
   })
 
   it("throws when pr.comments.list payload is missing threads", async () => {
