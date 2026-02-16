@@ -74,19 +74,24 @@ export const ROADMAP_CAPABILITIES_BY_SET: Record<string, string[]> = {
 }
 
 function assertNoDuplicateScenarioIds(scenarioIds: string[]): void {
+  const duplicates = findDuplicates(scenarioIds)
+  if (duplicates.length > 0) {
+    throw new Error(`Duplicate scenario id(s): ${duplicates.join(", ")}`)
+  }
+}
+
+function findDuplicates(items: string[]): string[] {
   const seen = new Set<string>()
   const duplicates = new Set<string>()
 
-  for (const scenarioId of scenarioIds) {
-    if (seen.has(scenarioId)) {
-      duplicates.add(scenarioId)
+  for (const item of items) {
+    if (seen.has(item)) {
+      duplicates.add(item)
     }
-    seen.add(scenarioId)
+    seen.add(item)
   }
 
-  if (duplicates.size > 0) {
-    throw new Error(`Duplicate scenario id(s): ${Array.from(duplicates).join(", ")}`)
-  }
+  return Array.from(duplicates)
 }
 
 function assertRequiredScenarioSetsExist(scenarioSets: Record<string, string[]>): void {
@@ -168,18 +173,9 @@ async function tryLoadRegistryCapabilityIds(benchmarkRoot: string): Promise<stri
 }
 
 function assertNoDuplicateCapabilityIds(capabilityIds: string[]): void {
-  const seen = new Set<string>()
-  const duplicates = new Set<string>()
-
-  for (const capabilityId of capabilityIds) {
-    if (seen.has(capabilityId)) {
-      duplicates.add(capabilityId)
-    }
-    seen.add(capabilityId)
-  }
-
-  if (duplicates.size > 0) {
-    throw new Error(`Duplicate capability_id entries found in registry cards: ${Array.from(duplicates).join(", ")}`)
+  const duplicates = findDuplicates(capabilityIds)
+  if (duplicates.length > 0) {
+    throw new Error(`Duplicate capability_id entries found in registry cards: ${duplicates.join(", ")}`)
   }
 }
 
