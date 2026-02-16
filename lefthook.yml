@@ -9,4 +9,4 @@ pre-commit:
       glob: "*.{ts,js,mjs}"
       run: pnpm eslint --max-warnings=0 {staged_files}
     typecheck:
-      run: pnpm run typecheck
+      run: NX_DAEMON=false NX_DEFAULT_OUTPUT_STYLE=static pnpm run typecheck
