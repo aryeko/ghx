@@ -29,11 +29,16 @@ describe("parseCliArgs", () => {
       "full-seeded",
       "--fixture-manifest",
       "fixtures/latest.json",
-      "--seed-if-missing"
+      "--seed-if-missing",
     ])
 
     expect(parsed.fixtureManifestPath).toBe("fixtures/latest.json")
     expect(parsed.seedIfMissing).toBe(true)
+  })
+
+  it("parses inline fixture manifest option", () => {
+    const parsed = parseCliArgs(["run", "--fixture-manifest=fixtures/inline.json"])
+    expect(parsed.fixtureManifestPath).toBe("fixtures/inline.json")
   })
 
   it("defaults repetitions to 1 when omitted", () => {
@@ -79,5 +84,17 @@ describe("parseCliArgs", () => {
   it("rejects invalid repetitions", () => {
     expect(() => parseCliArgs(["run", "ghx", "0"])).toThrow("Invalid repetitions")
     expect(() => parseCliArgs(["run", "ghx", "1.5"])).toThrow("Invalid repetitions")
+  })
+
+  it("rejects using scenario and scenario-set together", () => {
+    expect(() =>
+      parseCliArgs(["run", "ghx", "1", "--scenario", "a", "--scenario-set", "b"]),
+    ).toThrow("--scenario and --scenario-set cannot be used together")
+  })
+
+  it("ignores sparse argv holes when splitting positionals and flags", () => {
+    const parsed = parseCliArgs(["run", undefined as unknown as string, "ghx", "2"])
+    expect(parsed.mode).toBe("ghx")
+    expect(parsed.repetitions).toBe(2)
   })
 })

@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
 import { mkdtemp, readFile } from "node:fs/promises"
-import { join } from "node:path"
 import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 describe("generate-suite-config cli", () => {
   beforeEach(() => {
@@ -93,5 +93,38 @@ describe("generate-suite-config cli", () => {
 
     expect(parsed.fixtures?.setup?.cleanup).toBeUndefined()
     expect(parsed.fixtures?.setup?.seed).toBeUndefined()
+  })
+
+  it("parses inline flags and default values", async () => {
+    const mod = await import("../../src/cli/generate-suite-config.js")
+    const parsed = mod.parseArgs([
+      "--out=config/custom.json",
+      "--scenario-set=ci-verify-release",
+      "--repetitions=2",
+      "--gate-profile=verify_release",
+      "--",
+    ])
+
+    expect(parsed.outPath).toBe("config/custom.json")
+    expect(parsed.scenarioSet).toBe("ci-verify-release")
+    expect(parsed.repetitions).toBe(2)
+    expect(parsed.gateProfile).toBe("verify_release")
+    expect(parsed.includeGate).toBe(true)
+  })
+
+  it("rejects invalid repetitions and gate profile", async () => {
+    const mod = await import("../../src/cli/generate-suite-config.js")
+    expect(() => mod.parseArgs(["--repetitions=0"])).toThrow("Invalid --repetitions value")
+    expect(() => mod.parseArgs(["--gate-profile=invalid"])).toThrow()
+  })
+
+  it("prefers skip flags over inclusion flags", async () => {
+    const mod = await import("../../src/cli/generate-suite-config.js")
+    const parsed = mod.parseArgs(["--with-cleanup", "--skip-cleanup", "--with-seed", "--skip-seed"])
+    const config = mod.buildConfig(parsed)
+
+    const fixtures = config.fixtures as { setup?: { cleanup?: unknown; seed?: unknown } }
+    expect(fixtures.setup?.cleanup).toBeUndefined()
+    expect(fixtures.setup?.seed).toBeUndefined()
   })
 })

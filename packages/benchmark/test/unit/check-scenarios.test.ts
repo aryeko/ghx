@@ -183,6 +183,22 @@ describe("check-scenarios", () => {
     await expect(main("/tmp/benchmark")).rejects.toThrow("orphan scenario")
   })
 
+  it("fails when no scenarios are loaded", async () => {
+    loadScenariosMock.mockResolvedValue([])
+    loadScenarioSetsMock.mockResolvedValue({
+      default: [],
+      "pr-operations-all": [],
+      "pr-exec": [],
+      issues: [],
+      "release-delivery": [],
+      workflows: [],
+      "projects-v2": [],
+      all: [],
+    })
+
+    await expect(main("/tmp/benchmark")).rejects.toThrow("No benchmark scenarios found")
+  })
+
   it("fails when required sets are missing", async () => {
     loadScenariosMock.mockResolvedValue([
       {
@@ -376,5 +392,45 @@ describe("check-scenarios", () => {
     })
 
     await expect(main("/tmp/benchmark")).rejects.toThrow("must avoid mutation scenarios")
+  })
+
+  it("fails when expected_error outcome has no expected_error_code", async () => {
+    const fixture = createValidRoadmapFixture()
+    const expectedErrorScenario = {
+      ...createScenario("expected-error-001", "repo.view"),
+      assertions: { must_succeed: false },
+    }
+
+    loadScenariosMock.mockResolvedValue([...fixture.scenarios, expectedErrorScenario])
+    loadScenarioSetsMock.mockResolvedValue({
+      ...fixture.sets,
+      default: [...fixture.sets.default, "expected-error-001"],
+    })
+
+    await expect(main("/tmp/benchmark")).rejects.toThrow(
+      "uses expected_outcome=expected_error but has no expected_error_code",
+    )
+  })
+
+  it("fails when roadmap sets contain non-success expected outcomes", async () => {
+    const fixture = createValidRoadmapFixture()
+    const prExecId = fixture.sets["pr-exec"]?.[0] ?? "pr-exec-1-001"
+    const nonSuccessScenario = {
+      ...createScenario(prExecId, "pr.review.submit_approve"),
+      assertions: {
+        must_succeed: false,
+        expected_outcome: "expected_error",
+        expected_error_code: "SIMULATED_ERROR",
+      },
+    }
+
+    loadScenariosMock.mockResolvedValue(
+      fixture.scenarios.map((scenario) =>
+        scenario.id === prExecId ? nonSuccessScenario : scenario,
+      ),
+    )
+    loadScenarioSetsMock.mockResolvedValue(fixture.sets)
+
+    await expect(main("/tmp/benchmark")).rejects.toThrow("contains non-success expected outcomes")
   })
 })
