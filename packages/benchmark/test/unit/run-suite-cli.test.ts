@@ -356,6 +356,105 @@ describe("run-suite cli", () => {
     ])
   })
 
+  it("appends variant-specific benchmark args to spawned commands", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ghx-suite-cli-"))
+    const configPath = join(root, "suite-runner.json")
+
+    await writeFile(
+      configPath,
+      `${JSON.stringify({
+        benchmark: {
+          base: { command: ["pnpm", "run", "benchmark", "--"], repetitions: 2 },
+          ghx: { mode: "ghx", args: ["--profile", "verify_pr"] },
+          direct: { mode: "agent_direct", args: ["--timeout", "120"] },
+        },
+        reporting: {
+          analysis: {
+            report: { command: ["pnpm", "run", "report"] },
+          },
+        },
+      })}\n`,
+      "utf8",
+    )
+
+    spawnMock.mockImplementation(() => {
+      const child = createMockChild()
+      queueMicrotask(() => child.emit("exit", 0, null))
+      return child
+    })
+
+    const mod = await import("../../src/cli/run-suite.js")
+    await expect(mod.main(["--config", configPath, "--no-gate"])).resolves.toBeUndefined()
+
+    const calls = spawnMock.mock.calls as unknown[][]
+    expect(calls[0]?.[1]).toEqual(["run", "benchmark", "--", "ghx", "2", "--profile", "verify_pr"])
+    expect(calls[1]?.[1]).toEqual([
+      "run",
+      "benchmark",
+      "--",
+      "agent_direct",
+      "2",
+      "--timeout",
+      "120",
+    ])
+  })
+
+  it("reports ghx benchmark failure when ghx exits non-zero", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ghx-suite-cli-"))
+    const configPath = join(root, "suite-runner.json")
+
+    await writeFile(
+      configPath,
+      `${JSON.stringify({
+        benchmark: {
+          base: { command: ["pnpm", "run", "benchmark", "--"], repetitions: 1 },
+          ghx: { mode: "ghx" },
+          direct: { mode: "agent_direct" },
+        },
+        reporting: {
+          analysis: {
+            report: { command: ["pnpm", "run", "report"] },
+          },
+        },
+      })}\n`,
+      "utf8",
+    )
+
+    const ghxChild = createMockChild()
+    const directChild = createMockChild()
+    let benchSpawnCount = 0
+
+    spawnMock.mockImplementation((command: string, args?: string[]) => {
+      if (command === "pnpm" && Array.isArray(args) && args.includes("benchmark")) {
+        benchSpawnCount += 1
+
+        if (benchSpawnCount === 1) {
+          queueMicrotask(() => {
+            ghxChild.stderr.emit("data", Buffer.from("ghx benchmark failed\n", "utf8"))
+            ghxChild.emit("exit", 2, null)
+          })
+          return ghxChild
+        }
+
+        queueMicrotask(() => {
+          directChild.emit("exit", 0, null)
+        })
+        return directChild
+      }
+
+      const child = createMockChild()
+      queueMicrotask(() => {
+        child.emit("exit", 0, null)
+      })
+      return child
+    })
+
+    const mod = await import("../../src/cli/run-suite.js")
+    await expect(mod.main(["--config", configPath])).rejects.toThrow("ghx phase failed (code=2)")
+
+    expect(directChild.kill).toHaveBeenCalledWith("SIGTERM")
+  })
+
   it("parses --verbose flag", async () => {
     const mod = await import("../../src/cli/run-suite.js")
     const parsed = mod.parseArgs(["--config", "x.json", "--verbose"])

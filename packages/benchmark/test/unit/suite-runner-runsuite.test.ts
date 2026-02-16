@@ -8,6 +8,7 @@ const {
   createOpencodeMock,
   loadScenariosMock,
   loadScenarioSetsMock,
+  seedFixtureManifestMock,
   appendFileMock,
   mkdirMock,
   accessMock,
@@ -15,6 +16,7 @@ const {
   createOpencodeMock: vi.fn(),
   loadScenariosMock: vi.fn(),
   loadScenarioSetsMock: vi.fn(),
+  seedFixtureManifestMock: vi.fn(),
   appendFileMock: vi.fn(async () => undefined),
   mkdirMock: vi.fn(async () => undefined),
   accessMock: vi.fn(async () => undefined),
@@ -27,6 +29,10 @@ vi.mock("@opencode-ai/sdk", () => ({
 vi.mock("../../src/scenario/loader.js", () => ({
   loadScenarios: loadScenariosMock,
   loadScenarioSets: loadScenarioSetsMock,
+}))
+
+vi.mock("../../src/fixture/seed.js", () => ({
+  seedFixtureManifest: seedFixtureManifestMock,
 }))
 
 vi.mock("node:fs/promises", async (importOriginal) => {
@@ -100,6 +106,7 @@ function createSessionMocks(options?: { firstPromptFails?: boolean }) {
 describe("runSuite", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    seedFixtureManifestMock.mockReset()
     accessMock.mockResolvedValue(undefined)
     loadScenarioSetsMock.mockResolvedValue({
       default: ["repo-view-001"],
@@ -500,6 +507,153 @@ describe("runSuite", () => {
     ).rejects.toThrow(
       "Selected scenarios require fixture bindings but no fixture manifest was provided",
     )
+  })
+
+  it("seeds the default fixture manifest for binding scenarios when --seed-if-missing is set", async () => {
+    const session = createSessionMocks()
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+
+    loadScenariosMock.mockResolvedValue([
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "OWNER_PLACEHOLDER", name: "REPO_PLACEHOLDER" },
+        prompt_template: "run {{task}} {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        fixture: {
+          repo: "aryeko/ghx-bench-fixtures",
+          bindings: {
+            "input.owner": "repo.owner",
+            "input.name": "repo.name",
+          },
+        },
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+        },
+        tags: [],
+      },
+    ])
+
+    accessMock.mockRejectedValueOnce(new Error("missing default fixture manifest"))
+    accessMock.mockRejectedValueOnce(new Error("still missing before seed"))
+
+    const mod = await import("../../src/runner/suite-runner.js")
+    await mod.runSuite({
+      mode: "ghx",
+      repetitions: 1,
+      scenarioFilter: null,
+      seedIfMissing: true,
+    })
+
+    expect(seedFixtureManifestMock).toHaveBeenCalledWith({
+      repo: "aryeko/ghx-bench-fixtures",
+      outFile: "fixtures/latest.json",
+      seedId: "default",
+    })
+  })
+
+  it("seeds a missing fixture manifest when --seed-if-missing is set", async () => {
+    const session = createSessionMocks()
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+
+    loadScenariosMock.mockResolvedValue([
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "run {{task}} {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        fixture: { repo: "a/b" },
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+        },
+        tags: [],
+      },
+    ])
+
+    const root = await mkdtemp(join(tmpdir(), "ghx-bench-seed-"))
+    const fixturePath = join(root, "seeded-fixture.json")
+
+    seedFixtureManifestMock.mockImplementation(async ({ outFile }: { outFile: string }) => {
+      await writeFile(
+        outFile,
+        JSON.stringify({
+          version: 1,
+          repo: {
+            owner: "aryeko",
+            name: "ghx-bench-fixtures",
+            full_name: "aryeko/ghx-bench-fixtures",
+            default_branch: "main",
+          },
+          resources: {},
+        }),
+        "utf8",
+      )
+    })
+
+    accessMock.mockRejectedValueOnce(new Error("missing fixture manifest"))
+
+    const mod = await import("../../src/runner/suite-runner.js")
+    await mod.runSuite({
+      mode: "ghx",
+      repetitions: 1,
+      scenarioFilter: null,
+      fixtureManifestPath: fixturePath,
+      seedIfMissing: true,
+    })
+
+    expect(seedFixtureManifestMock).toHaveBeenCalledWith({
+      repo: "aryeko/ghx-bench-fixtures",
+      outFile: fixturePath,
+      seedId: "default",
+    })
+    expect(appendFileMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("throws when --seed-if-missing is set without a fixture manifest", async () => {
+    const session = createSessionMocks()
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+
+    loadScenariosMock.mockResolvedValue([
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "run {{task}} {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        fixture: { repo: "a/b" },
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+        },
+        tags: [],
+      },
+    ])
+
+    const mod = await import("../../src/runner/suite-runner.js")
+    await expect(
+      mod.runSuite({
+        mode: "ghx",
+        repetitions: 1,
+        scenarioFilter: null,
+        seedIfMissing: true,
+      }),
+    ).rejects.toThrow("--seed-if-missing requires --fixture-manifest")
+    expect(seedFixtureManifestMock).not.toHaveBeenCalled()
   })
 
   it("throws when scenario filter matches nothing", async () => {

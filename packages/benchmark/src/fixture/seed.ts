@@ -60,10 +60,12 @@ function tryRunGhJson(args: string[]): unknown | null {
 }
 
 function parseRepo(repo: string): { owner: string; name: string } {
-  const [owner, name] = repo.split("/")
-  if (!owner || !name) {
+  const parts = repo.split("/")
+  if (parts.length !== 2 || !parts[0] || !parts[1]) {
     throw new Error(`invalid repo format: ${repo}; expected owner/name`)
   }
+
+  const [owner, name] = parts
 
   return { owner, name }
 }

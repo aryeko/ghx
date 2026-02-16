@@ -2869,4 +2869,239 @@ describe("runCliCapability", () => {
       },
     })
   })
+
+  it("treats non-JSON stdout as success for reviewer and assignee updates", async () => {
+    const runner = {
+      run: vi
+        .fn()
+        .mockResolvedValueOnce({ stdout: "requested reviewers", stderr: "", exitCode: 0 })
+        .mockResolvedValueOnce({ stdout: "updated assignees", stderr: "", exitCode: 0 }),
+    }
+
+    const reviewersResult = await runCliCapability(runner, "pr.reviewers.request", {
+      owner: "acme",
+      name: "modkit",
+      prNumber: 42,
+      reviewers: ["octocat"],
+    })
+
+    const assigneesResult = await runCliCapability(runner, "pr.assignees.update", {
+      owner: "acme",
+      name: "modkit",
+      prNumber: 42,
+      add: ["octocat"],
+      remove: ["hubot"],
+    })
+
+    expect(reviewersResult.ok).toBe(true)
+    expect(reviewersResult.data).toEqual({
+      prNumber: 42,
+      reviewers: ["octocat"],
+      updated: true,
+    })
+
+    expect(assigneesResult.ok).toBe(true)
+    expect(assigneesResult.data).toEqual({
+      prNumber: 42,
+      add: ["octocat"],
+      remove: ["hubot"],
+      updated: true,
+    })
+  })
+
+  it("returns original rerun-failed error when rerun-all fallback also fails", async () => {
+    const primaryStderr = "run 88 cannot be rerun; This workflow run cannot be retried"
+    const runner = {
+      run: vi
+        .fn()
+        .mockResolvedValueOnce({
+          stdout: "",
+          stderr: primaryStderr,
+          exitCode: 1,
+        })
+        .mockResolvedValueOnce({
+          stdout: "",
+          stderr: "rerun all failed",
+          exitCode: 1,
+        }),
+    }
+
+    const result = await runCliCapability(runner, "pr.checks.rerun_failed", {
+      owner: "acme",
+      name: "modkit",
+      prNumber: 10,
+      runId: 88,
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.message).toBe(primaryStderr)
+    expect(runner.run).toHaveBeenCalledTimes(2)
+  })
+
+  it("normalizes fallback defaults for non-object payloads across adapter capabilities", async () => {
+    const runner = {
+      run: vi
+        .fn()
+        .mockResolvedValueOnce({ stdout: "null", stderr: "", exitCode: 0 })
+        .mockResolvedValueOnce({ stdout: JSON.stringify([null]), stderr: "", exitCode: 0 })
+        .mockResolvedValueOnce({ stdout: "null", stderr: "", exitCode: 0 })
+        .mockResolvedValueOnce({ stdout: "null", stderr: "", exitCode: 0 })
+        .mockResolvedValueOnce({ stdout: JSON.stringify([null]), stderr: "", exitCode: 0 })
+        .mockResolvedValueOnce({ stdout: "null", stderr: "", exitCode: 0 })
+        .mockResolvedValueOnce({ stdout: "null", stderr: "", exitCode: 0 })
+        .mockResolvedValueOnce({ stdout: "null", stderr: "", exitCode: 0 })
+        .mockResolvedValueOnce({ stdout: "null", stderr: "", exitCode: 0 })
+        .mockResolvedValueOnce({ stdout: "null", stderr: "", exitCode: 0 }),
+    }
+
+    const repoViewResult = await runCliCapability(runner, "repo.view", {
+      owner: "acme",
+      name: "modkit",
+    })
+    const labelsResult = await runCliCapability(runner, "repo.labels.list", {
+      owner: "acme",
+      name: "modkit",
+      first: 5,
+    })
+    const issueTypesResult = await runCliCapability(runner, "repo.issue_types.list", {
+      owner: "acme",
+      name: "modkit",
+      first: 5,
+    })
+    const issueCommentsResult = await runCliCapability(runner, "issue.comments.list", {
+      owner: "acme",
+      name: "modkit",
+      issueNumber: 1,
+      first: 5,
+    })
+    const workflowListResult = await runCliCapability(runner, "workflow.list", {
+      owner: "acme",
+      name: "modkit",
+      first: 5,
+    })
+    const workflowGetResult = await runCliCapability(runner, "workflow.get", {
+      owner: "acme",
+      name: "modkit",
+      workflowId: "ci.yml",
+    })
+    const workflowRunGetResult = await runCliCapability(runner, "workflow_run.get", {
+      owner: "acme",
+      name: "modkit",
+      runId: 123,
+    })
+    const artifactsResult = await runCliCapability(runner, "workflow_run.artifacts.list", {
+      owner: "acme",
+      name: "modkit",
+      runId: 123,
+    })
+    const projectOrgResult = await runCliCapability(runner, "project_v2.org.get", {
+      org: "acme",
+      projectNumber: 1,
+    })
+    const projectFieldsResult = await runCliCapability(runner, "project_v2.fields.list", {
+      owner: "acme",
+      projectNumber: 1,
+    })
+
+    expect(repoViewResult.ok).toBe(true)
+    expect(repoViewResult.data).toEqual(
+      expect.objectContaining({
+        id: undefined,
+        defaultBranch: null,
+      }),
+    )
+
+    expect(labelsResult.ok).toBe(true)
+    expect(labelsResult.data).toEqual(
+      expect.objectContaining({
+        items: [
+          {
+            id: null,
+            name: null,
+            description: null,
+            color: null,
+            isDefault: null,
+          },
+        ],
+      }),
+    )
+
+    expect(issueTypesResult.ok).toBe(true)
+    expect(issueTypesResult.data).toEqual({
+      items: [],
+      pageInfo: {
+        hasNextPage: false,
+        endCursor: null,
+      },
+    })
+
+    expect(issueCommentsResult.ok).toBe(false)
+    expect(issueCommentsResult.error?.code).toBe("SERVER")
+
+    expect(workflowListResult.ok).toBe(true)
+    expect(workflowListResult.data).toEqual(
+      expect.objectContaining({
+        items: [
+          {
+            id: 0,
+            name: null,
+            path: null,
+            state: null,
+          },
+        ],
+      }),
+    )
+
+    expect(workflowGetResult.ok).toBe(true)
+    expect(workflowGetResult.data).toEqual({
+      id: 0,
+      name: null,
+      path: null,
+      state: null,
+      url: null,
+    })
+
+    expect(workflowRunGetResult.ok).toBe(true)
+    expect(workflowRunGetResult.data).toEqual({
+      id: 0,
+      workflowName: null,
+      status: null,
+      conclusion: null,
+      headBranch: null,
+      headSha: null,
+      event: null,
+      createdAt: null,
+      updatedAt: null,
+      startedAt: null,
+      url: null,
+    })
+
+    expect(artifactsResult.ok).toBe(true)
+    expect(artifactsResult.data).toEqual({
+      items: [],
+      pageInfo: {
+        hasNextPage: false,
+        endCursor: null,
+      },
+    })
+
+    expect(projectOrgResult.ok).toBe(true)
+    expect(projectOrgResult.data).toEqual({
+      id: null,
+      title: null,
+      shortDescription: null,
+      public: null,
+      closed: null,
+      url: null,
+    })
+
+    expect(projectFieldsResult.ok).toBe(true)
+    expect(projectFieldsResult.data).toEqual({
+      items: [],
+      pageInfo: {
+        hasNextPage: false,
+        endCursor: null,
+      },
+    })
+  })
 })

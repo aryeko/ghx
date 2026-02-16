@@ -1831,9 +1831,13 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
         await access(DEFAULT_FIXTURE_MANIFEST_PATH)
         fixtureManifestPath = DEFAULT_FIXTURE_MANIFEST_PATH
       } catch {
-        throw new Error(
-          `Selected scenarios require fixture bindings but no fixture manifest was provided. Pass --fixture-manifest or create ${DEFAULT_FIXTURE_MANIFEST_PATH}.`,
-        )
+        if (seedIfMissing) {
+          fixtureManifestPath = DEFAULT_FIXTURE_MANIFEST_PATH
+        } else {
+          throw new Error(
+            `Selected scenarios require fixture bindings but no fixture manifest was provided. Pass --fixture-manifest or create ${DEFAULT_FIXTURE_MANIFEST_PATH}.`,
+          )
+        }
       }
     }
 

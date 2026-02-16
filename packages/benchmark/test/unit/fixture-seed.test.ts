@@ -189,6 +189,19 @@ describe("fixture seed", () => {
     ).rejects.toThrow("invalid repo format: invalid-repo; expected owner/name")
   })
 
+  it("rejects repo format with extra path segments", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ghx-bench-fixture-seed-invalid-repo-extra-"))
+    const outFile = join(root, "fixture.json")
+
+    await expect(
+      seedFixtureManifest({
+        repo: "owner/repo/extra",
+        outFile,
+        seedId: "seedtest",
+      }),
+    ).rejects.toThrow("invalid repo format: owner/repo/extra; expected owner/name")
+  })
+
   it("throws fallback gh error text when gh fails without stderr", async () => {
     spawnSyncMock.mockReturnValue({ status: 1, stdout: "", stderr: "" })
 
@@ -688,5 +701,239 @@ describe("fixture seed", () => {
         seedId: "seedtest",
       }),
     ).rejects.toThrow("failed to create fixture issue")
+  })
+
+  it("handles empty JSON responses for runGhJson and tryRunGhJson callers", async () => {
+    spawnSyncMock.mockImplementation((cmd: string, args: string[]) => {
+      if (cmd !== "gh") {
+        return { status: 1, stdout: "", stderr: "unexpected command" }
+      }
+
+      const joined = args.join(" ")
+
+      if (
+        joined.includes("label create bench-fixture") ||
+        joined.includes("label create bench-seed:seedtest")
+      ) {
+        return success("")
+      }
+
+      if (joined.includes("issue list") && joined.includes("bench-seed:seedtest")) {
+        return success("")
+      }
+
+      if (joined.includes("repos/aryeko/ghx-bench-fixtures/issues --method POST")) {
+        return success({
+          id: 12345,
+          number: 42,
+          html_url: "https://github.com/aryeko/ghx-bench-fixtures/issues/42",
+        })
+      }
+
+      if (joined.includes("issue view 42 --repo aryeko/ghx-bench-fixtures --json id,number,url")) {
+        return success({
+          id: "I_seed",
+          number: 42,
+          url: "https://github.com/aryeko/ghx-bench-fixtures/issues/42",
+        })
+      }
+
+      if (
+        joined.includes("pr list") &&
+        joined.includes("--label bench-seed:seedtest") &&
+        joined.includes("--json id,number")
+      ) {
+        return success([{ id: "PR_seed", number: 17 }])
+      }
+
+      if (
+        joined.includes(
+          "api repos/aryeko/ghx-bench-fixtures/contents/.bench/main-seed-seedtest.md --method PUT",
+        )
+      ) {
+        return success({})
+      }
+
+      if (joined.includes("api graphql") && joined.includes("reviewThreads")) {
+        return success({
+          data: {
+            repository: { pullRequest: { reviewThreads: { nodes: [{ id: "PRRT_seed" }] } } },
+          },
+        })
+      }
+
+      if (joined.includes("workflow run bench-rerun-failed.yml")) {
+        return { status: 1, stdout: "", stderr: "dispatch failed" }
+      }
+
+      if (joined.includes("pr checks 17") && joined.includes("--json state,link")) {
+        return success([])
+      }
+
+      if (joined.includes("run list --repo aryeko/ghx-bench-fixtures --workflow ci.yml")) {
+        return success([])
+      }
+
+      if (joined.includes("api repos/aryeko/ghx-bench-fixtures/releases?per_page=20")) {
+        return success("")
+      }
+
+      if (joined.includes("project list --owner aryeko --format json")) {
+        return success("")
+      }
+
+      if (
+        joined.includes("project create --owner aryeko --title") &&
+        joined.includes("--format json")
+      ) {
+        return success({ id: "PVT_seed", number: 9 })
+      }
+
+      if (
+        joined.includes("project item-add 9 --owner aryeko") &&
+        joined.includes("--format json")
+      ) {
+        return success("")
+      }
+
+      if (joined.includes("project field-list 9 --owner aryeko --format json")) {
+        return success("")
+      }
+
+      return success({})
+    })
+
+    const root = await mkdtemp(join(tmpdir(), "ghx-bench-fixture-seed-empty-json-"))
+    const outFile = join(root, "fixture.json")
+
+    const manifest = await seedFixtureManifest({
+      repo: "aryeko/ghx-bench-fixtures",
+      outFile,
+      seedId: "seedtest",
+    })
+
+    expect(manifest.resources.project).toMatchObject({
+      number: 9,
+      id: "PVT_seed",
+      item_id: "",
+      field_id: "",
+      option_id: "",
+    })
+    expect(manifest.resources.release).toMatchObject({ id: 1, tag_name: "v0.0.0-bench" })
+  })
+
+  it("falls back to run list when PR check link has no run id", async () => {
+    spawnSyncMock.mockImplementation((cmd: string, args: string[]) => {
+      if (cmd !== "gh") {
+        return { status: 1, stdout: "", stderr: "unexpected command" }
+      }
+
+      const joined = args.join(" ")
+
+      if (
+        joined.includes("label create bench-fixture") ||
+        joined.includes("label create bench-seed:seedtest")
+      ) {
+        return success("")
+      }
+
+      if (joined.includes("issue list") && joined.includes("bench-seed:seedtest")) {
+        return success([
+          {
+            id: "I_seed",
+            number: 42,
+            url: "https://github.com/aryeko/ghx-bench-fixtures/issues/42",
+          },
+        ])
+      }
+
+      if (
+        joined.includes("pr list") &&
+        joined.includes("--label bench-seed:seedtest") &&
+        joined.includes("--json id,number")
+      ) {
+        return success([{ id: "PR_seed", number: 17 }])
+      }
+
+      if (
+        joined.includes(
+          "api repos/aryeko/ghx-bench-fixtures/contents/.bench/main-seed-seedtest.md --method PUT",
+        )
+      ) {
+        return success({})
+      }
+
+      if (joined.includes("api graphql") && joined.includes("reviewThreads")) {
+        return success({
+          data: {
+            repository: { pullRequest: { reviewThreads: { nodes: [{ id: "PRRT_seed" }] } } },
+          },
+        })
+      }
+
+      if (joined.includes("workflow run bench-rerun-failed.yml")) {
+        return { status: 1, stdout: "", stderr: "dispatch failed" }
+      }
+
+      if (joined.includes("pr checks 17") && joined.includes("--json state,link")) {
+        return success([
+          {
+            state: "FAILURE",
+            link: "https://github.com/aryeko/ghx-bench-fixtures/actions/workflows/ci.yml",
+          },
+        ])
+      }
+
+      if (
+        joined.includes(
+          "run list --repo aryeko/ghx-bench-fixtures --workflow ci.yml --status failure --limit 1 --json databaseId",
+        )
+      ) {
+        return success({ items: [{ databaseId: "not-a-number" }] })
+      }
+
+      if (
+        joined.includes(
+          "run list --repo aryeko/ghx-bench-fixtures --workflow ci.yml --limit 1 --json databaseId",
+        )
+      ) {
+        return success([{ databaseId: 222 }])
+      }
+
+      if (joined.includes("run view 222") && joined.includes("--json jobs")) {
+        return success({ jobs: [{}] })
+      }
+
+      if (joined.includes("api repos/aryeko/ghx-bench-fixtures/releases?per_page=20")) {
+        return success([])
+      }
+
+      if (joined.includes("project list --owner aryeko --format json")) {
+        return success([{ id: "PVT_existing", number: 4, title: "GHX Bench Fixtures" }])
+      }
+
+      if (joined.includes("project item-add 4 --owner aryeko")) {
+        return success({ id: "PVTI_seed" })
+      }
+
+      if (joined.includes("project field-list 4 --owner aryeko --format json")) {
+        return success([])
+      }
+
+      return success({})
+    })
+
+    const root = await mkdtemp(join(tmpdir(), "ghx-bench-fixture-seed-link-no-run-id-"))
+    const outFile = join(root, "fixture.json")
+
+    const manifest = await seedFixtureManifest({
+      repo: "aryeko/ghx-bench-fixtures",
+      outFile,
+      seedId: "seedtest",
+    })
+
+    expect(manifest.resources.workflow_run).toMatchObject({ id: 222 })
+    expect(manifest.resources.workflow_job).toMatchObject({ id: 1 })
+    expect(manifest.resources.check_run).toMatchObject({ id: 1 })
   })
 })

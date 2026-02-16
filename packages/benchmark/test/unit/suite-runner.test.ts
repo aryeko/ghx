@@ -1029,6 +1029,196 @@ describe("suite-runner helpers", () => {
     expect(result.tool_calls).toBeGreaterThan(0)
   })
 
+  it("uses assistant structured_output when no JSON envelope parts are present", async () => {
+    const session = {
+      create: vi.fn(async () => ({ data: { id: "s-structured" } })),
+      promptAsync: vi.fn(async () => ({
+        data: {
+          assistant: {
+            id: "m-structured",
+            sessionID: "s-structured",
+            role: "assistant",
+            time: { created: 1, completed: 2 },
+            tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
+            cost: 0,
+            structured_output: { ok: true, data: { id: "repo" }, error: null, meta: {} },
+          },
+          parts: [{ type: "step-finish", reason: "done" }],
+        },
+      })),
+      messages: vi.fn(async () => ({
+        data: [
+          {
+            info: {
+              id: "m-structured",
+              sessionID: "s-structured",
+              role: "assistant",
+              time: { created: 1, completed: 2 },
+              tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
+              cost: 0,
+            },
+            parts: [{ type: "step-finish", reason: "done" }],
+          },
+        ],
+      })),
+      abort: vi.fn(async () => ({ data: {} })),
+    }
+
+    const result = await runScenario(
+      { session },
+      {
+        id: "repo-view-structured",
+        name: "Repo view structured",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "do {{task}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+          require_tool_calls: false,
+        },
+        tags: [],
+      },
+      "ghx",
+      1,
+    )
+
+    expect(result.success).toBe(true)
+    expect(result.output_valid).toBe(true)
+  })
+
+  it("requests continuation until a JSON envelope is returned", async () => {
+    const session = {
+      create: vi.fn(async () => ({ data: { id: "s-cont" } })),
+      promptAsync: vi
+        .fn()
+        .mockResolvedValueOnce({ data: {} })
+        .mockResolvedValueOnce({
+          data: {
+            assistant: {
+              id: "m2",
+              sessionID: "s-cont",
+              role: "assistant",
+              time: { created: 3, completed: 4 },
+              tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
+              cost: 0,
+            },
+            parts: [
+              { type: "text", text: '{"ok":true,"data":{"id":"repo"},"error":null,"meta":{}}' },
+            ],
+          },
+        }),
+      messages: vi.fn(async () => ({
+        data: [
+          {
+            info: {
+              id: "m1",
+              sessionID: "s-cont",
+              role: "assistant",
+              time: { created: 1, completed: 2 },
+              tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
+              cost: 0,
+            },
+            parts: [
+              { type: "text", text: "partial response without json" },
+              { type: "step-finish", reason: "done" },
+            ],
+          },
+        ],
+      })),
+      abort: vi.fn(async () => ({ data: {} })),
+    }
+
+    const result = await runScenario(
+      { session },
+      {
+        id: "repo-view-continuation",
+        name: "Repo view continuation",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "do {{task}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+          require_tool_calls: false,
+        },
+        tags: [],
+      },
+      "ghx",
+      1,
+    )
+
+    expect(result.success).toBe(true)
+    expect(session.promptAsync).toHaveBeenCalledTimes(2)
+  })
+
+  it("recovers best valid envelope from session messages when latest envelope is invalid", async () => {
+    const session = {
+      create: vi.fn(async () => ({ data: { id: "s-recover" } })),
+      promptAsync: vi.fn(async () => ({ data: {} })),
+      messages: vi.fn(async () => ({
+        data: [
+          {
+            info: {
+              id: "m-valid",
+              sessionID: "s-recover",
+              role: "assistant",
+              time: { created: 1, completed: 2 },
+              tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
+              cost: 0,
+            },
+            parts: [
+              { type: "text", text: '{"ok":true,"data":{"id":"repo"},"error":null,"meta":{}}' },
+            ],
+          },
+          {
+            info: {
+              id: "m-invalid",
+              sessionID: "s-recover",
+              role: "assistant",
+              time: { created: 3, completed: 4 },
+              tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
+              cost: 0,
+            },
+            parts: [{ type: "text", text: '{"ok":true,"data":{},"error":null,"meta":{}}' }],
+          },
+        ],
+      })),
+      abort: vi.fn(async () => ({ data: {} })),
+    }
+
+    const result = await runScenario(
+      { session },
+      {
+        id: "repo-view-recover",
+        name: "Repo view recover",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "do {{task}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+          require_tool_calls: false,
+        },
+        tags: [],
+      },
+      "ghx",
+      1,
+    )
+
+    expect(result.success).toBe(true)
+    expect(result.output_valid).toBe(true)
+  })
+
   it("marks scenario failed when tool-call requirements are not met", async () => {
     const session = {
       create: vi.fn(async () => ({ data: { id: "s1" } })),
