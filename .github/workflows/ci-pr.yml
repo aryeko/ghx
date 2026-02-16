@@ -53,8 +53,19 @@ jobs:
           flags: pr
           use_oidc: true
           fail_ci_if_error: true
-      - name: Upload test results to Codecov (Node 24)
+      - name: Detect JUnit reports (Node 24)
         if: ${{ always() && matrix.node-version == 24 && !cancelled() }}
+        id: junit
+        run: |
+          shopt -s nullglob
+          files=(packages/*/test-report.junit.xml)
+          if [ ${#files[@]} -gt 0 ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Upload test results to Codecov (Node 24)
+        if: ${{ always() && matrix.node-version == 24 && !cancelled() && steps.junit.outputs.found == 'true' }}
         uses: codecov/codecov-action@v5
         with:
           files: packages/*/test-report.junit.xml
