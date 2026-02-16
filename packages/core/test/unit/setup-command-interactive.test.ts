@@ -33,9 +33,9 @@ describe("setupCommand interactive overwrite", () => {
       default: {
         createInterface: vi.fn(() => ({
           question: vi.fn(async () => "y"),
-          close: vi.fn()
-        }))
-      }
+          close: vi.fn(),
+        })),
+      },
     }))
 
     const { setupCommand } = await import("../../src/cli/commands/setup.js")
@@ -61,9 +61,9 @@ describe("setupCommand interactive overwrite", () => {
       default: {
         createInterface: vi.fn(() => ({
           question: vi.fn(async () => "n"),
-          close: vi.fn()
-        }))
-      }
+          close: vi.fn(),
+        })),
+      },
     }))
 
     const { setupCommand } = await import("../../src/cli/commands/setup.js")

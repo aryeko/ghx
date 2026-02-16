@@ -10,13 +10,13 @@ describe("validateScenario", () => {
       task: "pr.view",
       input: {
         repo: "go-modkit/modkit",
-        pr_number: 232
+        pr_number: 232,
       },
       prompt_template: "Execute task {{task}} with {{input_json}}",
       timeout_ms: 90000,
       allowed_retries: 0,
       fixture: {
-        repo: "go-modkit/modkit"
+        repo: "go-modkit/modkit",
       },
       assertions: {
         must_succeed: true,
@@ -24,9 +24,9 @@ describe("validateScenario", () => {
         require_tool_calls: true,
         min_tool_calls: 1,
         required_fields: ["success", "data", "error", "meta"],
-          required_data_fields: ["number", "title", "state"]
-        },
-      tags: ["pr", "view", "thin-slice"]
+        required_data_fields: ["number", "title", "state"],
+      },
+      tags: ["pr", "view", "thin-slice"],
     })
 
     expect(parsed.id).toBe("pr-view-001")
@@ -43,8 +43,8 @@ describe("validateScenario", () => {
         timeout_ms: 0,
         allowed_retries: 0,
         assertions: { must_succeed: true },
-        tags: []
-      })
+        tags: [],
+      }),
     ).toThrow()
   })
 
@@ -56,7 +56,7 @@ describe("validateScenario", () => {
         task: "repo.view",
         input: {
           owner: "go-modkit",
-          name: "modkit"
+          name: "modkit",
         },
         prompt_template: "Execute task {{task}} with {{input_json}}",
         timeout_ms: 60000,
@@ -65,10 +65,10 @@ describe("validateScenario", () => {
           must_succeed: true,
           require_tool_calls: true,
           min_tool_calls: 2,
-          max_tool_calls: 1
+          max_tool_calls: 1,
         },
-        tags: ["repo", "view"]
-      })
+        tags: ["repo", "view"],
+      }),
     ).toThrow("max_tool_calls must be greater than or equal to min_tool_calls")
   })
 })

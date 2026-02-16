@@ -3,7 +3,7 @@ import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import readline from "node:readline/promises"
 
-import Ajv from "ajv"
+import { Ajv } from "ajv"
 
 type SetupScope = "user" | "project"
 
@@ -24,13 +24,13 @@ const setupOptionsSchema = {
   properties: {
     scope: {
       type: "string",
-      enum: ["user", "project"]
+      enum: ["user", "project"],
     },
     assumeYes: { type: "boolean" },
     dryRun: { type: "boolean" },
     verifyOnly: { type: "boolean" },
-    track: { type: "boolean" }
-  }
+    track: { type: "boolean" },
+  },
 } as const
 
 const validateSetupOptions = ajv.compile(setupOptionsSchema)
@@ -91,7 +91,7 @@ function parseArgs(argv: string[]): SetupOptions | null {
     assumeYes: argv.includes("--yes"),
     dryRun: argv.includes("--dry-run"),
     verifyOnly: argv.includes("--verify"),
-    track: argv.includes("--track")
+    track: argv.includes("--track"),
   }
 
   if (!validateSetupOptions(options)) {
@@ -129,9 +129,9 @@ async function writeTrackingEvent(options: {
       scope: options.scope,
       mode: options.mode,
       success: options.success,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     })}\n`,
-    "utf8"
+    "utf8",
   )
 }
 
@@ -142,7 +142,7 @@ async function confirmOverwrite(skillPath: string): Promise<boolean> {
 
   const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
   })
 
   try {
@@ -215,9 +215,14 @@ export async function setupCommand(argv: string[] = []): Promise<number> {
       const approved = await confirmOverwrite(skillPath)
       if (!approved) {
         process.stderr.write(
-          `Skill already exists at ${skillPath}. Re-run with --yes or confirm overwrite interactively.\n`
+          `Skill already exists at ${skillPath}. Re-run with --yes or confirm overwrite interactively.\n`,
         )
-        await writeTrackingEvent({ track: parsed.track, scope: parsed.scope, mode: "apply", success: false })
+        await writeTrackingEvent({
+          track: parsed.track,
+          scope: parsed.scope,
+          mode: "apply",
+          success: false,
+        })
         return 1
       }
     }
@@ -227,7 +232,12 @@ export async function setupCommand(argv: string[] = []): Promise<number> {
 
     process.stdout.write(`Setup complete: wrote ${skillPath}\n`)
     process.stdout.write("Try: ghx capabilities list\n")
-    await writeTrackingEvent({ track: parsed.track, scope: parsed.scope, mode: "apply", success: true })
+    await writeTrackingEvent({
+      track: parsed.track,
+      scope: parsed.scope,
+      mode: "apply",
+      success: true,
+    })
     return 0
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)

@@ -4,10 +4,7 @@
   "task": "issue.labels.update",
   "input": {
     "issueId": "ISSUE_ID_PLACEHOLDER",
-    "labels": [
-      "bug",
-      "issues"
-    ]
+    "labels": ["bug", "issues"]
   },
   "prompt_template": "Execute task {{task}} using input {{input_json}}. Return only valid JSON matching this envelope: {\"ok\": boolean, \"data\": any, \"error\": object|null, \"meta\": object}.",
   "timeout_ms": 60000,
@@ -16,17 +13,7 @@
     "must_succeed": false,
     "require_tool_calls": true,
     "min_tool_calls": 1,
-    "required_fields": [
-      "ok",
-      "data",
-      "error",
-      "meta"
-    ]
+    "required_fields": ["ok", "data", "error", "meta"]
   },
-  "tags": [
-    "roadmap",
-    "issues",
-    "issue",
-    "mutation"
-  ]
+  "tags": ["roadmap", "issues", "issue", "mutation"]
 }

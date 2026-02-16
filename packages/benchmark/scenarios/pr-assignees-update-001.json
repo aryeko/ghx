@@ -6,12 +6,8 @@
     "owner": "go-modkit",
     "name": "modkit",
     "prNumber": 232,
-    "add": [
-      "octocat"
-    ],
-    "remove": [
-      "hubot"
-    ]
+    "add": ["octocat"],
+    "remove": ["hubot"]
   },
   "prompt_template": "Execute task {{task}} for repository {{fixture_repo}} using input {{input_json}}. Return only valid JSON matching this envelope: {\"ok\": boolean, \"data\": any, \"error\": object|null, \"meta\": object}.",
   "timeout_ms": 60000,
@@ -23,29 +19,11 @@
     "must_succeed": false,
     "require_tool_calls": true,
     "min_tool_calls": 1,
-    "required_fields": [
-      "ok",
-      "data",
-      "error",
-      "meta"
-    ],
-    "required_data_fields": [
-      "prNumber",
-      "add",
-      "remove",
-      "updated"
-    ],
-    "required_meta_fields": [
-      "route_used"
-    ],
+    "required_fields": ["ok", "data", "error", "meta"],
+    "required_data_fields": ["prNumber", "add", "remove", "updated"],
+    "required_meta_fields": ["route_used"],
     "expected_route_used": "cli",
     "expect_valid_output": true
   },
-  "tags": [
-    "roadmap",
-    "pr-exec",
-    "pr",
-    "assignees",
-    "mutations"
-  ]
+  "tags": ["roadmap", "pr-exec", "pr", "assignees", "mutations"]
 }

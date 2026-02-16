@@ -27,9 +27,7 @@
     "workflow-run-jobs-list-001",
     "workflow-job-logs-get-001"
   ],
-  "ci-log-analysis": [
-    "workflow-job-logs-analyze-001"
-  ],
+  "ci-log-analysis": ["workflow-job-logs-analyze-001"],
   "workflows": [
     "workflow-dispatch-run-001",
     "workflow-run-rerun-failed-001",
@@ -91,10 +89,7 @@
     "pr-assignees-update-001",
     "pr-branch-update-001"
   ],
-  "ci-verify-pr": [
-    "pr-checks-rerun-all-001",
-    "pr-merge-execute-001"
-  ],
+  "ci-verify-pr": ["pr-checks-rerun-all-001", "pr-merge-execute-001"],
   "ci-verify-release": [
     "pr-checks-rerun-all-001",
     "pr-checks-rerun-failed-001",

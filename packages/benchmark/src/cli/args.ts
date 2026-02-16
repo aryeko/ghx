@@ -1,5 +1,5 @@
-import type { BenchmarkMode } from "../domain/types.js"
 import { z } from "zod"
+import type { BenchmarkMode } from "../domain/types.js"
 
 export type ParsedCliArgs = {
   command: "run"
@@ -82,10 +82,10 @@ const parsedCliArgsSchema = z
     mode: z.enum(["agent_direct", "mcp", "ghx"]),
     repetitions: z.number().int().min(1),
     scenarioFilter: z.string().min(1).nullable(),
-    scenarioSet: z.string().min(1).nullable()
+    scenarioSet: z.string().min(1).nullable(),
   })
   .refine((value) => !(value.scenarioFilter && value.scenarioSet), {
-    message: "--scenario and --scenario-set cannot be used together"
+    message: "--scenario and --scenario-set cannot be used together",
   })
 
 export function parseCliArgs(argv: string[]): ParsedCliArgs {
@@ -115,7 +115,7 @@ export function parseCliArgs(argv: string[]): ParsedCliArgs {
     mode,
     repetitions,
     scenarioFilter: parseScenarioFilter(flags),
-    scenarioSet: parseScenarioSet(flags)
+    scenarioSet: parseScenarioSet(flags),
   })
 
   return parsed

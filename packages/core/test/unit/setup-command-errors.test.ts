@@ -25,7 +25,7 @@ describe("setupCommand error handling", () => {
           const error = new Error("permission denied") as Error & { code?: string }
           error.code = "EACCES"
           throw error
-        })
+        }),
       }
     })
 
@@ -51,7 +51,7 @@ describe("setupCommand error handling", () => {
           const error = new Error("access denied") as Error & { code?: string }
           error.code = "EACCES"
           throw error
-        })
+        }),
       }
     })
 
