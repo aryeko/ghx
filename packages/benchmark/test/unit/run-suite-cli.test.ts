@@ -298,4 +298,53 @@ describe("run-suite cli", () => {
       ["run", "report"],
     ])
   })
+
+  it("parses --verbose flag", async () => {
+    const mod = await import("../../src/cli/run-suite.js")
+    const parsed = mod.parseArgs(["--config", "x.json", "--verbose"])
+    expect(parsed.verbose).toBe(true)
+  })
+
+  it("streams child output only in verbose mode", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ghx-suite-cli-"))
+    const configPath = join(root, "suite-runner.json")
+
+    await writeFile(
+      configPath,
+      `${JSON.stringify({
+        benchmark: {
+          base: { command: ["pnpm", "run", "benchmark", "--"], repetitions: 1 },
+          ghx: { mode: "ghx" },
+          direct: { mode: "agent_direct" },
+        },
+        reporting: {
+          analysis: {
+            report: { command: ["pnpm", "run", "report"] },
+          },
+        },
+      })}\n`,
+      "utf8",
+    )
+
+    spawnMock.mockImplementation((command: string, args?: string[]) => {
+      const child = createMockChild()
+      queueMicrotask(() => {
+        if (command === "pnpm" && Array.isArray(args) && args.includes("report")) {
+          child.stdout.emit("data", Buffer.from("report-output\n", "utf8"))
+        }
+        child.emit("exit", 0, null)
+      })
+      return child
+    })
+
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined)
+
+    const mod = await import("../../src/cli/run-suite.js")
+    await expect(mod.main(["--config", configPath, "--no-gate"])).resolves.toBeUndefined()
+    expect(logSpy).not.toHaveBeenCalledWith("[report] report-output")
+
+    logSpy.mockClear()
+    await expect(mod.main(["--config", configPath, "--no-gate", "--verbose"])).resolves.toBeUndefined()
+    expect(logSpy).toHaveBeenCalledWith("[report] report-output")
+  })
 })

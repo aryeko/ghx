@@ -196,7 +196,7 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
     throw new Error(`Expectations config not found at ${configPath}`)
   }
 
-  const summary = buildSummary(rows, undefined, gateProfile, gateThresholds)
+  const summary = buildSummary(rows, gateProfile, gateThresholds)
   const markdown = toMarkdown(summary)
 
   await mkdir(REPORTS_DIR, { recursive: true })

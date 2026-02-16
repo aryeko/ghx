@@ -44,14 +44,6 @@ type DeltaSummary = {
   outputValidityRatePct: number
 }
 
-export type GateThresholds = {
-  minTokensReductionPct: number
-  minLatencyReductionPct: number
-  minToolCallReductionPct: number
-  maxSuccessRateDropPct: number
-  minOutputValidityRatePct: number
-}
-
 export type GateV2Thresholds = {
   minTokensActiveReductionPct: number
   minLatencyReductionPct: number
@@ -100,19 +92,7 @@ export type BenchmarkSummary = {
   modes: Partial<Record<BenchmarkMode, ModeSummary>>
   profiling: Partial<Record<BenchmarkMode, ProfilingSummary>>
   deltaVsAgentDirect: DeltaSummary | null
-  gate: {
-    passed: boolean
-    checks: GateCheck[]
-  }
   gateV2: GateV2Summary
-}
-
-const DEFAULT_THRESHOLDS: GateThresholds = {
-  minTokensReductionPct: 25,
-  minLatencyReductionPct: 20,
-  minToolCallReductionPct: 30,
-  maxSuccessRateDropPct: 1,
-  minOutputValidityRatePct: 99,
 }
 
 export const DEFAULT_GATE_V2_THRESHOLDS: GateV2ThresholdMap = {
@@ -419,7 +399,6 @@ function buildGateV2(
 
 export function buildSummary(
   rows: BenchmarkRow[],
-  thresholds: GateThresholds = DEFAULT_THRESHOLDS,
   gateProfile: GateProfile = "verify_pr",
   gateV2Thresholds: GateV2ThresholdMap = DEFAULT_GATE_V2_THRESHOLDS,
 ): BenchmarkSummary {
@@ -444,8 +423,6 @@ export function buildSummary(
   const ghxRouter = modeSummaries.ghx
 
   let deltaVsAgentDirect: DeltaSummary | null = null
-  let checks: GateCheck[] = []
-
   if (agentDirect && ghxRouter) {
     deltaVsAgentDirect = {
       tokensReductionPct: safeReductionPct(agentDirect.medianTokensTotal, ghxRouter.medianTokensTotal),
@@ -455,44 +432,6 @@ export function buildSummary(
       successRateDeltaPct: ghxRouter.successRate - agentDirect.successRate,
       outputValidityRatePct: ghxRouter.outputValidityRate,
     }
-
-    checks = [
-      {
-        name: "tokens_reduction",
-        passed: deltaVsAgentDirect.tokensActiveReductionPct >= thresholds.minTokensReductionPct,
-        value: deltaVsAgentDirect.tokensActiveReductionPct,
-        threshold: thresholds.minTokensReductionPct,
-        operator: ">=",
-      },
-      {
-        name: "latency_reduction",
-        passed: deltaVsAgentDirect.latencyReductionPct >= thresholds.minLatencyReductionPct,
-        value: deltaVsAgentDirect.latencyReductionPct,
-        threshold: thresholds.minLatencyReductionPct,
-        operator: ">=",
-      },
-      {
-        name: "tool_call_reduction",
-        passed: deltaVsAgentDirect.toolCallReductionPct >= thresholds.minToolCallReductionPct,
-        value: deltaVsAgentDirect.toolCallReductionPct,
-        threshold: thresholds.minToolCallReductionPct,
-        operator: ">=",
-      },
-      {
-        name: "success_rate_non_inferior",
-        passed: deltaVsAgentDirect.successRateDeltaPct >= -thresholds.maxSuccessRateDropPct,
-        value: deltaVsAgentDirect.successRateDeltaPct,
-        threshold: -thresholds.maxSuccessRateDropPct,
-        operator: ">=",
-      },
-      {
-        name: "output_validity",
-        passed: deltaVsAgentDirect.outputValidityRatePct >= thresholds.minOutputValidityRatePct,
-        value: deltaVsAgentDirect.outputValidityRatePct,
-        threshold: thresholds.minOutputValidityRatePct,
-        operator: ">=",
-      },
-    ]
   }
 
   return {
@@ -500,10 +439,6 @@ export function buildSummary(
     modes: modeSummaries,
     profiling: profilingSummaries,
     deltaVsAgentDirect,
-    gate: {
-      passed: checks.length > 0 && checks.every((check) => check.passed),
-      checks,
-    },
     gateV2: buildGateV2(modeSummaries, grouped, gateProfile, gateV2Thresholds),
   }
 }
@@ -539,24 +474,6 @@ export function toMarkdown(summary: BenchmarkSummary): string {
     lines.push(
       `| ${mode} | ${item.runsWithProfiling} | ${item.medianAssistantTotalMs.toFixed(0)} | ${item.medianAssistantReasoningMs.toFixed(0)} | ${item.medianAssistantBetweenReasoningAndToolMs.toFixed(0)} | ${item.medianToolTotalMs.toFixed(0)} | ${item.medianToolBashMs.toFixed(0)} | ${item.medianAssistantPostToolMs.toFixed(0)} |`,
     )
-  }
-
-  lines.push("")
-  lines.push("## Legacy Gate (v1)")
-  lines.push("")
-
-  if (!summary.deltaVsAgentDirect) {
-    lines.push("Insufficient data: need both agent_direct and ghx runs to evaluate gate.")
-  } else {
-    lines.push(`Overall Gate: **${summary.gate.passed ? "PASS" : "FAIL"}**`)
-    lines.push("")
-    lines.push("| Check | Value | Rule | Pass |")
-    lines.push("|---|---:|---:|:---:|")
-    for (const check of summary.gate.checks) {
-      lines.push(
-        `| ${check.name} | ${check.value.toFixed(2)} | ${check.operator} ${check.threshold.toFixed(2)} | ${check.passed ? "Y" : "N"} |`,
-      )
-    }
   }
 
   lines.push("")

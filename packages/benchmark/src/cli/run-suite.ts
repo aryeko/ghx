@@ -1,9 +1,11 @@
+import { createLogUpdate } from "log-update"
+import { z } from "zod"
+import { createColors } from "colorette"
+
 import { spawn } from "node:child_process"
 import { readFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import { pathToFileURL } from "node:url"
-
-import { z } from "zod"
 
 const commandSchema = z.object({
   command: z.array(z.string().min(1)).min(1),
@@ -58,11 +60,15 @@ type ParsedArgs = {
   skipCleanup: boolean
   skipSeed: boolean
   runGate: boolean | null
+  verbose: boolean
 }
 
 type ExitResult = {
   code: number
   signal: NodeJS.Signals | null
+  command: string
+  stdoutTail: string[]
+  stderrTail: string[]
 }
 
 type ProgressEvent = {
@@ -70,12 +76,37 @@ type ProgressEvent = {
   total: number
 }
 
-type ProgressSink = {
-  start: (label: string) => void
-  update: (label: string, event: ProgressEvent) => void
-  complete: (label: string, status: "ok" | "failed") => void
+type BenchmarkStatus = "pending" | "starting" | "running" | "ok" | "failed"
+type PhaseStatus = "pending" | "running" | "ok" | "failed"
+type PhaseName = "cleanup" | "seed" | "benchmark" | "report" | "gate"
+
+type BenchmarkRow = {
+  status: BenchmarkStatus
+  completed: number
+  total: number | null
+}
+
+type BenchmarkProgressSink = {
+  start: (label: "ghx" | "direct") => void
+  update: (label: "ghx" | "direct", event: ProgressEvent) => void
+  complete: (label: "ghx" | "direct", status: "ok" | "failed") => void
+}
+
+type SuiteDashboard = {
+  setPlan: (phases: PhaseName[]) => void
+  startPhase: (phase: PhaseName) => void
+  completePhase: (phase: PhaseName, status: "ok" | "failed") => void
+  benchmark: BenchmarkProgressSink
   stop: () => void
 }
+
+const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+const BENCHMARK_LABEL_ORDER: Array<"ghx" | "direct"> = ["ghx", "direct"]
+const TAIL_LIMIT = 12
+
+const colors = createColors({
+  useColor: Boolean(process.stdout.isTTY) && !process.env.NO_COLOR,
+})
 
 function parseFlagValue(args: string[], flag: string): string | null {
   const index = args.findIndex((arg) => arg === flag)
@@ -97,12 +128,14 @@ export function parseArgs(argv: string[]): ParsedArgs {
   const skipCleanup = normalized.includes("--skip-cleanup")
   const skipSeed = normalized.includes("--skip-seed")
   const runGate = normalized.includes("--gate") ? true : normalized.includes("--no-gate") ? false : null
+  const verbose = normalized.includes("--verbose")
 
   return {
     configPath,
     skipCleanup,
     skipSeed,
     runGate,
+    verbose,
   }
 }
 
@@ -112,56 +145,31 @@ export async function loadSuiteRunnerConfig(path: string): Promise<SuiteRunnerCo
   return suiteRunnerConfigSchema.parse(parsed)
 }
 
-function createProgressSink(): ProgressSink {
-  const tty = Boolean(process.stdout.isTTY)
-  const toBar = (completed: number, total: number): string => {
-    const width = 20
-    const safeTotal = total > 0 ? total : 1
-    const ratio = Math.max(0, Math.min(1, completed / safeTotal))
-    const filled = Math.round(ratio * width)
-    return `${"#".repeat(filled)}${"-".repeat(width - filled)}`
+function toBar(completed: number, total: number, width = 22): string {
+  const safeTotal = total > 0 ? total : 1
+  const ratio = Math.max(0, Math.min(1, completed / safeTotal))
+  const filled = Math.round(ratio * width)
+  return `${"#".repeat(filled)}${"-".repeat(width - filled)}`
+}
+
+function pushTail(tail: string[], value: string): void {
+  tail.push(value)
+  if (tail.length > TAIL_LIMIT) {
+    tail.shift()
+  }
+}
+
+function formatFailure(label: string, exit: ExitResult): string {
+  const signal = exit.signal ? ` signal=${exit.signal}` : ""
+  const stderr = exit.stderrTail.join("\n")
+  const stdout = exit.stdoutTail.join("\n")
+  const details = stderr || stdout
+
+  if (!details) {
+    return `${label} phase failed (code=${exit.code}${signal})\ncommand: ${exit.command}`
   }
 
-  if (!tty) {
-    return {
-      start: (label) => {
-        console.log(`[benchmark] ${label} started`)
-      },
-      update: () => undefined,
-      complete: (label, status) => {
-        console.log(`[benchmark] ${label} ${status}`)
-      },
-      stop: () => undefined,
-    }
-  }
-
-  const bars = new Map<string, ProgressEvent>()
-
-  return {
-    start: (label) => {
-      if (!bars.has(label)) {
-        bars.set(label, { completed: 0, total: 1 })
-        console.log(`[benchmark] ${label} [${toBar(0, 1)}] 0/1`)
-      }
-    },
-    update: (label, event) => {
-      const total = event.total > 0 ? event.total : 1
-      const value = Math.min(event.completed, total)
-      bars.set(label, { completed: value, total })
-      console.log(`[benchmark] ${label} [${toBar(value, total)}] ${value}/${total}`)
-    },
-    complete: (label, status) => {
-      const progress = bars.get(label)
-      if (progress && status === "ok") {
-        console.log(
-          `[benchmark] ${label} [${toBar(progress.total, progress.total)}] ${progress.total}/${progress.total}`,
-        )
-      }
-      bars.delete(label)
-      console.log(`[benchmark] ${label} ${status}`)
-    },
-    stop: () => undefined,
-  }
+  return `${label} phase failed (code=${exit.code}${signal})\ncommand: ${exit.command}\nrecent output:\n${details}`
 }
 
 function parseProgressEvent(payload: string): ProgressEvent | null {
@@ -176,38 +184,265 @@ function parseProgressEvent(payload: string): ProgressEvent | null {
     return null
   }
 
-  const maybeCompleted = (parsed as { completed?: unknown }).completed
-  const maybeTotal = (parsed as { total?: unknown }).total
+  const eventName = (parsed as { event?: unknown }).event
+  if (eventName !== "suite_started" && eventName !== "scenario_started" && eventName !== "scenario_finished") {
+    return null
+  }
 
-  if (typeof maybeCompleted === "number" && typeof maybeTotal === "number") {
+  const completed = (parsed as { completed?: unknown }).completed
+  const total = (parsed as { total?: unknown }).total
+
+  if (typeof completed !== "number" || typeof total !== "number") {
+    return null
+  }
+
+  return {
+    completed,
+    total,
+  }
+}
+
+function renderPhaseIcon(status: PhaseStatus): string {
+  if (status === "ok") return colors.green("✓")
+  if (status === "failed") return colors.red("✗")
+  if (status === "running") return colors.yellow("…")
+  return colors.dim("○")
+}
+
+function renderBenchmarkRow(label: string, row: BenchmarkRow, spinnerFrame: string): string {
+  const colorizedLabel = label === "ghx" ? colors.blue(label) : colors.magenta(label)
+  const status =
+    row.status === "ok"
+      ? colors.green("✓")
+      : row.status === "failed"
+        ? colors.red("✗")
+        : row.status === "pending"
+          ? colors.dim("○")
+          : colors.yellow(spinnerFrame)
+
+  if (row.status === "pending") {
+    return `  ${colorizedLabel.padEnd(7)} ${status} ${colors.dim("pending")}`
+  }
+
+  if (!row.total || row.total <= 0) {
+    return `  ${colorizedLabel.padEnd(7)} ${status} ${colors.dim("starting")}`
+  }
+
+  const completed = Math.min(Math.max(0, row.completed), row.total)
+  const bar = `[${toBar(completed, row.total, 18)}]`
+  return `  ${colorizedLabel.padEnd(7)} ${status} ${colors.cyan(bar)} ${colors.bold(`${completed}/${row.total}`)}`
+}
+
+function createSuiteDashboard(verbose: boolean): SuiteDashboard {
+  const tty = Boolean(process.stdout.isTTY)
+
+  if (!tty || verbose) {
+    const phaseStatus = new Map<PhaseName, PhaseStatus>()
+
     return {
-      completed: maybeCompleted,
-      total: maybeTotal,
+      setPlan: (phases) => {
+        for (const phase of phases) {
+          phaseStatus.set(phase, "pending")
+        }
+      },
+      startPhase: (phase) => {
+        phaseStatus.set(phase, "running")
+        if (!verbose) {
+          console.log(`[suite] ${phase} started`)
+        }
+      },
+      completePhase: (phase, status) => {
+        phaseStatus.set(phase, status)
+        if (!verbose) {
+          console.log(`[suite] ${phase} ${status === "ok" ? "done" : "failed"}`)
+        }
+      },
+      benchmark: {
+        start: (label) => {
+          if (!verbose) {
+            console.log(`[benchmark] ${label} started`)
+          }
+        },
+        update: (label, event) => {
+          if (!verbose) {
+            console.log(`[benchmark] ${label} ${event.completed}/${event.total}`)
+          }
+        },
+        complete: (label, status) => {
+          if (!verbose) {
+            console.log(`[benchmark] ${label} ${status}`)
+          }
+        },
+      },
+      stop: () => undefined,
     }
   }
 
-  const row = (parsed as { row?: unknown }).row
-  if (row && typeof row === "object") {
-    const rowCompleted = (row as { completed?: unknown }).completed
-    const rowTotal = (row as { total?: unknown }).total
-    if (typeof rowCompleted === "number" && typeof rowTotal === "number") {
-      return {
-        completed: rowCompleted,
-        total: rowTotal,
+  const logUpdate = createLogUpdate(process.stdout)
+  const phases: PhaseName[] = []
+  const phaseStatus = new Map<PhaseName, PhaseStatus>()
+  const benchmarkRows = new Map<"ghx" | "direct", BenchmarkRow>()
+  let spinnerIndex = 0
+
+  const render = () => {
+    if (phases.length === 0) {
+      return
+    }
+
+    const spinnerFrame = SPINNER_FRAMES[spinnerIndex % SPINNER_FRAMES.length] ?? "*"
+
+    let progressComplete = 0
+    for (const phase of phases) {
+      const status = phaseStatus.get(phase) ?? "pending"
+      if (status === "ok" || status === "failed") {
+        progressComplete += 1
+        continue
+      }
+
+      if (phase === "benchmark" && status === "running") {
+        const ratios = BENCHMARK_LABEL_ORDER.map((label) => {
+          const row = benchmarkRows.get(label)
+          if (!row || !row.total || row.total <= 0) {
+            return 0
+          }
+          return Math.min(Math.max(0, row.completed / row.total), 1)
+        })
+        const avg = ratios.length === 0 ? 0 : ratios.reduce((sum, value) => sum + value, 0) / ratios.length
+        progressComplete += avg
+      }
+      break
+    }
+
+    const ratio = phases.length === 0 ? 0 : progressComplete / phases.length
+    const lines: string[] = []
+    lines.push(
+      `${colors.cyan("[suite]")} ${colors.cyan(`[${toBar(Math.round(ratio * 100), 100)}]`)} ${colors.bold(`${(ratio * 100).toFixed(1)}%`)}`,
+    )
+
+    for (const phase of phases) {
+      const status = phaseStatus.get(phase) ?? "pending"
+      lines.push(`${renderPhaseIcon(status)} ${phase}`)
+      if (phase === "benchmark") {
+        for (const label of BENCHMARK_LABEL_ORDER) {
+          const row = benchmarkRows.get(label) ?? {
+            status: "pending",
+            completed: 0,
+            total: null,
+          }
+          lines.push(renderBenchmarkRow(label, row, spinnerFrame))
+        }
       }
     }
+
+    logUpdate(lines.join("\n"))
   }
 
-  const event = (parsed as { event?: unknown }).event
-  if (event === "scenario_finished") {
-    const completed = (parsed as { completed?: unknown }).completed
-    const total = (parsed as { total?: unknown }).total
-    if (typeof completed === "number" && typeof total === "number") {
-      return { completed, total }
+  const interval = setInterval(() => {
+    spinnerIndex += 1
+    render()
+  }, 120)
+  interval.unref()
+
+  return {
+    setPlan: (nextPhases) => {
+      phases.length = 0
+      phases.push(...nextPhases)
+      for (const phase of nextPhases) {
+        phaseStatus.set(phase, "pending")
+      }
+      for (const label of BENCHMARK_LABEL_ORDER) {
+        benchmarkRows.set(label, {
+          status: "pending",
+          completed: 0,
+          total: null,
+        })
+      }
+      render()
+    },
+    startPhase: (phase) => {
+      phaseStatus.set(phase, "running")
+      render()
+    },
+    completePhase: (phase, status) => {
+      phaseStatus.set(phase, status)
+      render()
+    },
+    benchmark: {
+      start: (label) => {
+        const existing = benchmarkRows.get(label)
+        benchmarkRows.set(label, {
+          status: "starting",
+          completed: existing?.completed ?? 0,
+          total: existing?.total ?? null,
+        })
+        render()
+      },
+      update: (label, event) => {
+        const existing = benchmarkRows.get(label)
+        const total = event.total > 0 ? event.total : existing?.total ?? null
+        benchmarkRows.set(label, {
+          status: "running",
+          completed: event.completed,
+          total,
+        })
+        render()
+      },
+      complete: (label, status) => {
+        const existing = benchmarkRows.get(label)
+        benchmarkRows.set(label, {
+          status,
+          completed: status === "ok" && existing?.total ? existing.total : existing?.completed ?? 0,
+          total: existing?.total ?? null,
+        })
+        render()
+      },
+    },
+    stop: () => {
+      clearInterval(interval)
+      render()
+      logUpdate.done()
+    },
+  }
+}
+
+function streamChildOutput(
+  source: NodeJS.ReadableStream,
+  onLine: (line: string) => boolean,
+  writeLine: (line: string) => void,
+  pushTailLine: (line: string) => void,
+): void {
+  let buffer = ""
+  source.on("data", (chunk: Buffer | string) => {
+    buffer += chunk.toString()
+    const lines = buffer.split("\n")
+    buffer = lines.pop() ?? ""
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim()
+      if (!line) {
+        continue
+      }
+
+      pushTailLine(line)
+      const handled = onLine(line)
+      if (!handled) {
+        writeLine(line)
+      }
     }
-  }
+  })
 
-  return null
+  source.on("end", () => {
+    const line = buffer.trim()
+    if (!line) {
+      return
+    }
+
+    pushTailLine(line)
+    const handled = onLine(line)
+    if (!handled) {
+      writeLine(line)
+    }
+  })
 }
 
 function spawnCommand(
@@ -216,7 +451,8 @@ function spawnCommand(
   options?: {
     cwd?: string
     env?: Record<string, string>
-    progressSink?: ProgressSink
+    benchmarkProgress?: BenchmarkProgressSink
+    streamOutput?: boolean
   },
 ): {
   child: ReturnType<typeof spawn>
@@ -247,29 +483,48 @@ function spawnCommand(
     ...spawnOptions,
   })
 
-  const progressSink = options?.progressSink
-  if (progressSink) {
-    progressSink.start(label)
+  const stdoutTail: string[] = []
+  const stderrTail: string[] = []
+  const commandString = [commandName, ...commandArgs].join(" ")
 
-    let stdoutBuffer = ""
-    child.stdout.on("data", (chunk: Buffer | string) => {
-      stdoutBuffer += chunk.toString()
-      const lines = stdoutBuffer.split("\n")
-      stdoutBuffer = lines.pop() ?? ""
-
-      for (const lineRaw of lines) {
-        const line = lineRaw.trim()
-        if (!line) {
-          continue
-        }
-
-        const event = parseProgressEvent(line)
-        if (event) {
-          progressSink.update(label, event)
-        }
-      }
-    })
+  const benchmarkProgress = options?.benchmarkProgress
+  if (benchmarkProgress && (label === "ghx" || label === "direct")) {
+    benchmarkProgress.start(label)
   }
+
+  streamChildOutput(
+    child.stdout,
+    (line) => {
+      if (!benchmarkProgress || (label !== "ghx" && label !== "direct")) {
+        return false
+      }
+
+      const event = parseProgressEvent(line)
+      if (!event) {
+        return false
+      }
+
+      benchmarkProgress.update(label, event)
+      return true
+    },
+    (line) => {
+      if (options?.streamOutput) {
+        console.log(`[${label}] ${line}`)
+      }
+    },
+    (line) => pushTail(stdoutTail, line),
+  )
+
+  streamChildOutput(
+    child.stderr,
+    () => false,
+    (line) => {
+      if (options?.streamOutput) {
+        console.error(`[${label}] ${line}`)
+      }
+    },
+    (line) => pushTail(stderrTail, line),
+  )
 
   const done = new Promise<ExitResult>((resolveDone) => {
     let settled = false
@@ -282,11 +537,11 @@ function spawnCommand(
     }
 
     child.once("error", () => {
-      settle({ code: 1, signal: null })
+      settle({ code: 1, signal: null, command: commandString, stdoutTail, stderrTail })
     })
 
     child.once("exit", (code, signal) => {
-      settle({ code: code ?? 1, signal })
+      settle({ code: code ?? 1, signal, command: commandString, stdoutTail, stderrTail })
     })
   })
 
@@ -314,13 +569,29 @@ function buildBenchmarkCommand(base: BenchmarkBaseConfig, variant: BenchmarkVari
   }
 }
 
-async function runPhase(label: string, command: CommandConfig, cwd?: string): Promise<void> {
-  const run = spawnCommand(label, command, cwd ? { cwd } : undefined)
+async function runPhase(
+  label: Exclude<PhaseName, "benchmark">,
+  command: CommandConfig,
+  dashboard: SuiteDashboard,
+  options: {
+    cwd?: string
+    verbose: boolean
+  },
+): Promise<void> {
+  dashboard.startPhase(label)
+
+  const run = spawnCommand(label, command, {
+    ...(options.cwd ? { cwd: options.cwd } : {}),
+    streamOutput: options.verbose,
+  })
   const exit = await run.done
 
   if (exit.code !== 0) {
-    throw new Error(`${label} phase failed with exit code ${exit.code}`)
+    dashboard.completePhase(label, "failed")
+    throw new Error(formatFailure(label, exit))
   }
+
+  dashboard.completePhase(label, "ok")
 }
 
 function ensureSeedEnv(command: CommandConfig, seedId: string): CommandConfig {
@@ -339,26 +610,30 @@ function ensureSeedEnv(command: CommandConfig, seedId: string): CommandConfig {
 
 async function runParallelBenchmarks(
   benchmark: SuiteRunnerConfig["benchmark"],
-  cwd?: string,
+  dashboard: SuiteDashboard,
+  options: {
+    cwd?: string
+  },
 ): Promise<void> {
-  const progress = createProgressSink()
+  dashboard.startPhase("benchmark")
+
   const sharedEnv = {
     BENCH_PROGRESS_EVENTS: "jsonl",
   }
-  const baseOptions = cwd ? { cwd } : {}
 
   const ghxCommand = buildBenchmarkCommand(benchmark.base, benchmark.ghx)
   const directCommand = buildBenchmarkCommand(benchmark.base, benchmark.direct)
 
   const ghx = spawnCommand("ghx", ghxCommand, {
-    ...baseOptions,
+    ...(options.cwd ? { cwd: options.cwd } : {}),
     env: sharedEnv,
-    progressSink: progress,
+    benchmarkProgress: dashboard.benchmark,
   })
+
   const direct = spawnCommand("direct", directCommand, {
-    ...baseOptions,
+    ...(options.cwd ? { cwd: options.cwd } : {}),
     env: sharedEnv,
-    progressSink: progress,
+    benchmarkProgress: dashboard.benchmark,
   })
 
   let terminating = false
@@ -374,56 +649,105 @@ async function runParallelBenchmarks(
 
     terminating = true
     peer.child.kill("SIGTERM")
-    console.error(`[benchmark] ${failedLabel} failed with exit code ${failedResult.code}`)
   }
 
   const ghxDone = ghx.done.then((result) => {
-    progress.complete("ghx", result.code === 0 ? "ok" : "failed")
+    dashboard.benchmark.complete("ghx", result.code === 0 ? "ok" : "failed")
     maybeTerminatePeer("ghx", result, direct)
     return result
   })
 
   const directDone = direct.done.then((result) => {
-    progress.complete("direct", result.code === 0 ? "ok" : "failed")
+    dashboard.benchmark.complete("direct", result.code === 0 ? "ok" : "failed")
     maybeTerminatePeer("direct", result, ghx)
     return result
   })
 
   const [ghxResult, directResult] = await Promise.all([ghxDone, directDone])
-  progress.stop()
 
   if (ghxResult.code !== 0 || directResult.code !== 0) {
-    throw new Error(
-      `benchmark phase failed: ghx=${ghxResult.code}${ghxResult.signal ? ` (${ghxResult.signal})` : ""}, direct=${directResult.code}${directResult.signal ? ` (${directResult.signal})` : ""}`,
-    )
+    dashboard.completePhase("benchmark", "failed")
+
+    const failed = ghxResult.code !== 0 ? { label: "ghx", result: ghxResult } : { label: "direct", result: directResult }
+    throw new Error(formatFailure(failed.label, failed.result))
   }
+
+  dashboard.completePhase("benchmark", "ok")
+}
+
+function buildExecutionPlan(config: SuiteRunnerConfig, parsed: ParsedArgs): PhaseName[] {
+  const phases: PhaseName[] = []
+
+  const setup = config.fixtures?.setup
+  if (setup?.cleanup && !parsed.skipCleanup) {
+    phases.push("cleanup")
+  }
+
+  if (setup?.seed && !parsed.skipSeed) {
+    phases.push("seed")
+  }
+
+  phases.push("benchmark")
+  phases.push("report")
+
+  const shouldRunGate = parsed.runGate === null ? Boolean(config.reporting.analysis.gate) : parsed.runGate
+  if (shouldRunGate) {
+    phases.push("gate")
+  }
+
+  return phases
 }
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
   const parsed = parseArgs(argv)
-  const config = await loadSuiteRunnerConfig(resolve(parsed.configPath))
+  const resolvedConfigPath = resolve(parsed.configPath)
+  const config = await loadSuiteRunnerConfig(resolvedConfigPath)
   const cwd = config.cwd ? resolve(config.cwd) : undefined
   const generatedSeedId = `suite-seed-${Date.now()}`
 
-  const setup = config.fixtures?.setup
-  if (setup?.cleanup && !parsed.skipCleanup) {
-    await runPhase("cleanup", setup.cleanup, cwd)
-  }
+  const dashboard = createSuiteDashboard(parsed.verbose)
+  const phases = buildExecutionPlan(config, parsed)
+  dashboard.setPlan(phases)
 
-  if (setup?.seed && !parsed.skipSeed) {
-    await runPhase("seed", ensureSeedEnv(setup.seed, generatedSeedId), cwd)
-  }
-
-  await runParallelBenchmarks(config.benchmark, cwd)
-  await runPhase("report", config.reporting.analysis.report, cwd)
-
-  const gateConfig = config.reporting.analysis.gate
-  const shouldRunGate = parsed.runGate === null ? Boolean(gateConfig) : parsed.runGate
-  if (shouldRunGate) {
-    if (!gateConfig) {
-      throw new Error("Gate requested but no gate command configured")
+  try {
+    const setup = config.fixtures?.setup
+    if (setup?.cleanup && !parsed.skipCleanup) {
+      await runPhase("cleanup", setup.cleanup, dashboard, {
+        ...(cwd ? { cwd } : {}),
+        verbose: parsed.verbose,
+      })
     }
-    await runPhase("gate", gateConfig, cwd)
+
+    if (setup?.seed && !parsed.skipSeed) {
+      await runPhase("seed", ensureSeedEnv(setup.seed, generatedSeedId), dashboard, {
+        ...(cwd ? { cwd } : {}),
+        verbose: parsed.verbose,
+      })
+    }
+
+    await runParallelBenchmarks(config.benchmark, dashboard, {
+      ...(cwd ? { cwd } : {}),
+    })
+
+    await runPhase("report", config.reporting.analysis.report, dashboard, {
+      ...(cwd ? { cwd } : {}),
+      verbose: parsed.verbose,
+    })
+
+    const gateConfig = config.reporting.analysis.gate
+    const shouldRunGate = parsed.runGate === null ? Boolean(gateConfig) : parsed.runGate
+    if (shouldRunGate) {
+      if (!gateConfig) {
+        throw new Error("Gate requested but no gate command configured")
+      }
+
+      await runPhase("gate", gateConfig, dashboard, {
+        ...(cwd ? { cwd } : {}),
+        verbose: parsed.verbose,
+      })
+    }
+  } finally {
+    dashboard.stop()
   }
 }
 
