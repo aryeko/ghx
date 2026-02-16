@@ -18,6 +18,7 @@
     "benchmark": "tsx src/cli/benchmark.ts run",
     "fixtures": "tsx src/cli/fixtures.ts",
     "fixtures:env:bootstrap": "bash scripts/bootstrap-fixture-app-env.sh",
+    "suite:pr-exec": "bash scripts/run-pr-exec-suite.sh",
     "check:scenarios": "tsx src/cli/check-scenarios.ts",
     "report": "tsx src/cli/report.ts",
     "report:gate": "pnpm run report -- --gate",
