@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process"
-import { mkdtemp, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { beforeEach, describe, expect, it, vi } from "vitest"
@@ -541,6 +541,23 @@ describe("runSuite", () => {
 
     accessMock.mockRejectedValueOnce(new Error("missing default fixture manifest"))
     accessMock.mockRejectedValueOnce(new Error("still missing before seed"))
+    seedFixtureManifestMock.mockImplementation(async ({ outFile }: { outFile: string }) => {
+      await mkdir("fixtures", { recursive: true })
+      await writeFile(
+        outFile,
+        JSON.stringify({
+          version: 1,
+          repo: {
+            owner: "aryeko",
+            name: "ghx-bench-fixtures",
+            full_name: "aryeko/ghx-bench-fixtures",
+            default_branch: "main",
+          },
+          resources: {},
+        }),
+        "utf8",
+      )
+    })
 
     const mod = await import("../../src/runner/suite-runner.js")
     await mod.runSuite({
