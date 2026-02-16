@@ -32,6 +32,14 @@ describe("fixture seed", () => {
       if (joined.includes("repos/aryeko/ghx-bench-fixtures/issues --method POST")) {
         return {
           status: 0,
+          stdout: JSON.stringify({ id: 12345, number: 42, html_url: "https://github.com/aryeko/ghx-bench-fixtures/issues/42" }),
+          stderr: "",
+        }
+      }
+
+      if (joined.includes("issue view 42 --repo aryeko/ghx-bench-fixtures --json id,number,url")) {
+        return {
+          status: 0,
           stdout: JSON.stringify({ id: "I_seed", number: 42, url: "https://github.com/aryeko/ghx-bench-fixtures/issues/42" }),
           stderr: "",
         }

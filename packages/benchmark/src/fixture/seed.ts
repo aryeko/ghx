@@ -147,17 +147,25 @@ function findOrCreateIssue(repo: string, seedLabel: string): { id: string; numbe
   ])
 
   const createdIssue = createResult as Record<string, unknown>
-  const createdUrl =
-    typeof createdIssue.html_url === "string"
-      ? createdIssue.html_url
-      : typeof createdIssue.url === "string"
-        ? createdIssue.url
-        : ""
+  const createdNumber = Number(createdIssue.number)
+  if (!Number.isInteger(createdNumber) || createdNumber <= 0) {
+    throw new Error("failed to create fixture issue")
+  }
+
+  const resolvedIssue = runGhJson([
+    "issue",
+    "view",
+    String(createdNumber),
+    "--repo",
+    repo,
+    "--json",
+    "id,number,url",
+  ]) as Record<string, unknown>
 
   return {
-    id: String(createdIssue.id),
-    number: Number(createdIssue.number),
-    url: createdUrl
+    id: String(resolvedIssue.id),
+    number: Number(resolvedIssue.number),
+    url: String(resolvedIssue.url),
   }
 }
 
