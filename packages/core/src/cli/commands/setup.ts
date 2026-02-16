@@ -2,8 +2,11 @@ import { access, appendFile, mkdir, readFile, writeFile } from "node:fs/promises
 import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import readline from "node:readline/promises"
+import { fileURLToPath } from "node:url"
 
 import { Ajv } from "ajv"
+import type { ErrorCode } from "../../core/errors/codes.js"
+import { errorCodes } from "../../core/errors/codes.js"
 
 type SetupScope = "user" | "project"
 
@@ -14,6 +17,8 @@ type SetupOptions = {
   verifyOnly: boolean
   track: boolean
 }
+
+type SetupError = Error & { code?: ErrorCode }
 
 const ajv = new Ajv({ allErrors: true, strict: false })
 
@@ -35,23 +40,46 @@ const setupOptionsSchema = {
 
 const validateSetupOptions = ajv.compile(setupOptionsSchema)
 
-const SKILL_CONTENT = `# ghx skill
+const setupCommandDirectory = dirname(fileURLToPath(import.meta.url))
+const setupSkillAssetPathCandidates = [
+  join(setupCommandDirectory, "..", "assets", "skills", "ghx", "SKILL.md"),
+  join(setupCommandDirectory, "assets", "skills", "ghx", "SKILL.md"),
+  join(setupCommandDirectory, "cli", "assets", "skills", "ghx", "SKILL.md"),
+]
 
-Use ghx capabilities to execute GitHub operations through a stable capability interface.
+function isENOENT(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "ENOENT"
+  )
+}
 
-Session bootstrap (run once at start):
-- gh auth status
+function createSetupError(message: string, code: ErrorCode): SetupError {
+  const error = new Error(message) as SetupError
+  error.code = code
+  return error
+}
 
-If bootstrap fails, stop and request authentication before continuing.
+async function loadSetupSkillContent(): Promise<string> {
+  for (const candidatePath of setupSkillAssetPathCandidates) {
+    try {
+      return await readFile(candidatePath, "utf8")
+    } catch (error) {
+      if (isENOENT(error)) {
+        continue
+      }
 
-Quick commands:
-- ghx capabilities list
-- ghx capabilities explain <capability_id>
-- GHX_SKIP_GH_PREFLIGHT=1 ghx run <capability_id> --input '<json>'
+      throw error
+    }
+  }
 
-Example:
-- GHX_SKIP_GH_PREFLIGHT=1 ghx run repo.view --input '{"owner":"aryeko","name":"ghx"}'
-`
+  throw createSetupError(
+    `Setup skill asset not found. Checked: ${setupSkillAssetPathCandidates.join(", ")}`,
+    errorCodes.NotFound,
+  )
+}
 
 function usage(): string {
   return "Usage: ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]"
@@ -103,7 +131,7 @@ function parseArgs(argv: string[]): SetupOptions | null {
 
 function resolveSkillPath(scope: SetupScope): string {
   const base = scope === "user" ? homedir() : process.cwd()
-  return join(base, ".agents", "skill", "ghx", "SKILL.md")
+  return join(base, ".agents", "skills", "ghx", "SKILL.md")
 }
 
 function resolveTrackingPath(): string {
@@ -159,10 +187,8 @@ async function verifySkill(skillPath: string): Promise<boolean> {
     const content = await readFile(skillPath, "utf8")
     return content.includes("ghx capabilities")
   } catch (error) {
-    if (typeof error === "object" && error !== null && "code" in error) {
-      if ((error as { code?: string }).code === "ENOENT") {
-        return false
-      }
+    if (isENOENT(error)) {
+      return false
     }
 
     throw error
@@ -174,10 +200,8 @@ async function skillFileExists(skillPath: string): Promise<boolean> {
     await access(skillPath)
     return true
   } catch (error) {
-    if (typeof error === "object" && error !== null && "code" in error) {
-      if ((error as { code?: string }).code === "ENOENT") {
-        return false
-      }
+    if (isENOENT(error)) {
+      return false
     }
 
     throw error
@@ -227,8 +251,9 @@ export async function setupCommand(argv: string[] = []): Promise<number> {
       }
     }
 
+    const skillContent = await loadSetupSkillContent()
     await mkdir(dirname(skillPath), { recursive: true })
-    await writeFile(skillPath, SKILL_CONTENT, "utf8")
+    await writeFile(skillPath, skillContent, "utf8")
 
     process.stdout.write(`Setup complete: wrote ${skillPath}\n`)
     process.stdout.write("Try: ghx capabilities list\n")

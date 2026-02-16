@@ -41,7 +41,7 @@ describe("setupCommand interactive overwrite", () => {
     const { setupCommand } = await import("../../src/cli/commands/setup.js")
     await setupCommand(["--scope", "user", "--yes"])
 
-    const skillPath = join(tempRoot, ".agents", "skill", "ghx", "SKILL.md")
+    const skillPath = join(tempRoot, ".agents", "skills", "ghx", "SKILL.md")
     writeFileSync(skillPath, "custom content", "utf8")
 
     Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true })
@@ -50,7 +50,7 @@ describe("setupCommand interactive overwrite", () => {
     const code = await setupCommand(["--scope", "user"])
 
     expect(code).toBe(0)
-    expect(readFileSync(skillPath, "utf8")).toContain("Use ghx capabilities")
+    expect(readFileSync(skillPath, "utf8")).toContain("## Result Handling Rules")
   })
 
   it("keeps existing skill when interactive prompt declines", async () => {
@@ -69,7 +69,7 @@ describe("setupCommand interactive overwrite", () => {
     const { setupCommand } = await import("../../src/cli/commands/setup.js")
     await setupCommand(["--scope", "user", "--yes"])
 
-    const skillPath = join(tempRoot, ".agents", "skill", "ghx", "SKILL.md")
+    const skillPath = join(tempRoot, ".agents", "skills", "ghx", "SKILL.md")
     writeFileSync(skillPath, "custom content", "utf8")
 
     Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true })

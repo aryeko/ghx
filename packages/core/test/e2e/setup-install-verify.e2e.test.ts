@@ -89,9 +89,9 @@ describe("ghx setup e2e install/verify", () => {
       expect(setup.status).toBe(0)
       expect(setup.stdout).toContain("Setup complete")
 
-      const skillPath = join(projectDir, ".agents", "skill", "ghx", "SKILL.md")
+      const skillPath = join(projectDir, ".agents", "skills", "ghx", "SKILL.md")
       const skillContent = readFileSync(skillPath, "utf8")
-      expect(skillContent).toContain("ghx capabilities")
+      expect(skillContent).toContain("## Session Bootstrap (run once)")
 
       const verifyAfter = run(
         "pnpm",
