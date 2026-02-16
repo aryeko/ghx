@@ -52,7 +52,7 @@ export type GateThresholds = {
   minOutputValidityRatePct: number
 }
 
-type GateV2Thresholds = {
+export type GateV2Thresholds = {
   minTokensActiveReductionPct: number
   minLatencyReductionPct: number
   minToolCallReductionPct: number
@@ -64,6 +64,8 @@ type GateV2Thresholds = {
   maxRetryRatePct: number
   minSamplesPerScenarioPerMode: number
 }
+
+export type GateV2ThresholdMap = Record<GateProfile, GateV2Thresholds>
 
 type GateV2Reliability = {
   successRateDeltaPct: number
@@ -113,7 +115,7 @@ const DEFAULT_THRESHOLDS: GateThresholds = {
   minOutputValidityRatePct: 99,
 }
 
-const GATE_V2_THRESHOLDS: Record<GateProfile, GateV2Thresholds> = {
+export const DEFAULT_GATE_V2_THRESHOLDS: GateV2ThresholdMap = {
   verify_pr: {
     minTokensActiveReductionPct: 15,
     minLatencyReductionPct: 15,
@@ -310,8 +312,9 @@ function buildGateV2(
   modeSummaries: Partial<Record<BenchmarkMode, ModeSummary>>,
   grouped: Partial<Record<BenchmarkMode, BenchmarkRow[]>>,
   profile: GateProfile,
+  gateV2Thresholds: GateV2ThresholdMap,
 ): GateV2Summary {
-  const thresholds = GATE_V2_THRESHOLDS[profile]
+  const thresholds = gateV2Thresholds[profile]
   const agentDirect = modeSummaries.agent_direct
   const ghxRouter = modeSummaries.ghx
 
@@ -418,6 +421,7 @@ export function buildSummary(
   rows: BenchmarkRow[],
   thresholds: GateThresholds = DEFAULT_THRESHOLDS,
   gateProfile: GateProfile = "verify_pr",
+  gateV2Thresholds: GateV2ThresholdMap = DEFAULT_GATE_V2_THRESHOLDS,
 ): BenchmarkSummary {
   const grouped: Partial<Record<BenchmarkMode, BenchmarkRow[]>> = {}
   for (const row of rows) {
@@ -500,7 +504,7 @@ export function buildSummary(
       passed: checks.length > 0 && checks.every((check) => check.passed),
       checks,
     },
-    gateV2: buildGateV2(modeSummaries, grouped, gateProfile),
+    gateV2: buildGateV2(modeSummaries, grouped, gateProfile, gateV2Thresholds),
   }
 }
 
