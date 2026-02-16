@@ -11,6 +11,10 @@ type SeedOptions = {
   seedId: string
 }
 
+const FAILED_RERUN_WORKFLOW_FILE = process.env.BENCH_FIXTURE_FAILED_RERUN_WORKFLOW ?? "bench-rerun-failed.yml"
+const FAILED_RERUN_POLL_INTERVAL_MS = 2000
+const FAILED_RERUN_TIMEOUT_MS = 90_000
+
 function runGh(args: string[]): string {
   const result = spawnSync("gh", args, {
     encoding: "utf8"
@@ -91,6 +95,10 @@ function parseArrayResponse(value: unknown): unknown[] {
   }
 
   return []
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 function findOrCreateIssue(repo: string, seedLabel: string): { id: string; number: number; url: string } {
@@ -420,6 +428,138 @@ function parseWorkflowRunIdFromLink(link: string): number | null {
   return Number.isInteger(runId) && runId > 0 ? runId : null
 }
 
+function parseWorkflowRunCreatedAtMs(entry: Record<string, unknown>): number {
+  const createdAt = typeof entry.createdAt === "string" ? Date.parse(entry.createdAt) : Number.NaN
+  return Number.isFinite(createdAt) ? createdAt : 0
+}
+
+function findDispatchedFailedRunId(repo: string, seedId: string, dispatchedAtMs: number): number | null {
+  const listResult = tryRunGhJson([
+    "run",
+    "list",
+    "--repo",
+    repo,
+    "--workflow",
+    FAILED_RERUN_WORKFLOW_FILE,
+    "--event",
+    "workflow_dispatch",
+    "--limit",
+    "20",
+    "--json",
+    "databaseId,displayTitle,createdAt",
+  ])
+
+  const runs = parseArrayResponse(listResult)
+    .filter((entry): entry is Record<string, unknown> => typeof entry === "object" && entry !== null)
+    .sort((left, right) => parseWorkflowRunCreatedAtMs(right) - parseWorkflowRunCreatedAtMs(left))
+
+  const tagged = runs.find((entry) => {
+    const title = typeof entry.displayTitle === "string" ? entry.displayTitle : ""
+    return title.includes(seedId)
+  })
+
+  if (tagged && Number.isInteger(Number(tagged.databaseId)) && Number(tagged.databaseId) > 0) {
+    return Number(tagged.databaseId)
+  }
+
+  const nearDispatch = runs.find((entry) => {
+    const createdAtMs = parseWorkflowRunCreatedAtMs(entry)
+    return createdAtMs >= dispatchedAtMs - 10_000
+  })
+
+  if (nearDispatch && Number.isInteger(Number(nearDispatch.databaseId)) && Number(nearDispatch.databaseId) > 0) {
+    return Number(nearDispatch.databaseId)
+  }
+
+  return null
+}
+
+function readWorkflowRunJobId(repo: string, runId: number): number | null {
+  const jobsResult = runGhJson([
+    "run",
+    "view",
+    String(runId),
+    "--repo",
+    repo,
+    "--json",
+    "jobs"
+  ])
+  const jobs = Array.isArray((jobsResult as { jobs?: unknown[] }).jobs) ? (jobsResult as { jobs: unknown[] }).jobs : []
+  const failedJob = jobs.find((entry) => {
+    if (typeof entry !== "object" || entry === null) {
+      return false
+    }
+
+    const conclusion = String((entry as Record<string, unknown>).conclusion ?? "").toLowerCase()
+    return conclusion === "failure"
+  })
+  const selectedJob = failedJob ?? jobs[0]
+
+  return typeof selectedJob === "object" && selectedJob !== null && typeof (selectedJob as Record<string, unknown>).databaseId === "number"
+    ? Number((selectedJob as Record<string, unknown>).databaseId)
+    : null
+}
+
+async function ensureFailedRerunWorkflowRun(repo: string, seedId: string): Promise<{ id: number; job_id: number | null } | null> {
+  const dispatchedAtMs = Date.now()
+  const dispatchOutput = tryRunGh([
+    "workflow",
+    "run",
+    FAILED_RERUN_WORKFLOW_FILE,
+    "--repo",
+    repo,
+    "-f",
+    `seed_id=${seedId}`,
+  ])
+
+  if (dispatchOutput === null) {
+    return null
+  }
+
+  const deadline = dispatchedAtMs + FAILED_RERUN_TIMEOUT_MS
+  while (Date.now() < deadline) {
+    const runId = findDispatchedFailedRunId(repo, seedId, dispatchedAtMs)
+    if (runId === null) {
+      await sleep(FAILED_RERUN_POLL_INTERVAL_MS)
+      continue
+    }
+
+    const runResult = tryRunGhJson([
+      "run",
+      "view",
+      String(runId),
+      "--repo",
+      repo,
+      "--json",
+      "status,conclusion",
+    ])
+    if (typeof runResult !== "object" || runResult === null) {
+      await sleep(FAILED_RERUN_POLL_INTERVAL_MS)
+      continue
+    }
+
+    const status = String((runResult as Record<string, unknown>).status ?? "").toLowerCase()
+    const conclusion = String((runResult as Record<string, unknown>).conclusion ?? "").toLowerCase()
+    if (status !== "completed") {
+      await sleep(FAILED_RERUN_POLL_INTERVAL_MS)
+      continue
+    }
+
+    if (conclusion !== "failure") {
+      throw new Error(
+        `expected failed rerun fixture workflow to conclude with failure; got conclusion=${conclusion || "unknown"}`
+      )
+    }
+
+    return {
+      id: runId,
+      job_id: readWorkflowRunJobId(repo, runId)
+    }
+  }
+
+  throw new Error(`timed out waiting for failed rerun fixture workflow (${FAILED_RERUN_WORKFLOW_FILE})`)
+}
+
 function findLatestWorkflowRun(repo: string, prNumber: number): { id: number; job_id: number | null } | null {
   const prChecksResult = tryRunGhJson([
     "pr",
@@ -638,7 +778,7 @@ function ensureProjectFixture(
   }
 }
 
-function buildManifest(repo: string, seedId: string): FixtureManifest {
+async function buildManifest(repo: string, seedId: string): Promise<FixtureManifest> {
   const { owner, name } = parseRepo(repo)
   const seedLabel = `bench-seed:${seedId}`
 
@@ -651,7 +791,17 @@ function buildManifest(repo: string, seedId: string): FixtureManifest {
   const pr = findSeededPr(repo, seedLabel) ?? createSeedPr(repo, seedId, seedLabel)
   createMainlineFixtureCommit(repo, seedId)
   const prThreadId = ensurePrThread(repo, pr.number, seedId)
-  const workflowRun = findLatestWorkflowRun(repo, pr.number)
+  let workflowRun: { id: number; job_id: number | null } | null = null
+  try {
+    workflowRun = await ensureFailedRerunWorkflowRun(repo, seedId)
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.warn(`warning: failed rerun fixture workflow unavailable (${message}); falling back to latest workflow run`)
+  }
+
+  if (!workflowRun) {
+    workflowRun = findLatestWorkflowRun(repo, pr.number)
+  }
   const release = findLatestDraftRelease(repo)
   let project: { number: number; id: string; item_id: string; field_id: string; option_id: string }
   try {
@@ -710,7 +860,7 @@ function buildManifest(repo: string, seedId: string): FixtureManifest {
 }
 
 export async function seedFixtureManifest(options: SeedOptions): Promise<FixtureManifest> {
-  const manifest = buildManifest(options.repo, options.seedId)
+  const manifest = await buildManifest(options.repo, options.seedId)
   await mkdir(dirname(options.outFile), { recursive: true })
   await writeFile(options.outFile, `${JSON.stringify(manifest, null, 2)}\n`, "utf8")
   return manifest
