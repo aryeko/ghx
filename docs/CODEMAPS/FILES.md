@@ -1,6 +1,6 @@
 # File Codemap
 
-**Last Updated:** 2026-02-15
+**Last Updated:** 2026-02-16
 
 ## Repository Layout
 
@@ -35,6 +35,12 @@ ghx/
 │       ├── results/
 │       ├── reports/
 │       └── test/
+├── .github/
+│   ├── dependabot.yml
+│   └── workflows/
+├── .npmrc
+├── biome.json
+├── lefthook.yml
 ├── nx.json
 ├── package.json
 └── pnpm-workspace.yaml
@@ -44,10 +50,16 @@ ghx/
 
 ### Workspace + Build System
 
-- `package.json` - root scripts for build/lint/test/typecheck/benchmark
-- `pnpm-workspace.yaml` - workspace package discovery (`packages/*`)
+- `package.json` - root scripts for build/format/lint/test/typecheck/benchmark
+- `pnpm-workspace.yaml` - workspace package discovery (`packages/*`) + pnpm catalog for shared devDependencies
 - `nx.json` - Nx task orchestration configuration
+- `biome.json` - Biome formatter configuration (formatting + import sorting)
+- `lefthook.yml` - pre-commit hooks (format, lint, typecheck)
+- `.npmrc` - pnpm settings (`strict-peer-dependencies`, `auto-install-peers`)
+- `.github/dependabot.yml` - automated dependency update PRs (npm + GitHub Actions)
 - `.changeset/*.md` - release notes/versioning entries for publish flow
+- `packages/core/tsup.config.ts` - core package build configuration
+- `packages/benchmark/tsup.config.ts` - benchmark package build configuration
 
 ### Core Router Package (`packages/core`)
 
