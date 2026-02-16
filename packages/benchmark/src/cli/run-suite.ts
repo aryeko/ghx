@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process"
 import { readFile } from "node:fs/promises"
-import { pathToFileURL } from "node:url"
 import { resolve } from "node:path"
+import { pathToFileURL } from "node:url"
 
 import { z } from "zod"
 
@@ -10,20 +10,48 @@ const commandSchema = z.object({
   env: z.record(z.string()).optional(),
 })
 
+const benchmarkBaseSchema = z.object({
+  command: z.array(z.string().min(1)).min(1),
+  repetitions: z.number().int().positive(),
+  scenarioSet: z.string().min(1).optional(),
+  env: z.record(z.string()).optional(),
+})
+
+const benchmarkVariantSchema = z.object({
+  mode: z.enum(["ghx", "agent_direct"]),
+  args: z.array(z.string()).optional(),
+  env: z.record(z.string()).optional(),
+})
+
 const suiteRunnerConfigSchema = z.object({
-  cleanup: commandSchema.optional(),
-  seed: commandSchema.optional(),
+  fixtures: z
+    .object({
+      setup: z
+        .object({
+          cleanup: commandSchema.optional(),
+          seed: commandSchema.optional(),
+        })
+        .optional(),
+    })
+    .optional(),
   benchmark: z.object({
-    ghx: commandSchema,
-    direct: commandSchema,
+    base: benchmarkBaseSchema,
+    ghx: benchmarkVariantSchema,
+    direct: benchmarkVariantSchema,
   }),
-  report: commandSchema,
-  gate: commandSchema.optional(),
+  reporting: z.object({
+    analysis: z.object({
+      report: commandSchema,
+      gate: commandSchema.optional(),
+    }),
+  }),
   cwd: z.string().min(1).optional(),
 })
 
 type CommandConfig = z.infer<typeof commandSchema>
 type SuiteRunnerConfig = z.infer<typeof suiteRunnerConfigSchema>
+type BenchmarkBaseConfig = z.infer<typeof benchmarkBaseSchema>
+type BenchmarkVariantConfig = z.infer<typeof benchmarkVariantSchema>
 
 type ParsedArgs = {
   configPath: string
@@ -268,6 +296,24 @@ function spawnCommand(
   }
 }
 
+function buildBenchmarkCommand(base: BenchmarkBaseConfig, variant: BenchmarkVariantConfig): CommandConfig {
+  const args = [...base.command, variant.mode, String(base.repetitions)]
+  if (base.scenarioSet) {
+    args.push("--scenario-set", base.scenarioSet)
+  }
+  if (variant.args) {
+    args.push(...variant.args)
+  }
+
+  return {
+    command: args,
+    env: {
+      ...(base.env ?? {}),
+      ...(variant.env ?? {}),
+    },
+  }
+}
+
 async function runPhase(label: string, command: CommandConfig, cwd?: string): Promise<void> {
   const run = spawnCommand(label, command, cwd ? { cwd } : undefined)
   const exit = await run.done
@@ -287,12 +333,15 @@ async function runParallelBenchmarks(
   }
   const baseOptions = cwd ? { cwd } : {}
 
-  const ghx = spawnCommand("ghx", benchmark.ghx, {
+  const ghxCommand = buildBenchmarkCommand(benchmark.base, benchmark.ghx)
+  const directCommand = buildBenchmarkCommand(benchmark.base, benchmark.direct)
+
+  const ghx = spawnCommand("ghx", ghxCommand, {
     ...baseOptions,
     env: sharedEnv,
     progressSink: progress,
   })
-  const direct = spawnCommand("direct", benchmark.direct, {
+  const direct = spawnCommand("direct", directCommand, {
     ...baseOptions,
     env: sharedEnv,
     progressSink: progress,
@@ -341,23 +390,25 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   const config = await loadSuiteRunnerConfig(resolve(parsed.configPath))
   const cwd = config.cwd ? resolve(config.cwd) : undefined
 
-  if (config.cleanup && !parsed.skipCleanup) {
-    await runPhase("cleanup", config.cleanup, cwd)
+  const setup = config.fixtures?.setup
+  if (setup?.cleanup && !parsed.skipCleanup) {
+    await runPhase("cleanup", setup.cleanup, cwd)
   }
 
-  if (config.seed && !parsed.skipSeed) {
-    await runPhase("seed", config.seed, cwd)
+  if (setup?.seed && !parsed.skipSeed) {
+    await runPhase("seed", setup.seed, cwd)
   }
 
   await runParallelBenchmarks(config.benchmark, cwd)
-  await runPhase("report", config.report, cwd)
+  await runPhase("report", config.reporting.analysis.report, cwd)
 
-  const shouldRunGate = parsed.runGate === null ? Boolean(config.gate) : parsed.runGate
+  const gateConfig = config.reporting.analysis.gate
+  const shouldRunGate = parsed.runGate === null ? Boolean(gateConfig) : parsed.runGate
   if (shouldRunGate) {
-    if (!config.gate) {
+    if (!gateConfig) {
       throw new Error("Gate requested but no gate command configured")
     }
-    await runPhase("gate", config.gate, cwd)
+    await runPhase("gate", gateConfig, cwd)
   }
 }
 

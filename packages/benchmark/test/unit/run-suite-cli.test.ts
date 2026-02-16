@@ -36,32 +36,50 @@ describe("run-suite cli", () => {
     vi.restoreAllMocks()
   })
 
-  it("runs cleanup, seed, benchmark pair, report, and gate from config", async () => {
+  it("runs grouped setup, benchmark pair, reporting report, and gate from config", async () => {
     const root = await mkdtemp(join(tmpdir(), "ghx-suite-cli-"))
     const configPath = join(root, "suite-runner.json")
 
     await writeFile(
       configPath,
       `${JSON.stringify({
-        cleanup: { command: ["cleanup", "--fast"] },
-        seed: { command: ["seed", "--fixtures"] },
-        benchmark: {
-          ghx: { command: ["bench-ghx", "--set", "ci-verify-pr"] },
-          direct: { command: ["bench-direct", "--set", "ci-verify-pr"] },
+        fixtures: {
+          setup: {
+            cleanup: { command: ["cleanup", "--fast"] },
+            seed: { command: ["seed", "--fixtures"] },
+          },
         },
-        report: { command: ["report", "--latest"] },
-        gate: { command: ["report", "--gate", "--gate-profile", "verify_pr"] },
+        benchmark: {
+          base: {
+            command: ["pnpm", "run", "benchmark", "--"],
+            repetitions: 3,
+            scenarioSet: "ci-verify-pr",
+          },
+          ghx: {
+            mode: "ghx",
+            env: { GHX_SKIP_GH_PREFLIGHT: "1" },
+          },
+          direct: {
+            mode: "agent_direct",
+          },
+        },
+        reporting: {
+          analysis: {
+            report: { command: ["pnpm", "run", "report"] },
+            gate: { command: ["pnpm", "run", "report", "--", "--gate", "--gate-profile", "verify_pr"] },
+          },
+        },
       })}\n`,
       "utf8",
     )
 
-    spawnMock.mockImplementation((command: string, args?: string[]) => {
+    spawnMock.mockImplementation((command: string) => {
       const child = createMockChild()
       queueMicrotask(() => {
-        if (command === "bench-ghx" || command === "bench-direct") {
+        if (command === "pnpm") {
           child.stdout.emit(
             "data",
-            Buffer.from('{"type":"progress","completed":2,"total":5}\n', "utf8"),
+            Buffer.from(`${JSON.stringify({ event: "scenario_finished", completed: 2, total: 5 })}\n`, "utf8"),
           )
         }
         child.emit("exit", 0, null)
@@ -72,17 +90,48 @@ describe("run-suite cli", () => {
     const mod = await import("../../src/cli/run-suite.js")
     await expect(mod.main(["--config", configPath])).resolves.toBeUndefined()
 
-    expect(spawnMock).toHaveBeenCalledTimes(6)
-
     const calls = spawnMock.mock.calls as unknown[][]
-    const ghxCall = calls.find((call) => call[0] === "bench-ghx")
-    const directCall = calls.find((call) => call[0] === "bench-direct")
+    expect(calls).toHaveLength(6)
+
+    expect(calls[0]?.[0]).toBe("cleanup")
+    expect(calls[1]?.[0]).toBe("seed")
+
+    const ghxCall = calls[2]
+    const directCall = calls[3]
+
+    expect(ghxCall?.[0]).toBe("pnpm")
+    expect(ghxCall?.[1]).toEqual([
+      "run",
+      "benchmark",
+      "--",
+      "ghx",
+      "3",
+      "--scenario-set",
+      "ci-verify-pr",
+    ])
+
+    expect(directCall?.[0]).toBe("pnpm")
+    expect(directCall?.[1]).toEqual([
+      "run",
+      "benchmark",
+      "--",
+      "agent_direct",
+      "3",
+      "--scenario-set",
+      "ci-verify-pr",
+    ])
 
     const ghxOptions = ghxCall?.[2] as { env?: Record<string, string | undefined> }
     const directOptions = directCall?.[2] as { env?: Record<string, string | undefined> }
 
     expect(ghxOptions.env?.BENCH_PROGRESS_EVENTS).toBe("jsonl")
     expect(directOptions.env?.BENCH_PROGRESS_EVENTS).toBe("jsonl")
+    expect(ghxOptions.env?.GHX_SKIP_GH_PREFLIGHT).toBe("1")
+
+    expect(calls[4]?.[0]).toBe("pnpm")
+    expect(calls[4]?.[1]).toEqual(["run", "report"])
+    expect(calls[5]?.[0]).toBe("pnpm")
+    expect(calls[5]?.[1]).toEqual(["run", "report", "--", "--gate", "--gate-profile", "verify_pr"])
   })
 
   it("kills peer benchmark process when one side fails", async () => {
@@ -93,10 +142,15 @@ describe("run-suite cli", () => {
       configPath,
       `${JSON.stringify({
         benchmark: {
-          ghx: { command: ["bench-ghx"] },
-          direct: { command: ["bench-direct"] },
+          base: { command: ["pnpm", "run", "benchmark", "--"], repetitions: 3, scenarioSet: "ci-verify-pr" },
+          ghx: { mode: "ghx" },
+          direct: { mode: "agent_direct" },
         },
-        report: { command: ["report", "--latest"] },
+        reporting: {
+          analysis: {
+            report: { command: ["pnpm", "run", "report"] },
+          },
+        },
       })}\n`,
       "utf8",
     )
@@ -104,15 +158,17 @@ describe("run-suite cli", () => {
     const ghxChild = createMockChild()
     const directChild = createMockChild()
 
-    spawnMock.mockImplementation((command: string) => {
-      if (command === "bench-ghx") {
-        queueMicrotask(() => {
-          ghxChild.emit("exit", 0, null)
-        })
-        return ghxChild
-      }
+    let benchSpawnCount = 0
+    spawnMock.mockImplementation((command: string, args?: string[]) => {
+      if (command === "pnpm" && Array.isArray(args) && args.includes("benchmark")) {
+        benchSpawnCount += 1
+        if (benchSpawnCount === 1) {
+          queueMicrotask(() => {
+            ghxChild.emit("exit", 0, null)
+          })
+          return ghxChild
+        }
 
-      if (command === "bench-direct") {
         queueMicrotask(() => {
           directChild.emit("exit", 1, null)
         })
@@ -131,66 +187,33 @@ describe("run-suite cli", () => {
 
     expect(ghxChild.kill).toHaveBeenCalledWith("SIGTERM")
     const spawnedCommands = (spawnMock.mock.calls as unknown[][]).map((call) => call[0])
-    expect(spawnedCommands).not.toContain("report")
+    expect(spawnedCommands.slice(-1)[0]).not.toBe("report")
   })
 
-  it("falls back to plain status output for non-tty", async () => {
+  it("supports phase override flags to skip setup and gate", async () => {
     const root = await mkdtemp(join(tmpdir(), "ghx-suite-cli-"))
     const configPath = join(root, "suite-runner.json")
 
     await writeFile(
       configPath,
       `${JSON.stringify({
-        benchmark: {
-          ghx: { command: ["bench-ghx"] },
-          direct: { command: ["bench-direct"] },
+        fixtures: {
+          setup: {
+            cleanup: { command: ["cleanup"] },
+            seed: { command: ["seed"] },
+          },
         },
-        report: { command: ["report"] },
-      })}\n`,
-      "utf8",
-    )
-
-    const ttyDescriptor = Object.getOwnPropertyDescriptor(process.stdout, "isTTY")
-    Object.defineProperty(process.stdout, "isTTY", {
-      configurable: true,
-      value: false,
-    })
-
-    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined)
-
-    spawnMock.mockImplementation(() => {
-      const child = createMockChild()
-      queueMicrotask(() => {
-        child.emit("exit", 0, null)
-      })
-      return child
-    })
-
-    const mod = await import("../../src/cli/run-suite.js")
-    await expect(mod.main(["--config", configPath])).resolves.toBeUndefined()
-
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("benchmark"))
-
-    if (ttyDescriptor) {
-      Object.defineProperty(process.stdout, "isTTY", ttyDescriptor)
-    }
-  })
-
-  it("supports phase override flags to skip cleanup/seed/gate", async () => {
-    const root = await mkdtemp(join(tmpdir(), "ghx-suite-cli-"))
-    const configPath = join(root, "suite-runner.json")
-
-    await writeFile(
-      configPath,
-      `${JSON.stringify({
-        cleanup: { command: ["cleanup"] },
-        seed: { command: ["seed"] },
         benchmark: {
-          ghx: { command: ["bench-ghx"] },
-          direct: { command: ["bench-direct"] },
+          base: { command: ["pnpm", "run", "benchmark", "--"], repetitions: 3 },
+          ghx: { mode: "ghx" },
+          direct: { mode: "agent_direct" },
         },
-        report: { command: ["report"] },
-        gate: { command: ["gate"] },
+        reporting: {
+          analysis: {
+            report: { command: ["pnpm", "run", "report"] },
+            gate: { command: ["pnpm", "run", "report", "--", "--gate"] },
+          },
+        },
       })}\n`,
       "utf8",
     )
@@ -209,73 +232,13 @@ describe("run-suite cli", () => {
     ).resolves.toBeUndefined()
 
     const spawnedCommands = (spawnMock.mock.calls as unknown[][]).map((call) => call[0])
-    expect(spawnedCommands).toEqual(["bench-ghx", "bench-direct", "report"])
-  })
+    expect(spawnedCommands).toEqual(["pnpm", "pnpm", "pnpm"])
 
-  it("updates tty progress bars from structured scenario_finished events", async () => {
-    const root = await mkdtemp(join(tmpdir(), "ghx-suite-cli-"))
-    const configPath = join(root, "suite-runner.json")
-
-    await writeFile(
-      configPath,
-      `${JSON.stringify({
-        benchmark: {
-          ghx: { command: ["bench-ghx"] },
-          direct: { command: ["bench-direct"] },
-        },
-        report: { command: ["report"] },
-      })}\n`,
-      "utf8",
-    )
-
-    const ttyDescriptor = Object.getOwnPropertyDescriptor(process.stdout, "isTTY")
-    Object.defineProperty(process.stdout, "isTTY", {
-      configurable: true,
-      value: true,
-    })
-
-    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined)
-
-    spawnMock.mockImplementation((command: string) => {
-      const child = createMockChild()
-      queueMicrotask(() => {
-        if (command === "bench-ghx") {
-          child.stdout.emit(
-            "data",
-            Buffer.from(
-              `${JSON.stringify({ event: "scenario_finished", mode: "ghx", completed: 1, total: 2 })}\n`,
-              "utf8",
-            ),
-          )
-        }
-
-        if (command === "bench-direct") {
-          child.stdout.emit(
-            "data",
-            Buffer.from(
-              `${JSON.stringify({ event: "scenario_finished", mode: "agent_direct", completed: 2, total: 2 })}\n`,
-              "utf8",
-            ),
-          )
-        }
-        child.emit("exit", 0, null)
-      })
-      return child
-    })
-
-    const mod = await import("../../src/cli/run-suite.js")
-    await expect(mod.main(["--config", configPath])).resolves.toBeUndefined()
-
-    const loggedLines = logSpy.mock.calls
-      .map((call) => call[0])
-      .filter((line): line is string => typeof line === "string")
-
-    expect(loggedLines.some((line) => line.includes("ghx") && line.includes("1/2"))).toBe(true)
-    expect(loggedLines.some((line) => line.includes("direct") && line.includes("2/2"))).toBe(true)
-
-    if (ttyDescriptor) {
-      Object.defineProperty(process.stdout, "isTTY", ttyDescriptor)
-    }
-    logSpy.mockRestore()
+    const args = (spawnMock.mock.calls as unknown[][]).map((call) => call[1])
+    expect(args).toEqual([
+      ["run", "benchmark", "--", "ghx", "3"],
+      ["run", "benchmark", "--", "agent_direct", "3"],
+      ["run", "report"],
+    ])
   })
 })

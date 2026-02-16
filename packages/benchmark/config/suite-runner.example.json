@@ -1,47 +1,70 @@
 {
-  "cleanup": {
-    "command": ["pnpm", "run", "fixtures", "--", "cleanup", "--out", "fixtures/latest.json"]
-  },
-  "seed": {
-    "command": ["pnpm", "run", "fixtures", "--", "seed", "--out", "fixtures/latest.json"]
+  "fixtures": {
+    "setup": {
+      "cleanup": {
+        "command": [
+          "rm",
+          "-f",
+          "reports/latest-summary.json",
+          "reports/latest-summary.md"
+        ]
+      },
+      "seed": {
+        "command": [
+          "pnpm",
+          "run",
+          "fixtures",
+          "--",
+          "seed"
+        ]
+      }
+    }
   },
   "benchmark": {
-    "ghx": {
+    "base": {
       "command": [
         "pnpm",
         "run",
         "benchmark",
-        "--",
-        "ghx",
-        "3",
-        "--scenario-set",
-        "ci-verify-pr"
+        "--"
       ],
+      "repetitions": 3,
+      "scenarioSet": "ci-verify-pr"
+    },
+    "ghx": {
+      "mode": "ghx",
       "env": {
         "GHX_SKIP_GH_PREFLIGHT": "1",
         "BENCH_OPENCODE_PORT": "3001"
       }
     },
     "direct": {
-      "command": [
-        "pnpm",
-        "run",
-        "benchmark",
-        "--",
-        "agent_direct",
-        "3",
-        "--scenario-set",
-        "ci-verify-pr"
-      ],
+      "mode": "agent_direct",
       "env": {
         "BENCH_OPENCODE_PORT": "3002"
       }
     }
   },
-  "report": {
-    "command": ["pnpm", "run", "report"]
-  },
-  "gate": {
-    "command": ["pnpm", "run", "report", "--", "--gate", "--gate-profile", "verify_pr"]
+  "reporting": {
+    "analysis": {
+      "report": {
+        "command": [
+          "pnpm",
+          "run",
+          "report"
+        ]
+      },
+      "gate": {
+        "command": [
+          "pnpm",
+          "run",
+          "report",
+          "--",
+          "--gate",
+          "--gate-profile",
+          "verify_pr"
+        ]
+      }
+    }
   }
 }
