@@ -68,6 +68,7 @@ ghx/
 - `packages/core/src/cli/index.ts` - `ghx` executable entrypoint
 - `packages/core/src/cli/commands/run.ts` - task parsing + execution entry
 - `packages/core/src/cli/commands/setup.ts` - setup/verify skill profile installation in `.agents/skills/ghx/SKILL.md`
+- `packages/core/src/cli/assets/skills/ghx/` - bundled setup skill asset directory (contains canonical `SKILL.md`)
 - `packages/core/src/cli/commands/capabilities-list.ts` - CLI capability list command
 - `packages/core/src/cli/commands/capabilities-explain.ts` - CLI capability explain command
 - `packages/core/src/cli/commands/doctor.ts` - diagnostics command scaffold (reserved)
@@ -87,6 +88,10 @@ ghx/
 - `packages/core/src/agent-interface/tools/execute-tool.ts` - capability execution wrapper for agent tooling
 - `packages/core/README.md` - npm-facing package usage and API surface overview
 - `packages/core/LICENSE` - package-level MIT license for publish artifacts
+
+### Documentation
+
+- `docs/guides/setup-command.md` - setup command behavior, scopes, verification flow, and team rollout guidance
 
 ### Benchmark Package (`packages/benchmark`)
 

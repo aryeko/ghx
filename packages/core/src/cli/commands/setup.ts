@@ -5,6 +5,8 @@ import readline from "node:readline/promises"
 import { fileURLToPath } from "node:url"
 
 import { Ajv } from "ajv"
+import type { ErrorCode } from "../../core/errors/codes.js"
+import { errorCodes } from "../../core/errors/codes.js"
 
 type SetupScope = "user" | "project"
 
@@ -15,6 +17,8 @@ type SetupOptions = {
   verifyOnly: boolean
   track: boolean
 }
+
+type SetupError = Error & { code?: ErrorCode }
 
 const ajv = new Ajv({ allErrors: true, strict: false })
 
@@ -52,6 +56,12 @@ function isENOENT(error: unknown): boolean {
   )
 }
 
+function createSetupError(message: string, code: ErrorCode): SetupError {
+  const error = new Error(message) as SetupError
+  error.code = code
+  return error
+}
+
 async function loadSetupSkillContent(): Promise<string> {
   for (const candidatePath of setupSkillAssetPathCandidates) {
     try {
@@ -65,8 +75,9 @@ async function loadSetupSkillContent(): Promise<string> {
     }
   }
 
-  throw new Error(
+  throw createSetupError(
     `Setup skill asset not found. Checked: ${setupSkillAssetPathCandidates.join(", ")}`,
+    errorCodes.NotFound,
   )
 }
 
