@@ -404,7 +404,7 @@ describe("check-scenarios", () => {
     loadScenariosMock.mockResolvedValue([...fixture.scenarios, expectedErrorScenario])
     loadScenarioSetsMock.mockResolvedValue({
       ...fixture.sets,
-      default: [...fixture.sets.default, "expected-error-001"],
+      default: [...(fixture.sets.default ?? []), "expected-error-001"],
     })
 
     await expect(main("/tmp/benchmark")).rejects.toThrow(
