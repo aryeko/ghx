@@ -29,6 +29,12 @@ pnpm --filter @ghx-dev/benchmark run benchmark -- ghx 1 --scenario-set release-d
 pnpm --filter @ghx-dev/benchmark run benchmark -- ghx 1 --scenario-set workflows
 pnpm --filter @ghx-dev/benchmark run benchmark -- ghx 1 --scenario-set projects-v2
 
+# fixture lifecycle (sandbox repo)
+pnpm --filter @ghx-dev/benchmark run fixtures -- seed --repo aryeko/ghx-bench-fixtures --out fixtures/latest.json --seed-id local
+pnpm --filter @ghx-dev/benchmark run fixtures -- status --out fixtures/latest.json
+pnpm --filter @ghx-dev/benchmark run benchmark -- ghx 1 --scenario-set pr-exec --fixture-manifest fixtures/latest.json
+pnpm --filter @ghx-dev/benchmark run fixtures -- cleanup --out fixtures/latest.json
+
 pnpm --filter @ghx-dev/benchmark run report
 pnpm --filter @ghx-dev/benchmark run report:gate
 
@@ -51,6 +57,10 @@ pnpm --filter @ghx-dev/benchmark run typecheck
 - `projects-v2`
 - `all` - exact union of A-D roadmap sets
 
+Additional sets:
+
+- `full-seeded` - full roadmap coverage against seeded sandbox fixtures
+
 ## Outputs
 
 - Latest summary: `packages/benchmark/reports/latest-summary.md`
@@ -60,6 +70,8 @@ Notes:
 
 - Use mode `ghx`.
 - For benchmark runs, prefer `GHX_SKIP_GH_PREFLIGHT=1` on `ghx` executions; suite preflight performs auth verification once.
+- Mutation-heavy scenarios should target sandbox repo `aryeko/ghx-bench-fixtures`, not `aryeko/ghx`.
+- Use `--fixture-manifest` (or `BENCH_FIXTURE_MANIFEST`) to resolve scenario input bindings.
 
 For benchmark methodology and reporting details, see:
 

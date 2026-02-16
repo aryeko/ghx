@@ -5,7 +5,7 @@
   "input": {
     "owner": "OWNER_PLACEHOLDER",
     "name": "REPO_PLACEHOLDER",
-    "issueNumber": 1
+    "issueNumber": 0
   },
   "prompt_template": "Execute task {{task}} using input {{input_json}}. Return only valid JSON matching this envelope: {\"ok\": boolean, \"data\": any, \"error\": object|null, \"meta\": object}.",
   "timeout_ms": 60000,
@@ -27,5 +27,13 @@
     "issue",
     "read",
     "relations"
-  ]
+  ],
+  "fixture": {
+    "repo": "aryeko/ghx-bench-fixtures",
+    "bindings": {
+      "input.owner": "repo.owner",
+      "input.name": "repo.name",
+      "input.issueNumber": "resources.issue.number"
+    }
+  }
 }

@@ -9,15 +9,21 @@ describe("validateScenario", () => {
       name: "View pull request details",
       task: "pr.view",
       input: {
-        repo: "go-modkit/modkit",
+        repo: "aryeko/ghx-bench-fixtures",
         pr_number: 232
       },
       prompt_template: "Execute task {{task}} with {{input_json}}",
       timeout_ms: 90000,
       allowed_retries: 0,
-      fixture: {
-        repo: "go-modkit/modkit"
-      },
+        fixture: {
+          repo: "aryeko/ghx-bench-fixtures",
+          bindings: {
+            "input.owner": "repo.owner",
+            "input.name": "repo.name",
+            "input.pr_number": "resources.pr.number"
+          },
+          requires: ["repo", "pr"]
+        },
       assertions: {
         must_succeed: true,
         expect_valid_output: true,
@@ -30,6 +36,33 @@ describe("validateScenario", () => {
     })
 
     expect(parsed.id).toBe("pr-view-001")
+  })
+
+  it("rejects fixture bindings with invalid destination path", () => {
+    expect(() =>
+      validateScenario({
+        id: "repo-view-bindings-001",
+        name: "Bindings path invalid",
+        task: "repo.view",
+        input: {
+          owner: "aryeko",
+          name: "ghx-bench-fixtures"
+        },
+        prompt_template: "Execute task {{task}} with {{input_json}}",
+        timeout_ms: 60000,
+        allowed_retries: 0,
+        fixture: {
+          repo: "aryeko/ghx-bench-fixtures",
+          bindings: {
+            "owner": "repo.owner"
+          }
+        },
+        assertions: {
+          must_succeed: true
+        },
+        tags: ["repo", "view"]
+      })
+    ).toThrow("fixture binding destination must start with 'input.'")
   })
 
   it("rejects invalid timeout", () => {
@@ -55,8 +88,8 @@ describe("validateScenario", () => {
         name: "Bad tool call bounds",
         task: "repo.view",
         input: {
-          owner: "go-modkit",
-          name: "modkit"
+          owner: "aryeko",
+          name: "ghx-bench-fixtures"
         },
         prompt_template: "Execute task {{task}} with {{input_json}}",
         timeout_ms: 60000,

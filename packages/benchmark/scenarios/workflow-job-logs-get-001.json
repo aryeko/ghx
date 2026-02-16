@@ -3,21 +3,33 @@
   "name": "Get workflow job logs",
   "task": "workflow_job.logs.get",
   "input": {
-    "owner": "go-modkit",
-    "name": "modkit",
-    "jobId": 1
+    "owner": "OWNER_PLACEHOLDER",
+    "name": "REPO_PLACEHOLDER",
+    "jobId": 0
   },
   "prompt_template": "Execute task {{task}} for repository {{fixture_repo}} using input {{input_json}}. Return only valid JSON matching this envelope: {\"ok\": boolean, \"data\": any, \"error\": object|null, \"meta\": object}.",
   "timeout_ms": 60000,
   "allowed_retries": 0,
   "fixture": {
-    "repo": "go-modkit/modkit"
+    "repo": "aryeko/ghx-bench-fixtures",
+    "bindings": {
+      "input.owner": "repo.owner",
+      "input.name": "repo.name",
+      "input.jobId": "resources.workflow_job.id"
+    }
   },
   "assertions": {
     "must_succeed": false,
     "require_tool_calls": true,
     "min_tool_calls": 1,
-    "required_fields": ["ok", "error", "meta"]
+    "required_fields": [
+      "ok",
+      "error",
+      "meta"
+    ]
   },
-  "tags": ["ci", "diagnostics"]
+  "tags": [
+    "ci",
+    "diagnostics"
+  ]
 }

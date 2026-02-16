@@ -3,10 +3,10 @@
   "name": "Batch D: update project v2 item field",
   "task": "project_v2.item.field.update",
   "input": {
-    "projectId": "PVT_kwDOA",
-    "itemId": "PVTI_kwDOA",
-    "fieldId": "PVTF_kwDOA",
-    "valueSingleSelectOptionId": "PVTSSF_kwDOA"
+    "projectId": "PROJECT_ID_PLACEHOLDER",
+    "itemId": "ITEM_ID_PLACEHOLDER",
+    "fieldId": "FIELD_ID_PLACEHOLDER",
+    "valueSingleSelectOptionId": "OPTION_ID_PLACEHOLDER"
   },
   "prompt_template": "Execute task {{task}} using input {{input_json}}. Return only valid JSON matching this envelope: {\"ok\": boolean, \"data\": any, \"error\": object|null, \"meta\": object}.",
   "timeout_ms": 60000,
@@ -35,5 +35,14 @@
     "projects-v2",
     "projects-v2",
     "mutation"
-  ]
+  ],
+  "fixture": {
+    "repo": "aryeko/ghx-bench-fixtures",
+    "bindings": {
+      "input.projectId": "resources.project.id",
+      "input.itemId": "resources.project.item_id",
+      "input.fieldId": "resources.project.field_id",
+      "input.valueSingleSelectOptionId": "resources.project.option_id"
+    }
+  }
 }

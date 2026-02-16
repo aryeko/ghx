@@ -20,6 +20,22 @@ describe("parseCliArgs", () => {
     expect(parsed.scenarioFilter).toBeNull()
   })
 
+  it("parses fixture manifest options", () => {
+    const parsed = parseCliArgs([
+      "run",
+      "ghx",
+      "2",
+      "--scenario-set",
+      "full-seeded",
+      "--fixture-manifest",
+      "fixtures/latest.json",
+      "--seed-if-missing"
+    ])
+
+    expect(parsed.fixtureManifestPath).toBe("fixtures/latest.json")
+    expect(parsed.seedIfMissing).toBe(true)
+  })
+
   it("defaults repetitions to 1 when omitted", () => {
     const parsed = parseCliArgs(["run", "agent_direct"])
 

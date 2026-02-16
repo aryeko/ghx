@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { spawnSync } from "node:child_process"
+import { mkdtemp, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 
-const createOpencodeMock = vi.fn()
-const loadScenariosMock = vi.fn()
-const loadScenarioSetsMock = vi.fn()
-const appendFileMock = vi.fn(async () => undefined)
-const mkdirMock = vi.fn(async () => undefined)
+const { createOpencodeMock, loadScenariosMock, loadScenarioSetsMock, appendFileMock, mkdirMock } = vi.hoisted(() => ({
+  createOpencodeMock: vi.fn(),
+  loadScenariosMock: vi.fn(),
+  loadScenarioSetsMock: vi.fn(),
+  appendFileMock: vi.fn(async () => undefined),
+  mkdirMock: vi.fn(async () => undefined)
+}))
 
 vi.mock("@opencode-ai/sdk", () => ({
   createOpencode: createOpencodeMock
@@ -132,6 +137,72 @@ describe("runSuite", () => {
     const row = JSON.parse(firstWrite as string)
     expect(row.scenario_set).toBe("default")
     expect(close).toHaveBeenCalled()
+  })
+
+  it("resolves scenario fixture bindings from manifest", async () => {
+    const session = createSessionMocks()
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+
+    loadScenariosMock.mockResolvedValue([
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "OWNER_PLACEHOLDER", name: "REPO_PLACEHOLDER" },
+        prompt_template: "run {{task}} {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        fixture: {
+          repo: "aryeko/ghx-bench-fixtures",
+          bindings: {
+            "input.owner": "repo.owner",
+            "input.name": "repo.name"
+          }
+        },
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"]
+        },
+        tags: []
+      }
+    ])
+
+    const root = await mkdtemp(join(tmpdir(), "ghx-bench-fixture-"))
+    const fixturePath = join(root, "fixture.json")
+    await writeFile(
+      fixturePath,
+      JSON.stringify({
+        version: 1,
+        repo: {
+          owner: "aryeko",
+          name: "ghx-bench-fixtures",
+          full_name: "aryeko/ghx-bench-fixtures",
+          default_branch: "main"
+        },
+        resources: {}
+      }),
+      "utf8"
+    )
+
+    const mod = await import("../../src/runner/suite-runner.js")
+    await mod.runSuite({
+      mode: "ghx",
+      repetitions: 1,
+      scenarioFilter: null,
+      fixtureManifestPath: fixturePath
+    })
+
+    const promptCalls = session.promptAsync.mock.calls as unknown[][]
+    const firstPromptPayload = (promptCalls[0]?.[0] ?? {}) as {
+      body?: {
+        parts?: Array<{ type?: string; text?: string }>
+      }
+    }
+    const prompt = String(firstPromptPayload.body?.parts?.[0]?.text ?? "")
+    expect(prompt).toContain('"owner":"aryeko"')
+    expect(prompt).toContain('"name":"ghx-bench-fixtures"')
   })
 
   it("runs selected scenario set and records scenario_set metadata", async () => {

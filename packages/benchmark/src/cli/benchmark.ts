@@ -8,7 +8,9 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     mode: parsed.mode,
     repetitions: parsed.repetitions,
     scenarioFilter: parsed.scenarioFilter,
-    scenarioSet: parsed.scenarioSet
+    scenarioSet: parsed.scenarioSet,
+    fixtureManifestPath: parsed.fixtureManifestPath,
+    seedIfMissing: parsed.seedIfMissing
   })
 }
 

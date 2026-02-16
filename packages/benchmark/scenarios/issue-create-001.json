@@ -27,5 +27,12 @@
     "issues",
     "issue",
     "mutation"
-  ]
+  ],
+  "fixture": {
+    "repo": "aryeko/ghx-bench-fixtures",
+    "bindings": {
+      "input.owner": "repo.owner",
+      "input.name": "repo.name"
+    }
+  }
 }

@@ -3,9 +3,9 @@
   "name": "Batch C create draft release",
   "task": "release.create_draft",
   "input": {
-    "owner": "go-modkit",
-    "name": "modkit",
-    "tagName": "v0.0.0-release-delivery-draft",
+    "owner": "OWNER_PLACEHOLDER",
+    "name": "REPO_PLACEHOLDER",
+    "tagName": "v0.0.0-bench",
     "title": "Batch C draft release",
     "notes": "Draft-first release for benchmark coverage",
     "prerelease": true
@@ -14,7 +14,12 @@
   "timeout_ms": 60000,
   "allowed_retries": 0,
   "fixture": {
-    "repo": "go-modkit/modkit"
+    "repo": "aryeko/ghx-bench-fixtures",
+    "bindings": {
+      "input.owner": "repo.owner",
+      "input.name": "repo.name",
+      "input.tagName": "resources.release.tag_name"
+    }
   },
   "assertions": {
     "must_succeed": false,

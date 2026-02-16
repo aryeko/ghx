@@ -26,5 +26,12 @@
     "issue",
     "mutation",
     "relations"
-  ]
+  ],
+  "fixture": {
+    "repo": "aryeko/ghx-bench-fixtures",
+    "bindings": {
+      "input.issueId": "resources.issue.id",
+      "input.parentIssueId": "resources.parent_issue.id"
+    }
+  }
 }

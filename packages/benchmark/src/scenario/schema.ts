@@ -43,7 +43,32 @@ const scenarioSchema = z.object({
     .object({
       repo: z.string().optional(),
       workdir: z.string().optional(),
-      branch: z.string().optional()
+      branch: z.string().optional(),
+      bindings: z.record(z.string().min(1)).optional(),
+      requires: z.array(z.string().min(1)).optional()
+    })
+    .superRefine((value, context) => {
+      if (!value.bindings) {
+        return
+      }
+
+      for (const [destination, source] of Object.entries(value.bindings)) {
+        if (!destination.startsWith("input.")) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["bindings", destination],
+            message: "fixture binding destination must start with 'input.'"
+          })
+        }
+
+        if (!source.includes(".")) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["bindings", destination],
+            message: "fixture binding source must be a dotted manifest path"
+          })
+        }
+      }
     })
     .optional(),
   assertions: assertionsSchema,

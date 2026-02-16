@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "repo": {
+    "owner": "aryeko",
+    "name": "ghx-bench-fixtures",
+    "full_name": "aryeko/ghx-bench-fixtures",
+    "default_branch": "main"
+  },
+  "resources": {
+    "issue": {
+      "id": "I_example",
+      "number": 1,
+      "url": "https://github.com/aryeko/ghx-bench-fixtures/issues/1"
+    },
+    "blocker_issue": {
+      "id": "I_example",
+      "number": 1,
+      "url": "https://github.com/aryeko/ghx-bench-fixtures/issues/1"
+    },
+    "parent_issue": {
+      "id": "I_example",
+      "number": 1,
+      "url": "https://github.com/aryeko/ghx-bench-fixtures/issues/1"
+    },
+    "pr": {
+      "id": "PR_example",
+      "number": 1
+    },
+    "pr_thread": {
+      "id": "PRRT_example"
+    },
+    "workflow_run": {
+      "id": 1
+    },
+    "workflow_job": {
+      "id": 1
+    },
+    "check_run": {
+      "id": 1
+    },
+    "release": {
+      "id": 1,
+      "tag_name": "v0.0.0-bench"
+    },
+    "project": {
+      "number": 1,
+      "id": "PVT_example",
+      "item_id": "PVTI_example",
+      "field_id": "PVTF_example",
+      "option_id": "PVTSSF_example"
+    },
+    "metadata": {
+      "seed_id": "default",
+      "generated_at": "2026-02-16T00:00:00.000Z",
+      "run_id": "00000000-0000-0000-0000-000000000000"
+    }
+  }
+}

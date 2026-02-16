@@ -1,6 +1,6 @@
 import { createOpencode } from "@opencode-ai/sdk"
 import { spawnSync } from "node:child_process"
-import { appendFile, mkdir, mkdtemp, rm } from "node:fs/promises"
+import { access, appendFile, mkdir, mkdtemp, rm } from "node:fs/promises"
 import { randomUUID } from "node:crypto"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -8,10 +8,13 @@ import { join } from "node:path"
 import { extractFirstJsonObject, validateEnvelope } from "../extract/envelope.js"
 import { extractAttemptMetrics } from "../extract/attempts.js"
 import { aggregateToolCounts } from "../extract/tool-usage.js"
+import { loadFixtureManifest, resolveScenarioFixtureBindings } from "../fixture/manifest.js"
+import { seedFixtureManifest } from "../fixture/seed.js"
 import type {
   BenchmarkTimingBreakdown,
   BenchmarkMode,
   BenchmarkRow,
+  FixtureManifest,
   Scenario,
   SessionMessageEntry,
   SessionMessagePart
@@ -23,6 +26,8 @@ type RunSuiteOptions = {
   repetitions: number
   scenarioFilter: string | null
   scenarioSet?: string | null
+  fixtureManifestPath?: string | null
+  seedIfMissing?: boolean
 }
 
 type AssistantMessage = {
@@ -1483,7 +1488,14 @@ export async function runScenario(
 }
 
 export async function runSuite(options: RunSuiteOptions): Promise<void> {
-  const { mode, repetitions, scenarioFilter, scenarioSet = null } = options
+  const {
+    mode,
+    repetitions,
+    scenarioFilter,
+    scenarioSet = null,
+    fixtureManifestPath = process.env.BENCH_FIXTURE_MANIFEST ?? null,
+    seedIfMissing = false
+  } = options
 
   await mkdir(RESULTS_DIR, { recursive: true })
   const scenarios = await loadScenarios(SCENARIOS_DIR)
@@ -1530,6 +1542,33 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
     throw new Error(`No scenarios matched filter: ${scenarioFilter ?? scenarioSet ?? "default"}`)
   }
 
+  let fixtureManifest: FixtureManifest | null = null
+  if (fixtureManifestPath) {
+    if (seedIfMissing) {
+      try {
+        await access(fixtureManifestPath)
+      } catch {
+        const fixtureRepo = process.env.BENCH_FIXTURE_REPO ?? "aryeko/ghx-bench-fixtures"
+        const seedId = process.env.BENCH_FIXTURE_SEED_ID ?? "default"
+        await seedFixtureManifest({
+          repo: fixtureRepo,
+          outFile: fixtureManifestPath,
+          seedId
+        })
+      }
+    }
+
+    fixtureManifest = await loadFixtureManifest(fixtureManifestPath)
+    const resolvedManifest = fixtureManifest
+    selectedScenarios = selectedScenarios.map((scenario) =>
+      resolveScenarioFixtureBindings(scenario, resolvedManifest)
+    )
+  }
+
+  if (seedIfMissing && !fixtureManifestPath) {
+    throw new Error("--seed-if-missing requires --fixture-manifest")
+  }
+
   if (mode === "ghx") {
     assertGhxRouterPreflight(selectedScenarios)
   }
@@ -1549,6 +1588,9 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
   console.log(`[benchmark] scenarios: ${selectedScenarioIds.join(",")}`)
   console.log(
     `[benchmark] context: opencode_port=${OPENCODE_PORT} git_repo=${GIT_REPO ?? "<null>"} git_commit=${GIT_COMMIT ?? "<null>"} out_file=${outFile}`
+  )
+  console.log(
+    `[benchmark] fixtures: manifest=${fixtureManifestPath ?? "<none>"} seed_if_missing=${seedIfMissing ? "true" : "false"}`
   )
 
   for (const scenario of selectedScenarios) {

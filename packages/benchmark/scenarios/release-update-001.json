@@ -3,9 +3,9 @@
   "name": "Batch C update draft release",
   "task": "release.update",
   "input": {
-    "owner": "go-modkit",
-    "name": "modkit",
-    "releaseId": 1,
+    "owner": "OWNER_PLACEHOLDER",
+    "name": "REPO_PLACEHOLDER",
+    "releaseId": 0,
     "title": "Batch C draft release updated",
     "notes": "Update while remaining draft",
     "draft": true
@@ -14,7 +14,12 @@
   "timeout_ms": 60000,
   "allowed_retries": 0,
   "fixture": {
-    "repo": "go-modkit/modkit"
+    "repo": "aryeko/ghx-bench-fixtures",
+    "bindings": {
+      "input.owner": "repo.owner",
+      "input.name": "repo.name",
+      "input.releaseId": "resources.release.id"
+    }
   },
   "assertions": {
     "must_succeed": false,

@@ -216,6 +216,27 @@ function assertRoadmapBatchCoverage(
   }
 }
 
+function assertCiSetsAvoidMutationScenarios(
+  scenarioSets: Record<string, string[]>,
+  scenariosById: Map<string, { tags: string[] }>
+): void {
+  const ciSetNames = ["ci-verify-pr", "ci-verify-release"]
+
+  for (const setName of ciSetNames) {
+    const scenarioIds = scenarioSets[setName] ?? []
+    const mutationScenarioIds = scenarioIds.filter((scenarioId) => {
+      const tags = scenariosById.get(scenarioId)?.tags ?? []
+      return tags.some((tag) => tag === "mutation" || tag === "mutations")
+    })
+
+    if (mutationScenarioIds.length > 0) {
+      throw new Error(
+        `Scenario set '${setName}' must avoid mutation scenarios: ${mutationScenarioIds.join(", ")}`
+      )
+    }
+  }
+}
+
 export async function main(cwd: string = process.cwd()): Promise<void> {
   const scenariosDir = resolve(cwd, "scenarios")
   const benchmarkRoot = resolve(cwd)
@@ -229,7 +250,7 @@ export async function main(cwd: string = process.cwd()): Promise<void> {
   const scenarioIds = scenarios.map((scenario) => scenario.id)
   const scenarioTasks = new Set(scenarios.map((scenario) => scenario.task))
   const knownScenarioIds = new Set(scenarioIds)
-  const scenariosById = new Map(scenarios.map((scenario) => [scenario.id, { task: scenario.task }]))
+  const scenariosById = new Map(scenarios.map((scenario) => [scenario.id, { task: scenario.task, tags: scenario.tags }]))
 
   assertNoDuplicateScenarioIds(scenarioIds)
   assertRequiredScenarioSetsExist(scenarioSets)
@@ -237,6 +258,7 @@ export async function main(cwd: string = process.cwd()): Promise<void> {
   assertNoOrphanScenarios(scenarioSets, scenarioIds)
   assertAllSetExactUnion(scenarioSets)
   assertRoadmapBatchCoverage(scenarioSets, scenariosById)
+  assertCiSetsAvoidMutationScenarios(scenarioSets, scenariosById)
 
   const registryCapabilityIds = await tryLoadRegistryCapabilityIds(benchmarkRoot)
   if (registryCapabilityIds) {

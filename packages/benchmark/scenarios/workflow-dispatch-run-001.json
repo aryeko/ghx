@@ -3,8 +3,8 @@
   "name": "Batch C trigger workflow dispatch",
   "task": "workflow_dispatch.run",
   "input": {
-    "owner": "go-modkit",
-    "name": "modkit",
+    "owner": "OWNER_PLACEHOLDER",
+    "name": "REPO_PLACEHOLDER",
     "workflowId": "ci.yml",
     "ref": "main",
     "inputs": {
@@ -15,7 +15,11 @@
   "timeout_ms": 60000,
   "allowed_retries": 0,
   "fixture": {
-    "repo": "go-modkit/modkit"
+    "repo": "aryeko/ghx-bench-fixtures",
+    "bindings": {
+      "input.owner": "repo.owner",
+      "input.name": "repo.name"
+    }
   },
   "assertions": {
     "must_succeed": false,

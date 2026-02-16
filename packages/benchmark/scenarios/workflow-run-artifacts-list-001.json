@@ -3,15 +3,20 @@
   "name": "Batch D: list workflow run artifacts",
   "task": "workflow_run.artifacts.list",
   "input": {
-    "owner": "go-modkit",
-    "name": "modkit",
-    "runId": 1
+    "owner": "OWNER_PLACEHOLDER",
+    "name": "REPO_PLACEHOLDER",
+    "runId": 0
   },
   "prompt_template": "Execute task {{task}} for repository {{fixture_repo}} using input {{input_json}}. Return only valid JSON matching this envelope: {\"ok\": boolean, \"data\": any, \"error\": object|null, \"meta\": object}.",
   "timeout_ms": 60000,
   "allowed_retries": 0,
   "fixture": {
-    "repo": "go-modkit/modkit"
+    "repo": "aryeko/ghx-bench-fixtures",
+    "bindings": {
+      "input.owner": "repo.owner",
+      "input.name": "repo.name",
+      "input.runId": "resources.workflow_run.id"
+    }
   },
   "assertions": {
     "must_succeed": true,

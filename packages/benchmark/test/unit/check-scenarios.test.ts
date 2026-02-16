@@ -342,4 +342,21 @@ describe("check-scenarios", () => {
       await temp.cleanup()
     }
   })
+
+  it("fails when CI verify sets include mutation scenarios", async () => {
+    const fixture = createValidRoadmapFixture()
+    const mutationScenario = {
+      ...createScenario("mutation-ci-001", "repo.view"),
+      tags: ["mutation"]
+    }
+
+    loadScenariosMock.mockResolvedValue([...fixture.scenarios, mutationScenario])
+    loadScenarioSetsMock.mockResolvedValue({
+      ...fixture.sets,
+      "ci-verify-pr": ["mutation-ci-001"],
+      "ci-verify-release": ["repo-view-001"]
+    })
+
+    await expect(main("/tmp/benchmark")).rejects.toThrow("must avoid mutation scenarios")
+  })
 })

@@ -3,16 +3,21 @@
   "name": "Batch C publish draft release",
   "task": "release.publish_draft",
   "input": {
-    "owner": "go-modkit",
-    "name": "modkit",
-    "releaseId": 1,
+    "owner": "OWNER_PLACEHOLDER",
+    "name": "REPO_PLACEHOLDER",
+    "releaseId": 0,
     "title": "Batch C published release"
   },
   "prompt_template": "Execute task {{task}} for repository {{fixture_repo}} using input {{input_json}}. Return only valid JSON matching this envelope: {\"ok\": boolean, \"data\": any, \"error\": object|null, \"meta\": object}.",
   "timeout_ms": 60000,
   "allowed_retries": 0,
   "fixture": {
-    "repo": "go-modkit/modkit"
+    "repo": "aryeko/ghx-bench-fixtures",
+    "bindings": {
+      "input.owner": "repo.owner",
+      "input.name": "repo.name",
+      "input.releaseId": "resources.release.id"
+    }
   },
   "assertions": {
     "must_succeed": false,

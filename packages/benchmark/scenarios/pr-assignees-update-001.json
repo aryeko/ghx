@@ -3,9 +3,9 @@
   "name": "Batch A: update pull request assignees",
   "task": "pr.assignees.update",
   "input": {
-    "owner": "go-modkit",
-    "name": "modkit",
-    "prNumber": 232,
+    "owner": "OWNER_PLACEHOLDER",
+    "name": "REPO_PLACEHOLDER",
+    "prNumber": 0,
     "add": [
       "octocat"
     ],
@@ -17,7 +17,12 @@
   "timeout_ms": 60000,
   "allowed_retries": 0,
   "fixture": {
-    "repo": "go-modkit/modkit"
+    "repo": "aryeko/ghx-bench-fixtures",
+    "bindings": {
+      "input.owner": "repo.owner",
+      "input.name": "repo.name",
+      "input.prNumber": "resources.pr.number"
+    }
   },
   "assertions": {
     "must_succeed": false,

@@ -98,8 +98,8 @@ describe("scenario-sets manifest", () => {
     const scenarioSets = loadScenarioSets()
 
     expect(scenarioSets["ci-verify-pr"]).toEqual([
-      "pr-checks-rerun-all-001",
-      "pr-merge-execute-001"
+      "pr-status-checks-001",
+      "pr-checks-get-failed-001"
     ])
   })
 
@@ -107,12 +107,18 @@ describe("scenario-sets manifest", () => {
     const scenarioSets = loadScenarioSets()
 
     expect(scenarioSets["ci-verify-release"]).toEqual([
-      "pr-checks-rerun-all-001",
-      "pr-checks-rerun-failed-001",
-      "pr-merge-execute-001",
-      "pr-assignees-update-001",
-      "pr-review-submit-comment-001"
+      "repo-view-001",
+      "workflow-runs-list-001",
+      "workflow-run-jobs-list-001",
+      "release-list-001",
+      "pr-mergeability-view-001"
     ])
+  })
+
+  it("defines full-seeded as full roadmap mutation-capable coverage", () => {
+    const scenarioSets = loadScenarioSets()
+
+    expect(new Set(scenarioSets["full-seeded"] ?? [])).toEqual(new Set(scenarioSets["all"] ?? []))
   })
 
   it("defines all as exact union of roadmap A-D sets", () => {

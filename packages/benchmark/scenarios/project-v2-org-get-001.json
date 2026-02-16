@@ -3,8 +3,8 @@
   "name": "Batch D: get org project v2",
   "task": "project_v2.org.get",
   "input": {
-    "org": "go-modkit",
-    "projectNumber": 1
+    "org": "ORG_PLACEHOLDER",
+    "projectNumber": 0
   },
   "prompt_template": "Execute task {{task}} using input {{input_json}}. Return only valid JSON matching this envelope: {\"ok\": boolean, \"data\": any, \"error\": object|null, \"meta\": object}.",
   "timeout_ms": 60000,
@@ -36,5 +36,12 @@
     "roadmap",
     "projects-v2",
     "projects-v2"
-  ]
+  ],
+  "fixture": {
+    "repo": "aryeko/ghx-bench-fixtures",
+    "bindings": {
+      "input.org": "repo.owner",
+      "input.projectNumber": "resources.project.number"
+    }
+  }
 }

@@ -3,9 +3,9 @@
   "name": "Batch D: add issue to project v2",
   "task": "project_v2.item.add_issue",
   "input": {
-    "owner": "go-modkit",
-    "projectNumber": 1,
-    "issueUrl": "https://github.com/go-modkit/modkit/issues/1"
+    "owner": "OWNER_PLACEHOLDER",
+    "projectNumber": 0,
+    "issueUrl": "ISSUE_URL_PLACEHOLDER"
   },
   "prompt_template": "Execute task {{task}} using input {{input_json}}. Return only valid JSON matching this envelope: {\"ok\": boolean, \"data\": any, \"error\": object|null, \"meta\": object}.",
   "timeout_ms": 60000,
@@ -34,5 +34,13 @@
     "projects-v2",
     "projects-v2",
     "mutation"
-  ]
+  ],
+  "fixture": {
+    "repo": "aryeko/ghx-bench-fixtures",
+    "bindings": {
+      "input.owner": "repo.owner",
+      "input.projectNumber": "resources.project.number",
+      "input.issueUrl": "resources.issue.url"
+    }
+  }
 }

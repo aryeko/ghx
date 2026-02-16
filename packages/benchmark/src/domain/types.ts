@@ -27,9 +27,22 @@ export type Scenario = {
     repo?: string
     workdir?: string
     branch?: string
+    bindings?: Record<string, string>
+    requires?: string[]
   }
   assertions: ScenarioAssertions
   tags: string[]
+}
+
+export type FixtureManifest = {
+  version: 1
+  repo: {
+    owner: string
+    name: string
+    full_name: string
+    default_branch: string
+  }
+  resources: Record<string, unknown>
 }
 
 export type SessionMessagePart = {

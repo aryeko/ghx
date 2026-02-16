@@ -27,7 +27,9 @@ describe("benchmark cli mains", () => {
       mode: "ghx",
       repetitions: 2,
       scenarioFilter: null,
-      scenarioSet: "pr-review-reads"
+      scenarioSet: "pr-review-reads",
+      fixtureManifestPath: null,
+      seedIfMissing: false
     })
   })
 

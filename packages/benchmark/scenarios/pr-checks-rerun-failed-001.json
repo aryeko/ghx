@@ -3,16 +3,22 @@
   "name": "Batch A: rerun failed pull request checks",
   "task": "pr.checks.rerun_failed",
   "input": {
-    "owner": "go-modkit",
-    "name": "modkit",
-    "prNumber": 232,
-    "runId": 123456789
+    "owner": "OWNER_PLACEHOLDER",
+    "name": "REPO_PLACEHOLDER",
+    "prNumber": 0,
+    "runId": 0
   },
   "prompt_template": "Execute task {{task}} for repository {{fixture_repo}} using input {{input_json}}. Return only valid JSON matching this envelope: {\"ok\": boolean, \"data\": any, \"error\": object|null, \"meta\": object}.",
   "timeout_ms": 60000,
   "allowed_retries": 0,
   "fixture": {
-    "repo": "go-modkit/modkit"
+    "repo": "aryeko/ghx-bench-fixtures",
+    "bindings": {
+      "input.owner": "repo.owner",
+      "input.name": "repo.name",
+      "input.prNumber": "resources.pr.number",
+      "input.runId": "resources.workflow_run.id"
+    }
   },
   "assertions": {
     "must_succeed": false,
