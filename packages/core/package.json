@@ -68,7 +68,7 @@
     "prepack": "pnpm run build",
     "gql:codegen": "tsx scripts/run-gql-codegen.ts",
     "gql:codegen:watch": "graphql-codegen --config codegen.ts --watch",
-    "gql:check": "pnpm run gql:codegen && git diff --exit-code -- src/gql/generated src/gql/operations/*.generated.ts"
+    "gql:check": "pnpm run gql:codegen && biome format --write src/gql/generated src/gql/operations && git diff --exit-code -- src/gql/generated src/gql/operations/*.generated.ts"
   },
   "nx": {
     "targets": {
