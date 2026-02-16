@@ -7,7 +7,7 @@
     "name": "REPO_PLACEHOLDER",
     "prNumber": 0,
     "reviewers": [
-      "octocat"
+      "aryeko"
     ]
   },
   "prompt_template": "Execute task {{task}} for repository {{fixture_repo}} using input {{input_json}}. Return only valid JSON matching this envelope: {\"ok\": boolean, \"data\": any, \"error\": object|null, \"meta\": object}.",

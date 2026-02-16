@@ -309,6 +309,26 @@ function createSeedPr(repo: string, seedId: string, seedLabel: string): { id: st
   }
 }
 
+function createMainlineFixtureCommit(repo: string, seedId: string): void {
+  const { owner, name } = parseRepo(repo)
+  const contentPath = `.bench/main-seed-${seedId}.md`
+  const body = `# Benchmark mainline seed\nseed: ${seedId}\n`
+  const encodedBody = Buffer.from(body, "utf8").toString("base64")
+
+  runGhJson([
+    "api",
+    `repos/${owner}/${name}/contents/${contentPath}`,
+    "--method",
+    "PUT",
+    "-f",
+    `message=chore: seed mainline fixture (${seedId})`,
+    "-f",
+    `content=${encodedBody}`,
+    "-f",
+    "branch=main",
+  ])
+}
+
 function getPrHeadSha(repo: string, prNumber: number): string | null {
   const result = tryRunGhJson([
     "pr",
@@ -391,38 +411,44 @@ function ensurePrThread(repo: string, prNumber: number, seedId: string): string 
 }
 
 function findLatestWorkflowRun(repo: string): { id: number; job_id: number | null } | null {
-  const runResult = runGhJson([
-    "run",
-    "list",
-    "--repo",
-    repo,
-    "--workflow",
-    "ci.yml",
-    "--limit",
-    "1",
-    "--json",
-    "databaseId"
-  ])
+  const runListArgsCandidates: string[][] = [
+    ["run", "list", "--repo", repo, "--workflow", "ci.yml", "--status", "failure", "--limit", "1", "--json", "databaseId"],
+    ["run", "list", "--repo", repo, "--workflow", "ci.yml", "--limit", "1", "--json", "databaseId"],
+  ]
 
-  const runs = Array.isArray(runResult)
-    ? runResult
-    : Array.isArray((runResult as { [k: string]: unknown }).items)
-      ? ((runResult as { items: unknown[] }).items ?? [])
-      : []
-  const first = runs[0]
-  if (!first || typeof first !== "object") {
+  let runId: number | null = null
+  for (const args of runListArgsCandidates) {
+    const runResult = tryRunGhJson(args)
+    const runs = Array.isArray(runResult)
+      ? runResult
+      : Array.isArray((runResult as { [k: string]: unknown } | null)?.items)
+        ? (((runResult as { items: unknown[] }).items) ?? [])
+        : []
+    const first = runs[0]
+    if (!first || typeof first !== "object") {
+      continue
+    }
+
+    const candidateRunId = Number((first as Record<string, unknown>).databaseId)
+    if (Number.isInteger(candidateRunId) && candidateRunId > 0) {
+      runId = candidateRunId
+      break
+    }
+  }
+
+  if (runId === null) {
     return null
   }
 
-  const runId = Number((first as Record<string, unknown>).databaseId)
-  if (!Number.isInteger(runId) || runId <= 0) {
+  const runIdNumber = Number(runId)
+  if (!Number.isInteger(runIdNumber) || runIdNumber <= 0) {
     return null
   }
 
   const jobsResult = runGhJson([
     "run",
     "view",
-    String(runId),
+    String(runIdNumber),
     "--repo",
     repo,
     "--json",
@@ -436,7 +462,7 @@ function findLatestWorkflowRun(repo: string): { id: number; job_id: number | nul
       : null
 
   return {
-    id: runId,
+    id: runIdNumber,
     job_id: jobId
   }
 }
@@ -573,10 +599,24 @@ function buildManifest(repo: string, seedId: string): FixtureManifest {
   const blockerIssue = issue
   const parentIssue = issue
   const pr = findSeededPr(repo, seedLabel) ?? createSeedPr(repo, seedId, seedLabel)
+  createMainlineFixtureCommit(repo, seedId)
   const prThreadId = ensurePrThread(repo, pr.number, seedId)
   const workflowRun = findLatestWorkflowRun(repo)
   const release = findLatestDraftRelease(repo)
-  const project = ensureProjectFixture(owner, issue.url)
+  let project: { number: number; id: string; item_id: string; field_id: string; option_id: string }
+  try {
+    project = ensureProjectFixture(owner, issue.url)
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.warn(`warning: unable to seed project fixture (${message}); using placeholder project fixture values`)
+    project = {
+      number: 1,
+      id: "",
+      item_id: "",
+      field_id: "",
+      option_id: "",
+    }
+  }
 
   const manifest: FixtureManifest = {
     version: 1,

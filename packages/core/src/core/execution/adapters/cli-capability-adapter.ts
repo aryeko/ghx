@@ -60,6 +60,7 @@ const DEFAULT_TIMEOUT_MS = 10_000
 const DEFAULT_LIST_FIRST = 30
 const MAX_WORKFLOW_JOB_LOG_CHARS = 50_000
 const REDACTED_CLI_ERROR_MESSAGE = "gh command failed; stderr redacted for safety"
+const NON_JSON_STDOUT_CAPABILITIES = new Set<CliCapabilityId>(["pr.reviewers.request", "pr.assignees.update"])
 const REPO_ISSUE_TYPES_GRAPHQL_QUERY =
   "query($owner:String!,$name:String!,$first:Int!,$after:String){repository(owner:$owner,name:$name){issueTypes(first:$first,after:$after){nodes{id name color isEnabled} pageInfo{hasNextPage endCursor}}}}"
 const ISSUE_COMMENTS_GRAPHQL_QUERY =
@@ -1842,7 +1843,9 @@ export async function runCliCapability(
     const data =
       capabilityId === "workflow_job.logs.get" || capabilityId === "workflow_job.logs.analyze"
         ? result.stdout
-        : parseCliData(result.stdout)
+        : NON_JSON_STDOUT_CAPABILITIES.has(capabilityId)
+          ? {}
+          : parseCliData(result.stdout)
     const normalized = normalizeCliData(capabilityId, data, params)
     return normalizeResult(normalized, "cli", { capabilityId, reason: "CARD_FALLBACK" })
   } catch (error: unknown) {

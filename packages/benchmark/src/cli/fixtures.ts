@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url"
 
 import { loadFixtureManifest } from "../fixture/manifest.js"
 import { cleanupSeededFixtures } from "../fixture/cleanup.js"
+import { applyFixtureAppAuthIfConfigured } from "../fixture/app-auth.js"
 import { seedFixtureManifest } from "../fixture/seed.js"
 
 type FixtureCommand = "seed" | "status" | "cleanup"
@@ -49,31 +50,37 @@ export function parseArgs(argv: string[]): ParsedFixtureArgs {
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
   const parsed = parseArgs(argv)
+  const restoreFixtureAuth =
+    parsed.command === "seed" || parsed.command === "cleanup" ? await applyFixtureAppAuthIfConfigured() : () => undefined
 
-  if (parsed.command === "seed") {
-    const manifest = await seedFixtureManifest({
-      repo: parsed.repo,
-      outFile: parsed.outFile,
-      seedId: parsed.seedId
-    })
-    console.log(`Seeded fixtures for ${manifest.repo.full_name} -> ${parsed.outFile}`)
-    return
-  }
+  try {
+    if (parsed.command === "seed") {
+      const manifest = await seedFixtureManifest({
+        repo: parsed.repo,
+        outFile: parsed.outFile,
+        seedId: parsed.seedId
+      })
+      console.log(`Seeded fixtures for ${manifest.repo.full_name} -> ${parsed.outFile}`)
+      return
+    }
 
-  if (parsed.command === "status") {
-    await access(parsed.outFile)
+    if (parsed.command === "status") {
+      await access(parsed.outFile)
+      const manifest = await loadFixtureManifest(parsed.outFile)
+      console.log(
+        `Fixture manifest OK: repo=${manifest.repo.full_name} version=${manifest.version} path=${parsed.outFile}`
+      )
+      return
+    }
+
     const manifest = await loadFixtureManifest(parsed.outFile)
-    console.log(
-      `Fixture manifest OK: repo=${manifest.repo.full_name} version=${manifest.version} path=${parsed.outFile}`
-    )
-    return
+    const cleanup = await cleanupSeededFixtures(manifest)
+    await rm(parsed.outFile, { force: true })
+    console.log(`Closed ${cleanup.closedIssues} seeded issue(s) in ${manifest.repo.full_name}`)
+    console.log(`Removed fixture manifest: ${parsed.outFile}`)
+  } finally {
+    restoreFixtureAuth()
   }
-
-  const manifest = await loadFixtureManifest(parsed.outFile)
-  const cleanup = await cleanupSeededFixtures(manifest)
-  await rm(parsed.outFile, { force: true })
-  console.log(`Closed ${cleanup.closedIssues} seeded issue(s) in ${manifest.repo.full_name}`)
-  console.log(`Removed fixture manifest: ${parsed.outFile}`)
 }
 
 const isDirectRun = process.argv[1]
