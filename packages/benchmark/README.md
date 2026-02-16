@@ -30,6 +30,7 @@ pnpm --filter @ghx-dev/benchmark run benchmark -- ghx 1 --scenario-set workflows
 pnpm --filter @ghx-dev/benchmark run benchmark -- ghx 1 --scenario-set projects-v2
 
 # fixture lifecycle (sandbox repo)
+BENCH_FIXTURE_GH_APP_PRIVATE_KEY_PATH=/path/to/app.private-key.pem pnpm --filter @ghx-dev/benchmark run fixtures:env:bootstrap
 pnpm --filter @ghx-dev/benchmark run fixtures -- seed --repo aryeko/ghx-bench-fixtures --out fixtures/latest.json --seed-id local
 pnpm --filter @ghx-dev/benchmark run fixtures -- status --out fixtures/latest.json
 pnpm --filter @ghx-dev/benchmark run benchmark -- ghx 1 --scenario-set pr-exec --fixture-manifest fixtures/latest.json
@@ -74,6 +75,8 @@ Notes:
 - Mutation-heavy scenarios should target sandbox repo `aryeko/ghx-bench-fixtures`, not `aryeko/ghx`.
 - Use `--fixture-manifest` (or `BENCH_FIXTURE_MANIFEST`) to resolve scenario input bindings.
 - Gate expectations are model-aware and configured in `packages/benchmark/config/expectations.json`.
+- `fixtures:env:bootstrap` reads app IDs from repo variables (`BENCH_FIXTURE_GH_APP_ID`, `BENCH_FIXTURE_GH_APP_INSTALLATION_ID`) and writes `.env.local`.
+- GitHub Actions secret values are write-only; private key content must come from local env (`BENCH_FIXTURE_GH_APP_PRIVATE_KEY`) or local path (`BENCH_FIXTURE_GH_APP_PRIVATE_KEY_PATH`).
 
 For benchmark methodology and reporting details, see:
 

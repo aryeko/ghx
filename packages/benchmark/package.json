@@ -17,6 +17,7 @@
     "test:e2e:sdk": "vitest run --project e2e:sdk --passWithNoTests",
     "benchmark": "tsx src/cli/benchmark.ts run",
     "fixtures": "tsx src/cli/fixtures.ts",
+    "fixtures:env:bootstrap": "bash scripts/bootstrap-fixture-app-env.sh",
     "check:scenarios": "tsx src/cli/check-scenarios.ts",
     "report": "tsx src/cli/report.ts",
     "report:gate": "pnpm run report -- --gate",
