@@ -1500,7 +1500,67 @@ describe("suite-runner helpers", () => {
 
     expect(result.success).toBe(false)
     expect(result.error?.type).toBe("runner_error")
+    expect(result.external_retry_count).toBe(0)
     expect(abort).toHaveBeenCalled()
+  })
+
+  it("retries once for retryable session-message timeouts", async () => {
+    const session = {
+      create: vi
+        .fn()
+        .mockResolvedValueOnce({ data: { id: "s1" } })
+        .mockResolvedValueOnce({ data: { id: "s2" } }),
+      promptAsync: vi.fn(async () => ({ data: {} })),
+      messages: vi
+        .fn()
+        .mockImplementation(async (options: { path?: { id?: string } }) => {
+          if (options.path?.id === "s1") {
+            return { data: [] }
+          }
+
+          return {
+            data: [
+              {
+                info: {
+                  id: "assistant-1",
+                  role: "assistant",
+                  time: { created: 1, completed: 2 },
+                  tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
+                  cost: 0
+                },
+                parts: [{ type: "text", text: "{\"ok\":true,\"data\":{\"id\":\"repo\"},\"error\":null,\"meta\":{}}" }]
+              }
+            ]
+          }
+        }),
+      abort: vi.fn(async () => ({ data: {} }))
+    }
+
+    const result = await runScenario(
+      { session },
+      {
+        id: "repo-view-timeout-retry",
+        name: "Repo view timeout retry",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "do {{task}}",
+        timeout_ms: 10,
+        allowed_retries: 0,
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+          require_tool_calls: false
+        },
+        tags: []
+      },
+      "agent_direct",
+      1
+    )
+
+    expect(result.success).toBe(true)
+    expect(result.external_retry_count).toBe(1)
+    expect(session.abort).toHaveBeenCalledTimes(1)
   })
 
   it("returns runner_error for non-Error failures", async () => {
@@ -1532,6 +1592,7 @@ describe("suite-runner helpers", () => {
 
     expect(result.success).toBe(false)
     expect(result.error?.message).toBe("boom")
+    expect(result.external_retry_count).toBe(0)
   })
 
 })

@@ -83,6 +83,10 @@ const OPEN_CODE_MODE = process.env.BENCH_OPENCODE_MODE ?? null
 const GIT_REPO = process.env.BENCH_GIT_REPO ?? null
 const GIT_COMMIT = process.env.BENCH_GIT_COMMIT ?? null
 const OPENCODE_PORT = Number.parseInt(process.env.BENCH_OPENCODE_PORT ?? "3000", 10)
+const FIRST_ASSISTANT_TIMEOUT_MS = Number.parseInt(process.env.BENCH_FIRST_ASSISTANT_TIMEOUT_MS ?? "15000", 10)
+const SESSION_STALL_TIMEOUT_MS = Number.parseInt(process.env.BENCH_SESSION_STALL_TIMEOUT_MS ?? "10000", 10)
+const MAX_RUNNER_RETRIES = Number.parseInt(process.env.BENCH_RUNNER_MAX_RETRIES ?? "1", 10)
+const RUNNER_RETRY_BACKOFF_MS = Number.parseInt(process.env.BENCH_RUNNER_RETRY_BACKOFF_MS ?? "750", 10)
 
 const modePromptPrefix: Record<BenchmarkMode, string> = {
   agent_direct:
@@ -537,6 +541,28 @@ export async function fetchSessionMessages(
   return unwrapData<SessionMessageEntry[]>(messagesResult, "session.messages")
 }
 
+function hasAssistantSignal(entry: SessionMessageEntry): boolean {
+  if (!entry.info) {
+    return false
+  }
+
+  return hasAssistantMetadata(entry.info) || hasStructuredOutput(entry.info) || (entry.info as { role?: unknown }).role === "assistant"
+}
+
+function messageProgressSignature(messages: SessionMessageEntry[]): string {
+  return messages
+    .map((entry) => {
+      const info = entry.info as { id?: unknown; role?: unknown } | undefined
+      const id = typeof info?.id === "string" ? info.id : "<no-id>"
+      const role = typeof info?.role === "string" ? info.role : "<no-role>"
+      const parts = entry.parts ?? []
+      const stepFinish = [...parts].reverse().find((part) => part.type === "step-finish")
+      const stepReason = typeof stepFinish?.reason === "string" ? stepFinish.reason : "<none>"
+      return `${id}:${role}:${parts.length}:${stepReason}`
+    })
+    .join("|")
+}
+
 export async function waitForAssistantFromMessages(
   sessionApi: ReturnType<typeof getSessionApi>,
   sessionId: string,
@@ -546,6 +572,20 @@ export async function waitForAssistantFromMessages(
 ): Promise<PromptResponse> {
   const started = Date.now()
   let lastWaitLogAt = started
+  let lastProgressAt = started
+  let lastSignature = ""
+  const firstAssistantBudgetMs = Math.min(
+    timeoutMs,
+    Number.isFinite(FIRST_ASSISTANT_TIMEOUT_MS) && FIRST_ASSISTANT_TIMEOUT_MS > 0
+      ? FIRST_ASSISTANT_TIMEOUT_MS
+      : timeoutMs
+  )
+  const stallBudgetMs = Math.min(
+    timeoutMs,
+    Number.isFinite(SESSION_STALL_TIMEOUT_MS) && SESSION_STALL_TIMEOUT_MS > 0
+      ? SESSION_STALL_TIMEOUT_MS
+      : timeoutMs
+  )
 
   const getCreatedAt = (entry: SessionMessageEntry): number => {
     if (!entry.info || !isObject(entry.info)) {
@@ -557,7 +597,21 @@ export async function waitForAssistantFromMessages(
   }
 
   while (Date.now() - started < timeoutMs) {
+    const now = Date.now()
     const messages = await fetchSessionMessages(sessionApi, sessionId, 50)
+    const signature = messageProgressSignature(messages)
+    if (signature !== lastSignature) {
+      lastSignature = signature
+      lastProgressAt = now
+    }
+
+    if (!previousAssistantId && !messages.some((entry) => hasAssistantSignal(entry)) && now - started >= firstAssistantBudgetMs) {
+      throw new Error(`No assistant message received in session.messages within ${firstAssistantBudgetMs}ms`)
+    }
+
+    if (messages.length > 0 && now - lastProgressAt >= stallBudgetMs) {
+      throw new Error(`Session message stream stalled in session.messages for ${stallBudgetMs}ms`)
+    }
 
     const candidates = previousAssistantId
       ? messages.filter((entry) => {
@@ -650,7 +704,6 @@ export async function waitForAssistantFromMessages(
       }
     }
 
-    const now = Date.now()
     if (now - lastWaitLogAt >= 5000) {
       console.log(`[benchmark] waiting: scenario=${scenarioId} session=${sessionId} elapsed_ms=${now - started}`)
       lastWaitLogAt = now
@@ -1225,111 +1278,46 @@ export async function runScenario(
   iteration: number,
   scenarioSet: string | null = null
 ): Promise<BenchmarkRow> {
-  const startedAt = Date.now()
-  let sessionId: string | null = null
+  const scenarioStartedAt = Date.now()
+  let externalRetryCount = 0
 
-  try {
-    const sessionApi = getSessionApi(client)
-    const scopedAssertions = modeScopedAssertions(scenario, mode)
-    const benchmarkNonce = randomUUID()
-    const sessionResult = await withTimeout(sessionApi.create({ url: "/session" }), scenario.timeout_ms, "session.create")
-    const session = unwrapData<{ id: string }>(sessionResult, "session.create")
-    sessionId = session.id
-
-    const promptResult = await withTimeout(
-      sessionApi.promptAsync({
-        url: "/session/{id}/prompt_async",
-        path: { id: session.id },
-        body: {
-          model: { providerID: PROVIDER_ID, modelID: MODEL_ID },
-          agent: OPEN_CODE_MODE ?? undefined,
-          parts: [{ type: "text", text: renderPrompt(scenario, mode, benchmarkNonce) }],
-          format: {
-            type: "json_schema",
-            retryCount: 2,
-            schema: buildOutputSchema(scopedAssertions)
-          }
-        }
-      }),
-      Math.min(15000, scenario.timeout_ms),
-      "session.promptAsync"
-    )
-
-    const remainingTimeoutMs = Math.max(1000, scenario.timeout_ms - (Date.now() - startedAt))
-    const immediatePrompt = extractPromptResponseFromPromptResult(promptResult)
-    const hydrated =
-      immediatePrompt ??
-      (await waitForAssistantFromMessages(sessionApi, session.id, remainingTimeoutMs, scenario.id))
-    let assistantAndParts = coercePromptResponse(hydrated)
-
-    let extracted = extractEnvelopeFromParts(assistantAndParts.parts)
-    if (extracted.envelope === null && assistantAndParts.assistant.structured_output !== undefined) {
-      extracted = {
-        ...extracted,
-        envelope: assistantAndParts.assistant.structured_output
-      }
+  const classifyRunnerFailure = (error: unknown): { type: string; message: string; retryable: boolean } => {
+    const message = error instanceof Error ? error.message : String(error)
+    if (message.includes("No assistant message received in session.messages")) {
+      return { type: "runner_timeout_no_first_assistant", message, retryable: true }
     }
 
-    let continuationCount = 0
-    while (extracted.envelope === null && continuationCount < 3) {
-      continuationCount += 1
-      const remaining = Math.max(1000, scenario.timeout_ms - (Date.now() - startedAt))
-
-      const continuationResult = await withTimeout(
-        sessionApi.promptAsync({
-          url: "/session/{id}/prompt_async",
-          path: { id: session.id },
-          body: {
-            messageID: assistantAndParts.assistant.id,
-            model: { providerID: PROVIDER_ID, modelID: MODEL_ID },
-            agent: OPEN_CODE_MODE ?? undefined,
-            parts: [{ type: "text", text: "Continue and return only one complete JSON object for the final envelope." }]
-          }
-        }),
-        Math.min(10000, remaining),
-        "session.promptAsync.continue"
-      )
-
-      const immediateContinuation = extractPromptResponseFromPromptResult(continuationResult)
-      const next =
-        immediateContinuation ??
-        (await waitForAssistantFromMessages(
-          sessionApi,
-          session.id,
-          remaining,
-          scenario.id,
-          assistantAndParts.assistant.id
-        ))
-
-      assistantAndParts = coercePromptResponse(next)
-      extracted = extractEnvelopeFromParts(assistantAndParts.parts)
+    if (message.includes("Session message stream stalled in session.messages")) {
+      return { type: "runner_timeout_stalled_session", message, retryable: true }
     }
 
-    let assistant = assistantAndParts.assistant
-    let envelope = tryWrapRawDataAsEnvelope(extracted.envelope, scopedAssertions, mode)
+    if (message.includes("Timed out waiting for assistant message in session.messages")) {
+      return { type: "runner_timeout_wait_for_assistant", message, retryable: true }
+    }
 
-    let allMessages = await fetchSessionMessages(sessionApi, session.id)
-    let toolCounts = aggregateToolCounts(allMessages)
-    const requireToolCalls = scopedAssertions.require_tool_calls ?? true
+    return { type: "runner_error", message, retryable: false }
+  }
 
-    let forceToolAttempt = 0
-    while (requireToolCalls && toolCounts.toolCalls === 0 && forceToolAttempt < 3) {
-      forceToolAttempt += 1
-      const remaining = Math.max(1000, scenario.timeout_ms - (Date.now() - startedAt))
-      const forcedCommand = forcedToolCommandHint(scenario, mode)
-      const forcedPromptResult = await withTimeout(
+  while (true) {
+    const attemptStartedAt = Date.now()
+    let sessionId: string | null = null
+
+    try {
+      const sessionApi = getSessionApi(client)
+      const scopedAssertions = modeScopedAssertions(scenario, mode)
+      const benchmarkNonce = randomUUID()
+      const sessionResult = await withTimeout(sessionApi.create({ url: "/session" }), scenario.timeout_ms, "session.create")
+      const session = unwrapData<{ id: string }>(sessionResult, "session.create")
+      sessionId = session.id
+
+      const promptResult = await withTimeout(
         sessionApi.promptAsync({
           url: "/session/{id}/prompt_async",
           path: { id: session.id },
           body: {
             model: { providerID: PROVIDER_ID, modelID: MODEL_ID },
             agent: OPEN_CODE_MODE ?? undefined,
-            parts: [
-              {
-                type: "text",
-                text: `You must execute at least one real tool call before producing the final JSON envelope. Run this exact command now: ${forcedCommand}. Then return the final envelope JSON only.`
-              }
-            ],
+            parts: [{ type: "text", text: renderPrompt(scenario, mode, benchmarkNonce) }],
             format: {
               type: "json_schema",
               retryCount: 2,
@@ -1337,24 +1325,18 @@ export async function runScenario(
             }
           }
         }),
-        Math.min(10000, remaining),
-        "session.promptAsync.tool-required"
+        Math.min(15000, scenario.timeout_ms),
+        "session.promptAsync"
       )
 
-      const immediateForcedResponse = extractPromptResponseFromPromptResult(forcedPromptResult)
-      const next =
-        immediateForcedResponse ??
-        (await waitForAssistantFromMessages(
-          sessionApi,
-          session.id,
-          remaining,
-          scenario.id,
-          assistant.id
-        ))
+      const remainingTimeoutMs = Math.max(1000, scenario.timeout_ms - (Date.now() - attemptStartedAt))
+      const immediatePrompt = extractPromptResponseFromPromptResult(promptResult)
+      const hydrated =
+        immediatePrompt ??
+        (await waitForAssistantFromMessages(sessionApi, session.id, remainingTimeoutMs, scenario.id))
+      let assistantAndParts = coercePromptResponse(hydrated)
 
-      assistantAndParts = coercePromptResponse(next)
-      assistant = assistantAndParts.assistant
-      extracted = extractEnvelopeFromParts(assistantAndParts.parts)
+      let extracted = extractEnvelopeFromParts(assistantAndParts.parts)
       if (extracted.envelope === null && assistantAndParts.assistant.structured_output !== undefined) {
         extracted = {
           ...extracted,
@@ -1362,149 +1344,254 @@ export async function runScenario(
         }
       }
 
-      envelope = tryWrapRawDataAsEnvelope(extracted.envelope, scopedAssertions, mode)
-      allMessages = await fetchSessionMessages(sessionApi, session.id)
-      toolCounts = aggregateToolCounts(allMessages)
-    }
+      let continuationCount = 0
+      while (extracted.envelope === null && continuationCount < 3) {
+        continuationCount += 1
+        const remaining = Math.max(1000, scenario.timeout_ms - (Date.now() - attemptStartedAt))
 
-    if (!validateEnvelope(scopedAssertions, envelope)) {
-      const bestEnvelope = findBestEnvelopeFromMessages(allMessages, scopedAssertions, mode)
-      if (bestEnvelope !== null) {
-        envelope = bestEnvelope
-      } else {
-        const recoveredEnvelope = extractEnvelopeFromMessages(allMessages)
-        if (recoveredEnvelope !== null) {
-          envelope = tryWrapRawDataAsEnvelope(recoveredEnvelope, scopedAssertions, mode)
+        const continuationResult = await withTimeout(
+          sessionApi.promptAsync({
+            url: "/session/{id}/prompt_async",
+            path: { id: session.id },
+            body: {
+              messageID: assistantAndParts.assistant.id,
+              model: { providerID: PROVIDER_ID, modelID: MODEL_ID },
+              agent: OPEN_CODE_MODE ?? undefined,
+              parts: [{ type: "text", text: "Continue and return only one complete JSON object for the final envelope." }]
+            }
+          }),
+          Math.min(10000, remaining),
+          "session.promptAsync.continue"
+        )
+
+        const immediateContinuation = extractPromptResponseFromPromptResult(continuationResult)
+        const next =
+          immediateContinuation ??
+          (await waitForAssistantFromMessages(
+            sessionApi,
+            session.id,
+            remaining,
+            scenario.id,
+            assistantAndParts.assistant.id
+          ))
+
+        assistantAndParts = coercePromptResponse(next)
+        extracted = extractEnvelopeFromParts(assistantAndParts.parts)
+      }
+
+      let assistant = assistantAndParts.assistant
+      let envelope = tryWrapRawDataAsEnvelope(extracted.envelope, scopedAssertions, mode)
+
+      let allMessages = await fetchSessionMessages(sessionApi, session.id)
+      let toolCounts = aggregateToolCounts(allMessages)
+      const requireToolCalls = scopedAssertions.require_tool_calls ?? true
+
+      let forceToolAttempt = 0
+      while (requireToolCalls && toolCounts.toolCalls === 0 && forceToolAttempt < 3) {
+        forceToolAttempt += 1
+        const remaining = Math.max(1000, scenario.timeout_ms - (Date.now() - attemptStartedAt))
+        const forcedCommand = forcedToolCommandHint(scenario, mode)
+        const forcedPromptResult = await withTimeout(
+          sessionApi.promptAsync({
+            url: "/session/{id}/prompt_async",
+            path: { id: session.id },
+            body: {
+              model: { providerID: PROVIDER_ID, modelID: MODEL_ID },
+              agent: OPEN_CODE_MODE ?? undefined,
+              parts: [
+                {
+                  type: "text",
+                  text: `You must execute at least one real tool call before producing the final JSON envelope. Run this exact command now: ${forcedCommand}. Then return the final envelope JSON only.`
+                }
+              ],
+              format: {
+                type: "json_schema",
+                retryCount: 2,
+                schema: buildOutputSchema(scopedAssertions)
+              }
+            }
+          }),
+          Math.min(10000, remaining),
+          "session.promptAsync.tool-required"
+        )
+
+        const immediateForcedResponse = extractPromptResponseFromPromptResult(forcedPromptResult)
+        const next =
+          immediateForcedResponse ??
+          (await waitForAssistantFromMessages(
+            sessionApi,
+            session.id,
+            remaining,
+            scenario.id,
+            assistant.id
+          ))
+
+        assistantAndParts = coercePromptResponse(next)
+        assistant = assistantAndParts.assistant
+        extracted = extractEnvelopeFromParts(assistantAndParts.parts)
+        if (extracted.envelope === null && assistantAndParts.assistant.structured_output !== undefined) {
+          extracted = {
+            ...extracted,
+            envelope: assistantAndParts.assistant.structured_output
+          }
+        }
+
+        envelope = tryWrapRawDataAsEnvelope(extracted.envelope, scopedAssertions, mode)
+        allMessages = await fetchSessionMessages(sessionApi, session.id)
+        toolCounts = aggregateToolCounts(allMessages)
+      }
+
+      if (!validateEnvelope(scopedAssertions, envelope)) {
+        const bestEnvelope = findBestEnvelopeFromMessages(allMessages, scopedAssertions, mode)
+        if (bestEnvelope !== null) {
+          envelope = bestEnvelope
+        } else {
+          const recoveredEnvelope = extractEnvelopeFromMessages(allMessages)
+          if (recoveredEnvelope !== null) {
+            envelope = tryWrapRawDataAsEnvelope(recoveredEnvelope, scopedAssertions, mode)
+          }
         }
       }
-    }
 
-    const outputValid = validateEnvelope(scopedAssertions, envelope)
+      const outputValid = validateEnvelope(scopedAssertions, envelope)
 
-    const attemptMetrics = extractAttemptMetrics(envelope)
-    const latencyWall = Date.now() - startedAt
-    const sdkLatency =
-      typeof assistant.time.completed === "number"
-        ? Math.max(0, assistant.time.completed - assistant.time.created)
-        : null
+      const attemptMetrics = extractAttemptMetrics(envelope)
+      const latencyWall = Date.now() - scenarioStartedAt
+      const sdkLatency =
+        typeof assistant.time.completed === "number"
+          ? Math.max(0, assistant.time.completed - assistant.time.created)
+          : null
 
-    const tokenTotal =
-      assistant.tokens.input +
-      assistant.tokens.output +
-      assistant.tokens.reasoning +
-      assistant.tokens.cache.read +
-      assistant.tokens.cache.write
-    const timingBreakdown = extractTimingBreakdown(allMessages)
+      const tokenTotal =
+        assistant.tokens.input +
+        assistant.tokens.output +
+        assistant.tokens.reasoning +
+        assistant.tokens.cache.read +
+        assistant.tokens.cache.write
+      const timingBreakdown = extractTimingBreakdown(allMessages)
 
-    const minToolCalls = scopedAssertions.min_tool_calls ?? 1
-    const maxToolCalls = scopedAssertions.max_tool_calls
-    const hasRequiredToolCalls = requireToolCalls ? toolCounts.toolCalls >= minToolCalls : true
-    const hasValidMaxToolCalls = maxToolCalls === undefined ? true : toolCounts.toolCalls <= maxToolCalls
-    const requiresAttemptTrace = scopedAssertions.require_attempt_trace ?? false
-    const hasAttemptTrace = !requiresAttemptTrace || attemptMetrics.totalAttempts > 0
-    const expectedOutcome = expectedOutcomeFromAssertions(scopedAssertions)
-    const expectValidOutput = scopedAssertions.expect_valid_output ?? true
-    const outputExpectationMet = expectValidOutput ? outputValid : !outputValid
-    const outcomeMatched = matchesExpectedOutcome(envelope as { ok: boolean; error: unknown }, expectedOutcome)
-    const errorReason = !outputExpectationMet
-      ? `Output validation failed: outputValid=${outputValid}, expectValidOutput=${expectValidOutput}`
-      : !outcomeMatched
-        ? `Outcome validation failed: expected_outcome=${expectedOutcome}`
-      : !hasRequiredToolCalls
-        ? `Expected at least ${minToolCalls} tool call(s), got ${toolCounts.toolCalls}`
-        : !hasValidMaxToolCalls
-          ? `Expected at most ${maxToolCalls} tool call(s), got ${toolCounts.toolCalls}`
-          : !hasAttemptTrace
-            ? "Expected attempt trace metadata in output envelope"
-        : null
+      const minToolCalls = scopedAssertions.min_tool_calls ?? 1
+      const maxToolCalls = scopedAssertions.max_tool_calls
+      const hasRequiredToolCalls = requireToolCalls ? toolCounts.toolCalls >= minToolCalls : true
+      const hasValidMaxToolCalls = maxToolCalls === undefined ? true : toolCounts.toolCalls <= maxToolCalls
+      const requiresAttemptTrace = scopedAssertions.require_attempt_trace ?? false
+      const hasAttemptTrace = !requiresAttemptTrace || attemptMetrics.totalAttempts > 0
+      const expectedOutcome = expectedOutcomeFromAssertions(scopedAssertions)
+      const expectValidOutput = scopedAssertions.expect_valid_output ?? true
+      const outputExpectationMet = expectValidOutput ? outputValid : !outputValid
+      const outcomeMatched = matchesExpectedOutcome(envelope as { ok: boolean; error: unknown }, expectedOutcome)
+      const errorReason = !outputExpectationMet
+        ? `Output validation failed: outputValid=${outputValid}, expectValidOutput=${expectValidOutput}`
+        : !outcomeMatched
+          ? `Outcome validation failed: expected_outcome=${expectedOutcome}`
+        : !hasRequiredToolCalls
+          ? `Expected at least ${minToolCalls} tool call(s), got ${toolCounts.toolCalls}`
+          : !hasValidMaxToolCalls
+            ? `Expected at most ${maxToolCalls} tool call(s), got ${toolCounts.toolCalls}`
+            : !hasAttemptTrace
+              ? "Expected attempt trace metadata in output envelope"
+          : null
 
-    const success = outputExpectationMet && outcomeMatched && hasRequiredToolCalls && hasValidMaxToolCalls && hasAttemptTrace
+      const success = outputExpectationMet && outcomeMatched && hasRequiredToolCalls && hasValidMaxToolCalls && hasAttemptTrace
 
-    return {
-      timestamp: new Date().toISOString(),
-      run_id: randomUUID(),
-      mode,
-      scenario_id: scenario.id,
-      scenario_set: scenarioSet,
-      iteration,
-      session_id: sessionId,
-      success,
-      output_valid: outputValid,
-      latency_ms_wall: latencyWall,
-      sdk_latency_ms: sdkLatency,
-      timing_breakdown: timingBreakdown,
-      tokens: {
-        input: assistant.tokens.input,
-        output: assistant.tokens.output,
-        reasoning: assistant.tokens.reasoning,
-        cache_read: assistant.tokens.cache.read,
-        cache_write: assistant.tokens.cache.write,
-        total: tokenTotal
-      },
-      cost: assistant.cost,
-      tool_calls: toolCounts.toolCalls,
-      api_calls: toolCounts.apiCalls,
-      internal_retry_count: attemptMetrics.retryCount,
-      external_retry_count: 0,
-      model: {
-        provider_id: PROVIDER_ID,
-        model_id: MODEL_ID,
-        mode: OPEN_CODE_MODE
-      },
-      git: {
-        repo: GIT_REPO,
-        commit: GIT_COMMIT
-      },
-      error: errorReason
-        ? {
-            type: "assertion_failed",
-            message: errorReason
-          }
-        : null
-    }
-  } catch (error: unknown) {
-    if (sessionId) {
-      const sessionApi = getSessionApi(client)
-      await sessionApi.abort({ url: "/session/{id}/abort", path: { id: sessionId } }).catch(() => undefined)
-    }
+      return {
+        timestamp: new Date().toISOString(),
+        run_id: randomUUID(),
+        mode,
+        scenario_id: scenario.id,
+        scenario_set: scenarioSet,
+        iteration,
+        session_id: sessionId,
+        success,
+        output_valid: outputValid,
+        latency_ms_wall: latencyWall,
+        sdk_latency_ms: sdkLatency,
+        timing_breakdown: timingBreakdown,
+        tokens: {
+          input: assistant.tokens.input,
+          output: assistant.tokens.output,
+          reasoning: assistant.tokens.reasoning,
+          cache_read: assistant.tokens.cache.read,
+          cache_write: assistant.tokens.cache.write,
+          total: tokenTotal
+        },
+        cost: assistant.cost,
+        tool_calls: toolCounts.toolCalls,
+        api_calls: toolCounts.apiCalls,
+        internal_retry_count: attemptMetrics.retryCount,
+        external_retry_count: externalRetryCount,
+        model: {
+          provider_id: PROVIDER_ID,
+          model_id: MODEL_ID,
+          mode: OPEN_CODE_MODE
+        },
+        git: {
+          repo: GIT_REPO,
+          commit: GIT_COMMIT
+        },
+        error: errorReason
+          ? {
+              type: "assertion_failed",
+              message: errorReason
+            }
+          : null
+      }
+    } catch (error: unknown) {
+      if (sessionId) {
+        const sessionApi = getSessionApi(client)
+        await sessionApi.abort({ url: "/session/{id}/abort", path: { id: sessionId } }).catch(() => undefined)
+      }
 
-    return {
-      timestamp: new Date().toISOString(),
-      run_id: randomUUID(),
-      mode,
-      scenario_id: scenario.id,
-      scenario_set: scenarioSet,
-      iteration,
-      session_id: sessionId,
-      success: false,
-      output_valid: false,
-      latency_ms_wall: Date.now() - startedAt,
-      sdk_latency_ms: null,
-      tokens: {
-        input: 0,
-        output: 0,
-        reasoning: 0,
-        cache_read: 0,
-        cache_write: 0,
-        total: 0
-      },
-      cost: 0,
-      tool_calls: 0,
-      api_calls: 0,
-      internal_retry_count: 0,
-      external_retry_count: 0,
-      model: {
-        provider_id: PROVIDER_ID,
-        model_id: MODEL_ID,
-        mode: OPEN_CODE_MODE
-      },
-      git: {
-        repo: GIT_REPO,
-        commit: GIT_COMMIT
-      },
-      error: {
-        type: "runner_error",
-        message: error instanceof Error ? error.message : String(error)
+      const failure = classifyRunnerFailure(error)
+      const retriesAllowed = Number.isFinite(MAX_RUNNER_RETRIES) ? Math.max(0, MAX_RUNNER_RETRIES) : 0
+
+      if (failure.retryable && externalRetryCount < retriesAllowed) {
+        externalRetryCount += 1
+        const backoffMs = (Number.isFinite(RUNNER_RETRY_BACKOFF_MS) ? Math.max(0, RUNNER_RETRY_BACKOFF_MS) : 0) * externalRetryCount
+        if (backoffMs > 0) {
+          await new Promise((resolve) => setTimeout(resolve, backoffMs))
+        }
+        continue
+      }
+
+      return {
+        timestamp: new Date().toISOString(),
+        run_id: randomUUID(),
+        mode,
+        scenario_id: scenario.id,
+        scenario_set: scenarioSet,
+        iteration,
+        session_id: sessionId,
+        success: false,
+        output_valid: false,
+        latency_ms_wall: Date.now() - scenarioStartedAt,
+        sdk_latency_ms: null,
+        tokens: {
+          input: 0,
+          output: 0,
+          reasoning: 0,
+          cache_read: 0,
+          cache_write: 0,
+          total: 0
+        },
+        cost: 0,
+        tool_calls: 0,
+        api_calls: 0,
+        internal_retry_count: 0,
+        external_retry_count: externalRetryCount,
+        model: {
+          provider_id: PROVIDER_ID,
+          model_id: MODEL_ID,
+          mode: OPEN_CODE_MODE
+        },
+        git: {
+          repo: GIT_REPO,
+          commit: GIT_COMMIT
+        },
+        error: {
+          type: failure.type,
+          message: failure.message
+        }
       }
     }
   }
