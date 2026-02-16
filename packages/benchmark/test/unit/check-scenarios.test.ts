@@ -324,4 +324,22 @@ describe("check-scenarios", () => {
       await temp.cleanup()
     }
   })
+
+  it("fails when capability registry cards define duplicate capability_id values", async () => {
+    const fixture = createValidRoadmapFixture()
+    const duplicateCapabilities = [
+      ...fixture.allScenarioCapabilityIds,
+      fixture.allScenarioCapabilityIds[0] ?? "repo.view"
+    ]
+    const temp = await createBenchmarkRootWithCards(duplicateCapabilities)
+
+    try {
+      loadScenariosMock.mockResolvedValue(fixture.scenarios)
+      loadScenarioSetsMock.mockResolvedValue(fixture.sets)
+
+      await expect(main(temp.benchmarkCwd)).rejects.toThrow("Duplicate capability_id entries")
+    } finally {
+      await temp.cleanup()
+    }
+  })
 })

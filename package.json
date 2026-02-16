@@ -5,7 +5,7 @@
   "engines": {
     "node": ">=22"
   },
-  "packageManager": "pnpm@10.17.0",
+  "packageManager": "pnpm@10.29.3",
   "scripts": {
     "build": "nx run-many -t build",
     "build:affected": "nx affected -t build",

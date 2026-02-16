@@ -147,7 +147,9 @@ async function tryLoadRegistryCapabilityIds(benchmarkRoot: string): Promise<stri
     return null
   }
 
-  const cardFiles = (await readdir(cardsDirectory)).filter((fileName) => fileName.endsWith(".yaml"))
+  const cardFiles = (await readdir(cardsDirectory))
+    .filter((fileName) => fileName.endsWith(".yaml"))
+    .sort((left, right) => left.localeCompare(right))
   const capabilityIds: string[] = []
 
   for (const cardFile of cardFiles) {
@@ -163,6 +165,22 @@ async function tryLoadRegistryCapabilityIds(benchmarkRoot: string): Promise<stri
   }
 
   return capabilityIds
+}
+
+function assertNoDuplicateCapabilityIds(capabilityIds: string[]): void {
+  const seen = new Set<string>()
+  const duplicates = new Set<string>()
+
+  for (const capabilityId of capabilityIds) {
+    if (seen.has(capabilityId)) {
+      duplicates.add(capabilityId)
+    }
+    seen.add(capabilityId)
+  }
+
+  if (duplicates.size > 0) {
+    throw new Error(`Duplicate capability_id entries found in registry cards: ${Array.from(duplicates).join(", ")}`)
+  }
 }
 
 function assertAllCapabilitiesCoveredByBenchmarks(
@@ -226,6 +244,7 @@ export async function main(cwd: string = process.cwd()): Promise<void> {
 
   const registryCapabilityIds = await tryLoadRegistryCapabilityIds(benchmarkRoot)
   if (registryCapabilityIds) {
+    assertNoDuplicateCapabilityIds(registryCapabilityIds)
     assertAllCapabilitiesCoveredByBenchmarks(scenarioTasks, registryCapabilityIds)
   }
 

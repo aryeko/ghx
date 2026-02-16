@@ -146,9 +146,14 @@ See `CONTRIBUTING.md` for local setup, test commands, and PR expectations.
 
 Development from source:
 
+Tooling notes for local development:
+
+- `gh` CLI is required for CLI-backed execution paths (`gh auth status`).
+- `opencode` CLI is only required if you run E2E suites locally (`pnpm run test:e2e`); CI installs it via `curl -fsSL https://opencode.ai/install | bash`.
+
 ```bash
 git clone https://github.com/aryeko/ghx.git && cd ghx
-pnpm install
+./scripts/setup-dev-env.sh
 pnpm run build
 pnpm run ci
 ```

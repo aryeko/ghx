@@ -5,8 +5,10 @@ Thank you for your interest in contributing to ghx. This document provides guide
 ## Prerequisites
 
 - **Node.js** 22 or later
-- **pnpm** 10.x (the project uses `pnpm` as the package manager)
-- **Git** with `gh` CLI (optional, for GitHub workflows)
+- **Corepack** (included with modern Node.js)
+- **Git**
+- **gh CLI** authenticated (`gh auth status`) for CLI-backed flows
+- **opencode CLI** only when running E2E suites locally (`pnpm run test:e2e`)
 
 ## Development Setup
 
@@ -17,11 +19,13 @@ Thank you for your interest in contributing to ghx. This document provides guide
    cd ghx
    ```
 
-2. **Install dependencies**
+2. **Set up the local toolchain and install dependencies**
 
    ```bash
-   pnpm install
+   ./scripts/setup-dev-env.sh
    ```
+
+   This script enables Corepack, activates the repo's pinned pnpm version, and installs workspace dependencies.
 
 3. **Build the project**
 
