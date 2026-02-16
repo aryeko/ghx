@@ -34,8 +34,27 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - uses: nrwl/nx-set-shas@v4
       - run: pnpm run ci:affected
-      - name: Upload coverage to Codecov (Node 24)
+      - name: Detect Codecov report files (Node 24)
         if: ${{ always() && matrix.node-version == 24 && !cancelled() }}
+        id: reports
+        run: |
+          shopt -s nullglob
+          coverage_files=(packages/*/coverage/lcov.info)
+          junit_files=(packages/*/test-report.junit.xml)
+
+          if [ ${#coverage_files[@]} -gt 0 ]; then
+            echo "coverage_found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "coverage_found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ ${#junit_files[@]} -gt 0 ]; then
+            echo "junit_found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "junit_found=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Upload coverage to Codecov (Node 24)
+        if: ${{ always() && matrix.node-version == 24 && !cancelled() && steps.reports.outputs.coverage_found == 'true' }}
         uses: codecov/codecov-action@v5
         with:
           files: packages/*/coverage/lcov.info
@@ -43,7 +62,7 @@ jobs:
           use_oidc: true
           fail_ci_if_error: true
       - name: Upload test results to Codecov (Node 24)
-        if: ${{ always() && matrix.node-version == 24 && !cancelled() }}
+        if: ${{ always() && matrix.node-version == 24 && !cancelled() && steps.reports.outputs.junit_found == 'true' }}
         uses: codecov/codecov-action@v5
         with:
           files: packages/*/test-report.junit.xml
