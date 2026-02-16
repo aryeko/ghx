@@ -24,7 +24,9 @@ describe("report cli", () => {
 
     expect(report.parseArgs(["--gate"]).gate).toBe(true)
     expect(report.parseArgs([]).gateProfile).toBe("verify_pr")
-    expect(report.parseArgs(["--gate-profile", "verify_release"]).gateProfile).toBe("verify_release")
+    expect(report.parseArgs(["--gate-profile", "verify_release"]).gateProfile).toBe(
+      "verify_release",
+    )
     expect(report.parseArgs(["--gate-profile=verify_pr"]).gateProfile).toBe("verify_pr")
     expect(report.modeFromFilename("x-agent_direct-suite.jsonl")).toBe("agent_direct")
     expect(report.modeFromFilename("x-mcp-suite.jsonl")).toBe("mcp")
@@ -64,11 +66,15 @@ describe("report cli", () => {
       external_retry_count: 0,
       model: { provider_id: "x", model_id: "y", mode: null },
       git: { repo: null, commit: null },
-      error: null
+      error: null,
     })
 
     await writeFile(join(results, "2026-01-01-agent_direct-suite.jsonl"), `${row}\n`, "utf8")
-    await writeFile(join(results, "2026-01-02-ghx-suite.jsonl"), `${row.replace("agent_direct", "ghx")}\n`, "utf8")
+    await writeFile(
+      join(results, "2026-01-02-ghx-suite.jsonl"),
+      `${row.replace("agent_direct", "ghx")}\n`,
+      "utf8",
+    )
 
     const report = await importReportModule(root)
     const rows = await report.loadLatestRowsPerMode()
@@ -105,15 +111,14 @@ describe("report cli", () => {
       external_retry_count: 0,
       model: { provider_id: "x", model_id: "y", mode: null },
       git: { repo: null, commit: null },
-      error: null
+      error: null,
     })
     await writeFile(join(results, "2026-01-01-agent_direct-suite.jsonl"), `${row}\n`, "utf8")
 
     const report = await importReportModule(root)
     const previous = process.cwd()
     process.chdir(root)
-    await expect(report.main(["--gate"]))
-      .rejects.toThrow("Benchmark gate failed")
+    await expect(report.main(["--gate"])).rejects.toThrow("Benchmark gate failed")
     process.chdir(previous)
   })
 

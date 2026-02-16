@@ -1,10 +1,10 @@
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises"
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 
 import type { BenchmarkMode, BenchmarkRow } from "../domain/types.js"
-import { buildSummary, toMarkdown } from "../report/aggregate.js"
 import type { GateProfile } from "../report/aggregate.js"
+import { buildSummary, toMarkdown } from "../report/aggregate.js"
 
 const RESULTS_DIR = join(process.cwd(), "results")
 const REPORTS_DIR = join(process.cwd(), "reports")
@@ -35,7 +35,7 @@ function parseGateProfile(args: string[]): GateProfile {
 export function parseArgs(args: string[]): { gate: boolean; gateProfile: GateProfile } {
   return {
     gate: args.includes("--gate"),
-    gateProfile: parseGateProfile(args)
+    gateProfile: parseGateProfile(args),
   }
 }
 
@@ -95,19 +95,27 @@ function uniqueScenarioSets(rows: BenchmarkRow[]): string {
 }
 
 function uniqueScenarioIds(rows: BenchmarkRow[]): string {
-  return Array.from(new Set(rows.map((row) => row.scenario_id))).sort().join(",")
+  return Array.from(new Set(rows.map((row) => row.scenario_id)))
+    .sort()
+    .join(",")
 }
 
 function uniqueModelSignature(rows: BenchmarkRow[]): string {
   return Array.from(
-    new Set(rows.map((row) => `${row.model.provider_id}/${row.model.model_id}/${row.model.mode ?? "<null>"}`)),
+    new Set(
+      rows.map(
+        (row) => `${row.model.provider_id}/${row.model.model_id}/${row.model.mode ?? "<null>"}`,
+      ),
+    ),
   )
     .sort()
     .join(",")
 }
 
 function uniqueGitCommits(rows: BenchmarkRow[]): string {
-  return Array.from(new Set(rows.map((row) => row.git.commit ?? "<null>"))).sort().join(",")
+  return Array.from(new Set(rows.map((row) => row.git.commit ?? "<null>")))
+    .sort()
+    .join(",")
 }
 
 function validateComparableCohort(agentRows: BenchmarkRow[], ghxRows: BenchmarkRow[]): void {
@@ -156,7 +164,11 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
   const markdown = toMarkdown(summary)
 
   await mkdir(REPORTS_DIR, { recursive: true })
-  await writeFile(join(REPORTS_DIR, "latest-summary.json"), `${JSON.stringify(summary, null, 2)}\n`, "utf8")
+  await writeFile(
+    join(REPORTS_DIR, "latest-summary.json"),
+    `${JSON.stringify(summary, null, 2)}\n`,
+    "utf8",
+  )
   await writeFile(join(REPORTS_DIR, "latest-summary.md"), `${markdown}\n`, "utf8")
 
   console.log(`Wrote reports/latest-summary.json`)

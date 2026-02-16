@@ -15,7 +15,7 @@ const assertionsSchema = z
     require_tool_calls: z.boolean().optional(),
     min_tool_calls: z.number().int().nonnegative().optional(),
     max_tool_calls: z.number().int().nonnegative().optional(),
-    require_attempt_trace: z.boolean().optional()
+    require_attempt_trace: z.boolean().optional(),
   })
   .superRefine((value, context) => {
     if (
@@ -26,7 +26,7 @@ const assertionsSchema = z
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["max_tool_calls"],
-        message: "max_tool_calls must be greater than or equal to min_tool_calls"
+        message: "max_tool_calls must be greater than or equal to min_tool_calls",
       })
     }
   })
@@ -43,11 +43,11 @@ const scenarioSchema = z.object({
     .object({
       repo: z.string().optional(),
       workdir: z.string().optional(),
-      branch: z.string().optional()
+      branch: z.string().optional(),
     })
     .optional(),
   assertions: assertionsSchema,
-  tags: z.array(z.string())
+  tags: z.array(z.string()),
 })
 
 export function validateScenario(raw: unknown): Scenario {

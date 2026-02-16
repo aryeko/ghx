@@ -1,6 +1,6 @@
-import { parseCliArgs } from "./args.js"
-import { runSuite } from "../runner/suite-runner.js"
 import { pathToFileURL } from "node:url"
+import { runSuite } from "../runner/suite-runner.js"
+import { parseCliArgs } from "./args.js"
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
   const parsed = parseCliArgs(argv)
@@ -8,7 +8,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     mode: parsed.mode,
     repetitions: parsed.repetitions,
     scenarioFilter: parsed.scenarioFilter,
-    scenarioSet: parsed.scenarioSet
+    scenarioSet: parsed.scenarioSet,
   })
 }
 

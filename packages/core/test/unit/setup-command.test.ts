@@ -30,7 +30,7 @@ describe("setupCommand", () => {
 
     expect(code).toBe(1)
     expect(stderr).toHaveBeenCalledWith(
-      "Usage: ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]\n"
+      "Usage: ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]\n",
     )
   })
 
@@ -41,7 +41,9 @@ describe("setupCommand", () => {
 
     expect(code).toBe(0)
     expect(stdout.mock.calls.map((call) => String(call[0])).join("")).toContain("Dry run")
-    expect(stdout.mock.calls.map((call) => String(call[0])).join("")).toContain(".agents/skill/ghx/SKILL.md")
+    expect(stdout.mock.calls.map((call) => String(call[0])).join("")).toContain(
+      ".agents/skill/ghx/SKILL.md",
+    )
   })
 
   it("supports inline scope format", async () => {
@@ -60,7 +62,7 @@ describe("setupCommand", () => {
 
     expect(code).toBe(1)
     expect(stderr).toHaveBeenCalledWith(
-      "Usage: ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]\n"
+      "Usage: ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]\n",
     )
   })
 
