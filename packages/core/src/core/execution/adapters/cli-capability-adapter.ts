@@ -64,6 +64,16 @@ const DEFAULT_TIMEOUT_MS = 10_000
 const DEFAULT_LIST_FIRST = 30
 const MAX_WORKFLOW_JOB_LOG_CHARS = 50_000
 const REDACTED_CLI_ERROR_MESSAGE = "gh command failed; stderr redacted for safety"
+const NON_JSON_STDOUT_CAPABILITIES = new Set<CliCapabilityId>([
+  "pr.checks.rerun_failed",
+  "pr.checks.rerun_all",
+  "pr.reviewers.request",
+  "pr.assignees.update",
+  "pr.branch.update",
+  "workflow_run.cancel",
+  "workflow_run.rerun_failed",
+  "workflow_run.rerun_all",
+])
 const REPO_ISSUE_TYPES_GRAPHQL_QUERY =
   "query($owner:String!,$name:String!,$first:Int!,$after:String){repository(owner:$owner,name:$name){issueTypes(first:$first,after:$after){nodes{id name color isEnabled} pageInfo{hasNextPage endCursor}}}}"
 const ISSUE_COMMENTS_GRAPHQL_QUERY =
@@ -86,6 +96,11 @@ function sanitizeCliErrorMessage(stderr: string, exitCode: number): string {
   }
 
   return trimmed
+}
+
+function shouldFallbackRerunFailedToAll(stderr: string): boolean {
+  const normalized = stderr.toLowerCase()
+  return normalized.includes("cannot be rerun") && normalized.includes("cannot be retried")
 }
 
 function parseStrictPositiveInt(value: unknown): number | null {
@@ -1473,10 +1488,17 @@ function normalizeCliData(
   }
 
   if (capabilityId === "pr.checks.rerun_failed" || capabilityId === "pr.checks.rerun_all") {
+    const effectiveMode =
+      params.__effectiveRerunMode === "all"
+        ? "all"
+        : capabilityId === "pr.checks.rerun_failed"
+          ? "failed"
+          : "all"
+
     return {
       prNumber: Number(params.prNumber),
       runId: Number(params.runId),
-      mode: capabilityId === "pr.checks.rerun_failed" ? "failed" : "all",
+      mode: effectiveMode,
       queued: true,
     }
   }
@@ -1974,12 +1996,33 @@ export async function runCliCapability(
     const args = buildArgs(capabilityId, params, card)
     const result = await runner.run("gh", args, DEFAULT_TIMEOUT_MS)
 
+    let failureStderr = result.stderr
     if (result.exitCode !== 0) {
-      const code = mapErrorToCode(result.stderr)
+      if (
+        capabilityId === "pr.checks.rerun_failed" &&
+        shouldFallbackRerunFailedToAll(result.stderr)
+      ) {
+        const rerunAllArgs = buildArgs("pr.checks.rerun_all", params, card)
+        const rerunAllResult = await runner.run("gh", rerunAllArgs, DEFAULT_TIMEOUT_MS)
+        if (rerunAllResult.exitCode === 0) {
+          const rerunData = NON_JSON_STDOUT_CAPABILITIES.has(capabilityId)
+            ? {}
+            : parseCliData(rerunAllResult.stdout)
+          const fallbackData = normalizeCliData(capabilityId, rerunData, {
+            ...params,
+            __effectiveRerunMode: "all",
+          })
+          return normalizeResult(fallbackData, "cli", { capabilityId, reason: "CARD_FALLBACK" })
+        }
+
+        failureStderr = rerunAllResult.stderr || rerunAllResult.stdout || result.stderr
+      }
+
+      const code = mapErrorToCode(failureStderr)
       return normalizeError(
         {
           code,
-          message: sanitizeCliErrorMessage(result.stderr, result.exitCode),
+          message: sanitizeCliErrorMessage(failureStderr, result.exitCode),
           retryable: isRetryableErrorCode(code),
           details: { capabilityId, exitCode: result.exitCode },
         },
@@ -1991,7 +2034,9 @@ export async function runCliCapability(
     const data =
       capabilityId === "workflow_job.logs.get" || capabilityId === "workflow_job.logs.analyze"
         ? result.stdout
-        : parseCliData(result.stdout)
+        : NON_JSON_STDOUT_CAPABILITIES.has(capabilityId)
+          ? {}
+          : parseCliData(result.stdout)
     const normalized = normalizeCliData(capabilityId, data, params)
     return normalizeResult(normalized, "cli", { capabilityId, reason: "CARD_FALLBACK" })
   } catch (error: unknown) {

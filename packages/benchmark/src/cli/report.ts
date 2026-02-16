@@ -4,10 +4,18 @@ import { pathToFileURL } from "node:url"
 
 import type { BenchmarkMode, BenchmarkRow } from "../domain/types.js"
 import type { GateProfile } from "../report/aggregate.js"
-import { buildSummary, toMarkdown } from "../report/aggregate.js"
+import { buildSummary, DEFAULT_GATE_V2_THRESHOLDS, toMarkdown } from "../report/aggregate.js"
+import {
+  expectationsConfigExists,
+  inferModelSignatureFromRows,
+  loadExpectationsConfig,
+  resolveGateThresholdsForModel,
+  resolveModelForExpectations,
+} from "../report/expectations.js"
 
 const RESULTS_DIR = join(process.cwd(), "results")
 const REPORTS_DIR = join(process.cwd(), "reports")
+const DEFAULT_EXPECTATIONS_CONFIG = join(process.cwd(), "config", "expectations.json")
 
 function parseGateProfile(args: string[]): GateProfile {
   const inline = args.find((arg) => arg.startsWith("--gate-profile="))
@@ -32,10 +40,50 @@ function parseGateProfile(args: string[]): GateProfile {
   throw new Error("Unknown gate profile. Expected verify_pr or verify_release")
 }
 
-export function parseArgs(args: string[]): { gate: boolean; gateProfile: GateProfile } {
+export function parseArgs(args: string[]): {
+  gate: boolean
+  gateProfile: GateProfile
+  expectationsConfigProvided: boolean
+  expectationsConfigPath: string | null
+  expectationsModel: string | null
+} {
+  const parseStringFlag = (
+    flagName: "expectations-config" | "expectations-model",
+  ): { value: string | null; provided: boolean } => {
+    const inlinePrefix = `--${flagName}=`
+    const inline = args.find((arg) => arg.startsWith(inlinePrefix))
+    const splitIndex = args.findIndex((arg) => arg === `--${flagName}`)
+
+    const provided = inline !== undefined || splitIndex >= 0
+    if (!provided) {
+      return {
+        value: null,
+        provided: false,
+      }
+    }
+
+    const rawValue =
+      inline !== undefined ? inline.slice(inlinePrefix.length) : (args[splitIndex + 1] ?? "")
+    const value = rawValue.trim()
+    if (value.length === 0 || value.startsWith("--")) {
+      throw new Error(`Missing value for --${flagName}`)
+    }
+
+    return {
+      value,
+      provided: true,
+    }
+  }
+
+  const expectationsConfig = parseStringFlag("expectations-config")
+  const expectationsModel = parseStringFlag("expectations-model")
+
   return {
     gate: args.includes("--gate"),
     gateProfile: parseGateProfile(args),
+    expectationsConfigProvided: expectationsConfig.provided,
+    expectationsConfigPath: expectationsConfig.value,
+    expectationsModel: expectationsModel.value,
   }
 }
 
@@ -153,14 +201,42 @@ function validateComparableCohort(agentRows: BenchmarkRow[], ghxRows: BenchmarkR
 }
 
 export async function main(args: string[] = process.argv.slice(2)): Promise<void> {
-  const { gate, gateProfile } = parseArgs(args)
+  const {
+    gate,
+    gateProfile,
+    expectationsConfigProvided,
+    expectationsConfigPath,
+    expectationsModel,
+  } = parseArgs(args)
   const rows = await loadLatestRowsPerMode()
 
   if (rows.length === 0) {
     throw new Error("No benchmark result rows found")
   }
 
-  const summary = buildSummary(rows, undefined, gateProfile)
+  const configPath = expectationsConfigPath ?? DEFAULT_EXPECTATIONS_CONFIG
+  let expectationsModelResolved: string | null = null
+  let gateThresholds = DEFAULT_GATE_V2_THRESHOLDS
+
+  const hasExpectationsConfig = await expectationsConfigExists(configPath)
+  if (!hasExpectationsConfig && expectationsConfigProvided) {
+    throw new Error(`Expectations config not found at ${configPath}`)
+  }
+
+  if (hasExpectationsConfig) {
+    const config = await loadExpectationsConfig(configPath)
+    const inferredModel = inferModelSignatureFromRows(rows)
+    expectationsModelResolved = resolveModelForExpectations(
+      expectationsModel,
+      inferredModel,
+      config,
+    )
+    gateThresholds = resolveGateThresholdsForModel(config, expectationsModelResolved)
+  } else if (expectationsModel) {
+    throw new Error(`Expectations config not found at ${configPath}`)
+  }
+
+  const summary = buildSummary(rows, gateProfile, gateThresholds)
   const markdown = toMarkdown(summary)
 
   await mkdir(REPORTS_DIR, { recursive: true })
@@ -185,6 +261,9 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
       .filter((entry): entry is string => entry !== null)
     if (modeModels.length > 0) {
       console.log(`Benchmark model(s): ${modeModels.join("; ")}`)
+    }
+    if (expectationsModelResolved) {
+      console.log(`Benchmark expectations model: ${expectationsModelResolved}`)
     }
     console.log(`Benchmark verify result: ${status}`)
 

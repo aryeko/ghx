@@ -4,16 +4,34 @@
   "task": "issue.assignees.update",
   "input": {
     "issueId": "ISSUE_ID_PLACEHOLDER",
-    "assignees": ["octocat"]
+    "assignees": [
+      "octocat"
+    ]
   },
   "prompt_template": "Execute task {{task}} using input {{input_json}}. Return only valid JSON matching this envelope: {\"ok\": boolean, \"data\": any, \"error\": object|null, \"meta\": object}.",
   "timeout_ms": 60000,
   "allowed_retries": 0,
   "assertions": {
-    "must_succeed": false,
     "require_tool_calls": true,
     "min_tool_calls": 1,
-    "required_fields": ["ok", "data", "error", "meta"]
+    "required_fields": [
+      "ok",
+      "data",
+      "error",
+      "meta"
+    ],
+    "expected_outcome": "success"
   },
-  "tags": ["roadmap", "issues", "issue", "mutation"]
+  "tags": [
+    "roadmap",
+    "issues",
+    "issue",
+    "mutation"
+  ],
+  "fixture": {
+    "repo": "aryeko/ghx-bench-fixtures",
+    "bindings": {
+      "input.issueId": "resources.issue.id"
+    }
+  }
 }

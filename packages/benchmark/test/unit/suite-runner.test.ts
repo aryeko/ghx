@@ -1029,6 +1029,196 @@ describe("suite-runner helpers", () => {
     expect(result.tool_calls).toBeGreaterThan(0)
   })
 
+  it("uses assistant structured_output when no JSON envelope parts are present", async () => {
+    const session = {
+      create: vi.fn(async () => ({ data: { id: "s-structured" } })),
+      promptAsync: vi.fn(async () => ({
+        data: {
+          assistant: {
+            id: "m-structured",
+            sessionID: "s-structured",
+            role: "assistant",
+            time: { created: 1, completed: 2 },
+            tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
+            cost: 0,
+            structured_output: { ok: true, data: { id: "repo" }, error: null, meta: {} },
+          },
+          parts: [{ type: "step-finish", reason: "done" }],
+        },
+      })),
+      messages: vi.fn(async () => ({
+        data: [
+          {
+            info: {
+              id: "m-structured",
+              sessionID: "s-structured",
+              role: "assistant",
+              time: { created: 1, completed: 2 },
+              tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
+              cost: 0,
+            },
+            parts: [{ type: "step-finish", reason: "done" }],
+          },
+        ],
+      })),
+      abort: vi.fn(async () => ({ data: {} })),
+    }
+
+    const result = await runScenario(
+      { session },
+      {
+        id: "repo-view-structured",
+        name: "Repo view structured",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "do {{task}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+          require_tool_calls: false,
+        },
+        tags: [],
+      },
+      "ghx",
+      1,
+    )
+
+    expect(result.success).toBe(true)
+    expect(result.output_valid).toBe(true)
+  })
+
+  it("requests continuation until a JSON envelope is returned", async () => {
+    const session = {
+      create: vi.fn(async () => ({ data: { id: "s-cont" } })),
+      promptAsync: vi
+        .fn()
+        .mockResolvedValueOnce({ data: {} })
+        .mockResolvedValueOnce({
+          data: {
+            assistant: {
+              id: "m2",
+              sessionID: "s-cont",
+              role: "assistant",
+              time: { created: 3, completed: 4 },
+              tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
+              cost: 0,
+            },
+            parts: [
+              { type: "text", text: '{"ok":true,"data":{"id":"repo"},"error":null,"meta":{}}' },
+            ],
+          },
+        }),
+      messages: vi.fn(async () => ({
+        data: [
+          {
+            info: {
+              id: "m1",
+              sessionID: "s-cont",
+              role: "assistant",
+              time: { created: 1, completed: 2 },
+              tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
+              cost: 0,
+            },
+            parts: [
+              { type: "text", text: "partial response without json" },
+              { type: "step-finish", reason: "done" },
+            ],
+          },
+        ],
+      })),
+      abort: vi.fn(async () => ({ data: {} })),
+    }
+
+    const result = await runScenario(
+      { session },
+      {
+        id: "repo-view-continuation",
+        name: "Repo view continuation",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "do {{task}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+          require_tool_calls: false,
+        },
+        tags: [],
+      },
+      "ghx",
+      1,
+    )
+
+    expect(result.success).toBe(true)
+    expect(session.promptAsync).toHaveBeenCalledTimes(2)
+  })
+
+  it("recovers best valid envelope from session messages when latest envelope is invalid", async () => {
+    const session = {
+      create: vi.fn(async () => ({ data: { id: "s-recover" } })),
+      promptAsync: vi.fn(async () => ({ data: {} })),
+      messages: vi.fn(async () => ({
+        data: [
+          {
+            info: {
+              id: "m-valid",
+              sessionID: "s-recover",
+              role: "assistant",
+              time: { created: 1, completed: 2 },
+              tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
+              cost: 0,
+            },
+            parts: [
+              { type: "text", text: '{"ok":true,"data":{"id":"repo"},"error":null,"meta":{}}' },
+            ],
+          },
+          {
+            info: {
+              id: "m-invalid",
+              sessionID: "s-recover",
+              role: "assistant",
+              time: { created: 3, completed: 4 },
+              tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
+              cost: 0,
+            },
+            parts: [{ type: "text", text: '{"ok":true,"data":{},"error":null,"meta":{}}' }],
+          },
+        ],
+      })),
+      abort: vi.fn(async () => ({ data: {} })),
+    }
+
+    const result = await runScenario(
+      { session },
+      {
+        id: "repo-view-recover",
+        name: "Repo view recover",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "do {{task}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+          require_tool_calls: false,
+        },
+        tags: [],
+      },
+      "ghx",
+      1,
+    )
+
+    expect(result.success).toBe(true)
+    expect(result.output_valid).toBe(true)
+  })
+
   it("marks scenario failed when tool-call requirements are not met", async () => {
     const session = {
       create: vi.fn(async () => ({ data: { id: "s1" } })),
@@ -1334,6 +1524,54 @@ describe("suite-runner helpers", () => {
     expect(result.success).toBe(true)
   })
 
+  it("handles non-object envelopes without throwing", async () => {
+    const session = {
+      create: vi.fn(async () => ({ data: { id: "s1" } })),
+      promptAsync: vi.fn(async () => ({ data: {} })),
+      messages: vi.fn(async () => ({
+        data: [
+          {
+            info: {
+              id: "m1",
+              sessionID: "s1",
+              role: "assistant",
+              time: { created: 1, completed: 10 },
+              tokens: { input: 1, output: 2, reasoning: 3, cache: { read: 0, write: 0 } },
+              cost: 0,
+            },
+            parts: [{ type: "text", text: "null" }],
+          },
+        ],
+      })),
+      abort: vi.fn(async () => ({ data: {} })),
+    }
+
+    const result = await runScenario(
+      { session },
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "do {{task}} with {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        assertions: {
+          must_succeed: true,
+          expect_valid_output: true,
+          require_tool_calls: false,
+          data_type: "object",
+        },
+        tags: [],
+      },
+      "ghx",
+      1,
+    )
+
+    expect(result.success).toBe(false)
+    expect(result.output_valid).toBe(false)
+  })
+
   it("wraps raw data object into a valid envelope for ghx mode", async () => {
     const session = {
       create: vi.fn(async () => ({ data: { id: "s1" } })),
@@ -1524,7 +1762,67 @@ describe("suite-runner helpers", () => {
 
     expect(result.success).toBe(false)
     expect(result.error?.type).toBe("runner_error")
+    expect(result.external_retry_count).toBe(0)
     expect(abort).toHaveBeenCalled()
+  })
+
+  it("retries once for retryable session-message timeouts", async () => {
+    const session = {
+      create: vi
+        .fn()
+        .mockResolvedValueOnce({ data: { id: "s1" } })
+        .mockResolvedValueOnce({ data: { id: "s2" } }),
+      promptAsync: vi.fn(async () => ({ data: {} })),
+      messages: vi.fn().mockImplementation(async (options: { path?: { id?: string } }) => {
+        if (options.path?.id === "s1") {
+          return { data: [] }
+        }
+
+        return {
+          data: [
+            {
+              info: {
+                id: "assistant-1",
+                role: "assistant",
+                time: { created: 1, completed: 2 },
+                tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
+                cost: 0,
+              },
+              parts: [
+                { type: "text", text: '{"ok":true,"data":{"id":"repo"},"error":null,"meta":{}}' },
+              ],
+            },
+          ],
+        }
+      }),
+      abort: vi.fn(async () => ({ data: {} })),
+    }
+
+    const result = await runScenario(
+      { session },
+      {
+        id: "repo-view-timeout-retry",
+        name: "Repo view timeout retry",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "do {{task}}",
+        timeout_ms: 10,
+        allowed_retries: 0,
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+          require_tool_calls: false,
+        },
+        tags: [],
+      },
+      "agent_direct",
+      1,
+    )
+
+    expect(result.success).toBe(true)
+    expect(result.external_retry_count).toBe(1)
+    expect(session.abort).toHaveBeenCalledTimes(1)
   })
 
   it("returns runner_error for non-Error failures", async () => {
@@ -1556,5 +1854,6 @@ describe("suite-runner helpers", () => {
 
     expect(result.success).toBe(false)
     expect(result.error?.message).toBe("boom")
+    expect(result.external_retry_count).toBe(0)
   })
 })

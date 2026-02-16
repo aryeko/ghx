@@ -10,6 +10,7 @@
 
 - fixed scenario set across compared modes
 - fixed repository fixtures
+- sandbox mutation fixtures in `aryeko/ghx-bench-fixtures` (seeded via fixture manifest)
 - fixed provider/model per suite
 - repeated runs per scenario
 - captured runtime metadata (commit, timestamp, model)
@@ -52,6 +53,14 @@ Recommended verify sequence for PR validation:
 5. `pnpm --filter @ghx-dev/benchmark exec tsx src/cli/report.ts --gate --gate-profile verify_pr`
 
 Expected outcome: both reliability and efficiency checks pass for `verify_pr` on stable runs.
+
+## Seeded Full Suites
+
+For mutation and full roadmap coverage, seed sandbox fixtures first:
+
+1. `pnpm --filter @ghx-dev/benchmark run fixtures -- seed --repo aryeko/ghx-bench-fixtures --out fixtures/latest.json --seed-id local`
+2. `pnpm --filter @ghx-dev/benchmark run benchmark -- ghx 1 --scenario-set full-seeded --fixture-manifest fixtures/latest.json`
+3. `pnpm --filter @ghx-dev/benchmark run fixtures -- cleanup --out fixtures/latest.json`
 
 ## Output Validation
 

@@ -1,5 +1,5 @@
-import { z } from "zod"
 import type { BenchmarkMode } from "../domain/types.js"
+import { z } from "zod"
 
 export type ParsedCliArgs = {
   command: "run"
@@ -7,6 +7,8 @@ export type ParsedCliArgs = {
   repetitions: number
   scenarioFilter: string | null
   scenarioSet: string | null
+  fixtureManifestPath: string | null
+  seedIfMissing: boolean
 }
 
 function isBenchmarkMode(value: string): boolean {
@@ -76,6 +78,24 @@ function parseScenarioSet(flags: string[]): string | null {
   return null
 }
 
+function parseFixtureManifestPath(flags: string[]): string | null {
+  const index = flags.findIndex((arg) => arg === "--fixture-manifest")
+  if (index !== -1) {
+    return flags[index + 1] ?? null
+  }
+
+  const inline = flags.find((arg) => arg.startsWith("--fixture-manifest="))
+  if (inline) {
+    return inline.slice("--fixture-manifest=".length)
+  }
+
+  return null
+}
+
+function parseSeedIfMissing(flags: string[]): boolean {
+  return flags.includes("--seed-if-missing")
+}
+
 const parsedCliArgsSchema = z
   .object({
     command: z.literal("run"),
@@ -83,9 +103,11 @@ const parsedCliArgsSchema = z
     repetitions: z.number().int().min(1),
     scenarioFilter: z.string().min(1).nullable(),
     scenarioSet: z.string().min(1).nullable(),
+    fixtureManifestPath: z.string().min(1).nullable(),
+    seedIfMissing: z.boolean()
   })
   .refine((value) => !(value.scenarioFilter && value.scenarioSet), {
-    message: "--scenario and --scenario-set cannot be used together",
+    message: "--scenario and --scenario-set cannot be used together"
   })
 
 export function parseCliArgs(argv: string[]): ParsedCliArgs {
@@ -116,6 +138,8 @@ export function parseCliArgs(argv: string[]): ParsedCliArgs {
     repetitions,
     scenarioFilter: parseScenarioFilter(flags),
     scenarioSet: parseScenarioSet(flags),
+    fixtureManifestPath: parseFixtureManifestPath(flags),
+    seedIfMissing: parseSeedIfMissing(flags)
   })
 
   return parsed

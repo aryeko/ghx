@@ -12,3 +12,6 @@ packages/benchmark/reports/*.md
 
 # Local git worktrees
 .worktrees/
+
+# Local environment overrides
+.env.local

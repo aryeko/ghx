@@ -7,9 +7,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "tsup",
-    "format": "biome check --write .",
-    "format:check": "biome check .",
+    "build": "tsup \"src/**/*.ts\" --format esm --out-dir dist --clean --no-dts --sourcemap",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --project unit",
@@ -18,6 +16,11 @@
     "test:e2e:local": "vitest run --project e2e:local --passWithNoTests",
     "test:e2e:sdk": "vitest run --project e2e:sdk --passWithNoTests",
     "benchmark": "tsx src/cli/benchmark.ts run",
+    "suite:run": "tsx src/cli/run-suite.ts",
+    "suite:config": "tsx src/cli/generate-suite-config.ts",
+    "fixtures": "tsx src/cli/fixtures.ts",
+    "fixtures:env:bootstrap": "bash scripts/bootstrap-fixture-app-env.sh",
+    "suite:pr-exec": "bash scripts/run-pr-exec-suite.sh",
     "check:scenarios": "tsx src/cli/check-scenarios.ts",
     "report": "tsx src/cli/report.ts",
     "report:gate": "pnpm run report -- --gate",
@@ -96,11 +99,13 @@
   "dependencies": {
     "@ghx-dev/core": "workspace:*",
     "@opencode-ai/sdk": "^1.1.64",
+    "colorette": "^2.0.20",
+    "log-update": "^7.1.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "catalog:",
     "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
     "tsup": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",

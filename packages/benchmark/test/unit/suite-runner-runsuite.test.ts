@@ -1,11 +1,26 @@
 import { spawnSync } from "node:child_process"
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const createOpencodeMock = vi.fn()
-const loadScenariosMock = vi.fn()
-const loadScenarioSetsMock = vi.fn()
-const appendFileMock = vi.fn(async () => undefined)
-const mkdirMock = vi.fn(async () => undefined)
+const {
+  createOpencodeMock,
+  loadScenariosMock,
+  loadScenarioSetsMock,
+  seedFixtureManifestMock,
+  appendFileMock,
+  mkdirMock,
+  accessMock,
+} = vi.hoisted(() => ({
+  createOpencodeMock: vi.fn(),
+  loadScenariosMock: vi.fn(),
+  loadScenarioSetsMock: vi.fn(),
+  seedFixtureManifestMock: vi.fn(),
+  appendFileMock: vi.fn(async () => undefined),
+  mkdirMock: vi.fn(async () => undefined),
+  accessMock: vi.fn(async () => undefined),
+}))
 
 vi.mock("@opencode-ai/sdk", () => ({
   createOpencode: createOpencodeMock,
@@ -16,10 +31,15 @@ vi.mock("../../src/scenario/loader.js", () => ({
   loadScenarioSets: loadScenarioSetsMock,
 }))
 
+vi.mock("../../src/fixture/seed.js", () => ({
+  seedFixtureManifest: seedFixtureManifestMock,
+}))
+
 vi.mock("node:fs/promises", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:fs/promises")>()
   return {
     ...actual,
+    access: accessMock,
     appendFile: appendFileMock,
     mkdir: mkdirMock,
   }
@@ -86,6 +106,8 @@ function createSessionMocks(options?: { firstPromptFails?: boolean }) {
 describe("runSuite", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    seedFixtureManifestMock.mockReset()
+    accessMock.mockResolvedValue(undefined)
     loadScenarioSetsMock.mockResolvedValue({
       default: ["repo-view-001"],
       "pr-operations-all": ["repo-view-001"],
@@ -132,6 +154,72 @@ describe("runSuite", () => {
     const row = JSON.parse(firstWrite as string)
     expect(row.scenario_set).toBe("default")
     expect(close).toHaveBeenCalled()
+  })
+
+  it("resolves scenario fixture bindings from manifest", async () => {
+    const session = createSessionMocks()
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+
+    loadScenariosMock.mockResolvedValue([
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "OWNER_PLACEHOLDER", name: "REPO_PLACEHOLDER" },
+        prompt_template: "run {{task}} {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        fixture: {
+          repo: "aryeko/ghx-bench-fixtures",
+          bindings: {
+            "input.owner": "repo.owner",
+            "input.name": "repo.name",
+          },
+        },
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+        },
+        tags: [],
+      },
+    ])
+
+    const root = await mkdtemp(join(tmpdir(), "ghx-bench-fixture-"))
+    const fixturePath = join(root, "fixture.json")
+    await writeFile(
+      fixturePath,
+      JSON.stringify({
+        version: 1,
+        repo: {
+          owner: "aryeko",
+          name: "ghx-bench-fixtures",
+          full_name: "aryeko/ghx-bench-fixtures",
+          default_branch: "main",
+        },
+        resources: {},
+      }),
+      "utf8",
+    )
+
+    const mod = await import("../../src/runner/suite-runner.js")
+    await mod.runSuite({
+      mode: "ghx",
+      repetitions: 1,
+      scenarioFilter: null,
+      fixtureManifestPath: fixturePath,
+    })
+
+    const promptCalls = session.promptAsync.mock.calls as unknown[][]
+    const firstPromptPayload = (promptCalls[0]?.[0] ?? {}) as {
+      body?: {
+        parts?: Array<{ type?: string; text?: string }>
+      }
+    }
+    const prompt = String(firstPromptPayload.body?.parts?.[0]?.text ?? "")
+    expect(prompt).toContain('"owner":"aryeko"')
+    expect(prompt).toContain('"name":"ghx-bench-fixtures"')
   })
 
   it("runs selected scenario set and records scenario_set metadata", async () => {
@@ -381,6 +469,210 @@ describe("runSuite", () => {
     expect(close).not.toHaveBeenCalled()
   })
 
+  it("fails fast when selected scenarios require fixture bindings and no manifest is available", async () => {
+    const session = createSessionMocks()
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+
+    accessMock.mockRejectedValueOnce(new Error("missing fixture manifest"))
+
+    loadScenariosMock.mockResolvedValue([
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "OWNER_PLACEHOLDER", name: "REPO_PLACEHOLDER" },
+        prompt_template: "run {{task}} {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        fixture: {
+          repo: "aryeko/ghx-bench-fixtures",
+          bindings: {
+            "input.owner": "repo.owner",
+            "input.name": "repo.name",
+          },
+        },
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+        },
+        tags: [],
+      },
+    ])
+
+    const mod = await import("../../src/runner/suite-runner.js")
+    await expect(
+      mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null }),
+    ).rejects.toThrow(
+      "Selected scenarios require fixture bindings but no fixture manifest was provided",
+    )
+  })
+
+  it("seeds the default fixture manifest for binding scenarios when --seed-if-missing is set", async () => {
+    const session = createSessionMocks()
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+
+    loadScenariosMock.mockResolvedValue([
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "OWNER_PLACEHOLDER", name: "REPO_PLACEHOLDER" },
+        prompt_template: "run {{task}} {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        fixture: {
+          repo: "aryeko/ghx-bench-fixtures",
+          bindings: {
+            "input.owner": "repo.owner",
+            "input.name": "repo.name",
+          },
+        },
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+        },
+        tags: [],
+      },
+    ])
+
+    accessMock.mockRejectedValueOnce(new Error("missing default fixture manifest"))
+    accessMock.mockRejectedValueOnce(new Error("still missing before seed"))
+    seedFixtureManifestMock.mockImplementation(async ({ outFile }: { outFile: string }) => {
+      await mkdir("fixtures", { recursive: true })
+      await writeFile(
+        outFile,
+        JSON.stringify({
+          version: 1,
+          repo: {
+            owner: "aryeko",
+            name: "ghx-bench-fixtures",
+            full_name: "aryeko/ghx-bench-fixtures",
+            default_branch: "main",
+          },
+          resources: {},
+        }),
+        "utf8",
+      )
+    })
+
+    const mod = await import("../../src/runner/suite-runner.js")
+    await mod.runSuite({
+      mode: "ghx",
+      repetitions: 1,
+      scenarioFilter: null,
+      seedIfMissing: true,
+    })
+
+    expect(seedFixtureManifestMock).toHaveBeenCalledWith({
+      repo: "aryeko/ghx-bench-fixtures",
+      outFile: "fixtures/latest.json",
+      seedId: "default",
+    })
+  })
+
+  it("seeds a missing fixture manifest when --seed-if-missing is set", async () => {
+    const session = createSessionMocks()
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+
+    loadScenariosMock.mockResolvedValue([
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "run {{task}} {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        fixture: { repo: "a/b" },
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+        },
+        tags: [],
+      },
+    ])
+
+    const root = await mkdtemp(join(tmpdir(), "ghx-bench-seed-"))
+    const fixturePath = join(root, "seeded-fixture.json")
+
+    seedFixtureManifestMock.mockImplementation(async ({ outFile }: { outFile: string }) => {
+      await writeFile(
+        outFile,
+        JSON.stringify({
+          version: 1,
+          repo: {
+            owner: "aryeko",
+            name: "ghx-bench-fixtures",
+            full_name: "aryeko/ghx-bench-fixtures",
+            default_branch: "main",
+          },
+          resources: {},
+        }),
+        "utf8",
+      )
+    })
+
+    accessMock.mockRejectedValueOnce(new Error("missing fixture manifest"))
+
+    const mod = await import("../../src/runner/suite-runner.js")
+    await mod.runSuite({
+      mode: "ghx",
+      repetitions: 1,
+      scenarioFilter: null,
+      fixtureManifestPath: fixturePath,
+      seedIfMissing: true,
+    })
+
+    expect(seedFixtureManifestMock).toHaveBeenCalledWith({
+      repo: "aryeko/ghx-bench-fixtures",
+      outFile: fixturePath,
+      seedId: "default",
+    })
+    expect(appendFileMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("throws when --seed-if-missing is set without a fixture manifest", async () => {
+    const session = createSessionMocks()
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+
+    loadScenariosMock.mockResolvedValue([
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "run {{task}} {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        fixture: { repo: "a/b" },
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+        },
+        tags: [],
+      },
+    ])
+
+    const mod = await import("../../src/runner/suite-runner.js")
+    await expect(
+      mod.runSuite({
+        mode: "ghx",
+        repetitions: 1,
+        scenarioFilter: null,
+        seedIfMissing: true,
+      }),
+    ).rejects.toThrow("--seed-if-missing requires --fixture-manifest")
+    expect(seedFixtureManifestMock).not.toHaveBeenCalled()
+  })
+
   it("throws when scenario filter matches nothing", async () => {
     const session = createSessionMocks()
     const close = vi.fn()
@@ -438,6 +730,89 @@ describe("runSuite", () => {
 
     expect(session.promptAsync).toHaveBeenCalledTimes(2)
     expect(appendFileMock).toHaveBeenCalledTimes(1)
+    const appendCalls = appendFileMock.mock.calls as unknown[][]
+    const row = JSON.parse(String(appendCalls[0]?.[1] ?? "{}")) as {
+      external_retry_count?: unknown
+    }
+    expect(row.external_retry_count).toBe(0)
+  })
+
+  it("preserves runner-level external retry count in persisted rows", async () => {
+    const session = {
+      create: vi
+        .fn()
+        .mockResolvedValueOnce({ data: { id: "session-1" } })
+        .mockResolvedValueOnce({ data: { id: "session-2" } }),
+      promptAsync: vi.fn(async () => ({ data: {} })),
+      messages: vi.fn().mockImplementation(async (options: { path?: { id?: string } }) => {
+        if (options.path?.id === "session-1") {
+          return { data: [] }
+        }
+
+        return {
+          data: [
+            {
+              info: {
+                id: "msg-2",
+                sessionID: "session-2",
+                role: "assistant",
+                time: { created: 1, completed: 10 },
+                tokens: { input: 1, output: 2, reasoning: 3, cache: { read: 0, write: 0 } },
+                cost: 0,
+              },
+              parts: [
+                {
+                  type: "text",
+                  text: '{"ok":true,"data":{"id":"repo"},"error":null,"meta":{"route_used":"graphql"}}',
+                },
+                { type: "tool", tool: "api-client" },
+                {
+                  type: "step-finish",
+                  reason: "done",
+                  tokens: { input: 1, output: 2, reasoning: 3, cache: { read: 0, write: 0 } },
+                  cost: 0,
+                  time: { end: 10 },
+                },
+              ],
+            },
+          ],
+        }
+      }),
+      abort: vi.fn(async () => ({ data: {} })),
+    }
+
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+
+    loadScenariosMock.mockResolvedValue([
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "run {{task}} {{input_json}}",
+        timeout_ms: 10,
+        allowed_retries: 0,
+        fixture: { repo: "a/b" },
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+          require_tool_calls: false,
+        },
+        tags: [],
+      },
+    ])
+
+    const mod = await import("../../src/runner/suite-runner.js")
+    await mod.runSuite({ mode: "agent_direct", repetitions: 1, scenarioFilter: null })
+
+    expect(appendFileMock).toHaveBeenCalledTimes(1)
+    const appendCalls = appendFileMock.mock.calls as unknown[][]
+    const row = JSON.parse(String(appendCalls[0]?.[1] ?? "{}")) as {
+      external_retry_count?: unknown
+    }
+    expect(row.external_retry_count).toBe(1)
   })
 
   it("throws if no benchmark result is produced for a scenario", async () => {
@@ -651,6 +1026,119 @@ describe("runSuite", () => {
       } else {
         process.env.GITHUB_TOKEN = previous.GITHUB_TOKEN
       }
+    }
+  })
+
+  it("emits JSONL suite/scenario progress events when BENCH_PROGRESS_EVENTS=jsonl", async () => {
+    const previousProgressEvents = process.env.BENCH_PROGRESS_EVENTS
+    process.env.BENCH_PROGRESS_EVENTS = "jsonl"
+
+    const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => undefined)
+
+    const session = createSessionMocks()
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+
+    loadScenariosMock.mockResolvedValue([
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "run {{task}} {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        fixture: { repo: "a/b" },
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+        },
+        tags: [],
+      },
+    ])
+
+    const mod = await import("../../src/runner/suite-runner.js")
+
+    try {
+      await mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null })
+
+      const events = consoleLogSpy.mock.calls
+        .map((call) => call[0])
+        .filter((line): line is string => typeof line === "string")
+        .map((line) => {
+          try {
+            return JSON.parse(line) as { event?: unknown; completed?: unknown; total?: unknown }
+          } catch {
+            return null
+          }
+        })
+        .filter(
+          (entry): entry is { event?: unknown; completed?: unknown; total?: unknown } =>
+            entry !== null,
+        )
+
+      const eventNames = events.map((entry) => entry.event)
+
+      expect(eventNames).toEqual([
+        "suite_started",
+        "scenario_started",
+        "scenario_finished",
+        "suite_finished",
+      ])
+      expect(events.find((entry) => entry.event === "suite_started")).toMatchObject({
+        completed: 0,
+        total: 1,
+      })
+    } finally {
+      if (previousProgressEvents === undefined) {
+        delete process.env.BENCH_PROGRESS_EVENTS
+      } else {
+        process.env.BENCH_PROGRESS_EVENTS = previousProgressEvents
+      }
+      consoleLogSpy.mockRestore()
+    }
+  })
+
+  it("emits suite_error JSONL event when runSuite fails in progress mode", async () => {
+    const previousProgressEvents = process.env.BENCH_PROGRESS_EVENTS
+    process.env.BENCH_PROGRESS_EVENTS = "jsonl"
+
+    const consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => undefined)
+
+    const session = createSessionMocks()
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+    loadScenariosMock.mockResolvedValue([])
+
+    const mod = await import("../../src/runner/suite-runner.js")
+
+    try {
+      await expect(
+        mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null }),
+      ).rejects.toThrow("No benchmark scenarios found")
+
+      const eventNames = consoleLogSpy.mock.calls
+        .map((call) => call[0])
+        .filter((line): line is string => typeof line === "string")
+        .map((line) => {
+          try {
+            return JSON.parse(line) as { event?: unknown }
+          } catch {
+            return null
+          }
+        })
+        .filter((entry): entry is { event?: unknown } => entry !== null)
+        .map((entry) => entry.event)
+
+      expect(eventNames).toContain("suite_error")
+    } finally {
+      if (previousProgressEvents === undefined) {
+        delete process.env.BENCH_PROGRESS_EVENTS
+      } else {
+        process.env.BENCH_PROGRESS_EVENTS = previousProgressEvents
+      }
+      consoleLogSpy.mockRestore()
     }
   })
 })
