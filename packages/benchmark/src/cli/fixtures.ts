@@ -2,6 +2,7 @@ import { access, rm } from "node:fs/promises"
 import { pathToFileURL } from "node:url"
 
 import { loadFixtureManifest } from "../fixture/manifest.js"
+import { cleanupSeededFixtures } from "../fixture/cleanup.js"
 import { seedFixtureManifest } from "../fixture/seed.js"
 
 type FixtureCommand = "seed" | "status" | "cleanup"
@@ -68,7 +69,10 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     return
   }
 
+  const manifest = await loadFixtureManifest(parsed.outFile)
+  const cleanup = await cleanupSeededFixtures(manifest)
   await rm(parsed.outFile, { force: true })
+  console.log(`Closed ${cleanup.closedIssues} seeded issue(s) in ${manifest.repo.full_name}`)
   console.log(`Removed fixture manifest: ${parsed.outFile}`)
 }
 
