@@ -1,10 +1,13 @@
 import { spawn } from "node:child_process"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
-import { pathToFileURL } from "node:url"
 import { z } from "zod"
-
 import { loadScenarioSets } from "../scenario/loader.js"
+import { readJsonlFile } from "../utils/jsonl.js"
+import { runIfDirectEntry } from "./entry.js"
+import { parseFlagValue, parseMultiFlagValues, parseRequiredFlag } from "./flag-utils.js"
+import type { SuiteRunnerConfig } from "./suite-config-schema.js"
+import { suiteRunnerConfigSchema } from "./suite-config-schema.js"
 
 type SeedPolicy = "with_seed" | "read_only"
 
@@ -28,13 +31,14 @@ type ValidationSummary = {
   failingScenarioIds: string[]
 }
 
-type SuiteRow = {
-  scenario_id?: string
-  iteration?: unknown
-  success?: unknown
-  output_valid?: unknown
-  error?: unknown
-}
+const suiteRowSchema = z.looseObject({
+  scenario_id: z.string().optional(),
+  iteration: z.number().int().optional(),
+  success: z.boolean().optional(),
+  output_valid: z.boolean().optional(),
+  error: z.unknown().nullable().optional(),
+})
+type SuiteRow = z.infer<typeof suiteRowSchema>
 
 type Tracking = {
   set: string
@@ -70,38 +74,6 @@ type VerifyDependencies = {
   resolveScenarioIdsForSet?: (set: string) => Promise<string[]>
 }
 
-type SuiteConfigCommand = {
-  command: string[]
-  env?: Record<string, string>
-}
-
-type SuiteConfig = {
-  benchmark: {
-    base: {
-      command: string[]
-      repetitions: number
-      scenarioSet?: string
-      env?: Record<string, string>
-    }
-    ghx: {
-      mode: "ghx"
-      args?: string[]
-      env?: Record<string, string>
-    }
-    direct: {
-      mode: "agent_direct"
-      args?: string[]
-      env?: Record<string, string>
-    }
-  }
-  reporting: {
-    analysis: {
-      report: SuiteConfigCommand
-      gate?: SuiteConfigCommand
-    }
-  }
-}
-
 type AttemptPaths = {
   runRoot: string
   suiteConfigBasePath: string
@@ -115,60 +87,6 @@ const READ_ONLY_SETS = new Set(["ci-diagnostics", "ci-log-analysis"])
 const DEFAULT_MODEL = "gpt-5.1-codex-mini"
 const MAX_RERUN_ATTEMPTS = 2
 const GATE_PROFILE = "verify_pr"
-
-function parseFlagValue(args: string[], flag: string): string | null {
-  const index = args.findIndex((arg) => arg === flag)
-  if (index !== -1) {
-    const value = (args[index + 1] ?? "").trim()
-    if (value.length === 0 || value.startsWith("--")) {
-      throw new Error(`Missing value for ${flag}`)
-    }
-    return value
-  }
-
-  const inline = args.find((arg) => arg.startsWith(`${flag}=`))
-  if (inline) {
-    const value = inline.slice(flag.length + 1).trim()
-    if (value.length === 0) {
-      throw new Error(`Missing value for ${flag}`)
-    }
-    return value
-  }
-
-  return null
-}
-
-function parseMultiFlagValues(args: string[], flag: string): string[] {
-  const values: string[] = []
-
-  for (let index = 0; index < args.length; index += 1) {
-    const current = args[index]
-    if (!current) {
-      continue
-    }
-
-    if (current === flag) {
-      const next = (args[index + 1] ?? "").trim()
-      if (next.length === 0 || next.startsWith("--")) {
-        throw new Error(`Missing value for ${flag}`)
-      }
-      values.push(next)
-      index += 1
-      continue
-    }
-
-    const inlinePrefix = `${flag}=`
-    if (current.startsWith(inlinePrefix)) {
-      const value = current.slice(inlinePrefix.length).trim()
-      if (value.length === 0) {
-        throw new Error(`Missing value for ${flag}`)
-      }
-      values.push(value)
-    }
-  }
-
-  return values
-}
 
 function runId(): string {
   return new Date().toISOString().replace(/[-:.]/g, "")
@@ -192,19 +110,13 @@ const parsedArgsSchema = z.object({
 
 export function parseArgs(argv: string[]): ParsedArgs {
   const args = argv.filter((arg) => arg !== "--")
-  const set = parseFlagValue(args, "--set")
-  const provider = parseFlagValue(args, "--provider")
+  const set = parseRequiredFlag(args, "--set")
+  const provider = parseRequiredFlag(args, "--provider")
   const model = parseFlagValue(args, "--model") ?? DEFAULT_MODEL
   const repetitionsRaw = parseFlagValue(args, "--repetitions") ?? "1"
   const repetitions = Number.parseInt(repetitionsRaw, 10)
-  const outDir = parseFlagValue(args, "--out-dir") ?? defaultOutDir(set ?? "unknown", model)
+  const outDir = parseFlagValue(args, "--out-dir") ?? defaultOutDir(set, model)
 
-  if (!set) {
-    throw new Error("Missing value for --set")
-  }
-  if (!provider) {
-    throw new Error("Missing value for --provider")
-  }
   if (!Number.isInteger(repetitions) || repetitions < 1) {
     throw new Error("Invalid value for --repetitions")
   }
@@ -222,15 +134,6 @@ export function parseArgs(argv: string[]): ParsedArgs {
 
 export function resolveSeedPolicy(set: string): SeedPolicy {
   return READ_ONLY_SETS.has(set) ? "read_only" : "with_seed"
-}
-
-function parseSuiteRows(content: string): SuiteRow[] {
-  const lines = content
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-
-  return lines.map((line) => JSON.parse(line) as SuiteRow)
 }
 
 function summarizeSuiteRows(rows: SuiteRow[]): ValidationSummary {
@@ -269,8 +172,7 @@ function summarizeSuiteRows(rows: SuiteRow[]): ValidationSummary {
 }
 
 async function readSuiteRows(filePath: string): Promise<SuiteRow[]> {
-  const content = await readFile(filePath, "utf8")
-  return parseSuiteRows(content)
+  return readJsonlFile(filePath, suiteRowSchema)
 }
 
 function rowsByScenarioId(rows: SuiteRow[]): Map<string, SuiteRow> {
@@ -378,7 +280,7 @@ async function materializeAttemptConfig(
   scenarioIds: string[],
 ): Promise<void> {
   const rawConfig = await readFile(paths.suiteConfigBasePath, "utf8")
-  const config = JSON.parse(rawConfig) as SuiteConfig
+  const config = suiteRunnerConfigSchema.parse(JSON.parse(rawConfig)) as SuiteRunnerConfig
 
   config.benchmark.base.env = {
     ...(config.benchmark.base.env ?? {}),
@@ -603,14 +505,4 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   await runVerifySet(parsed)
 }
 
-const isDirectRun = process.argv[1]
-  ? import.meta.url === pathToFileURL(process.argv[1]).href
-  : false
-
-if (isDirectRun) {
-  main().catch((error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error)
-    console.error(message)
-    process.exit(1)
-  })
-}
+runIfDirectEntry(import.meta.url, main)

@@ -1,58 +1,17 @@
 import { spawn } from "node:child_process"
 import { readFile } from "node:fs/promises"
 import { resolve } from "node:path"
-import { pathToFileURL } from "node:url"
 import { createColors } from "colorette"
 import { createLogUpdate } from "log-update"
-import { z } from "zod"
-
-const commandSchema = z.object({
-  command: z.array(z.string().min(1)).min(1),
-  env: z.record(z.string(), z.string()).optional(),
-})
-
-const benchmarkBaseSchema = z.object({
-  command: z.array(z.string().min(1)).min(1),
-  repetitions: z.number().int().positive(),
-  scenarioSet: z.string().min(1).optional(),
-  env: z.record(z.string(), z.string()).optional(),
-})
-
-const benchmarkVariantSchema = z.object({
-  mode: z.enum(["ghx", "agent_direct"]),
-  args: z.array(z.string()).optional(),
-  env: z.record(z.string(), z.string()).optional(),
-})
-
-const suiteRunnerConfigSchema = z.object({
-  fixtures: z
-    .object({
-      setup: z
-        .object({
-          cleanup: commandSchema.optional(),
-          seed: commandSchema.optional(),
-        })
-        .optional(),
-    })
-    .optional(),
-  benchmark: z.object({
-    base: benchmarkBaseSchema,
-    ghx: benchmarkVariantSchema,
-    direct: benchmarkVariantSchema,
-  }),
-  reporting: z.object({
-    analysis: z.object({
-      report: commandSchema,
-      gate: commandSchema.optional(),
-    }),
-  }),
-  cwd: z.string().min(1).optional(),
-})
-
-type CommandConfig = z.infer<typeof commandSchema>
-type SuiteRunnerConfig = z.infer<typeof suiteRunnerConfigSchema>
-type BenchmarkBaseConfig = z.infer<typeof benchmarkBaseSchema>
-type BenchmarkVariantConfig = z.infer<typeof benchmarkVariantSchema>
+import { runIfDirectEntry } from "./entry.js"
+import { parseFlagValue } from "./flag-utils.js"
+import type {
+  BenchmarkBaseConfig,
+  BenchmarkVariantConfig,
+  CommandConfig,
+  SuiteRunnerConfig,
+} from "./suite-config-schema.js"
+import { suiteRunnerConfigSchema } from "./suite-config-schema.js"
 
 type ParsedArgs = {
   configPath: string
@@ -106,20 +65,6 @@ const TAIL_LIMIT = 12
 const colors = createColors({
   useColor: Boolean(process.stdout.isTTY) && !process.env.NO_COLOR,
 })
-
-function parseFlagValue(args: string[], flag: string): string | null {
-  const index = args.findIndex((arg) => arg === flag)
-  if (index !== -1) {
-    return args[index + 1] ?? null
-  }
-
-  const inline = args.find((arg) => arg.startsWith(`${flag}=`))
-  if (inline) {
-    return inline.slice(flag.length + 1)
-  }
-
-  return null
-}
 
 export function parseArgs(argv: string[]): ParsedArgs {
   const normalized = argv.filter((arg) => arg !== "--")
@@ -769,14 +714,4 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   }
 }
 
-const isDirectRun = process.argv[1]
-  ? import.meta.url === pathToFileURL(process.argv[1]).href
-  : false
-
-if (isDirectRun) {
-  main().catch((error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error)
-    console.error(message)
-    process.exit(1)
-  })
-}
+runIfDirectEntry(import.meta.url, main)

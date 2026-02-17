@@ -1,11 +1,6 @@
-import { spawnSync } from "node:child_process"
 import { randomUUID } from "node:crypto"
-import { lstatSync } from "node:fs"
-import { access, appendFile, lstat, mkdir, mkdtemp, readFile, rm } from "node:fs/promises"
-import { tmpdir } from "node:os"
-import { delimiter, dirname, join, resolve } from "node:path"
-import { fileURLToPath } from "node:url"
-import { createOpencode } from "@opencode-ai/sdk"
+import { access, appendFile, mkdir } from "node:fs/promises"
+import { dirname, join } from "node:path"
 import type {
   BenchmarkMode,
   BenchmarkRow,
@@ -16,24 +11,37 @@ import type {
   SessionMessagePart,
 } from "../domain/types.js"
 import { extractAttemptMetrics } from "../extract/attempts.js"
-import { extractFirstJsonObject, validateEnvelope } from "../extract/envelope.js"
+import { validateEnvelope } from "../extract/envelope.js"
 import { aggregateToolCounts } from "../extract/tool-usage.js"
 import { loadFixtureManifest, resolveScenarioFixtureBindings } from "../fixture/manifest.js"
 import { seedFixtureManifest } from "../fixture/seed.js"
 import { loadScenarioSets, loadScenarios } from "../scenario/loader.js"
+import { isObject } from "../utils/guards.js"
+import { assertGhxRouterPreflight, withIsolatedBenchmarkClient } from "./client-lifecycle.js"
+import { loadRunnerConfig, type RunnerConfig } from "./config.js"
 import {
-  AGENT_DIRECT_INSTRUCTION,
-  MCP_INSTRUCTION,
-  modeInstructions,
-} from "./mode/mode-instructions.js"
+  extractEnvelopeFromMessages,
+  extractEnvelopeFromParts,
+  findBestEnvelopeFromMessages,
+  tryWrapRawDataAsEnvelope,
+} from "./envelope-recovery.js"
+
+export { assertGhxRouterPreflight } from "./client-lifecycle.js"
+
 import { validateFixture } from "./preflight/fixture-preflight.js"
-import * as ghxRouterPreflight from "./preflight/ghx-router-preflight.js"
 import {
   buildOutputSchema,
   forcedToolCommandHint,
   modeScopedAssertions,
   renderPrompt,
 } from "./prompt/prompt-renderer.js"
+import {
+  hasAssistantMetadata,
+  hasAssistantSignal,
+  hasStructuredOutput,
+  hasTextPart,
+  messageProgressSignature,
+} from "./session-polling.js"
 
 type RunSuiteOptions = {
   mode: BenchmarkMode
@@ -45,6 +53,7 @@ type RunSuiteOptions = {
   providerId?: string | null
   modelId?: string | null
   outputJsonlPath?: string | null
+  config?: RunnerConfig
 }
 
 const DEFAULT_FIXTURE_MANIFEST_PATH = "fixtures/latest.json"
@@ -96,36 +105,6 @@ type PromptResponse = {
 
 const SCENARIOS_DIR = join(process.cwd(), "scenarios")
 const RESULTS_DIR = join(process.cwd(), "results")
-
-const OPEN_CODE_MODE = process.env.BENCH_OPENCODE_MODE ?? null
-const GIT_REPO = process.env.BENCH_GIT_REPO ?? null
-const GIT_COMMIT = process.env.BENCH_GIT_COMMIT ?? null
-const OPENCODE_PORT = Number.parseInt(process.env.BENCH_OPENCODE_PORT ?? "3000", 10)
-const FIRST_ASSISTANT_TIMEOUT_MS = Number.parseInt(
-  process.env.BENCH_FIRST_ASSISTANT_TIMEOUT_MS ?? "15000",
-  10,
-)
-const SESSION_STALL_TIMEOUT_MS = Number.parseInt(
-  process.env.BENCH_SESSION_STALL_TIMEOUT_MS ?? "10000",
-  10,
-)
-const MAX_RUNNER_RETRIES = Number.parseInt(process.env.BENCH_RUNNER_MAX_RETRIES ?? "1", 10)
-const RUNNER_RETRY_BACKOFF_MS = Number.parseInt(
-  process.env.BENCH_RUNNER_RETRY_BACKOFF_MS ?? "750",
-  10,
-)
-const MODULE_DIR = fileURLToPath(new URL(".", import.meta.url))
-const BENCHMARK_PACKAGE_ROOT = resolve(MODULE_DIR, "..", "..")
-const BENCHMARK_BIN_DIR = join(BENCHMARK_PACKAGE_ROOT, "bin")
-const GHX_BENCHMARK_ALIAS_PATH = join(BENCHMARK_BIN_DIR, "ghx")
-const GHX_SKILL_ASSET_PATH = resolve(
-  BENCHMARK_PACKAGE_ROOT,
-  "../core/src/cli/assets/skills/ghx/SKILL.md",
-)
-
-export function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
 
 export function unwrapData<T>(value: unknown, label: string): T {
   if (isObject(value) && "data" in value) {
@@ -190,38 +169,6 @@ export function getSessionApi(client: unknown): {
 
 export function asNumber(value: unknown): number | null {
   return typeof value === "number" ? value : null
-}
-
-export function hasAssistantMetadata(info: unknown): boolean {
-  if (!isObject(info)) {
-    return false
-  }
-
-  const hasCompleted =
-    isObject(info.time) && typeof (info.time as { completed?: unknown }).completed === "number"
-  const hasTokens =
-    isObject(info.tokens) && typeof (info.tokens as { input?: unknown }).input === "number"
-
-  return hasCompleted && hasTokens
-}
-
-function hasStructuredOutput(info: unknown): boolean {
-  if (!isObject(info)) {
-    return false
-  }
-
-  const structuredOutput = (info as { structured_output?: unknown }).structured_output
-  const structured = (info as { structured?: unknown }).structured
-
-  return structuredOutput !== undefined || structured !== undefined
-}
-
-export function hasAssistantSignalParts(parts: SessionMessagePart[]): boolean {
-  return parts.some((part) => part.type === "step-finish" || part.type === "tool")
-}
-
-export function hasTextPart(parts: SessionMessagePart[]): boolean {
-  return parts.some((part) => part.type === "text" && typeof part.text === "string")
 }
 
 export function extractTimingBreakdown(messages: SessionMessageEntry[]): BenchmarkTimingBreakdown {
@@ -423,131 +370,6 @@ export function shouldRequestContinuation(parts: SessionMessagePart[]): boolean 
   return !hasText
 }
 
-export function extractEnvelopeFromParts(parts: SessionMessagePart[]): {
-  text: string
-  envelope: unknown | null
-} {
-  const text = parts
-    .filter((part) => part.type === "text" && typeof part.text === "string")
-    .map((part) => part.text)
-    .join("\n")
-
-  const fromText = extractFirstJsonValue(text)
-  if (fromText !== null) {
-    return { text, envelope: fromText }
-  }
-
-  for (const part of [...parts].reverse()) {
-    if (part.type !== "tool") {
-      continue
-    }
-
-    const state = isObject(part.state) ? part.state : null
-    const output = state && typeof state.output === "string" ? state.output : null
-    if (!output) {
-      continue
-    }
-
-    const parsed = extractFirstJsonValue(output)
-    if (parsed !== null) {
-      return { text, envelope: parsed }
-    }
-  }
-
-  return { text, envelope: null }
-}
-
-function extractFirstJsonArray(input: string): unknown | null {
-  const firstBracket = input.indexOf("[")
-  if (firstBracket === -1) {
-    return null
-  }
-
-  let depth = 0
-  let inString = false
-  let escaping = false
-
-  for (let index = firstBracket; index < input.length; index += 1) {
-    const ch = input[index]
-
-    if (inString) {
-      if (escaping) {
-        escaping = false
-        continue
-      }
-
-      if (ch === "\\") {
-        escaping = true
-        continue
-      }
-
-      if (ch === '"') {
-        inString = false
-      }
-
-      continue
-    }
-
-    if (ch === '"') {
-      inString = true
-      continue
-    }
-
-    if (ch === "[") {
-      depth += 1
-      continue
-    }
-
-    if (ch === "]") {
-      depth -= 1
-      if (depth === 0) {
-        const candidate = input.slice(firstBracket, index + 1)
-        try {
-          return JSON.parse(candidate)
-        } catch {
-          return null
-        }
-      }
-    }
-  }
-
-  return null
-}
-
-function extractFirstJsonValue(input: string): unknown | null {
-  const firstBrace = input.indexOf("{")
-  const firstBracket = input.indexOf("[")
-
-  if (firstBrace === -1 && firstBracket === -1) {
-    return null
-  }
-
-  if (firstBrace === -1) {
-    return extractFirstJsonArray(input)
-  }
-
-  if (firstBracket === -1) {
-    return extractFirstJsonObject(input)
-  }
-
-  if (firstBracket < firstBrace) {
-    return extractFirstJsonArray(input) ?? extractFirstJsonObject(input)
-  }
-
-  return extractFirstJsonObject(input) ?? extractFirstJsonArray(input)
-}
-
-function extractEnvelopeFromMessages(messages: SessionMessageEntry[]): unknown | null {
-  for (const message of [...messages].reverse()) {
-    const fromParts = extractEnvelopeFromParts(message.parts ?? []).envelope
-    if (fromParts !== null) {
-      return fromParts
-    }
-  }
-
-  return null
-}
-
 export async function withTimeout<T>(
   promise: Promise<T>,
   timeoutMs: number,
@@ -582,53 +404,29 @@ export async function fetchSessionMessages(
   return unwrapData<SessionMessageEntry[]>(messagesResult, "session.messages")
 }
 
-function hasAssistantSignal(entry: SessionMessageEntry): boolean {
-  if (!entry.info) {
-    return false
-  }
-
-  return (
-    hasAssistantMetadata(entry.info) ||
-    hasStructuredOutput(entry.info) ||
-    (entry.info as { role?: unknown }).role === "assistant"
-  )
-}
-
-function messageProgressSignature(messages: SessionMessageEntry[]): string {
-  return messages
-    .map((entry) => {
-      const info = entry.info as { id?: unknown; role?: unknown } | undefined
-      const id = typeof info?.id === "string" ? info.id : "<no-id>"
-      const role = typeof info?.role === "string" ? info.role : "<no-role>"
-      const parts = entry.parts ?? []
-      const stepFinish = [...parts].reverse().find((part) => part.type === "step-finish")
-      const stepReason = typeof stepFinish?.reason === "string" ? stepFinish.reason : "<none>"
-      return `${id}:${role}:${parts.length}:${stepReason}`
-    })
-    .join("|")
-}
-
 export async function waitForAssistantFromMessages(
   sessionApi: ReturnType<typeof getSessionApi>,
   sessionId: string,
   timeoutMs: number,
   scenarioId: string,
   previousAssistantId?: string,
+  config?: RunnerConfig,
 ): Promise<PromptResponse> {
+  const cfg = config ?? loadRunnerConfig()
   const started = Date.now()
   let lastWaitLogAt = started
   let lastProgressAt = started
   let lastSignature = ""
   const firstAssistantBudgetMs = Math.min(
     timeoutMs,
-    Number.isFinite(FIRST_ASSISTANT_TIMEOUT_MS) && FIRST_ASSISTANT_TIMEOUT_MS > 0
-      ? FIRST_ASSISTANT_TIMEOUT_MS
+    Number.isFinite(cfg.firstAssistantTimeoutMs) && cfg.firstAssistantTimeoutMs > 0
+      ? cfg.firstAssistantTimeoutMs
       : timeoutMs,
   )
   const stallBudgetMs = Math.min(
     timeoutMs,
-    Number.isFinite(SESSION_STALL_TIMEOUT_MS) && SESSION_STALL_TIMEOUT_MS > 0
-      ? SESSION_STALL_TIMEOUT_MS
+    Number.isFinite(cfg.sessionStallTimeoutMs) && cfg.sessionStallTimeoutMs > 0
+      ? cfg.sessionStallTimeoutMs
       : timeoutMs,
   )
 
@@ -823,193 +621,6 @@ export function extractPromptResponseFromPromptResult(value: unknown): PromptRes
   return null
 }
 
-async function ensureBenchmarkGhxAliasReady(): Promise<void> {
-  try {
-    await lstat(GHX_BENCHMARK_ALIAS_PATH)
-  } catch {
-    throw new Error(
-      "ghx_preflight_failed: benchmark ghx alias missing; run pnpm --filter @ghx-dev/core run build and ensure packages/benchmark/bin/ghx points to packages/core/dist/cli/index.js",
-    )
-  }
-}
-
-function assertBenchmarkGhxAliasReady(): void {
-  try {
-    lstatSync(GHX_BENCHMARK_ALIAS_PATH)
-  } catch {
-    throw new Error(
-      "ghx_preflight_failed: benchmark ghx alias missing; run pnpm --filter @ghx-dev/core run build and ensure packages/benchmark/bin/ghx points to packages/core/dist/cli/index.js",
-    )
-  }
-}
-
-export function assertGhxRouterPreflight(scenarios: Scenario[]): void {
-  ghxRouterPreflight.assertGhxRouterPreflight(scenarios, {
-    ghxCommand: GHX_BENCHMARK_ALIAS_PATH,
-    ensureGhxAliasReady: assertBenchmarkGhxAliasReady,
-  })
-}
-
-async function loadGhxSkillInstruction(): Promise<string> {
-  return readFile(GHX_SKILL_ASSET_PATH, "utf8")
-}
-
-function resolveGhTokenFromCli(): string | null {
-  const result = spawnSync("gh", ["auth", "token"], { encoding: "utf8" })
-  if (result.status !== 0) {
-    return null
-  }
-
-  const token = typeof result.stdout === "string" ? result.stdout.trim() : ""
-  return token.length > 0 ? token : null
-}
-
-async function withIsolatedBenchmarkClient<T>(
-  mode: BenchmarkMode,
-  providerId: string,
-  modelId: string,
-  run: (client: unknown) => Promise<T>,
-): Promise<T> {
-  const isolatedXdgConfigHome = await mkdtemp(join(tmpdir(), "ghx-benchmark-opencode-"))
-  const instructions = await modeInstructions(mode, loadGhxSkillInstruction)
-  if (mode === "ghx") {
-    await ensureBenchmarkGhxAliasReady()
-  }
-
-  const previousEnv = {
-    OPENCODE_CONFIG: process.env.OPENCODE_CONFIG,
-    OPENCODE_CONFIG_DIR: process.env.OPENCODE_CONFIG_DIR,
-    XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME,
-    GH_TOKEN: process.env.GH_TOKEN,
-    GITHUB_TOKEN: process.env.GITHUB_TOKEN,
-    PATH: process.env.PATH,
-  }
-
-  const ghToken = previousEnv.GH_TOKEN ?? previousEnv.GITHUB_TOKEN ?? resolveGhTokenFromCli()
-
-  delete process.env.OPENCODE_CONFIG
-  delete process.env.OPENCODE_CONFIG_DIR
-  process.env.XDG_CONFIG_HOME = isolatedXdgConfigHome
-  if (ghToken) {
-    process.env.GH_TOKEN = ghToken
-    process.env.GITHUB_TOKEN = ghToken
-  }
-  if (mode === "ghx") {
-    process.env.PATH =
-      previousEnv.PATH && previousEnv.PATH.length > 0
-        ? `${BENCHMARK_BIN_DIR}${delimiter}${previousEnv.PATH}`
-        : BENCHMARK_BIN_DIR
-  }
-
-  let server: { close: () => void } | null = null
-
-  try {
-    const opencode = await createOpencode({
-      port: Number.isInteger(OPENCODE_PORT) && OPENCODE_PORT > 0 ? OPENCODE_PORT : 3000,
-      config: {
-        model: `${providerId}/${modelId}`,
-        instructions,
-        plugin: [],
-        mcp: {},
-        agent: {},
-        command: {},
-        permission: {
-          edit: "deny",
-          bash: "allow",
-          webfetch: "allow",
-          doom_loop: "deny",
-          external_directory: "deny",
-        },
-      },
-    })
-
-    server = opencode.server
-    const client = opencode.client
-
-    const configApi = (
-      client as {
-        config?: { get?: (args?: Record<string, unknown>) => Promise<unknown> }
-      }
-    ).config
-    if (configApi?.get) {
-      const configResponse = await configApi.get({ url: "/config" })
-      const resolvedConfig = unwrapData<Record<string, unknown>>(configResponse, "config.get")
-      const configuredInstructions = Array.isArray(resolvedConfig.instructions)
-        ? resolvedConfig.instructions
-        : []
-      const configuredPlugins = Array.isArray(resolvedConfig.plugin) ? resolvedConfig.plugin : []
-
-      if (mode === "ghx") {
-        const hasGhxInstructions = configuredInstructions.some(
-          (instruction) => typeof instruction === "string" && instruction.trim().length > 0,
-        )
-
-        if (!hasGhxInstructions || configuredPlugins.length > 0) {
-          throw new Error(
-            `benchmark_config_invalid: expected non-empty ghx instructions and no plugins, got instructions=${configuredInstructions.length}, plugins=${configuredPlugins.length}`,
-          )
-        }
-      } else {
-        const expectedInstruction =
-          mode === "agent_direct" ? AGENT_DIRECT_INSTRUCTION : MCP_INSTRUCTION
-        const hasExpectedInstruction = configuredInstructions.some(
-          (instruction) => instruction === expectedInstruction,
-        )
-
-        if (!hasExpectedInstruction || configuredPlugins.length > 0) {
-          throw new Error(
-            `benchmark_config_invalid: expected ${mode} instruction and no plugins, got instructions=${configuredInstructions.length}, plugins=${configuredPlugins.length}`,
-          )
-        }
-      }
-    }
-
-    return await run(client)
-  } finally {
-    if (server) {
-      server.close()
-    }
-
-    if (previousEnv.OPENCODE_CONFIG === undefined) {
-      delete process.env.OPENCODE_CONFIG
-    } else {
-      process.env.OPENCODE_CONFIG = previousEnv.OPENCODE_CONFIG
-    }
-
-    if (previousEnv.OPENCODE_CONFIG_DIR === undefined) {
-      delete process.env.OPENCODE_CONFIG_DIR
-    } else {
-      process.env.OPENCODE_CONFIG_DIR = previousEnv.OPENCODE_CONFIG_DIR
-    }
-
-    if (previousEnv.XDG_CONFIG_HOME === undefined) {
-      delete process.env.XDG_CONFIG_HOME
-    } else {
-      process.env.XDG_CONFIG_HOME = previousEnv.XDG_CONFIG_HOME
-    }
-
-    if (previousEnv.GH_TOKEN === undefined) {
-      delete process.env.GH_TOKEN
-    } else {
-      process.env.GH_TOKEN = previousEnv.GH_TOKEN
-    }
-
-    if (previousEnv.GITHUB_TOKEN === undefined) {
-      delete process.env.GITHUB_TOKEN
-    } else {
-      process.env.GITHUB_TOKEN = previousEnv.GITHUB_TOKEN
-    }
-
-    if (previousEnv.PATH === undefined) {
-      delete process.env.PATH
-    } else {
-      process.env.PATH = previousEnv.PATH
-    }
-
-    await rm(isolatedXdgConfigHome, { recursive: true, force: true })
-  }
-}
-
 function expectedOutcomeFromAssertions(
   assertions: Scenario["assertions"],
 ): "success" | "expected_error" {
@@ -1038,162 +649,6 @@ function matchesExpectedOutcome(
   return ok && error === null
 }
 
-function findBestEnvelopeFromMessages(
-  messages: SessionMessageEntry[],
-  assertions: Scenario["assertions"],
-  mode: BenchmarkMode,
-): unknown | null {
-  for (const message of [...messages].reverse()) {
-    const candidate = extractEnvelopeFromParts(message.parts ?? []).envelope
-    if (candidate === null) {
-      continue
-    }
-
-    const wrapped = tryWrapRawDataAsEnvelope(candidate, assertions, mode)
-    if (validateEnvelope(assertions, wrapped)) {
-      return wrapped
-    }
-  }
-
-  return null
-}
-
-function tryWrapRawDataAsEnvelope(
-  envelope: unknown,
-  assertions: Scenario["assertions"],
-  mode: BenchmarkMode,
-): unknown {
-  const requiredDataFields = assertions.required_data_fields ?? []
-
-  if (
-    Array.isArray(envelope) &&
-    requiredDataFields.includes("items") &&
-    requiredDataFields.includes("pageInfo")
-  ) {
-    return {
-      ok: true,
-      data: {
-        items: envelope,
-        pageInfo: {
-          hasNextPage: false,
-          endCursor: null,
-        },
-      },
-      error: null,
-      meta: mode === "ghx" ? { route_used: "cli" } : {},
-    }
-  }
-
-  if (!isObject(envelope)) {
-    return envelope
-  }
-
-  const repository =
-    isObject(envelope.data) && isObject(envelope.data.repository)
-      ? (envelope.data.repository as Record<string, unknown>)
-      : null
-
-  if (repository && isObject(repository.issues)) {
-    const issues = repository.issues as Record<string, unknown>
-    return {
-      ok: true,
-      data: {
-        items: Array.isArray(issues.nodes) ? issues.nodes : [],
-        pageInfo: isObject(issues.pageInfo)
-          ? {
-              hasNextPage: Boolean((issues.pageInfo as Record<string, unknown>).hasNextPage),
-              endCursor:
-                ((issues.pageInfo as Record<string, unknown>).endCursor as string | null) ?? null,
-            }
-          : { hasNextPage: false, endCursor: null },
-      },
-      error: null,
-      meta: mode === "ghx" ? { route_used: "cli" } : {},
-    }
-  }
-
-  if (repository && isObject(repository.pullRequests)) {
-    const pullRequests = repository.pullRequests as Record<string, unknown>
-    return {
-      ok: true,
-      data: {
-        items: Array.isArray(pullRequests.nodes) ? pullRequests.nodes : [],
-        pageInfo: isObject(pullRequests.pageInfo)
-          ? {
-              hasNextPage: Boolean((pullRequests.pageInfo as Record<string, unknown>).hasNextPage),
-              endCursor:
-                ((pullRequests.pageInfo as Record<string, unknown>).endCursor as string | null) ??
-                null,
-            }
-          : { hasNextPage: false, endCursor: null },
-      },
-      error: null,
-      meta: mode === "ghx" ? { route_used: "cli" } : {},
-    }
-  }
-
-  if (
-    repository &&
-    isObject(repository.issue) &&
-    isObject((repository.issue as Record<string, unknown>).comments)
-  ) {
-    const comments = (repository.issue as Record<string, unknown>).comments as Record<
-      string,
-      unknown
-    >
-    return {
-      ok: true,
-      data: {
-        items: Array.isArray(comments.nodes) ? comments.nodes : [],
-        pageInfo: isObject(comments.pageInfo)
-          ? {
-              hasNextPage: Boolean((comments.pageInfo as Record<string, unknown>).hasNextPage),
-              endCursor:
-                ((comments.pageInfo as Record<string, unknown>).endCursor as string | null) ?? null,
-            }
-          : { hasNextPage: false, endCursor: null },
-      },
-      error: null,
-      meta: mode === "ghx" ? { route_used: "cli" } : {},
-    }
-  }
-
-  if (typeof envelope.ok === "boolean") {
-    const nextEnvelope: Record<string, unknown> = { ...envelope }
-
-    if (!("meta" in nextEnvelope) || !isObject(nextEnvelope.meta)) {
-      nextEnvelope.meta = mode === "ghx" ? { route_used: "cli" } : {}
-    }
-
-    if (!("error" in nextEnvelope)) {
-      nextEnvelope.error = null
-    }
-
-    if (!("data" in nextEnvelope)) {
-      nextEnvelope.data = {}
-    }
-
-    return nextEnvelope
-  }
-
-  const hasRequiredFields = requiredDataFields.every((field) => field in envelope)
-  if (!hasRequiredFields) {
-    return envelope
-  }
-
-  const meta: Record<string, unknown> = {}
-  if (mode === "ghx") {
-    meta.route_used = "cli"
-  }
-
-  return {
-    ok: true,
-    data: envelope,
-    error: null,
-    meta,
-  }
-}
-
 export async function runScenario(
   client: unknown,
   scenario: Scenario,
@@ -1201,7 +656,9 @@ export async function runScenario(
   iteration: number,
   scenarioSet: string | null = null,
   modelOverride?: { providerId?: string; modelId?: string },
+  config?: RunnerConfig,
 ): Promise<BenchmarkRow> {
+  const cfg = config ?? loadRunnerConfig()
   const providerId = modelOverride?.providerId ?? process.env.BENCH_PROVIDER_ID ?? "openai"
   const modelId = modelOverride?.modelId ?? process.env.BENCH_MODEL_ID ?? "gpt-5.3-codex"
   const scenarioStartedAt = Date.now()
@@ -1248,7 +705,7 @@ export async function runScenario(
           path: { id: session.id },
           body: {
             model: { providerID: providerId, modelID: modelId },
-            agent: OPEN_CODE_MODE ?? undefined,
+            agent: cfg.openCodeMode ?? undefined,
             parts: [
               {
                 type: "text",
@@ -1278,6 +735,8 @@ export async function runScenario(
           session.id,
           remainingTimeoutMs,
           scenario.id,
+          undefined,
+          cfg,
         ))
       let assistantAndParts = coercePromptResponse(hydrated)
 
@@ -1304,7 +763,7 @@ export async function runScenario(
             body: {
               messageID: assistantAndParts.assistant.id,
               model: { providerID: providerId, modelID: modelId },
-              agent: OPEN_CODE_MODE ?? undefined,
+              agent: cfg.openCodeMode ?? undefined,
               parts: [
                 {
                   type: "text",
@@ -1326,6 +785,7 @@ export async function runScenario(
             remaining,
             scenario.id,
             assistantAndParts.assistant.id,
+            cfg,
           ))
 
         assistantAndParts = coercePromptResponse(next)
@@ -1350,7 +810,7 @@ export async function runScenario(
             path: { id: session.id },
             body: {
               model: { providerID: providerId, modelID: modelId },
-              agent: OPEN_CODE_MODE ?? undefined,
+              agent: cfg.openCodeMode ?? undefined,
               parts: [
                 {
                   type: "text",
@@ -1377,6 +837,7 @@ export async function runScenario(
             remaining,
             scenario.id,
             assistant.id,
+            cfg,
           ))
 
         assistantAndParts = coercePromptResponse(next)
@@ -1485,11 +946,11 @@ export async function runScenario(
         model: {
           provider_id: providerId,
           model_id: modelId,
-          mode: OPEN_CODE_MODE,
+          mode: cfg.openCodeMode,
         },
         git: {
-          repo: GIT_REPO,
-          commit: GIT_COMMIT,
+          repo: cfg.gitRepo,
+          commit: cfg.gitCommit,
         },
         error: errorReason
           ? {
@@ -1507,14 +968,14 @@ export async function runScenario(
       }
 
       const failure = classifyRunnerFailure(error)
-      const retriesAllowed = Number.isFinite(MAX_RUNNER_RETRIES)
-        ? Math.max(0, MAX_RUNNER_RETRIES)
+      const retriesAllowed = Number.isFinite(cfg.maxRunnerRetries)
+        ? Math.max(0, cfg.maxRunnerRetries)
         : 0
 
       if (failure.retryable && externalRetryCount < retriesAllowed) {
         externalRetryCount += 1
         const backoffMs =
-          (Number.isFinite(RUNNER_RETRY_BACKOFF_MS) ? Math.max(0, RUNNER_RETRY_BACKOFF_MS) : 0) *
+          (Number.isFinite(cfg.runnerRetryBackoffMs) ? Math.max(0, cfg.runnerRetryBackoffMs) : 0) *
           externalRetryCount
         if (backoffMs > 0) {
           await new Promise((resolve) => setTimeout(resolve, backoffMs))
@@ -1550,11 +1011,11 @@ export async function runScenario(
         model: {
           provider_id: providerId,
           model_id: modelId,
-          mode: OPEN_CODE_MODE,
+          mode: cfg.openCodeMode,
         },
         git: {
-          repo: GIT_REPO,
-          commit: GIT_COMMIT,
+          repo: cfg.gitRepo,
+          commit: cfg.gitCommit,
         },
         error: {
           type: failure.type,
@@ -1576,7 +1037,9 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
     providerId: providerIdOverride = null,
     modelId: modelIdOverride = null,
     outputJsonlPath = null,
+    config: optionsConfig,
   } = options
+  const suiteConfig = optionsConfig ?? loadRunnerConfig()
   const providerId = providerIdOverride ?? process.env.BENCH_PROVIDER_ID ?? "openai"
   const modelId = modelIdOverride ?? process.env.BENCH_MODEL_ID ?? "gpt-5.3-codex"
   const suiteRunId = randomUUID()
@@ -1726,14 +1189,14 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
 
     const selectedScenarioIds = selectedScenarios.map((scenario) => scenario.id)
     console.log(
-      `[benchmark] start: mode=${mode} provider=${providerId} model=${modelId} opencode_mode=${OPEN_CODE_MODE ?? "<null>"}`,
+      `[benchmark] start: mode=${mode} provider=${providerId} model=${modelId} opencode_mode=${suiteConfig.openCodeMode ?? "<null>"}`,
     )
     console.log(
       `[benchmark] config: repetitions=${repetitions} scenario_set=${resolvedScenarioSet ?? "<null>"} scenario_filter=${scenarioFilter?.join(",") ?? "<null>"} scenarios=${selectedScenarios.length}`,
     )
     console.log(`[benchmark] scenarios: ${selectedScenarioIds.join(",")}`)
     console.log(
-      `[benchmark] context: opencode_port=${OPENCODE_PORT} git_repo=${GIT_REPO ?? "<null>"} git_commit=${GIT_COMMIT ?? "<null>"} out_file=${outFile}`,
+      `[benchmark] context: opencode_port=${process.env.BENCH_OPENCODE_PORT ?? "3000"} git_repo=${suiteConfig.gitRepo ?? "<null>"} git_commit=${suiteConfig.gitCommit ?? "<null>"} out_file=${outFile}`,
     )
 
     let completedExecutions = 0
@@ -1761,10 +1224,18 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
 
         for (let attempt = 0; attempt <= scenario.allowed_retries; attempt += 1) {
           const result = await withIsolatedBenchmarkClient(mode, providerId, modelId, (client) =>
-            runScenario(client, scenario, mode, iteration, resolvedScenarioSet, {
-              providerId,
-              modelId,
-            }),
+            runScenario(
+              client,
+              scenario,
+              mode,
+              iteration,
+              resolvedScenarioSet,
+              {
+                providerId,
+                modelId,
+              },
+              suiteConfig,
+            ),
           )
           latestResult = result
 

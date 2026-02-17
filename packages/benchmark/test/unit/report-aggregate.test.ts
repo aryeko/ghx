@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest"
-
-import { buildSummary, toMarkdown } from "../../src/report/aggregate.js"
 import type { BenchmarkRow } from "../../src/domain/types.js"
+import { buildSummary, toMarkdown } from "../../src/report/aggregate.js"
 
 function row(overrides: Partial<BenchmarkRow>): BenchmarkRow {
   return {
@@ -22,7 +21,7 @@ function row(overrides: Partial<BenchmarkRow>): BenchmarkRow {
       reasoning: 5,
       cache_read: 0,
       cache_write: 0,
-      total: 25
+      total: 25,
     },
     cost: 0,
     tool_calls: 4,
@@ -32,35 +31,66 @@ function row(overrides: Partial<BenchmarkRow>): BenchmarkRow {
     model: {
       provider_id: "openai",
       model_id: "gpt-5.3-codex",
-      mode: null
+      mode: null,
     },
     git: {
       repo: "aryeko/ghx",
-      commit: "abc"
+      commit: "abc",
     },
     error: null,
-    ...overrides
+    ...overrides,
   }
 }
 
 describe("buildSummary", () => {
   it("computes v2 gate pass when ghx beats baseline", () => {
     const rows: BenchmarkRow[] = [
-      row({ mode: "agent_direct", latency_ms_wall: 100, tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 100 }, tool_calls: 10, success: true, output_valid: true }),
-      row({ mode: "ghx", latency_ms_wall: 70, tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 70 }, tool_calls: 6, success: true, output_valid: true })
+      row({
+        mode: "agent_direct",
+        latency_ms_wall: 100,
+        tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 100 },
+        tool_calls: 10,
+        success: true,
+        output_valid: true,
+      }),
+      row({
+        mode: "ghx",
+        latency_ms_wall: 70,
+        tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 70 },
+        tool_calls: 6,
+        success: true,
+        output_valid: true,
+      }),
     ]
 
     const summary = buildSummary(rows)
 
     expect(summary.deltaVsAgentDirect).not.toBeNull()
     expect(summary.gateV2.passed).toBe(true)
-    expect(summary.gateV2.checks.find((check) => check.name === "efficiency_tokens_active_reduction")?.passed).toBe(true)
+    expect(
+      summary.gateV2.checks.find((check) => check.name === "efficiency_tokens_active_reduction")
+        ?.passed,
+    ).toBe(true)
   })
 
   it("computes v2 gate fail when reliability regresses", () => {
     const rows: BenchmarkRow[] = [
-      row({ mode: "agent_direct", latency_ms_wall: 100, tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 100 }, tool_calls: 10, success: true, output_valid: true }),
-      row({ mode: "ghx", latency_ms_wall: 70, tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 70 }, tool_calls: 6, success: true, output_valid: true }),
+      row({
+        mode: "agent_direct",
+        latency_ms_wall: 100,
+        tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 100 },
+        tool_calls: 10,
+        success: true,
+        output_valid: true,
+      }),
+      row({
+        mode: "ghx",
+        latency_ms_wall: 70,
+        tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 70 },
+        tool_calls: 6,
+        success: true,
+        output_valid: true,
+      }),
       row({
         mode: "ghx",
         scenario_id: "repo-view-001",
@@ -69,22 +99,26 @@ describe("buildSummary", () => {
         latency_ms_wall: 60000,
         error: {
           type: "runner_error",
-          message: "Timed out waiting for assistant message in session.messages"
-        }
-      })
+          message: "Timed out waiting for assistant message in session.messages",
+        },
+      }),
     ]
 
     const summary = buildSummary(rows)
 
     expect(summary.gateV2.passed).toBe(false)
-    expect(summary.gateV2.checks.find((check) => check.name === "reliability_runner_failure_rate")?.passed).toBe(false)
-    expect(summary.gateV2.checks.find((check) => check.name === "reliability_timeout_stall_rate")?.passed).toBe(false)
+    expect(
+      summary.gateV2.checks.find((check) => check.name === "reliability_runner_failure_rate")
+        ?.passed,
+    ).toBe(false)
+    expect(
+      summary.gateV2.checks.find((check) => check.name === "reliability_timeout_stall_rate")
+        ?.passed,
+    ).toBe(false)
   })
 
   it("handles missing comparison mode and renders markdown", () => {
-    const summary = buildSummary([
-      row({ mode: "mcp", latency_ms_wall: 120, tool_calls: 2 })
-    ])
+    const summary = buildSummary([row({ mode: "mcp", latency_ms_wall: 120, tool_calls: 2 })])
 
     expect(summary.deltaVsAgentDirect).toBeNull()
     const markdown = toMarkdown(summary)
@@ -93,8 +127,18 @@ describe("buildSummary", () => {
 
   it("omits legacy v1 gate data from summary and markdown", () => {
     const summary = buildSummary([
-      row({ mode: "agent_direct", latency_ms_wall: 100, tool_calls: 10, tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 100 } }),
-      row({ mode: "ghx", latency_ms_wall: 90, tool_calls: 8, tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 95 } }),
+      row({
+        mode: "agent_direct",
+        latency_ms_wall: 100,
+        tool_calls: 10,
+        tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 100 },
+      }),
+      row({
+        mode: "ghx",
+        latency_ms_wall: 90,
+        tool_calls: 8,
+        tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 95 },
+      }),
     ])
 
     expect(summary).not.toHaveProperty("gate")
@@ -107,14 +151,28 @@ describe("buildSummary", () => {
   it("supports verify_release profile with stricter sample requirements", () => {
     const summary = buildSummary(
       [
-        row({ mode: "agent_direct", scenario_id: "s1", latency_ms_wall: 100, tool_calls: 5, tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 100 } }),
-        row({ mode: "ghx", scenario_id: "s1", latency_ms_wall: 70, tool_calls: 3, tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 70 } })
+        row({
+          mode: "agent_direct",
+          scenario_id: "s1",
+          latency_ms_wall: 100,
+          tool_calls: 5,
+          tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 100 },
+        }),
+        row({
+          mode: "ghx",
+          scenario_id: "s1",
+          latency_ms_wall: 70,
+          tool_calls: 3,
+          tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 70 },
+        }),
       ],
-      "verify_release"
+      "verify_release",
     )
 
     expect(summary.gateV2.profile).toBe("verify_release")
-    expect(summary.gateV2.checks.find((check) => check.name === "efficiency_coverage")?.passed).toBe(false)
+    expect(
+      summary.gateV2.checks.find((check) => check.name === "efficiency_coverage")?.passed,
+    ).toBe(false)
   })
 
   it("summarizes profiling timing when timing_breakdown is present", () => {
@@ -130,8 +188,8 @@ describe("buildSummary", () => {
           tool_total_ms: 700,
           tool_bash_ms: 650,
           tool_structured_output_ms: 2,
-          observed_assistant_turns: 2
-        }
+          observed_assistant_turns: 2,
+        },
       }),
       row({
         mode: "ghx",
@@ -144,9 +202,9 @@ describe("buildSummary", () => {
           tool_total_ms: 1600,
           tool_bash_ms: 1500,
           tool_structured_output_ms: 1,
-          observed_assistant_turns: 2
-        }
-      })
+          observed_assistant_turns: 2,
+        },
+      }),
     ])
 
     expect(summary.profiling.agent_direct?.medianToolBashMs).toBe(650)
@@ -155,5 +213,34 @@ describe("buildSummary", () => {
     const markdown = toMarkdown(summary)
     expect(markdown).toContain("## Profiling Snapshot")
     expect(markdown).toContain("| ghx | 1 | 9000 | 2800")
+  })
+
+  it("uses provided timestamp instead of current time", () => {
+    const rows = [row({ mode: "agent_direct" })]
+    const summary = buildSummary(rows, "verify_pr", undefined, "2026-01-01T00:00:00.000Z")
+    expect(summary.generatedAt).toBe("2026-01-01T00:00:00.000Z")
+  })
+
+  it("computes median for even-length arrays", () => {
+    const rows = [
+      row({ mode: "agent_direct", latency_ms_wall: 100 }),
+      row({ mode: "agent_direct", latency_ms_wall: 200 }),
+      row({ mode: "agent_direct", latency_ms_wall: 300 }),
+      row({ mode: "agent_direct", latency_ms_wall: 400 }),
+    ]
+    const summary = buildSummary(rows)
+    expect(summary.modes.agent_direct?.medianLatencyMs).toBe(250)
+  })
+
+  it("produces valid markdown table structure", () => {
+    const rows = [
+      row({ mode: "agent_direct", latency_ms_wall: 100, tool_calls: 5 }),
+      row({ mode: "ghx", latency_ms_wall: 80, tool_calls: 3 }),
+    ]
+    const summary = buildSummary(rows)
+    const md = toMarkdown(summary)
+    expect(md).toContain("| Mode |")
+    expect(md).toContain("|---|")
+    expect(md.split("\n").filter((line) => line.startsWith("|")).length).toBeGreaterThan(5)
   })
 })

@@ -1,9 +1,7 @@
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises"
+import { mkdir, readdir, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
-import { pathToFileURL } from "node:url"
-
-import type { BenchmarkMode, BenchmarkRow } from "../domain/types.js"
-import type { GateProfile } from "../report/aggregate.js"
+import { z } from "zod"
+import type { BenchmarkMode, BenchmarkRow, GateProfile } from "../domain/types.js"
 import { buildSummary, DEFAULT_GATE_V2_THRESHOLDS, toMarkdown } from "../report/aggregate.js"
 import {
   expectationsConfigExists,
@@ -12,6 +10,64 @@ import {
   resolveGateThresholdsForModel,
   resolveModelForExpectations,
 } from "../report/expectations.js"
+import { readJsonlFile } from "../utils/jsonl.js"
+import { runIfDirectEntry } from "./entry.js"
+import { parseMultiFlagValues } from "./flag-utils.js"
+
+const benchmarkRowSchema = z.object({
+  timestamp: z.string(),
+  run_id: z.string(),
+  mode: z.enum(["agent_direct", "mcp", "ghx"]),
+  scenario_id: z.string(),
+  scenario_set: z.string().nullable(),
+  iteration: z.number(),
+  session_id: z.string().nullable(),
+  success: z.boolean(),
+  output_valid: z.boolean(),
+  latency_ms_wall: z.number(),
+  sdk_latency_ms: z.number().nullable(),
+  timing_breakdown: z
+    .object({
+      assistant_total_ms: z.number(),
+      assistant_pre_reasoning_ms: z.number(),
+      assistant_reasoning_ms: z.number(),
+      assistant_between_reasoning_and_tool_ms: z.number(),
+      assistant_post_tool_ms: z.number(),
+      tool_total_ms: z.number(),
+      tool_bash_ms: z.number(),
+      tool_structured_output_ms: z.number(),
+      observed_assistant_turns: z.number(),
+    })
+    .optional(),
+  tokens: z.object({
+    input: z.number(),
+    output: z.number(),
+    reasoning: z.number(),
+    cache_read: z.number(),
+    cache_write: z.number(),
+    total: z.number(),
+  }),
+  cost: z.number(),
+  tool_calls: z.number(),
+  api_calls: z.number(),
+  internal_retry_count: z.number(),
+  external_retry_count: z.number(),
+  model: z.object({
+    provider_id: z.string(),
+    model_id: z.string(),
+    mode: z.string().nullable(),
+  }),
+  git: z.object({
+    repo: z.string().nullable(),
+    commit: z.string().nullable(),
+  }),
+  error: z
+    .object({
+      type: z.string(),
+      message: z.string(),
+    })
+    .nullable(),
+})
 
 const RESULTS_DIR = join(process.cwd(), "results")
 const REPORTS_DIR = join(process.cwd(), "reports")
@@ -83,32 +139,7 @@ export function parseArgs(args: string[]): {
   const summaryJson = parseStringFlag("summary-json")
   const summaryMd = parseStringFlag("summary-md")
 
-  const suiteJsonlPaths: string[] = []
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index]
-    if (!arg) {
-      continue
-    }
-
-    if (arg === "--suite-jsonl") {
-      const nextValue = (args[index + 1] ?? "").trim()
-      if (nextValue.length === 0 || nextValue.startsWith("--")) {
-        throw new Error("Missing value for --suite-jsonl")
-      }
-      suiteJsonlPaths.push(nextValue)
-      index += 1
-      continue
-    }
-
-    const inlinePrefix = "--suite-jsonl="
-    if (arg.startsWith(inlinePrefix)) {
-      const value = arg.slice(inlinePrefix.length).trim()
-      if (value.length === 0) {
-        throw new Error("Missing value for --suite-jsonl")
-      }
-      suiteJsonlPaths.push(value)
-    }
-  }
+  const suiteJsonlPaths = parseMultiFlagValues(args, "--suite-jsonl")
 
   return {
     gate: args.includes("--gate"),
@@ -130,12 +161,7 @@ export function modeFromFilename(name: string): BenchmarkMode | null {
 }
 
 export async function readRows(filePath: string): Promise<BenchmarkRow[]> {
-  const content = await readFile(filePath, "utf8")
-  return content
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .map((line) => JSON.parse(line) as BenchmarkRow)
+  return readJsonlFile(filePath, benchmarkRowSchema) as Promise<BenchmarkRow[]>
 }
 
 export async function loadLatestRowsPerMode(): Promise<BenchmarkRow[]> {
@@ -346,14 +372,4 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
   }
 }
 
-const isDirectRun = process.argv[1]
-  ? import.meta.url === pathToFileURL(process.argv[1]).href
-  : false
-
-if (isDirectRun) {
-  main().catch((error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error)
-    console.error(message)
-    process.exit(1)
-  })
-}
+runIfDirectEntry(import.meta.url, main)

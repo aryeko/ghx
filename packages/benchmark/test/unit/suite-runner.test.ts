@@ -5,29 +5,32 @@ vi.mock("node:child_process", () => ({
 }))
 
 import { spawnSync } from "node:child_process"
+import { extractEnvelopeFromParts } from "../../src/runner/envelope-recovery.js"
 import { validateFixture } from "../../src/runner/preflight/fixture-preflight.js"
 import { ghOk } from "../../src/runner/preflight/ghx-router-preflight.js"
 import { renderPrompt } from "../../src/runner/prompt/prompt-renderer.js"
 import {
+  hasAssistantMetadata,
+  hasAssistantSignalParts,
+  hasTextPart,
+} from "../../src/runner/session-polling.js"
+import {
   asNumber,
   assertGhxRouterPreflight,
   coercePromptResponse,
-  extractEnvelopeFromParts,
   extractPromptResponseFromPromptResult,
   extractSnapshotFromParts,
   extractTimingBreakdown,
   fetchSessionMessages,
   getSessionApi,
-  hasAssistantMetadata,
-  hasAssistantSignalParts,
-  hasTextPart,
-  isObject,
   runScenario,
   shouldRequestContinuation,
   unwrapData,
   waitForAssistantFromMessages,
   withTimeout,
 } from "../../src/runner/suite-runner.js"
+import { isObject } from "../../src/utils/guards.js"
+import { makeScenario } from "../helpers/scenario-factory.js"
 
 const spawnSyncMock = vi.mocked(spawnSync)
 
@@ -669,33 +672,28 @@ describe("suite-runner helpers", () => {
     spawnSyncMock.mockReturnValue({ status: 0 } as never)
     expect(ghOk(["repo", "view"])).toBe(true)
 
-    validateFixture({
-      id: "s",
-      name: "n",
-      task: "issue.view",
-      input: { issueNumber: 1 },
-      prompt_template: "{{task}} {{scenario_id}} {{input_json}} {{fixture_repo}}",
-      timeout_ms: 1000,
-      allowed_retries: 0,
-      fixture: { repo: "owner/repo" },
-      assertions: { must_succeed: true },
-      tags: [],
-    })
+    validateFixture(
+      makeScenario({
+        id: "s",
+        name: "n",
+        task: "issue.view",
+        input: { issueNumber: 1 },
+        prompt_template: "{{task}} {{scenario_id}} {{input_json}} {{fixture_repo}}",
+        fixture: { repo: "owner/repo" },
+      }),
+    )
 
     const prompt = renderPrompt(
-      {
+      makeScenario({
         id: "s",
         name: "n",
         task: "repo.view",
         input: { owner: "a", name: "b" },
         prompt_template:
           "task={{task}} id={{scenario_id}} input={{input_json}} repo={{fixture_repo}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
         fixture: { repo: "a/b" },
         assertions: { must_succeed: true, required_data_fields: ["id"] },
-        tags: [],
-      },
+      }),
       "ghx",
     )
     expect(prompt).not.toContain("You are running a benchmark in ghx mode")
@@ -721,17 +719,13 @@ describe("suite-runner helpers", () => {
 
     expect(() =>
       assertGhxRouterPreflight([
-        {
+        makeScenario({
           id: "repo-view-001",
           name: "Repo view",
           task: "repo.view",
           input: {},
           prompt_template: "x",
-          timeout_ms: 1000,
-          allowed_retries: 0,
-          assertions: { must_succeed: true },
-          tags: [],
-        },
+        }),
       ]),
     ).not.toThrow()
 
@@ -753,17 +747,13 @@ describe("suite-runner helpers", () => {
 
     expect(() =>
       assertGhxRouterPreflight([
-        {
+        makeScenario({
           id: "repo-view-001",
           name: "Repo view",
           task: "repo.view",
           input: {},
           prompt_template: "x",
-          timeout_ms: 1000,
-          allowed_retries: 0,
-          assertions: { must_succeed: true },
-          tags: [],
-        },
+        }),
       ]),
     ).toThrow("ghx_preflight_failed: not logged in")
   })
@@ -783,17 +773,13 @@ describe("suite-runner helpers", () => {
 
     expect(() =>
       assertGhxRouterPreflight([
-        {
+        makeScenario({
           id: "pr-view-001",
           name: "PR view",
           task: "pr.view",
           input: {},
           prompt_template: "x",
-          timeout_ms: 1000,
-          allowed_retries: 0,
-          assertions: { must_succeed: true },
-          tags: [],
-        },
+        }),
       ]),
     ).toThrow("ghx_preflight_failed")
   })
@@ -806,21 +792,18 @@ describe("suite-runner helpers", () => {
 
   it("omits route_used assertions outside ghx mode", () => {
     const prompt = renderPrompt(
-      {
+      makeScenario({
         id: "s",
         name: "n",
         task: "repo.view",
         input: { owner: "a", name: "b" },
         prompt_template: "task={{task}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
         assertions: {
           must_succeed: true,
           expected_route_used: "graphql",
           required_meta_fields: ["route_used"],
         },
-        tags: [],
-      },
+      }),
       "mcp",
     )
 
@@ -836,21 +819,18 @@ describe("suite-runner helpers", () => {
 
     try {
       const prompt = renderPrompt(
-        {
+        makeScenario({
           id: "s",
           name: "n",
           task: "repo.view",
           input: { owner: "a", name: "b" },
           prompt_template: "task={{task}}",
-          timeout_ms: 1000,
-          allowed_retries: 0,
           assertions: {
             must_succeed: true,
             expected_route_used: "graphql",
             required_meta_fields: ["route_used"],
           },
-          tags: [],
-        },
+        }),
         "ghx",
       )
 
@@ -875,49 +855,43 @@ describe("suite-runner helpers", () => {
     spawnSyncMock.mockReturnValue({ status: 1 } as never)
 
     expect(() =>
-      validateFixture({
-        id: "s",
-        name: "n",
-        task: "repo.view",
-        input: {},
-        prompt_template: "x",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "owner/repo" },
-        assertions: { must_succeed: true },
-        tags: [],
-      }),
+      validateFixture(
+        makeScenario({
+          id: "s",
+          name: "n",
+          task: "repo.view",
+          input: {},
+          prompt_template: "x",
+          fixture: { repo: "owner/repo" },
+        }),
+      ),
     ).toThrow("repo not found or inaccessible")
 
     spawnSyncMock.mockReturnValue({ status: 0 } as never)
     expect(() =>
-      validateFixture({
-        id: "s",
-        name: "n",
-        task: "issue.view",
-        input: {},
-        prompt_template: "x",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "owner/repo" },
-        assertions: { must_succeed: true },
-        tags: [],
-      }),
+      validateFixture(
+        makeScenario({
+          id: "s",
+          name: "n",
+          task: "issue.view",
+          input: {},
+          prompt_template: "x",
+          fixture: { repo: "owner/repo" },
+        }),
+      ),
     ).toThrow("issue.view requires numeric")
 
     expect(() =>
-      validateFixture({
-        id: "s",
-        name: "n",
-        task: "pr.view",
-        input: {},
-        prompt_template: "x",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "owner/repo" },
-        assertions: { must_succeed: true },
-        tags: [],
-      }),
+      validateFixture(
+        makeScenario({
+          id: "s",
+          name: "n",
+          task: "pr.view",
+          input: {},
+          prompt_template: "x",
+          fixture: { repo: "owner/repo" },
+        }),
+      ),
     ).toThrow("pr.view requires numeric")
   })
 
@@ -927,18 +901,16 @@ describe("suite-runner helpers", () => {
       .mockReturnValueOnce({ status: 1 } as never)
 
     expect(() =>
-      validateFixture({
-        id: "s",
-        name: "n",
-        task: "pr.view",
-        input: { prNumber: 9 },
-        prompt_template: "x",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "owner/repo" },
-        assertions: { must_succeed: true },
-        tags: [],
-      }),
+      validateFixture(
+        makeScenario({
+          id: "s",
+          name: "n",
+          task: "pr.view",
+          input: { prNumber: 9 },
+          prompt_template: "x",
+          fixture: { repo: "owner/repo" },
+        }),
+      ),
     ).toThrow("pr #9 not found")
   })
 
@@ -948,18 +920,16 @@ describe("suite-runner helpers", () => {
       .mockReturnValueOnce({ status: 1 } as never)
 
     expect(() =>
-      validateFixture({
-        id: "s",
-        name: "n",
-        task: "issue.view",
-        input: { issueNumber: 7 },
-        prompt_template: "x",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "owner/repo" },
-        assertions: { must_succeed: true },
-        tags: [],
-      }),
+      validateFixture(
+        makeScenario({
+          id: "s",
+          name: "n",
+          task: "issue.view",
+          input: { issueNumber: 7 },
+          prompt_template: "x",
+          fixture: { repo: "owner/repo" },
+        }),
+      ),
     ).toThrow("issue #7 not found")
   })
 
@@ -1000,14 +970,9 @@ describe("suite-runner helpers", () => {
 
     const result = await runScenario(
       { session },
-      {
+      makeScenario({
         id: "repo-view-001",
         name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "do {{task}} with {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
         assertions: {
           must_succeed: true,
           expect_valid_output: true,
@@ -1017,8 +982,7 @@ describe("suite-runner helpers", () => {
           min_tool_calls: 1,
           require_attempt_trace: true,
         },
-        tags: [],
-      },
+      }),
       "ghx",
       1,
     )
@@ -1065,22 +1029,17 @@ describe("suite-runner helpers", () => {
 
     const result = await runScenario(
       { session },
-      {
+      makeScenario({
         id: "repo-view-structured",
         name: "Repo view structured",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
         prompt_template: "do {{task}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
         assertions: {
           must_succeed: true,
           required_fields: ["ok", "data", "error", "meta"],
           required_data_fields: ["id"],
           require_tool_calls: false,
         },
-        tags: [],
-      },
+      }),
       "ghx",
       1,
     )
@@ -1133,22 +1092,17 @@ describe("suite-runner helpers", () => {
 
     const result = await runScenario(
       { session },
-      {
+      makeScenario({
         id: "repo-view-continuation",
         name: "Repo view continuation",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
         prompt_template: "do {{task}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
         assertions: {
           must_succeed: true,
           required_fields: ["ok", "data", "error", "meta"],
           required_data_fields: ["id"],
           require_tool_calls: false,
         },
-        tags: [],
-      },
+      }),
       "ghx",
       1,
     )
@@ -1194,22 +1148,17 @@ describe("suite-runner helpers", () => {
 
     const result = await runScenario(
       { session },
-      {
+      makeScenario({
         id: "repo-view-recover",
         name: "Repo view recover",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
         prompt_template: "do {{task}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
         assertions: {
           must_succeed: true,
           required_fields: ["ok", "data", "error", "meta"],
           required_data_fields: ["id"],
           require_tool_calls: false,
         },
-        tags: [],
-      },
+      }),
       "ghx",
       1,
     )
@@ -1247,14 +1196,9 @@ describe("suite-runner helpers", () => {
 
     const result = await runScenario(
       { session },
-      {
+      makeScenario({
         id: "repo-view-001",
         name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "do {{task}} with {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
         assertions: {
           must_succeed: true,
           required_fields: ["ok", "data", "error", "meta"],
@@ -1262,8 +1206,7 @@ describe("suite-runner helpers", () => {
           require_tool_calls: true,
           min_tool_calls: 2,
         },
-        tags: [],
-      },
+      }),
       "ghx",
       1,
     )
@@ -1341,14 +1284,9 @@ describe("suite-runner helpers", () => {
 
     const result = await runScenario(
       { session },
-      {
+      makeScenario({
         id: "repo-view-001",
         name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "do {{task}} with {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
         assertions: {
           must_succeed: true,
           required_fields: ["ok", "data", "error", "meta"],
@@ -1356,8 +1294,7 @@ describe("suite-runner helpers", () => {
           require_tool_calls: true,
           min_tool_calls: 1,
         },
-        tags: [],
-      },
+      }),
       "ghx",
       1,
     )
@@ -1396,22 +1333,16 @@ describe("suite-runner helpers", () => {
 
     const result = await runScenario(
       { session },
-      {
+      makeScenario({
         id: "repo-view-001",
         name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "do {{task}} with {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
         assertions: {
           must_succeed: true,
           required_fields: ["ok", "data", "error", "meta"],
           required_data_fields: ["id"],
           max_tool_calls: 0,
         },
-        tags: [],
-      },
+      }),
       "ghx",
       1,
     )
@@ -1449,14 +1380,9 @@ describe("suite-runner helpers", () => {
 
     const result = await runScenario(
       { session },
-      {
+      makeScenario({
         id: "repo-view-001",
         name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "do {{task}} with {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
         assertions: {
           must_succeed: true,
           required_fields: ["ok", "data", "error", "meta"],
@@ -1464,8 +1390,7 @@ describe("suite-runner helpers", () => {
           require_tool_calls: false,
           require_attempt_trace: true,
         },
-        tags: [],
-      },
+      }),
       "ghx",
       1,
     )
@@ -1500,22 +1425,16 @@ describe("suite-runner helpers", () => {
 
     const result = await runScenario(
       { session },
-      {
+      makeScenario({
         id: "repo-view-001",
         name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "do {{task}} with {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
         assertions: {
           must_succeed: false,
           expect_valid_output: false,
           require_tool_calls: false,
           data_type: "object",
         },
-        tags: [],
-      },
+      }),
       "ghx",
       1,
     )
@@ -1547,22 +1466,16 @@ describe("suite-runner helpers", () => {
 
     const result = await runScenario(
       { session },
-      {
+      makeScenario({
         id: "repo-view-001",
         name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "do {{task}} with {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
         assertions: {
           must_succeed: true,
           expect_valid_output: true,
           require_tool_calls: false,
           data_type: "object",
         },
-        tags: [],
-      },
+      }),
       "ghx",
       1,
     )
@@ -1595,22 +1508,17 @@ describe("suite-runner helpers", () => {
 
     const result = await runScenario(
       { session },
-      {
+      makeScenario({
         id: "repo-view-raw",
         name: "Repo view raw",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
         prompt_template: "do {{task}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
         assertions: {
           must_succeed: true,
           required_fields: ["ok", "data", "error", "meta"],
           required_data_fields: ["id"],
           require_tool_calls: false,
         },
-        tags: [],
-      },
+      }),
       "ghx",
       1,
     )
@@ -1659,22 +1567,17 @@ describe("suite-runner helpers", () => {
 
     const result = await runScenario(
       { session },
-      {
+      makeScenario({
         id: `repo-${id}`,
         name: `Repo ${id}`,
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
         prompt_template: "do {{task}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
         assertions: {
           must_succeed: true,
           required_fields: ["ok", "data", "error", "meta"],
           required_data_fields: ["items", "pageInfo"],
           require_tool_calls: false,
         },
-        tags: [],
-      },
+      }),
       "ghx",
       1,
     )
@@ -1707,22 +1610,17 @@ describe("suite-runner helpers", () => {
 
     const result = await runScenario(
       { session },
-      {
+      makeScenario({
         id: "repo-view-ok-meta",
         name: "Repo view ok meta",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
         prompt_template: "do {{task}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
         assertions: {
           must_succeed: true,
           required_fields: ["ok", "data", "error", "meta"],
           required_data_fields: ["id"],
           require_tool_calls: false,
         },
-        tags: [],
-      },
+      }),
       "ghx",
       1,
     )
@@ -1744,17 +1642,11 @@ describe("suite-runner helpers", () => {
 
     const result = await runScenario(
       { session },
-      {
+      makeScenario({
         id: "repo-view-001",
         name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
         prompt_template: "do {{task}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        assertions: { must_succeed: true },
-        tags: [],
-      },
+      }),
       "ghx",
       1,
     )
@@ -1799,22 +1691,18 @@ describe("suite-runner helpers", () => {
 
     const result = await runScenario(
       { session },
-      {
+      makeScenario({
         id: "repo-view-timeout-retry",
         name: "Repo view timeout retry",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
         prompt_template: "do {{task}}",
         timeout_ms: 10,
-        allowed_retries: 0,
         assertions: {
           must_succeed: true,
           required_fields: ["ok", "data", "error", "meta"],
           required_data_fields: ["id"],
           require_tool_calls: false,
         },
-        tags: [],
-      },
+      }),
       "agent_direct",
       1,
     )
@@ -1836,17 +1724,11 @@ describe("suite-runner helpers", () => {
 
     const result = await runScenario(
       { session },
-      {
+      makeScenario({
         id: "repo-view-001",
         name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
         prompt_template: "do {{task}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        assertions: { must_succeed: true },
-        tags: [],
-      },
+      }),
       "ghx",
       1,
     )

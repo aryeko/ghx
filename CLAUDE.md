@@ -11,6 +11,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Runtime:** Node.js `>=22`. **Language:** TypeScript strict, ESM (`module`/`moduleResolution` = `NodeNext`).
 
+**Worktrees:** Feature branches may have isolated worktrees at `.worktrees/<branch-name>/`. Check there before assuming the main checkout is the active workspace.
+
 ## Commands
 
 ### Setup
@@ -91,10 +93,12 @@ User/Agent → CLI (packages/core/src/cli/) → executeTask() [core/routing/engi
 ## Code Style
 
 - **Formatter:** Biome (`biome.json`). Double quotes, no semicolons, trailing commas, 2-space indent, 100-char line width. Do not introduce Prettier or other formatters.
-- **Imports:** Use `import type` for type-only imports. Relative imports require explicit `.js` extension (NodeNext resolution).
+- **Imports:** Use `import type` for type-only imports. Relative imports require explicit `.js` extension (NodeNext resolution). When a module needs both a value and a type import from the same source, Biome's `organizeImports` places `import type` first — accept this ordering to avoid churn.
 - **Types:** `unknown` + narrowing over `any`. Validate untrusted input at boundaries (AJV in core, Zod in benchmark). Result envelope shape `{ ok, data, error, meta }` is a stable contract — do not change it.
 - **Error codes:** Reuse from `packages/core/src/core/errors/codes.ts`.
+- **`mapErrorToCode` ordering:** In `core/errors/map-error.ts`, Auth must precede Validation (both match "invalid…" messages). Current order: RateLimit → Server → Network → NotFound → Auth → Validation → Unknown.
 - **Files:** kebab-case. Tests: `*.test.ts` (unit), `*.integration.test.ts` (integration). Types: PascalCase. Constants: `UPPER_SNAKE_CASE`.
+- **`exactOptionalPropertyTypes: true`** is set in tsconfig. Zod's `.optional()` infers `T | undefined`, which conflicts with TypeScript's strict optional semantics. When returning Zod-parsed values where the declared return type uses optional fields (`field?: T`), cast the result (e.g. `as Promise<BenchmarkRow[]>`).
 - **Generated code:** Never edit manually — `packages/core/src/gql/generated/**` and `packages/core/src/gql/operations/*.generated.ts`. Regenerate via codegen script.
 
 ## Pre-commit Hooks
@@ -104,12 +108,15 @@ Lefthook runs automatically on commit (installed via `pnpm install`):
 - ESLint on staged `.ts`/`.js`/`.mjs`
 - Full typecheck
 
+**Caution:** Lefthook's `stage_fixed: true` auto-stages all Biome-modified files. Avoid parallel commits in the same worktree — stray unstaged files bleed into the wrong commit.
+
 ## Pre-PR Checklist
 
 1. `pnpm run ci --outputStyle=static` passes.
 2. If GraphQL operations changed: `pnpm run ghx:gql:check`.
 3. Satisfy all applicable checkboxes in `.github/pull_request_template.md`.
 4. Coverage for touched files: ≥90% (aim for 95%).
+5. If `@ghx-dev/core` public API changed: add a changeset — create `.changeset/<kebab-name>.md` with frontmatter `---\n"@ghx-dev/core": patch\n---\n\nDescription.`
 
 ## Documentation
 
