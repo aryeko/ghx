@@ -2,65 +2,6 @@ import { z } from "zod"
 
 import type { Scenario } from "../domain/types.js"
 
-const assertionsSchema = z
-  .object({
-    expected_outcome: z.enum(["success", "expected_error"]).optional(),
-    must_succeed: z.boolean().optional(),
-    expect_valid_output: z.boolean().optional(),
-    required_fields: z.array(z.string()).optional(),
-    required_data_fields: z.array(z.string()).optional(),
-    required_meta_fields: z.array(z.string()).optional(),
-    data_type: z.enum(["array", "object"]).optional(),
-    expected_route_used: z.enum(["cli", "graphql", "rest"]).optional(),
-    expected_error_code: z.string().min(1).optional(),
-    require_tool_calls: z.boolean().optional(),
-    min_tool_calls: z.number().int().nonnegative().optional(),
-    max_tool_calls: z.number().int().nonnegative().optional(),
-    require_attempt_trace: z.boolean().optional(),
-  })
-  .superRefine((value, context) => {
-    if (value.expected_outcome === undefined && value.must_succeed === undefined) {
-      context.addIssue({
-        code: "custom",
-        path: ["expected_outcome"],
-        message: "either expected_outcome or must_succeed must be provided",
-      })
-    }
-
-    if (value.expected_outcome !== undefined && value.must_succeed !== undefined) {
-      const expectedFromLegacy = value.must_succeed ? "success" : "expected_error"
-      if (value.expected_outcome !== expectedFromLegacy) {
-        context.addIssue({
-          code: "custom",
-          path: ["expected_outcome"],
-          message: "expected_outcome conflicts with must_succeed",
-        })
-      }
-    }
-
-    const expectedOutcome =
-      value.expected_outcome ?? (value.must_succeed === false ? "expected_error" : "success")
-    if (expectedOutcome === "expected_error" && value.expected_error_code === undefined) {
-      context.addIssue({
-        code: "custom",
-        path: ["expected_error_code"],
-        message: "expected_error scenarios must specify expected_error_code",
-      })
-    }
-
-    if (
-      value.min_tool_calls !== undefined &&
-      value.max_tool_calls !== undefined &&
-      value.max_tool_calls < value.min_tool_calls
-    ) {
-      context.addIssue({
-        code: "custom",
-        path: ["max_tool_calls"],
-        message: "max_tool_calls must be greater than or equal to min_tool_calls",
-      })
-    }
-  })
-
 const workflowCheckpointSchema = z.object({
   name: z.string().min(1),
   verification_task: z.string().min(1),
@@ -122,20 +63,6 @@ const fixtureSchema = z
   })
   .optional()
 
-const atomicScenarioSchema = z.object({
-  type: z.enum(["atomic"]).optional(),
-  id: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*-\d{3}$/),
-  name: z.string().min(1),
-  task: z.string().min(1),
-  input: z.record(z.string(), z.unknown()),
-  prompt_template: z.string().min(1),
-  timeout_ms: z.number().positive(),
-  allowed_retries: z.number().int().nonnegative(),
-  fixture: fixtureSchema,
-  assertions: assertionsSchema,
-  tags: z.array(z.string()),
-})
-
 const workflowScenarioSchema = z.object({
   type: z.literal("workflow"),
   id: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*-wf-\d{3}$/),
@@ -150,8 +77,5 @@ const workflowScenarioSchema = z.object({
 })
 
 export function validateScenario(raw: unknown): Scenario {
-  if (typeof raw === "object" && raw !== null && "type" in raw && raw.type === "workflow") {
-    return workflowScenarioSchema.parse(raw) as Scenario
-  }
-  return atomicScenarioSchema.parse(raw) as Scenario
+  return workflowScenarioSchema.parse(raw) as Scenario
 }

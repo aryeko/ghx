@@ -12,7 +12,7 @@ const {
   appendFileMock,
   mkdirMock,
   accessMock,
-  lstatSyncMock,
+  lstatMock,
 } = vi.hoisted(() => ({
   createOpencodeMock: vi.fn(),
   loadScenariosMock: vi.fn(),
@@ -21,7 +21,7 @@ const {
   appendFileMock: vi.fn(async () => undefined),
   mkdirMock: vi.fn(async () => undefined),
   accessMock: vi.fn(async () => undefined),
-  lstatSyncMock: vi.fn(),
+  lstatMock: vi.fn(async () => ({ isSymbolicLink: () => true })),
 }))
 
 vi.mock("@opencode-ai/sdk", () => ({
@@ -44,28 +44,14 @@ vi.mock("node:fs/promises", async (importOriginal) => {
     access: accessMock,
     appendFile: appendFileMock,
     mkdir: mkdirMock,
+    lstat: lstatMock,
   }
 })
 
-vi.mock("node:fs", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("node:fs")>()
-  lstatSyncMock.mockImplementation(actual.lstatSync)
-  return {
-    ...actual,
-    lstatSync: lstatSyncMock,
-  }
+vi.mock("node:child_process", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:child_process")>()
+  return { ...actual, spawnSync: vi.fn(actual.spawnSync) }
 })
-
-vi.mock("node:child_process", () => ({
-  spawnSync: vi.fn(() => ({
-    status: 0,
-    stdout: JSON.stringify([
-      { capability_id: "repo.view", description: "Repo view" },
-      { capability_id: "pr.view", description: "PR view" },
-    ]),
-    stderr: "",
-  })),
-}))
 
 const spawnSyncMock = vi.mocked(spawnSync)
 
@@ -183,11 +169,11 @@ describe("runSuite", () => {
 
     loadScenariosMock.mockResolvedValue([
       {
+        type: "workflow",
         id: "repo-view-001",
         name: "Repo view",
-        task: "repo.view",
-        input: { owner: "OWNER_PLACEHOLDER", name: "REPO_PLACEHOLDER" },
-        prompt_template: "run {{task}} {{input_json}}",
+        prompt: "View repo {{owner}}/{{name}}.",
+        expected_capabilities: ["repo.view"],
         timeout_ms: 1000,
         allowed_retries: 0,
         fixture: {
@@ -198,9 +184,15 @@ describe("runSuite", () => {
           },
         },
         assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
+          expected_outcome: "success",
+          checkpoints: [
+            {
+              name: "check-repo",
+              verification_task: "repo.view",
+              verification_input: {},
+              condition: "non_empty",
+            },
+          ],
         },
         tags: [],
       },
@@ -239,8 +231,8 @@ describe("runSuite", () => {
       }
     }
     const prompt = String(firstPromptPayload.body?.parts?.[0]?.text ?? "")
-    expect(prompt).toContain('"owner":"aryeko"')
-    expect(prompt).toContain('"name":"ghx-bench-fixtures"')
+    expect(prompt).toContain("aryeko")
+    expect(prompt).toContain("ghx-bench-fixtures")
     expect(close).toHaveBeenCalled()
   })
 
@@ -495,41 +487,6 @@ describe("runSuite", () => {
     expect(close).not.toHaveBeenCalled()
   })
 
-  it("fails ghx runSuite early when capability preflight fails", async () => {
-    const session = createSessionMocks()
-    const close = vi.fn()
-    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
-
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
-
-    spawnSyncMock
-      .mockReturnValueOnce({ status: 0, stdout: "", stderr: "" } as never)
-      .mockReturnValueOnce({ status: 0, stdout: "[]", stderr: "" } as never)
-
-    const mod = await import("../../src/runner/suite-runner.js")
-    await expect(
-      mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null, skipWarmup: true }),
-    ).rejects.toThrow("ghx_preflight_failed")
-    expect(appendFileMock).not.toHaveBeenCalled()
-  })
-
   it("throws when scenario set references unknown scenario ids", async () => {
     const session = createSessionMocks()
     const close = vi.fn()
@@ -655,11 +612,11 @@ describe("runSuite", () => {
 
     loadScenariosMock.mockResolvedValue([
       {
+        type: "workflow",
         id: "repo-view-001",
         name: "Repo view",
-        task: "repo.view",
-        input: { owner: "OWNER_PLACEHOLDER", name: "REPO_PLACEHOLDER" },
-        prompt_template: "run {{task}} {{input_json}}",
+        prompt: "View repo {{owner}}/{{name}}.",
+        expected_capabilities: ["repo.view"],
         timeout_ms: 1000,
         allowed_retries: 0,
         fixture: {
@@ -670,9 +627,15 @@ describe("runSuite", () => {
           },
         },
         assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
+          expected_outcome: "success",
+          checkpoints: [
+            {
+              name: "check-repo",
+              verification_task: "repo.view",
+              verification_input: {},
+              condition: "non_empty",
+            },
+          ],
         },
         tags: [],
       },
@@ -1127,22 +1090,13 @@ describe("runSuite", () => {
     delete process.env.GH_TOKEN
     delete process.env.GITHUB_TOKEN
 
-    const spawnSync = await import("node:child_process")
-    vi.mocked(spawnSync.spawnSync).mockImplementation((_cmd, args) => {
+    spawnSyncMock.mockImplementation((_cmd, args) => {
       if (Array.isArray(args) && args[0] === "auth" && args[1] === "status") {
         return { status: 0, stdout: "ok", stderr: "" } as never
       }
 
       if (Array.isArray(args) && args[0] === "auth" && args[1] === "token") {
         return { status: 1 } as never
-      }
-
-      if (Array.isArray(args) && args.includes("capabilities") && args.includes("list")) {
-        return {
-          status: 0,
-          stdout: JSON.stringify([{ capability_id: "repo.view", description: "Repo view" }]),
-          stderr: "",
-        } as never
       }
 
       return { status: 0 } as never
@@ -1214,7 +1168,7 @@ describe("runSuite", () => {
     }
   })
 
-  it("fails early when benchmark ghx alias symlink check fails (sync preflight)", async () => {
+  it("fails early when benchmark ghx alias check fails", async () => {
     const session = createSessionMocks()
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
@@ -1231,16 +1185,12 @@ describe("runSuite", () => {
         fixture: { repo: "a/b" },
         assertions: {
           must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
         },
         tags: [],
       },
     ])
 
-    lstatSyncMock.mockImplementationOnce(() => {
-      throw new Error("missing alias")
-    })
+    lstatMock.mockRejectedValueOnce(new Error("missing alias"))
 
     const mod = await import("../../src/runner/suite-runner.js")
     await expect(

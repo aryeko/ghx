@@ -106,22 +106,6 @@ type GateV2Summary = {
   checks: GateCheck[]
 }
 
-export type ScenarioAssertions = {
-  expected_outcome?: "success" | "expected_error"
-  must_succeed?: boolean
-  expect_valid_output?: boolean
-  required_fields?: string[]
-  required_data_fields?: string[]
-  required_meta_fields?: string[]
-  data_type?: "array" | "object"
-  expected_route_used?: "cli" | "graphql" | "rest"
-  expected_error_code?: string
-  require_tool_calls?: boolean
-  min_tool_calls?: number
-  max_tool_calls?: number
-  require_attempt_trace?: boolean
-}
-
 export type WorkflowCheckpoint = {
   name: string
   verification_task: string
@@ -133,26 +117,6 @@ export type WorkflowCheckpoint = {
 export type WorkflowAssertions = {
   expected_outcome: "success" | "expected_error"
   checkpoints: WorkflowCheckpoint[]
-}
-
-export type AtomicScenario = {
-  type?: "atomic"
-  id: string
-  name: string
-  task: string
-  input: Record<string, unknown>
-  prompt_template: string
-  timeout_ms: number
-  allowed_retries: number
-  fixture?: {
-    repo?: string
-    workdir?: string
-    branch?: string
-    bindings?: Record<string, string>
-    requires?: string[]
-  }
-  assertions: ScenarioAssertions
-  tags: string[]
 }
 
 export type WorkflowScenario = {
@@ -174,15 +138,7 @@ export type WorkflowScenario = {
   tags: string[]
 }
 
-export type Scenario = AtomicScenario | WorkflowScenario
-
-export function isAtomicScenario(s: Scenario): s is AtomicScenario {
-  return s.type !== "workflow"
-}
-
-export function isWorkflowScenario(s: Scenario): s is WorkflowScenario {
-  return s.type === "workflow"
-}
+export type Scenario = WorkflowScenario
 
 export type FixtureManifest = {
   version: 1

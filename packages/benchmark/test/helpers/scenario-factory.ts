@@ -1,24 +1,27 @@
-import type { AtomicScenario, ScenarioAssertions } from "../../src/domain/types.js"
+import type { WorkflowScenario } from "../../src/domain/types.js"
 
-export function makeAssertions(overrides: Partial<ScenarioAssertions> = {}): ScenarioAssertions {
-  return {
-    must_succeed: true,
-    ...overrides,
-  }
-}
-
-export function makeScenario(overrides: Partial<AtomicScenario> = {}): AtomicScenario {
+export function makeWorkflowScenario(overrides: Partial<WorkflowScenario> = {}): WorkflowScenario {
   const { assertions: assertionOverrides, ...restOverrides } = overrides
   return {
-    type: "atomic" as const,
-    id: "test-scenario-001",
-    name: "Test Scenario",
-    task: "repo.view",
-    input: { owner: "a", name: "b" },
-    prompt_template: "do {{task}} with {{input_json}}",
-    timeout_ms: 1000,
+    type: "workflow" as const,
+    id: "test-wf-001",
+    name: "Test Workflow",
+    prompt: "Do something with the repository.",
+    expected_capabilities: ["repo.view"],
+    timeout_ms: 180_000,
     allowed_retries: 0,
-    assertions: makeAssertions(assertionOverrides),
+    assertions: {
+      expected_outcome: "success",
+      checkpoints: [
+        {
+          name: "default-checkpoint",
+          verification_task: "repo.view",
+          verification_input: { owner: "a", name: "b" },
+          condition: "non_empty",
+        },
+      ],
+      ...assertionOverrides,
+    },
     tags: [],
     ...restOverrides,
   }

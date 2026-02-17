@@ -3,16 +3,13 @@ import { describe, expect, it } from "vitest"
 import { validateScenario } from "../../src/scenario/schema.js"
 
 describe("validateScenario", () => {
-  it("accepts a valid scenario", () => {
+  it("accepts a valid workflow scenario", () => {
     const parsed = validateScenario({
-      id: "pr-view-001",
-      name: "View pull request details",
-      task: "pr.view",
-      input: {
-        repo: "aryeko/ghx-bench-fixtures",
-        pr_number: 232,
-      },
-      prompt_template: "Execute task {{task}} with {{input_json}}",
+      type: "workflow",
+      id: "pr-review-wf-001",
+      name: "PR review workflow",
+      prompt: "Resolve review threads on PR #42 in aryeko/ghx-bench-fixtures.",
+      expected_capabilities: ["pr.comment.resolve"],
       timeout_ms: 90000,
       allowed_retries: 0,
       fixture: {
@@ -20,35 +17,35 @@ describe("validateScenario", () => {
         bindings: {
           "input.owner": "repo.owner",
           "input.name": "repo.name",
-          "input.pr_number": "resources.pr.number",
+          "input.prNumber": "resources.pr.number",
         },
         requires: ["repo", "pr"],
       },
       assertions: {
-        must_succeed: true,
-        expect_valid_output: true,
-        require_tool_calls: true,
-        min_tool_calls: 1,
-        required_fields: ["success", "data", "error", "meta"],
-        required_data_fields: ["number", "title", "state"],
+        expected_outcome: "success",
+        checkpoints: [
+          {
+            name: "check-threads-resolved",
+            verification_task: "pr.view",
+            verification_input: { owner: "aryeko", name: "ghx-bench-fixtures", number: 42 },
+            condition: "non_empty",
+          },
+        ],
       },
-      tags: ["pr", "view", "thin-slice"],
+      tags: ["pr", "review", "workflow"],
     })
 
-    expect(parsed.id).toBe("pr-view-001")
+    expect(parsed.id).toBe("pr-review-wf-001")
   })
 
   it("rejects fixture bindings with invalid destination path", () => {
     expect(() =>
       validateScenario({
-        id: "repo-view-bindings-001",
+        type: "workflow",
+        id: "repo-view-wf-001",
         name: "Bindings path invalid",
-        task: "repo.view",
-        input: {
-          owner: "aryeko",
-          name: "ghx-bench-fixtures",
-        },
-        prompt_template: "Execute task {{task}} with {{input_json}}",
+        prompt: "Do something.",
+        expected_capabilities: ["repo.view"],
         timeout_ms: 60000,
         allowed_retries: 0,
         fixture: {
@@ -58,9 +55,17 @@ describe("validateScenario", () => {
           },
         },
         assertions: {
-          must_succeed: true,
+          expected_outcome: "success",
+          checkpoints: [
+            {
+              name: "check",
+              verification_task: "repo.view",
+              verification_input: { owner: "a", name: "b" },
+              condition: "non_empty",
+            },
+          ],
         },
-        tags: ["repo", "view"],
+        tags: [],
       }),
     ).toThrow("fixture binding destination must start with 'input.'")
   })
@@ -68,40 +73,51 @@ describe("validateScenario", () => {
   it("rejects invalid timeout", () => {
     expect(() =>
       validateScenario({
-        id: "bad",
-        name: "Bad",
-        task: "pr.view",
-        input: {},
-        prompt_template: "x",
+        type: "workflow",
+        id: "bad-timeout-wf-001",
+        name: "Bad timeout",
+        prompt: "Do something.",
+        expected_capabilities: ["repo.view"],
         timeout_ms: 0,
         allowed_retries: 0,
-        assertions: { must_succeed: true },
+        assertions: {
+          expected_outcome: "success",
+          checkpoints: [
+            {
+              name: "check",
+              verification_task: "repo.view",
+              verification_input: {},
+              condition: "non_empty",
+            },
+          ],
+        },
         tags: [],
       }),
     ).toThrow()
   })
 
-  it("rejects scenarios where max_tool_calls is below min_tool_calls", () => {
+  it("rejects scenario with missing type field", () => {
     expect(() =>
       validateScenario({
-        id: "bad-tool-window",
-        name: "Bad tool call bounds",
-        task: "repo.view",
-        input: {
-          owner: "aryeko",
-          name: "ghx-bench-fixtures",
-        },
-        prompt_template: "Execute task {{task}} with {{input_json}}",
+        id: "repo-view-wf-001",
+        name: "Missing type",
+        prompt: "Do something.",
+        expected_capabilities: ["repo.view"],
         timeout_ms: 60000,
         allowed_retries: 0,
         assertions: {
-          must_succeed: true,
-          require_tool_calls: true,
-          min_tool_calls: 2,
-          max_tool_calls: 1,
+          expected_outcome: "success",
+          checkpoints: [
+            {
+              name: "check",
+              verification_task: "repo.view",
+              verification_input: {},
+              condition: "non_empty",
+            },
+          ],
         },
-        tags: ["repo", "view"],
+        tags: [],
       }),
-    ).toThrow("max_tool_calls must be greater than or equal to min_tool_calls")
+    ).toThrow()
   })
 })

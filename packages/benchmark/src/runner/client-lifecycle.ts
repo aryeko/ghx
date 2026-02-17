@@ -1,18 +1,16 @@
 import { spawnSync } from "node:child_process"
-import { lstatSync } from "node:fs"
 import { lstat, mkdtemp, readFile, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { delimiter, join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { createOpencode } from "@opencode-ai/sdk"
-import type { AtomicScenario, BenchmarkMode } from "../domain/types.js"
+import type { BenchmarkMode } from "../domain/types.js"
 import { isObject } from "../utils/guards.js"
 import {
   AGENT_DIRECT_INSTRUCTION,
   MCP_INSTRUCTION,
   modeInstructions,
 } from "./mode/mode-instructions.js"
-import * as ghxRouterPreflight from "./preflight/ghx-router-preflight.js"
 
 const MODULE_DIR = fileURLToPath(new URL(".", import.meta.url))
 const BENCHMARK_PACKAGE_ROOT = resolve(MODULE_DIR, "..", "..")
@@ -44,23 +42,6 @@ async function ensureBenchmarkGhxAliasReady(): Promise<void> {
       "ghx_preflight_failed: benchmark ghx alias missing; run pnpm --filter @ghx-dev/core run build and ensure packages/benchmark/bin/ghx points to packages/core/dist/cli/index.js",
     )
   }
-}
-
-function assertBenchmarkGhxAliasReady(): void {
-  try {
-    lstatSync(GHX_BENCHMARK_ALIAS_PATH)
-  } catch {
-    throw new Error(
-      "ghx_preflight_failed: benchmark ghx alias missing; run pnpm --filter @ghx-dev/core run build and ensure packages/benchmark/bin/ghx points to packages/core/dist/cli/index.js",
-    )
-  }
-}
-
-export function assertGhxRouterPreflight(scenarios: AtomicScenario[]): void {
-  ghxRouterPreflight.assertGhxRouterPreflight(scenarios, {
-    ghxCommand: GHX_BENCHMARK_ALIAS_PATH,
-    ensureGhxAliasReady: assertBenchmarkGhxAliasReady,
-  })
 }
 
 async function loadGhxSkillInstruction(): Promise<string> {
