@@ -31,7 +31,10 @@
       "cache": false
     },
     "ci": {
-      "dependsOn": ["format:check", "lint", "typecheck", "test:coverage", "build"],
+      "dependsOn": ["format:check", "lint", "typecheck", "test:coverage", "build", "ci:extra"],
+      "cache": false
+    },
+    "ci:extra": {
       "cache": false
     },
     "test:e2e": {
