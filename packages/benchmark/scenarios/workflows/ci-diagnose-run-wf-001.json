@@ -1,0 +1,30 @@
+{
+  "type": "workflow",
+  "id": "ci-diagnose-run-wf-001",
+  "name": "Diagnose a failed CI workflow run",
+  "prompt": "Workflow run {{runId}} in {{owner}}/{{name}} has failed. Get the run details to confirm its status and conclusion, then list all jobs in the run to identify which job failed.",
+  "expected_capabilities": ["workflow_run.get", "workflow_run.jobs.list"],
+  "timeout_ms": 180000,
+  "allowed_retries": 1,
+  "fixture": {
+    "repo": "aryeko/ghx-bench-fixtures",
+    "bindings": {
+      "input.owner": "repo.owner",
+      "input.name": "repo.name",
+      "input.runId": "resources.workflow_run.id"
+    },
+    "requires": ["workflow_run"]
+  },
+  "assertions": {
+    "expected_outcome": "success",
+    "checkpoints": [
+      {
+        "name": "jobs_listed",
+        "verification_task": "workflow_run.jobs.list",
+        "verification_input": {},
+        "condition": "non_empty"
+      }
+    ]
+  },
+  "tags": ["workflow", "ci", "diagnostics"]
+}
