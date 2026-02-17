@@ -19,9 +19,7 @@ export function createExecuteTool(deps: { executeTask: ExecuteTaskFn }) {
         ...(options ? { options } : {}),
       }
 
-      return deps.executeTask({
-        ...request,
-      })
+      return deps.executeTask(request)
     },
   }
 }
