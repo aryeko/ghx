@@ -149,10 +149,10 @@ Exit criteria:
 
 ## Canonical Design Specs
 
-- `docs/architecture/cli-subcommands-design.md`
-- `docs/architecture/setup-command-design.md`
-- `docs/architecture/capability-roadmap-adoption-design.md`
-- `docs/benchmark/capability-roadmap-benchmark-sets-design.md`
+- `docs/archive/designs/cli-subcommands-design.md`
+- `docs/archive/designs/setup-command-design.md`
+- `docs/archive/designs/capability-roadmap-adoption-design.md`
+- `docs/archive/designs/capability-roadmap-benchmark-sets-design.md`
 
 ## Contributing to the Roadmap
 
