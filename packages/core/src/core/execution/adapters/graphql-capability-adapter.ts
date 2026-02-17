@@ -56,13 +56,6 @@ export type GraphqlCapabilityId =
   | "pr.comment.reply"
   | "pr.comment.resolve"
   | "pr.comment.unresolve"
-  | "project_v2.org.get"
-  | "project_v2.user.get"
-  | "project_v2.fields.list"
-  | "project_v2.items.list"
-  | "project_v2.item.add_issue"
-  | "project_v2.item.field.update"
-  | "repo.issue_types.list"
 
 const DEFAULT_LIST_FIRST = 30
 
