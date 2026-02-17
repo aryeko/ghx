@@ -18,6 +18,7 @@ import { seedFixtureManifest } from "../fixture/seed.js"
 import { loadScenarioSets, loadScenarios } from "../scenario/loader.js"
 import { isObject } from "../utils/guards.js"
 import { assertGhxRouterPreflight, withIsolatedBenchmarkClient } from "./client-lifecycle.js"
+import { loadRunnerConfig, type RunnerConfig } from "./config.js"
 import {
   extractEnvelopeFromMessages,
   extractEnvelopeFromParts,
@@ -52,6 +53,7 @@ type RunSuiteOptions = {
   providerId?: string | null
   modelId?: string | null
   outputJsonlPath?: string | null
+  config?: RunnerConfig
 }
 
 const DEFAULT_FIXTURE_MANIFEST_PATH = "fixtures/latest.json"
@@ -103,23 +105,6 @@ type PromptResponse = {
 
 const SCENARIOS_DIR = join(process.cwd(), "scenarios")
 const RESULTS_DIR = join(process.cwd(), "results")
-
-const OPEN_CODE_MODE = process.env.BENCH_OPENCODE_MODE ?? null
-const GIT_REPO = process.env.BENCH_GIT_REPO ?? null
-const GIT_COMMIT = process.env.BENCH_GIT_COMMIT ?? null
-const FIRST_ASSISTANT_TIMEOUT_MS = Number.parseInt(
-  process.env.BENCH_FIRST_ASSISTANT_TIMEOUT_MS ?? "15000",
-  10,
-)
-const SESSION_STALL_TIMEOUT_MS = Number.parseInt(
-  process.env.BENCH_SESSION_STALL_TIMEOUT_MS ?? "10000",
-  10,
-)
-const MAX_RUNNER_RETRIES = Number.parseInt(process.env.BENCH_RUNNER_MAX_RETRIES ?? "1", 10)
-const RUNNER_RETRY_BACKOFF_MS = Number.parseInt(
-  process.env.BENCH_RUNNER_RETRY_BACKOFF_MS ?? "750",
-  10,
-)
 
 export function unwrapData<T>(value: unknown, label: string): T {
   if (isObject(value) && "data" in value) {
@@ -425,21 +410,23 @@ export async function waitForAssistantFromMessages(
   timeoutMs: number,
   scenarioId: string,
   previousAssistantId?: string,
+  config?: RunnerConfig,
 ): Promise<PromptResponse> {
+  const cfg = config ?? loadRunnerConfig()
   const started = Date.now()
   let lastWaitLogAt = started
   let lastProgressAt = started
   let lastSignature = ""
   const firstAssistantBudgetMs = Math.min(
     timeoutMs,
-    Number.isFinite(FIRST_ASSISTANT_TIMEOUT_MS) && FIRST_ASSISTANT_TIMEOUT_MS > 0
-      ? FIRST_ASSISTANT_TIMEOUT_MS
+    Number.isFinite(cfg.firstAssistantTimeoutMs) && cfg.firstAssistantTimeoutMs > 0
+      ? cfg.firstAssistantTimeoutMs
       : timeoutMs,
   )
   const stallBudgetMs = Math.min(
     timeoutMs,
-    Number.isFinite(SESSION_STALL_TIMEOUT_MS) && SESSION_STALL_TIMEOUT_MS > 0
-      ? SESSION_STALL_TIMEOUT_MS
+    Number.isFinite(cfg.sessionStallTimeoutMs) && cfg.sessionStallTimeoutMs > 0
+      ? cfg.sessionStallTimeoutMs
       : timeoutMs,
   )
 
@@ -669,7 +656,9 @@ export async function runScenario(
   iteration: number,
   scenarioSet: string | null = null,
   modelOverride?: { providerId?: string; modelId?: string },
+  config?: RunnerConfig,
 ): Promise<BenchmarkRow> {
+  const cfg = config ?? loadRunnerConfig()
   const providerId = modelOverride?.providerId ?? process.env.BENCH_PROVIDER_ID ?? "openai"
   const modelId = modelOverride?.modelId ?? process.env.BENCH_MODEL_ID ?? "gpt-5.3-codex"
   const scenarioStartedAt = Date.now()
@@ -716,7 +705,7 @@ export async function runScenario(
           path: { id: session.id },
           body: {
             model: { providerID: providerId, modelID: modelId },
-            agent: OPEN_CODE_MODE ?? undefined,
+            agent: cfg.openCodeMode ?? undefined,
             parts: [
               {
                 type: "text",
@@ -772,7 +761,7 @@ export async function runScenario(
             body: {
               messageID: assistantAndParts.assistant.id,
               model: { providerID: providerId, modelID: modelId },
-              agent: OPEN_CODE_MODE ?? undefined,
+              agent: cfg.openCodeMode ?? undefined,
               parts: [
                 {
                   type: "text",
@@ -818,7 +807,7 @@ export async function runScenario(
             path: { id: session.id },
             body: {
               model: { providerID: providerId, modelID: modelId },
-              agent: OPEN_CODE_MODE ?? undefined,
+              agent: cfg.openCodeMode ?? undefined,
               parts: [
                 {
                   type: "text",
@@ -953,11 +942,11 @@ export async function runScenario(
         model: {
           provider_id: providerId,
           model_id: modelId,
-          mode: OPEN_CODE_MODE,
+          mode: cfg.openCodeMode,
         },
         git: {
-          repo: GIT_REPO,
-          commit: GIT_COMMIT,
+          repo: cfg.gitRepo,
+          commit: cfg.gitCommit,
         },
         error: errorReason
           ? {
@@ -975,14 +964,14 @@ export async function runScenario(
       }
 
       const failure = classifyRunnerFailure(error)
-      const retriesAllowed = Number.isFinite(MAX_RUNNER_RETRIES)
-        ? Math.max(0, MAX_RUNNER_RETRIES)
+      const retriesAllowed = Number.isFinite(cfg.maxRunnerRetries)
+        ? Math.max(0, cfg.maxRunnerRetries)
         : 0
 
       if (failure.retryable && externalRetryCount < retriesAllowed) {
         externalRetryCount += 1
         const backoffMs =
-          (Number.isFinite(RUNNER_RETRY_BACKOFF_MS) ? Math.max(0, RUNNER_RETRY_BACKOFF_MS) : 0) *
+          (Number.isFinite(cfg.runnerRetryBackoffMs) ? Math.max(0, cfg.runnerRetryBackoffMs) : 0) *
           externalRetryCount
         if (backoffMs > 0) {
           await new Promise((resolve) => setTimeout(resolve, backoffMs))
@@ -1018,11 +1007,11 @@ export async function runScenario(
         model: {
           provider_id: providerId,
           model_id: modelId,
-          mode: OPEN_CODE_MODE,
+          mode: cfg.openCodeMode,
         },
         git: {
-          repo: GIT_REPO,
-          commit: GIT_COMMIT,
+          repo: cfg.gitRepo,
+          commit: cfg.gitCommit,
         },
         error: {
           type: failure.type,
@@ -1044,7 +1033,9 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
     providerId: providerIdOverride = null,
     modelId: modelIdOverride = null,
     outputJsonlPath = null,
+    config: optionsConfig,
   } = options
+  const suiteConfig = optionsConfig ?? loadRunnerConfig()
   const providerId = providerIdOverride ?? process.env.BENCH_PROVIDER_ID ?? "openai"
   const modelId = modelIdOverride ?? process.env.BENCH_MODEL_ID ?? "gpt-5.3-codex"
   const suiteRunId = randomUUID()
@@ -1194,14 +1185,14 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
 
     const selectedScenarioIds = selectedScenarios.map((scenario) => scenario.id)
     console.log(
-      `[benchmark] start: mode=${mode} provider=${providerId} model=${modelId} opencode_mode=${OPEN_CODE_MODE ?? "<null>"}`,
+      `[benchmark] start: mode=${mode} provider=${providerId} model=${modelId} opencode_mode=${suiteConfig.openCodeMode ?? "<null>"}`,
     )
     console.log(
       `[benchmark] config: repetitions=${repetitions} scenario_set=${resolvedScenarioSet ?? "<null>"} scenario_filter=${scenarioFilter?.join(",") ?? "<null>"} scenarios=${selectedScenarios.length}`,
     )
     console.log(`[benchmark] scenarios: ${selectedScenarioIds.join(",")}`)
     console.log(
-      `[benchmark] context: opencode_port=${process.env.BENCH_OPENCODE_PORT ?? "3000"} git_repo=${GIT_REPO ?? "<null>"} git_commit=${GIT_COMMIT ?? "<null>"} out_file=${outFile}`,
+      `[benchmark] context: opencode_port=${process.env.BENCH_OPENCODE_PORT ?? "3000"} git_repo=${suiteConfig.gitRepo ?? "<null>"} git_commit=${suiteConfig.gitCommit ?? "<null>"} out_file=${outFile}`,
     )
 
     let completedExecutions = 0
@@ -1229,10 +1220,18 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
 
         for (let attempt = 0; attempt <= scenario.allowed_retries; attempt += 1) {
           const result = await withIsolatedBenchmarkClient(mode, providerId, modelId, (client) =>
-            runScenario(client, scenario, mode, iteration, resolvedScenarioSet, {
-              providerId,
-              modelId,
-            }),
+            runScenario(
+              client,
+              scenario,
+              mode,
+              iteration,
+              resolvedScenarioSet,
+              {
+                providerId,
+                modelId,
+              },
+              suiteConfig,
+            ),
           )
           latestResult = result
 
