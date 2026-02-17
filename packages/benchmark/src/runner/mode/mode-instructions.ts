@@ -1,7 +1,7 @@
 import type { BenchmarkMode } from "../../domain/types.js"
 
 export const AGENT_DIRECT_INSTRUCTION =
-  "You are running a benchmark in agent_direct mode. Use GitHub CLI (`gh`) commands directly to complete the task. Do not use `ghx`."
+  "Use GitHub CLI (`gh`) commands directly to complete the task."
 
 export const MCP_INSTRUCTION =
   "You are running a benchmark in mcp mode. Prefer MCP tools when available."

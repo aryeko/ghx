@@ -1,6 +1,6 @@
 # ghx CLI Skill
 
-Use `ghx` for all supported GitHub operations. Do NOT use raw `gh` commands for operations ghx supports.
+**CRITICAL:** Use `ghx run` for ALL GitHub operations. Do not use `gh api` or any other raw `gh` commands unless no matching ghx capability exists.
 
 ## Execute
 
@@ -23,6 +23,8 @@ ghx capabilities list --domain pr
 Domains: `repo`, `issue`, `pr`, `release`, `workflow`, `workflow_run`, `project_v2`, `check_run`.
 Required inputs shown in brackets (e.g. `[owner, name, prNumber]`).
 
+Use `ghx capabilities explain <capability_id>` to see full input/output schema.
+
 ## Examples
 
 ```bash
@@ -34,3 +36,5 @@ ghx run issue.create --input - <<'EOF'
 {"owner":"octocat","name":"hello-world","title":"Bug report","body":"Steps to reproduce"}
 EOF
 ```
+
+**CRITICAL:** Do not use `gh api` or any other raw `gh` commands unless no matching ghx capability exists. Always try `ghx run <capability_id>` first.
