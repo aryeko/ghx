@@ -26,4 +26,12 @@ describe("mapErrorToCode", () => {
   it("maps server errors", () => {
     expect(mapErrorToCode(new Error("upstream returned 503"))).toBe("SERVER")
   })
+
+  it("maps server error at start of message", () => {
+    expect(mapErrorToCode(new Error("500 Internal Server Error"))).toBe("SERVER")
+  })
+
+  it("maps server error with no leading space", () => {
+    expect(mapErrorToCode(new Error("HTTP/1.1 502"))).toBe("SERVER")
+  })
 })

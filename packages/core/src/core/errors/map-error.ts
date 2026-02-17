@@ -14,7 +14,7 @@ export function mapErrorToCode(error: unknown): ErrorCode {
 
   if (
     message.includes("rate limit") ||
-    message.includes(" 429") ||
+    /\b429\b/.test(message) ||
     message.includes("too many requests")
   ) {
     return errorCodes.RateLimit
@@ -34,12 +34,7 @@ export function mapErrorToCode(error: unknown): ErrorCode {
     return errorCodes.Network
   }
 
-  if (
-    message.includes(" 500") ||
-    message.includes(" 502") ||
-    message.includes(" 503") ||
-    message.includes(" 504")
-  ) {
+  if (/\b(500|502|503|504)\b/.test(message)) {
     return errorCodes.Server
   }
 
@@ -60,7 +55,7 @@ export function mapErrorToCode(error: unknown): ErrorCode {
     return errorCodes.Validation
   }
 
-  if (message.includes("not found") || message.includes(" 404")) {
+  if (message.includes("not found") || /\b404\b/.test(message)) {
     return errorCodes.NotFound
   }
 
