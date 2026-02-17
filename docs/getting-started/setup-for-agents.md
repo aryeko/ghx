@@ -68,7 +68,7 @@ Now every coding agent session on your machine has access to ghx.
 
 ## Full Command Reference
 
-```
+```bash
 npx ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]
 ```
 
@@ -286,7 +286,7 @@ npx ghx setup --scope user --verify
 
 Expected output:
 
-```
+```text
 ✓ Skill file verified at ~/.agents/skills/ghx/SKILL.md
 ✓ Content contains expected sections
 ✓ File is readable by agents
@@ -306,7 +306,7 @@ npx ghx setup --scope project
 
 Interactive terminals get a prompt:
 
-```
+```text
 File exists: .agents/skills/ghx/SKILL.md
 Overwrite? [y/N]:
 ```

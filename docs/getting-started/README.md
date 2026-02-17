@@ -276,5 +276,4 @@ execution paths, and why the result envelope matters.
 
 ---
 
-**Questions?** Check the [FAQ](../contributing/README.md#faq) or open an issue on
-[GitHub](https://github.com/aryeko/ghx/issues).
+**Questions?** Open an issue on [GitHub](https://github.com/aryeko/ghx/issues).

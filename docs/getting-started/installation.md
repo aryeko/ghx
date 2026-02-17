@@ -9,7 +9,7 @@ Before installing, verify you have:
 - **Node.js 22 or later** — Check: `node --version`
 - **npm, pnpm, or yarn** — (or install globally without adding to `package.json`)
 - **`gh` CLI** — [Install guide](https://cli.github.com/manual/installation)
-- **`gh` authentication** — Run: `gh auth status` (should show "Logged in to github.com")
+- **`gh` authentication** — Run: `gh auth status` (should show "Logged in to GitHub.com")
 
 ## Installation Methods
 
@@ -173,7 +173,7 @@ gh auth status
 Should show:
 
 ```text
-Logged in to github.com as <your-username>
+Logged in to GitHub.com as <your-username>
 - Token: ghp_... (valid, expires in 89 days)
 - Git operations: https protocol
 - API calls: Authorized with a OAuth token
@@ -200,7 +200,7 @@ RUN apk add --no-cache gh
 RUN npm install -g @ghx-dev/core
 
 # Authenticate gh (pass token via environment)
-RUN gh auth login --with-token < /dev/stdin <<< "$GITHUB_TOKEN"
+RUN printf "%s" "$GITHUB_TOKEN" | gh auth login --with-token
 
 # Now ready to use ghx
 RUN ghx capabilities list
@@ -251,7 +251,7 @@ image: node:22-alpine
 before_script:
   - apk add --no-cache gh
   - npm install -g @ghx-dev/core
-  - gh auth login --with-token <<< "$GITHUB_TOKEN"
+  - printf "%s" "$GITHUB_TOKEN" | gh auth login --with-token
 
 test:
   script:
