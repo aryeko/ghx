@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -36,6 +36,21 @@ describe("report cli", () => {
     expect(
       report.parseArgs(["--expectations-config=config/expectations.json"]).expectationsConfigPath,
     ).toBe("config/expectations.json")
+    expect(report.parseArgs(["--summary-json", "custom/summary.json"]).summaryJsonPath).toBe(
+      "custom/summary.json",
+    )
+    expect(report.parseArgs(["--summary-md=custom/summary.md"]).summaryMdPath).toBe(
+      "custom/summary.md",
+    )
+    expect(
+      report.parseArgs(["--suite-jsonl", "out/agent_direct-suite.jsonl"]).suiteJsonlPaths,
+    ).toEqual(["out/agent_direct-suite.jsonl"])
+    expect(
+      report.parseArgs([
+        "--suite-jsonl=out/agent_direct-suite.jsonl",
+        "--suite-jsonl=out/ghx-suite.jsonl",
+      ]).suiteJsonlPaths,
+    ).toEqual(["out/agent_direct-suite.jsonl", "out/ghx-suite.jsonl"])
     expect(report.modeFromFilename("x-agent_direct-suite.jsonl")).toBe("agent_direct")
     expect(report.modeFromFilename("x-mcp-suite.jsonl")).toBe("mcp")
     expect(report.modeFromFilename("x-ghx-suite.jsonl")).toBe("ghx")
@@ -89,6 +104,15 @@ describe("report cli", () => {
     )
   })
 
+  it("rejects report output and suite flags without a value", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ghx-bench-report-"))
+    const report = await importReportModule(root)
+
+    expect(() => report.parseArgs(["--summary-json"])).toThrow("Missing value for --summary-json")
+    expect(() => report.parseArgs(["--summary-md"])).toThrow("Missing value for --summary-md")
+    expect(() => report.parseArgs(["--suite-jsonl"])).toThrow("Missing value for --suite-jsonl")
+  })
+
   it("loads latest rows and writes report outputs", async () => {
     const root = await mkdtemp(join(tmpdir(), "ghx-bench-report-"))
     const results = join(root, "results")
@@ -135,6 +159,67 @@ describe("report cli", () => {
     } finally {
       process.chdir(previous)
     }
+  })
+
+  it("loads rows from explicit suite files and writes explicit summary outputs", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ghx-bench-report-"))
+    const explicit = join(root, "explicit")
+    await mkdir(explicit, { recursive: true })
+
+    const row = JSON.stringify({
+      timestamp: "2026-02-13T00:00:00.000Z",
+      run_id: "r1",
+      mode: "agent_direct",
+      scenario_id: "s1",
+      scenario_set: null,
+      iteration: 1,
+      session_id: "ss",
+      success: true,
+      output_valid: true,
+      latency_ms_wall: 100,
+      sdk_latency_ms: 90,
+      tokens: { input: 1, output: 1, reasoning: 1, cache_read: 0, cache_write: 0, total: 3 },
+      cost: 0,
+      tool_calls: 1,
+      api_calls: 1,
+      internal_retry_count: 0,
+      external_retry_count: 0,
+      model: { provider_id: "x", model_id: "y", mode: null },
+      git: { repo: null, commit: null },
+      error: null,
+    })
+
+    const agentSuite = join(explicit, "agent_direct-suite.jsonl")
+    const ghxSuite = join(explicit, "ghx-suite.jsonl")
+    await writeFile(agentSuite, `${row}\n`, "utf8")
+    await writeFile(ghxSuite, `${row.replace("agent_direct", "ghx")}\n`, "utf8")
+
+    const summaryJson = join(explicit, "nested", "summary.json")
+    const summaryMd = join(explicit, "nested", "summary.md")
+    const report = await importReportModule(root)
+
+    const previous = process.cwd()
+    process.chdir(root)
+    try {
+      await report.main([
+        "--suite-jsonl",
+        agentSuite,
+        "--suite-jsonl",
+        ghxSuite,
+        "--summary-json",
+        summaryJson,
+        "--summary-md",
+        summaryMd,
+      ])
+    } finally {
+      process.chdir(previous)
+    }
+
+    const summaryJsonContent = await readFile(summaryJson, "utf8")
+    const summaryMdContent = await readFile(summaryMd, "utf8")
+
+    expect(summaryJsonContent).toContain('"gateV2"')
+    expect(summaryMdContent).toContain("# Benchmark Validation Summary")
   })
 
   it("fails gate when summary does not pass", async () => {

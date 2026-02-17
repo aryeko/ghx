@@ -1,5 +1,5 @@
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
 import { pathToFileURL } from "node:url"
 
 import type { BenchmarkMode, BenchmarkRow } from "../domain/types.js"
@@ -46,9 +46,12 @@ export function parseArgs(args: string[]): {
   expectationsConfigProvided: boolean
   expectationsConfigPath: string | null
   expectationsModel: string | null
+  summaryJsonPath: string | null
+  summaryMdPath: string | null
+  suiteJsonlPaths: string[]
 } {
   const parseStringFlag = (
-    flagName: "expectations-config" | "expectations-model",
+    flagName: "expectations-config" | "expectations-model" | "summary-json" | "summary-md",
   ): { value: string | null; provided: boolean } => {
     const inlinePrefix = `--${flagName}=`
     const inline = args.find((arg) => arg.startsWith(inlinePrefix))
@@ -77,6 +80,35 @@ export function parseArgs(args: string[]): {
 
   const expectationsConfig = parseStringFlag("expectations-config")
   const expectationsModel = parseStringFlag("expectations-model")
+  const summaryJson = parseStringFlag("summary-json")
+  const summaryMd = parseStringFlag("summary-md")
+
+  const suiteJsonlPaths: string[] = []
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index]
+    if (!arg) {
+      continue
+    }
+
+    if (arg === "--suite-jsonl") {
+      const nextValue = (args[index + 1] ?? "").trim()
+      if (nextValue.length === 0 || nextValue.startsWith("--")) {
+        throw new Error("Missing value for --suite-jsonl")
+      }
+      suiteJsonlPaths.push(nextValue)
+      index += 1
+      continue
+    }
+
+    const inlinePrefix = "--suite-jsonl="
+    if (arg.startsWith(inlinePrefix)) {
+      const value = arg.slice(inlinePrefix.length).trim()
+      if (value.length === 0) {
+        throw new Error("Missing value for --suite-jsonl")
+      }
+      suiteJsonlPaths.push(value)
+    }
+  }
 
   return {
     gate: args.includes("--gate"),
@@ -84,6 +116,9 @@ export function parseArgs(args: string[]): {
     expectationsConfigProvided: expectationsConfig.provided,
     expectationsConfigPath: expectationsConfig.value,
     expectationsModel: expectationsModel.value,
+    summaryJsonPath: summaryJson.value,
+    summaryMdPath: summaryMd.value,
+    suiteJsonlPaths,
   }
 }
 
@@ -124,6 +159,29 @@ export async function loadLatestRowsPerMode(): Promise<BenchmarkRow[]> {
     const fileRows = await readRows(join(RESULTS_DIR, file))
     rows.push(...fileRows)
     rowsByMode.set(mode, fileRows)
+  }
+
+  const agentRows = rowsByMode.get("agent_direct")
+  const ghxRows = rowsByMode.get("ghx")
+  if (agentRows && ghxRows) {
+    validateComparableCohort(agentRows, ghxRows)
+  }
+
+  return rows
+}
+
+export async function loadRowsFromSuiteFiles(paths: string[]): Promise<BenchmarkRow[]> {
+  const rows: BenchmarkRow[] = []
+  const rowsByMode = new Map<BenchmarkMode, BenchmarkRow[]>()
+
+  for (const path of paths) {
+    const fileRows = await readRows(path)
+    rows.push(...fileRows)
+    for (const row of fileRows) {
+      const modeRows = rowsByMode.get(row.mode) ?? []
+      modeRows.push(row)
+      rowsByMode.set(row.mode, modeRows)
+    }
   }
 
   const agentRows = rowsByMode.get("agent_direct")
@@ -207,8 +265,14 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
     expectationsConfigProvided,
     expectationsConfigPath,
     expectationsModel,
+    summaryJsonPath,
+    summaryMdPath,
+    suiteJsonlPaths,
   } = parseArgs(args)
-  const rows = await loadLatestRowsPerMode()
+  const rows =
+    suiteJsonlPaths.length > 0
+      ? await loadRowsFromSuiteFiles(suiteJsonlPaths)
+      : await loadLatestRowsPerMode()
 
   if (rows.length === 0) {
     throw new Error("No benchmark result rows found")
@@ -240,15 +304,15 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
   const markdown = toMarkdown(summary)
 
   await mkdir(REPORTS_DIR, { recursive: true })
-  await writeFile(
-    join(REPORTS_DIR, "latest-summary.json"),
-    `${JSON.stringify(summary, null, 2)}\n`,
-    "utf8",
-  )
-  await writeFile(join(REPORTS_DIR, "latest-summary.md"), `${markdown}\n`, "utf8")
+  const summaryJsonOutputPath = summaryJsonPath ?? join(REPORTS_DIR, "latest-summary.json")
+  const summaryMdOutputPath = summaryMdPath ?? join(REPORTS_DIR, "latest-summary.md")
+  await mkdir(dirname(summaryJsonOutputPath), { recursive: true })
+  await mkdir(dirname(summaryMdOutputPath), { recursive: true })
+  await writeFile(summaryJsonOutputPath, `${JSON.stringify(summary, null, 2)}\n`, "utf8")
+  await writeFile(summaryMdOutputPath, `${markdown}\n`, "utf8")
 
-  console.log(`Wrote reports/latest-summary.json`)
-  console.log(`Wrote reports/latest-summary.md`)
+  console.log(`Wrote ${summaryJsonOutputPath}`)
+  console.log(`Wrote ${summaryMdOutputPath}`)
 
   if (gate) {
     const status = summary.gateV2.passed ? "PASS" : "FAIL"
