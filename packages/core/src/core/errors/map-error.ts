@@ -20,6 +20,10 @@ export function mapErrorToCode(error: unknown): ErrorCode {
     return errorCodes.RateLimit
   }
 
+  if (/\b(500|502|503|504)\b/.test(message)) {
+    return errorCodes.Server
+  }
+
   if (message.includes("timeout")) {
     return errorCodes.Network
   }
@@ -34,16 +38,8 @@ export function mapErrorToCode(error: unknown): ErrorCode {
     return errorCodes.Network
   }
 
-  if (/\b(500|502|503|504)\b/.test(message)) {
-    return errorCodes.Server
-  }
-
-  if (
-    message.includes("auth") ||
-    message.includes("forbidden") ||
-    message.includes("unauthorized")
-  ) {
-    return errorCodes.Auth
+  if (message.includes("not found") || /\b404\b/.test(message)) {
+    return errorCodes.NotFound
   }
 
   if (
@@ -55,8 +51,12 @@ export function mapErrorToCode(error: unknown): ErrorCode {
     return errorCodes.Validation
   }
 
-  if (message.includes("not found") || /\b404\b/.test(message)) {
-    return errorCodes.NotFound
+  if (
+    message.includes("auth") ||
+    message.includes("forbidden") ||
+    message.includes("unauthorized")
+  ) {
+    return errorCodes.Auth
   }
 
   return errorCodes.Unknown

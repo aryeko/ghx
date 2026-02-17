@@ -34,4 +34,16 @@ describe("mapErrorToCode", () => {
   it("maps server error with no leading space", () => {
     expect(mapErrorToCode(new Error("HTTP/1.1 502"))).toBe("SERVER")
   })
+
+  it("maps 504 gateway timeout", () => {
+    expect(mapErrorToCode(new Error("504 Gateway Timeout"))).toBe("SERVER")
+  })
+
+  it("maps not-found even when message contains 'auth'", () => {
+    expect(mapErrorToCode(new Error("auth endpoint: not found"))).toBe("NOT_FOUND")
+  })
+
+  it("maps not-found for 404 even with 'auth' in message", () => {
+    expect(mapErrorToCode(new Error("auth route returned 404"))).toBe("NOT_FOUND")
+  })
 })
