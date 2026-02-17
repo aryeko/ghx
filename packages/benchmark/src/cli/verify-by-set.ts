@@ -31,13 +31,14 @@ type ValidationSummary = {
   failingScenarioIds: string[]
 }
 
-type SuiteRow = {
-  scenario_id?: string
-  iteration?: unknown
-  success?: unknown
-  output_valid?: unknown
-  error?: unknown
-}
+const suiteRowSchema = z.looseObject({
+  scenario_id: z.string().optional(),
+  iteration: z.number().int().optional(),
+  success: z.boolean().optional(),
+  output_valid: z.boolean().optional(),
+  error: z.unknown().nullable().optional(),
+})
+type SuiteRow = z.infer<typeof suiteRowSchema>
 
 type Tracking = {
   set: string
@@ -171,7 +172,7 @@ function summarizeSuiteRows(rows: SuiteRow[]): ValidationSummary {
 }
 
 async function readSuiteRows(filePath: string): Promise<SuiteRow[]> {
-  return readJsonlFile<SuiteRow>(filePath)
+  return readJsonlFile(filePath, suiteRowSchema)
 }
 
 function rowsByScenarioId(rows: SuiteRow[]): Map<string, SuiteRow> {
