@@ -5,6 +5,7 @@ import { z } from "zod"
 import { loadScenarioSets } from "../scenario/loader.js"
 import { runIfDirectEntry } from "./entry.js"
 import { parseFlagValue, parseMultiFlagValues, parseRequiredFlag } from "./flag-utils.js"
+import type { SuiteRunnerConfig } from "./suite-config-schema.js"
 
 type SeedPolicy = "with_seed" | "read_only"
 
@@ -68,38 +69,6 @@ type RunCommand = (command: string, args: string[]) => Promise<void>
 type VerifyDependencies = {
   runCommand?: RunCommand
   resolveScenarioIdsForSet?: (set: string) => Promise<string[]>
-}
-
-type SuiteConfigCommand = {
-  command: string[]
-  env?: Record<string, string>
-}
-
-type SuiteConfig = {
-  benchmark: {
-    base: {
-      command: string[]
-      repetitions: number
-      scenarioSet?: string
-      env?: Record<string, string>
-    }
-    ghx: {
-      mode: "ghx"
-      args?: string[]
-      env?: Record<string, string>
-    }
-    direct: {
-      mode: "agent_direct"
-      args?: string[]
-      env?: Record<string, string>
-    }
-  }
-  reporting: {
-    analysis: {
-      report: SuiteConfigCommand
-      gate?: SuiteConfigCommand
-    }
-  }
 }
 
 type AttemptPaths = {
@@ -318,7 +287,7 @@ async function materializeAttemptConfig(
   scenarioIds: string[],
 ): Promise<void> {
   const rawConfig = await readFile(paths.suiteConfigBasePath, "utf8")
-  const config = JSON.parse(rawConfig) as SuiteConfig
+  const config = JSON.parse(rawConfig) as SuiteRunnerConfig
 
   config.benchmark.base.env = {
     ...(config.benchmark.base.env ?? {}),

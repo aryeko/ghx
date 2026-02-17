@@ -3,57 +3,15 @@ import { readFile } from "node:fs/promises"
 import { resolve } from "node:path"
 import { createColors } from "colorette"
 import { createLogUpdate } from "log-update"
-import { z } from "zod"
 import { runIfDirectEntry } from "./entry.js"
 import { parseFlagValue } from "./flag-utils.js"
-
-const commandSchema = z.object({
-  command: z.array(z.string().min(1)).min(1),
-  env: z.record(z.string(), z.string()).optional(),
-})
-
-const benchmarkBaseSchema = z.object({
-  command: z.array(z.string().min(1)).min(1),
-  repetitions: z.number().int().positive(),
-  scenarioSet: z.string().min(1).optional(),
-  env: z.record(z.string(), z.string()).optional(),
-})
-
-const benchmarkVariantSchema = z.object({
-  mode: z.enum(["ghx", "agent_direct"]),
-  args: z.array(z.string()).optional(),
-  env: z.record(z.string(), z.string()).optional(),
-})
-
-const suiteRunnerConfigSchema = z.object({
-  fixtures: z
-    .object({
-      setup: z
-        .object({
-          cleanup: commandSchema.optional(),
-          seed: commandSchema.optional(),
-        })
-        .optional(),
-    })
-    .optional(),
-  benchmark: z.object({
-    base: benchmarkBaseSchema,
-    ghx: benchmarkVariantSchema,
-    direct: benchmarkVariantSchema,
-  }),
-  reporting: z.object({
-    analysis: z.object({
-      report: commandSchema,
-      gate: commandSchema.optional(),
-    }),
-  }),
-  cwd: z.string().min(1).optional(),
-})
-
-type CommandConfig = z.infer<typeof commandSchema>
-type SuiteRunnerConfig = z.infer<typeof suiteRunnerConfigSchema>
-type BenchmarkBaseConfig = z.infer<typeof benchmarkBaseSchema>
-type BenchmarkVariantConfig = z.infer<typeof benchmarkVariantSchema>
+import type {
+  BenchmarkBaseConfig,
+  BenchmarkVariantConfig,
+  CommandConfig,
+  SuiteRunnerConfig,
+} from "./suite-config-schema.js"
+import { suiteRunnerConfigSchema } from "./suite-config-schema.js"
 
 type ParsedArgs = {
   configPath: string
