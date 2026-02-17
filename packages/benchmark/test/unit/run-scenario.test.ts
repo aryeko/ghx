@@ -67,4 +67,24 @@ describe("run-scenario parseArgs", () => {
     expect(args.scenario).toBe("test-001")
     expect(args.mode).toBe("ghx")
   })
+
+  it("defaults iterations to 1", () => {
+    const args = parseArgs(["--scenario", "test-001"])
+
+    expect(args.iterations).toBe(1)
+  })
+
+  it("parses --iterations flag", () => {
+    const args = parseArgs(["--scenario", "test-001", "--iterations", "3"])
+
+    expect(args.iterations).toBe(3)
+  })
+
+  it("rejects iterations below 1", () => {
+    expect(() => parseArgs(["--scenario", "test-001", "--iterations", "0"])).toThrow()
+  })
+
+  it("rejects iterations above 20", () => {
+    expect(() => parseArgs(["--scenario", "test-001", "--iterations", "21"])).toThrow()
+  })
 })

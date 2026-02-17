@@ -16,6 +16,7 @@ type ParsedScenarioArgs = {
   repo: string
   seedId: string
   retries: number
+  iterations: number
   skipCleanup: boolean
   verbose: boolean
 }
@@ -40,6 +41,7 @@ const seedIdSchema = z
   .max(64)
   .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/)
 const retriesSchema = z.coerce.number().int().min(0).max(10)
+const iterationsSchema = z.coerce.number().int().min(1).max(20)
 
 export function parseArgs(argv: string[]): ParsedScenarioArgs {
   const normalized = argv.filter((arg) => arg !== "--")
@@ -68,10 +70,13 @@ export function parseArgs(argv: string[]): ParsedScenarioArgs {
   const retriesRaw = parseFlagValue(normalized, "--retries") ?? "1"
   const retries = retriesSchema.parse(retriesRaw)
 
+  const iterationsRaw = parseFlagValue(normalized, "--iterations") ?? "1"
+  const iterations = iterationsSchema.parse(iterationsRaw)
+
   const skipCleanup = hasFlag(normalized, "--skip-cleanup")
   const verbose = hasFlag(normalized, "--verbose")
 
-  return { scenario, mode, repo, seedId, retries, skipCleanup, verbose }
+  return { scenario, mode, repo, seedId, retries, iterations, skipCleanup, verbose }
 }
 
 function loadEnvLocal(): void {
@@ -182,65 +187,81 @@ async function cleanupPhase(manifestPath: string): Promise<void> {
 export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
   loadEnvLocal()
   const args = parseArgs(argv)
-  const manifestPath = resolve(
-    import.meta.dirname ?? ".",
-    `../../fixtures/scenario-${args.seedId}.json`,
-  )
 
   const timeoutMs = await resolveScenarioTimeoutMs(args.scenario)
   const stallTimeoutMs = Math.floor(timeoutMs / 3)
 
   log("plan", `scenario=${args.scenario} mode=${args.mode} retries=${args.retries}`)
-  log("plan", `timeout=${timeoutMs}ms stall=${stallTimeoutMs}ms`)
+  log("plan", `iterations=${args.iterations} timeout=${timeoutMs}ms stall=${stallTimeoutMs}ms`)
 
   const outputJsonlPath = resolve(
     import.meta.dirname ?? ".",
     `../../results/scenario-${args.seedId}.jsonl`,
   )
 
-  let lastSuccess = false
-  const maxAttempts = 1 + args.retries
+  let failedIterations = 0
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    if (attempt > 1) {
-      log("retry", `Attempt ${attempt}/${maxAttempts}: cleaning up and re-seeding`)
+  for (let iter = 1; iter <= args.iterations; iter++) {
+    const iterSeedId = args.iterations === 1 ? args.seedId : `${args.seedId}-iter-${iter}`
+    const manifestPath = resolve(
+      import.meta.dirname ?? ".",
+      `../../fixtures/scenario-${iterSeedId}.json`,
+    )
+
+    if (args.iterations > 1) {
+      log("iter", `iteration ${iter}/${args.iterations}: seeding fresh fixtures`)
+    }
+
+    let iterSuccess = false
+    const maxAttempts = 1 + args.retries
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      if (attempt > 1) {
+        log("retry", `Attempt ${attempt}/${maxAttempts}: cleaning up and re-seeding`)
+        try {
+          await cleanupPhase(manifestPath)
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error)
+          log("retry", `Cleanup before retry failed (continuing): ${message}`)
+        }
+      }
+
+      await seedPhase({ ...args, seedId: iterSeedId }, manifestPath)
+
+      log("run", `Starting benchmark (attempt ${attempt}/${maxAttempts})`)
+      const result = await spawnBenchmark(args, manifestPath, stallTimeoutMs, outputJsonlPath)
+      iterSuccess = result.scenarioSuccess
+
+      if (result.scenarioSuccess) {
+        log("run", "Benchmark passed (scenario success verified from results)")
+        break
+      }
+
+      log(
+        "run",
+        `Benchmark failed (exit code ${result.code}, scenario success=${result.scenarioSuccess})`,
+      )
+    }
+
+    if (!iterSuccess) {
+      failedIterations++
+    }
+
+    if (!args.skipCleanup) {
+      log("cleanup", args.iterations > 1 ? `Cleanup for iteration ${iter}` : "Final cleanup")
       try {
         await cleanupPhase(manifestPath)
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
-        log("retry", `Cleanup before retry failed (continuing): ${message}`)
+        log("cleanup", `Cleanup failed: ${message}`)
       }
     }
+  }
 
-    await seedPhase(args, manifestPath)
-
-    log("run", `Starting benchmark (attempt ${attempt}/${maxAttempts})`)
-    const result = await spawnBenchmark(args, manifestPath, stallTimeoutMs, outputJsonlPath)
-    lastSuccess = result.scenarioSuccess
-
-    if (result.scenarioSuccess) {
-      log("run", "Benchmark passed (scenario success verified from results)")
-      break
-    }
-
-    log(
-      "run",
-      `Benchmark failed (exit code ${result.code}, scenario success=${result.scenarioSuccess})`,
+  if (failedIterations > 0) {
+    throw new Error(
+      `Scenario ${args.scenario} failed ${failedIterations}/${args.iterations} iteration(s)`,
     )
-  }
-
-  if (!args.skipCleanup) {
-    log("cleanup", "Final cleanup")
-    try {
-      await cleanupPhase(manifestPath)
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error)
-      log("cleanup", `Final cleanup failed: ${message}`)
-    }
-  }
-
-  if (!lastSuccess) {
-    throw new Error(`Scenario ${args.scenario} failed after ${maxAttempts} attempt(s)`)
   }
 }
 
