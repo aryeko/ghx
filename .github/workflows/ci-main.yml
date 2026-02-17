@@ -78,6 +78,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GITHUB_TOKEN: ${{ github.token }}
+      NX_NO_CLOUD: ${{ vars.NX_NO_CLOUD }}
     steps:
       - uses: actions/checkout@v6
         with:
