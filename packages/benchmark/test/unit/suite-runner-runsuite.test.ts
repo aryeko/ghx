@@ -1516,4 +1516,85 @@ describe("runSuite", () => {
       consoleLogSpy.mockRestore()
     }
   })
+
+  it("loads mcp instruction and produces rows with mode: mcp", async () => {
+    const session = createSessionMocks()
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+
+    loadScenariosMock.mockResolvedValue([
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "run {{task}} {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        fixture: { repo: "a/b" },
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+          expected_route_used: "cli",
+        },
+        tags: [],
+      },
+    ])
+
+    const mod = await import("../../src/runner/suite-runner.js")
+    await mod.runSuite({ mode: "mcp", repetitions: 1, scenarioFilter: null })
+
+    expect(createOpencodeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        config: expect.objectContaining({
+          instructions: [
+            "You are running a benchmark in mcp mode. Prefer MCP tools when available.",
+          ],
+        }),
+      }),
+    )
+
+    const appendCalls = appendFileMock.mock.calls as unknown[][]
+    expect(appendCalls.length).toBeGreaterThan(0)
+    const row = JSON.parse(String(appendCalls[0]?.[1] ?? "{}")) as { mode?: unknown }
+    expect(row.mode).toBe("mcp")
+  })
+
+  it("runs repetitions and produces iteration-stamped rows", async () => {
+    const session = createSessionMocks()
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+
+    loadScenariosMock.mockResolvedValue([
+      {
+        id: "repo-view-001",
+        name: "Repo view",
+        task: "repo.view",
+        input: { owner: "a", name: "b" },
+        prompt_template: "run {{task}} {{input_json}}",
+        timeout_ms: 1000,
+        allowed_retries: 0,
+        fixture: { repo: "a/b" },
+        assertions: {
+          must_succeed: true,
+          required_fields: ["ok", "data", "error", "meta"],
+          required_data_fields: ["id"],
+        },
+        tags: [],
+      },
+    ])
+
+    const mod = await import("../../src/runner/suite-runner.js")
+    await mod.runSuite({ mode: "ghx", repetitions: 2, scenarioFilter: null })
+
+    const appendCalls = appendFileMock.mock.calls as unknown[][]
+    expect(appendCalls).toHaveLength(2)
+
+    const rows = appendCalls.map(
+      (call) => JSON.parse(String(call[1] ?? "{}")) as { iteration?: unknown },
+    )
+    expect(rows[0]?.iteration).toBe(1)
+    expect(rows[1]?.iteration).toBe(2)
+  })
 })
