@@ -6,7 +6,7 @@ This document provides a comprehensive overview of the ghx repository layout, mo
 
 `ghx` is an Nx + pnpm monorepo with two runtime packages plus supporting tooling:
 
-```
+```text
 ghx/
 ├── .changeset/                  # Changesets for versioning
 ├── .github/

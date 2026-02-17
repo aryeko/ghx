@@ -9,7 +9,7 @@ Three adapters handle different GitHub interaction modes:
 | Adapter | Coverage | Route Name | Status | Purpose |
 |---------|----------|-----------|--------|---------|
 | **CLI Adapter** | All 66 | `cli` | Active | Execute via `gh` command-line tool |
-| **GraphQL Adapter** | ~27 | `graphql` | Active | Execute via GitHub GraphQL API |
+| **GraphQL Adapter** | 28 | `graphql` | Active | Execute via GitHub GraphQL API |
 | **REST Adapter** | None | `rest` | Stub | Planned for future expansion |
 
 ```mermaid
@@ -115,7 +115,7 @@ The GraphQL adapter executes capabilities through GitHub's GraphQL API.
 ### Features
 
 - **Typed queries**: Generated operation SDKs with type safety
-- **Selective coverage**: ~27 capabilities support GraphQL routes (typically read-heavy operations)
+- **Selective coverage**: 28 capabilities support GraphQL routes (typically read-heavy operations)
 - **Authentication**: Requires `GITHUB_TOKEN` environment variable
 - **Error classification**: Maps GraphQL errors (auth, rate limit, not found, etc.) to normalized error codes
 - **Field mapping**: Adapts GitHub's response shape to capability output schema

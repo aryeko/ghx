@@ -48,7 +48,7 @@ cards.forEach((card) => {
 
 Output:
 
-```
+```text
 repo.view — Get repository metadata
 issue.create — Create an issue
 pr.list — List pull requests

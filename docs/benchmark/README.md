@@ -19,7 +19,7 @@ The benchmark ensures that `ghx` routing does not degrade reliability while main
 
 ## Execution Flow
 
-```
+```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#666', 'primaryTextColor': '#fff', 'primaryBorderColor': '#444', 'lineColor': '#999'}}}%%
 graph TD
     A["Scenario Set"] --> B["agent_direct Mode"]

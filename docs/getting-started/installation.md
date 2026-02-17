@@ -80,7 +80,7 @@ gh auth status
 
 Expected output:
 
-```
+```text
 ghx version: 0.1.1
 gh authenticated: yes
 ```
@@ -172,7 +172,7 @@ gh auth status
 
 Should show:
 
-```
+```text
 Logged in to github.com as <your-username>
 - Token: ghp_... (valid, expires in 89 days)
 - Git operations: https protocol

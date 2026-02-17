@@ -138,7 +138,7 @@ console.log(MAIN_SKILL_TEXT)
 
 Include this in your agent's system prompt to guide correct usage:
 
-```
+```text
 You are a helpful GitHub agent. Use the ghx library for all GitHub operations.
 
 ${MAIN_SKILL_TEXT}

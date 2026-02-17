@@ -78,7 +78,7 @@ npx ghx capabilities list
 
 Output groups capabilities by domain:
 
-```
+```text
 Repository (3)
 ├─ repo.view
 ├─ repo.labels.list
@@ -265,12 +265,11 @@ Ensure you installed the package: `npm install @ghx-dev/core`
 
 ## What to Do Next
 
-**For CLI users:** [Installation Guide](installation.md) covers all options and environment setup.
+**CLI users** should start with the [Installation Guide](installation.md), which covers all options and environment setup.
 
-**For Node.js developers:** [First Task Tutorial](first-task.md) shows library usage and error handling.
+**Node.js developers** can jump to the [First Task Tutorial](first-task.md) to see library usage and error handling.
 
-**For coding agents:** [Agent Setup Guide](setup-for-agents.md) installs the ghx skill so agents
-automatically discover capabilities.
+**Coding agents** benefit most from the [Agent Setup Guide](setup-for-agents.md), which installs the ghx skill so agents automatically discover capabilities.
 
 **Curious about the design?** Read [How ghx Works](how-it-works.md) to understand routing,
 execution paths, and why the result envelope matters.

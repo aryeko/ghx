@@ -153,7 +153,7 @@ Once the skill is installed, the agent workflow looks like:
 
 Example agent session:
 
-```
+```text
 Agent: I see there's a ghx skill in this repository. Let me bootstrap ghx.
 Agent: $ gh auth status
 System: Logged in to github.com as octocat (...)

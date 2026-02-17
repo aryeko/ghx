@@ -79,7 +79,7 @@ Branch naming:
 - `docs/` – documentation only
 
 Use [Conventional Commits](https://www.conventionalcommits.org/):
-```
+```text
 feat(core): add capability X
 fix(benchmark): correct scenario validation
 docs: update README

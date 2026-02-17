@@ -25,7 +25,7 @@ pnpm run changeset
 
 The main workflow runs release logic after successful `build-and-test`. Release behavior is keyed off version commits with message:
 
-```
+```text
 chore: version packages
 ```
 
