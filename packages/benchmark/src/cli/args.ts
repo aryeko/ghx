@@ -56,10 +56,7 @@ function splitPositionalAndFlags(args: string[]): {
 function parseScenarioFilter(flags: string[]): string[] | null {
   const values: string[] = []
   for (let index = 0; index < flags.length; index += 1) {
-    const flag = flags[index]
-    if (!flag) {
-      continue
-    }
+    const flag = flags[index] ?? ""
 
     if (flag === "--scenario") {
       const value = (flags[index + 1] ?? "").trim()

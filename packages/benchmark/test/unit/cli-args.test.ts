@@ -92,6 +92,13 @@ describe("parseCliArgs", () => {
     expect(() => parseCliArgs(["run", "ghx", "1", "--output-jsonl"])).toThrow(
       "Missing value for --output-jsonl",
     )
+    expect(() => parseCliArgs(["run", "ghx", "1", "--provider="])).toThrow(
+      "Missing value for --provider",
+    )
+    expect(() => parseCliArgs(["run", "ghx", "1", "--model="])).toThrow("Missing value for --model")
+    expect(() => parseCliArgs(["run", "ghx", "1", "--output-jsonl="])).toThrow(
+      "Missing value for --output-jsonl",
+    )
   })
 
   it("parses inline fixture manifest option", () => {

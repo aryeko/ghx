@@ -51,6 +51,9 @@ describe("report cli", () => {
         "--suite-jsonl=out/ghx-suite.jsonl",
       ]).suiteJsonlPaths,
     ).toEqual(["out/agent_direct-suite.jsonl", "out/ghx-suite.jsonl"])
+    expect(report.parseArgs(["", "--suite-jsonl", "out/ghx-suite.jsonl"]).suiteJsonlPaths).toEqual([
+      "out/ghx-suite.jsonl",
+    ])
     expect(report.modeFromFilename("x-agent_direct-suite.jsonl")).toBe("agent_direct")
     expect(report.modeFromFilename("x-mcp-suite.jsonl")).toBe("mcp")
     expect(report.modeFromFilename("x-ghx-suite.jsonl")).toBe("ghx")
@@ -63,6 +66,7 @@ describe("report cli", () => {
 
     expect(() => report.parseArgs(["--gate-profile", "invalid"])).toThrow("Unknown gate profile")
     expect(() => report.parseArgs(["--gate-profile"])).toThrow("Unknown gate profile")
+    expect(() => report.parseArgs(["--gate-profile=invalid"])).toThrow("Unknown gate profile")
   })
 
   it("parses explicit expectation flags in split form", async () => {
@@ -111,6 +115,7 @@ describe("report cli", () => {
     expect(() => report.parseArgs(["--summary-json"])).toThrow("Missing value for --summary-json")
     expect(() => report.parseArgs(["--summary-md"])).toThrow("Missing value for --summary-md")
     expect(() => report.parseArgs(["--suite-jsonl"])).toThrow("Missing value for --suite-jsonl")
+    expect(() => report.parseArgs(["--suite-jsonl="])).toThrow("Missing value for --suite-jsonl")
   })
 
   it("loads latest rows and writes report outputs", async () => {
