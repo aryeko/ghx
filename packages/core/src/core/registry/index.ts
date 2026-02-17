@@ -2,12 +2,11 @@ import { readdirSync, readFileSync } from "node:fs"
 import { dirname, extname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-import { Ajv } from "ajv"
 import { load as parseYaml } from "js-yaml"
+import { ajv } from "./ajv-instance.js"
 import { operationCardSchema } from "./operation-card-schema.js"
 import type { OperationCard } from "./types.js"
 
-const ajv = new Ajv({ allErrors: true, strict: false })
 const validateCard = ajv.compile(operationCardSchema)
 
 function cardDirectory(): string {

@@ -79,6 +79,11 @@ const REPO_ISSUE_TYPES_GRAPHQL_QUERY =
 const ISSUE_COMMENTS_GRAPHQL_QUERY =
   "query($owner:String!,$name:String!,$issueNumber:Int!,$first:Int!,$after:String){repository(owner:$owner,name:$name){issue(number:$issueNumber){comments(first:$first,after:$after){nodes{id body createdAt url author{login}} pageInfo{hasNextPage endCursor}}}}}"
 
+type CliNormalizeContext = {
+  wasDraft?: boolean
+  effectiveRerunMode?: string
+}
+
 function containsSensitiveText(value: string): boolean {
   return /(gh[pousr]_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+|authorization:\s*bearer\s+\S+|bearer\s+[A-Za-z0-9._-]{20,}|(?:api[_-]?key|token|secret|password)\s*[=:]\s*\S+)/i.test(
     value,
@@ -1182,6 +1187,7 @@ function normalizeCliData(
   capabilityId: CliCapabilityId,
   data: unknown,
   params: Record<string, unknown>,
+  context?: CliNormalizeContext,
 ): unknown {
   const normalizeRelease = (input: unknown): Record<string, unknown> => {
     if (typeof input !== "object" || input === null || Array.isArray(input)) {
@@ -1489,7 +1495,7 @@ function normalizeCliData(
 
   if (capabilityId === "pr.checks.rerun_failed" || capabilityId === "pr.checks.rerun_all") {
     const effectiveMode =
-      params.__effectiveRerunMode === "all"
+      context?.effectiveRerunMode === "all"
         ? "all"
         : capabilityId === "pr.checks.rerun_failed"
           ? "failed"
@@ -1889,7 +1895,7 @@ function normalizeCliData(
     const release = normalizeRelease(data)
     return {
       ...release,
-      wasDraft: Boolean(params.__wasDraft),
+      wasDraft: Boolean(context?.wasDraft),
     }
   }
 
@@ -1986,9 +1992,8 @@ export async function runCliCapability(
         )
       }
 
-      const normalized = normalizeCliData(capabilityId, parseCliData(result.stdout), {
-        ...params,
-        __wasDraft: true,
+      const normalized = normalizeCliData(capabilityId, parseCliData(result.stdout), params, {
+        wasDraft: true,
       })
       return normalizeResult(normalized, "cli", { capabilityId, reason: "CARD_FALLBACK" })
     }
@@ -2008,9 +2013,8 @@ export async function runCliCapability(
           const rerunData = NON_JSON_STDOUT_CAPABILITIES.has(capabilityId)
             ? {}
             : parseCliData(rerunAllResult.stdout)
-          const fallbackData = normalizeCliData(capabilityId, rerunData, {
-            ...params,
-            __effectiveRerunMode: "all",
+          const fallbackData = normalizeCliData(capabilityId, rerunData, params, {
+            effectiveRerunMode: "all",
           })
           return normalizeResult(fallbackData, "cli", { capabilityId, reason: "CARD_FALLBACK" })
         }
