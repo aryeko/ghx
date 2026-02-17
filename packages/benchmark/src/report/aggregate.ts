@@ -389,11 +389,11 @@ export function buildSummary(
   rows: BenchmarkRow[],
   gateProfile: GateProfile = "verify_pr",
   gateV2Thresholds: GateV2ThresholdMap = DEFAULT_GATE_V2_THRESHOLDS,
+  timestamp?: string,
 ): BenchmarkSummary {
   const grouped: Partial<Record<BenchmarkMode, BenchmarkRow[]>> = {}
   for (const row of rows) {
-    const existing = grouped[row.mode] ?? []
-    grouped[row.mode] = [...existing, row]
+    ;(grouped[row.mode] ??= []).push(row)
   }
 
   const modeSummaries: Partial<Record<BenchmarkMode, ModeSummary>> = {}
@@ -432,7 +432,7 @@ export function buildSummary(
   }
 
   return {
-    generatedAt: new Date().toISOString(),
+    generatedAt: timestamp ?? new Date().toISOString(),
     modes: modeSummaries,
     profiling: profilingSummaries,
     deltaVsAgentDirect,
