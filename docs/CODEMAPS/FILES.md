@@ -71,13 +71,10 @@ ghx/
 - `packages/core/src/cli/assets/skills/ghx/` - bundled setup skill asset directory (contains canonical `SKILL.md`)
 - `packages/core/src/cli/commands/capabilities-list.ts` - CLI capability list command
 - `packages/core/src/cli/commands/capabilities-explain.ts` - CLI capability explain command
-- `packages/core/src/cli/commands/doctor.ts` - diagnostics command scaffold (reserved)
-- `packages/core/src/cli/commands/routes.ts` - route-inspection command scaffold (reserved)
 - `packages/core/src/core/routing/engine.ts` - route selection + preflight orchestration
 - `packages/core/src/core/execute/execute.ts` - route attempts, retry loop, schema validation
 - `packages/core/src/core/registry/index.ts` - operation card loading/validation from YAML
 - `packages/core/src/core/registry/cards/*.yaml` - source-of-truth capability cards
-- `packages/core/src/core/contracts/tasks/*.ts` - per-capability task identifier constants
 - `packages/core/src/core/execution/adapters/cli-capability-adapter.ts` - `gh` command mapping + output normalization
 - `packages/core/src/core/execution/adapters/cli-adapter.ts` - generic CLI adapter primitive
 - `packages/core/src/core/execution/adapters/graphql-capability-adapter.ts` - GraphQL capability adapter
@@ -122,7 +119,6 @@ Use this path when debugging common concerns:
 - **Route selection issue** -> `packages/core/src/core/routing/engine.ts`
 - **Input/output schema failure** -> `packages/core/src/core/execute/execute.ts` and `packages/core/src/core/registry/schema-validator.ts`
 - **Capability metadata mismatch** -> `packages/core/src/core/registry/cards/*.yaml`
-- **Task identifier mapping mismatch** -> `packages/core/src/core/contracts/tasks/*.ts`
 - **CLI command shape mismatch** -> `packages/core/src/core/execution/adapters/cli-capability-adapter.ts`
 - **GraphQL payload/field mismatch** -> `packages/core/src/gql/client.ts` and `packages/core/src/gql/operations/*.generated.ts`
 - **Benchmark scenario parse failure** -> `packages/benchmark/src/scenario/schema.ts`
@@ -134,5 +130,5 @@ Use this path when debugging common concerns:
 - GitHub GraphQL API: `packages/core/src/cli/commands/run.ts`
 - GitHub CLI (`gh`): `packages/core/src/core/execution/adapters/cli-capability-adapter.ts`
 - OpenCode SDK sessions: `packages/benchmark/src/runner/suite-runner.ts`
-- JSON schema validation (AJV): `packages/core/src/core/registry/index.ts`, `packages/core/src/core/registry/schema-validator.ts`
+- JSON schema validation (AJV): `packages/core/src/core/registry/ajv-instance.ts`, `packages/core/src/core/registry/index.ts`, `packages/core/src/core/registry/schema-validator.ts`
 - Scenario validation (Zod): `packages/benchmark/src/scenario/schema.ts`
