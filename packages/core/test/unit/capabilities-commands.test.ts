@@ -15,7 +15,17 @@ describe("capabilities CLI commands", () => {
 
     expect(code).toBe(0)
     expect(stdout).toHaveBeenCalled()
-    expect(stdout.mock.calls.join("\n")).toContain("repo.view")
+    const output = stdout.mock.calls.map((call) => String(call[0])).join("")
+    expect(output).toContain("repo.view")
+  })
+
+  it("shows required_inputs in brackets in text output", async () => {
+    const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true)
+
+    await capabilitiesListCommand([])
+
+    const output = stdout.mock.calls.map((call) => String(call[0])).join("")
+    expect(output).toMatch(/repo\.view\s+-.+\[owner, name\]/)
   })
 
   it("lists capabilities in JSON with --json", async () => {
@@ -27,6 +37,55 @@ describe("capabilities CLI commands", () => {
     const joined = stdout.mock.calls.map((call) => String(call[0])).join("")
     expect(joined).toContain("capability_id")
     expect(joined).toContain("repo.view")
+    expect(joined).toContain("required_inputs")
+  })
+
+  it("includes required_inputs arrays in JSON output", async () => {
+    const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true)
+
+    await capabilitiesListCommand(["--json"])
+
+    const joined = stdout.mock.calls.map((call) => String(call[0])).join("")
+    const parsed = JSON.parse(joined)
+    const repoView = parsed.find(
+      (item: { capability_id: string }) => item.capability_id === "repo.view",
+    )
+    expect(repoView).toBeDefined()
+    expect(repoView.required_inputs).toEqual(expect.arrayContaining(["owner", "name"]))
+  })
+
+  it("filters by domain with --domain flag", async () => {
+    const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true)
+
+    const code = await capabilitiesListCommand(["--domain", "pr"])
+
+    expect(code).toBe(0)
+    const output = stdout.mock.calls.map((call) => String(call[0])).join("")
+    expect(output).toContain("pr.view")
+    expect(output).not.toContain("repo.view")
+    expect(output).not.toContain("issue.view")
+  })
+
+  it("filters by domain in JSON output", async () => {
+    const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true)
+
+    await capabilitiesListCommand(["--domain", "repo", "--json"])
+
+    const joined = stdout.mock.calls.map((call) => String(call[0])).join("")
+    const parsed = JSON.parse(joined) as Array<{ capability_id: string }>
+    expect(parsed.length).toBeGreaterThan(0)
+    for (const item of parsed) {
+      expect(item.capability_id).toMatch(/^repo\./)
+    }
+  })
+
+  it("returns error for unknown domain", async () => {
+    const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true)
+
+    const code = await capabilitiesListCommand(["--domain", "nonexistent"])
+
+    expect(code).toBe(1)
+    expect(stderr).toHaveBeenCalledWith("No capabilities found for domain: nonexistent\n")
   })
 
   it("prints usage and exits 1 when explain has no capability id", async () => {
