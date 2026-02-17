@@ -28,6 +28,9 @@ updates:
         patterns:
           - "typescript"
           - "@types/*"
+    ignore:
+      # @types/node is pinned via pnpm catalog; Dependabot cannot update catalog entries correctly
+      - dependency-name: "@types/node"
     open-pull-requests-limit: 10
 
   - package-ecosystem: github-actions
