@@ -41,6 +41,13 @@ import {
   modeScopedAssertions,
   renderPrompt,
 } from "./prompt/prompt-renderer.js"
+import {
+  hasAssistantMetadata,
+  hasAssistantSignal,
+  hasStructuredOutput,
+  hasTextPart,
+  messageProgressSignature,
+} from "./session-polling.js"
 
 type RunSuiteOptions = {
   mode: BenchmarkMode
@@ -193,38 +200,6 @@ export function getSessionApi(client: unknown): {
 
 export function asNumber(value: unknown): number | null {
   return typeof value === "number" ? value : null
-}
-
-export function hasAssistantMetadata(info: unknown): boolean {
-  if (!isObject(info)) {
-    return false
-  }
-
-  const hasCompleted =
-    isObject(info.time) && typeof (info.time as { completed?: unknown }).completed === "number"
-  const hasTokens =
-    isObject(info.tokens) && typeof (info.tokens as { input?: unknown }).input === "number"
-
-  return hasCompleted && hasTokens
-}
-
-function hasStructuredOutput(info: unknown): boolean {
-  if (!isObject(info)) {
-    return false
-  }
-
-  const structuredOutput = (info as { structured_output?: unknown }).structured_output
-  const structured = (info as { structured?: unknown }).structured
-
-  return structuredOutput !== undefined || structured !== undefined
-}
-
-export function hasAssistantSignalParts(parts: SessionMessagePart[]): boolean {
-  return parts.some((part) => part.type === "step-finish" || part.type === "tool")
-}
-
-export function hasTextPart(parts: SessionMessagePart[]): boolean {
-  return parts.some((part) => part.type === "text" && typeof part.text === "string")
 }
 
 export function extractTimingBreakdown(messages: SessionMessageEntry[]): BenchmarkTimingBreakdown {
@@ -458,32 +433,6 @@ export async function fetchSessionMessages(
   })
 
   return unwrapData<SessionMessageEntry[]>(messagesResult, "session.messages")
-}
-
-function hasAssistantSignal(entry: SessionMessageEntry): boolean {
-  if (!entry.info) {
-    return false
-  }
-
-  return (
-    hasAssistantMetadata(entry.info) ||
-    hasStructuredOutput(entry.info) ||
-    (entry.info as { role?: unknown }).role === "assistant"
-  )
-}
-
-function messageProgressSignature(messages: SessionMessageEntry[]): string {
-  return messages
-    .map((entry) => {
-      const info = entry.info as { id?: unknown; role?: unknown } | undefined
-      const id = typeof info?.id === "string" ? info.id : "<no-id>"
-      const role = typeof info?.role === "string" ? info.role : "<no-role>"
-      const parts = entry.parts ?? []
-      const stepFinish = [...parts].reverse().find((part) => part.type === "step-finish")
-      const stepReason = typeof stepFinish?.reason === "string" ? stepFinish.reason : "<none>"
-      return `${id}:${role}:${parts.length}:${stepReason}`
-    })
-    .join("|")
 }
 
 export async function waitForAssistantFromMessages(

@@ -10,6 +10,11 @@ import { validateFixture } from "../../src/runner/preflight/fixture-preflight.js
 import { ghOk } from "../../src/runner/preflight/ghx-router-preflight.js"
 import { renderPrompt } from "../../src/runner/prompt/prompt-renderer.js"
 import {
+  hasAssistantMetadata,
+  hasAssistantSignalParts,
+  hasTextPart,
+} from "../../src/runner/session-polling.js"
+import {
   asNumber,
   assertGhxRouterPreflight,
   coercePromptResponse,
@@ -18,9 +23,6 @@ import {
   extractTimingBreakdown,
   fetchSessionMessages,
   getSessionApi,
-  hasAssistantMetadata,
-  hasAssistantSignalParts,
-  hasTextPart,
   runScenario,
   shouldRequestContinuation,
   unwrapData,
