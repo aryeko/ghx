@@ -73,7 +73,7 @@ SETS=(
 
 FIRST_SET=true
 for SET_NAME in "${SETS[@]}"; do
-  echo "[verify:mini:by-set] running set=${SET_NAME} provider=${PROVIDER} model=${MODEL} repetitions=${REPETITIONS}"
+  echo "[verify:all-sets] running set=${SET_NAME} provider=${PROVIDER} model=${MODEL} repetitions=${REPETITIONS}"
 
   if [[ "$FIRST_SET" == true ]]; then
     pnpm --filter @ghx-dev/benchmark run verify:set -- --set "$SET_NAME" --provider "$PROVIDER" --model "$MODEL" --repetitions "$REPETITIONS"
@@ -87,4 +87,4 @@ if [[ "$CLEANUP_ON_FAILURE" != "true" ]]; then
   cleanup_fixtures
 fi
 
-echo "[verify:mini:by-set] complete"
+echo "[verify:all-sets] complete"
