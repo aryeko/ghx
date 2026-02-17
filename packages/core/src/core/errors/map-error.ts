@@ -43,20 +43,20 @@ export function mapErrorToCode(error: unknown): ErrorCode {
   }
 
   if (
+    message.includes("auth") ||
+    message.includes("forbidden") ||
+    message.includes("unauthorized")
+  ) {
+    return errorCodes.Auth
+  }
+
+  if (
     message.includes("validation") ||
     message.includes("invalid") ||
     message.includes("required") ||
     message.includes("positive integer")
   ) {
     return errorCodes.Validation
-  }
-
-  if (
-    message.includes("auth") ||
-    message.includes("forbidden") ||
-    message.includes("unauthorized")
-  ) {
-    return errorCodes.Auth
   }
 
   return errorCodes.Unknown

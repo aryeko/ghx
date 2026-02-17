@@ -11,7 +11,7 @@
 
 | Module | Purpose | Key Exports | Depends On |
 |---|---|---|---|
-| `engine.ts` | Main task execution coordinator | `chooseRoute()`, `executeTask()` | `core/execute`, `execution/adapters/*`, `registry`, `gql/client` |
+| `engine.ts` | Main task execution coordinator | `executeTask()` | `core/execute`, `execution/adapters/*`, `registry`, `gql/client` |
 | `policy.ts` | Route preference ordering | `routePreferenceOrder` | none |
 | `reason-codes.ts` | Route reason taxonomy | `routeReasonCodes`, `RouteReasonCode` | none |
 | `capability-registry.ts` | Registry view of cards | `capabilityRegistry` | `core/registry/index.ts` |
@@ -23,19 +23,11 @@
 
 | Module | Purpose | Key Exports | Depends On |
 |---|---|---|---|
-| `index.ts` | Card loader + lookup | `validateOperationCard()`, `listOperationCards()`, `getOperationCard()` | `ajv`, `js-yaml`, `operation-card-schema` |
+| `ajv-instance.ts` | Shared AJV validator instance | `ajv` | `ajv` |
+| `index.ts` | Card loader + lookup | `validateOperationCard()`, `listOperationCards()`, `getOperationCard()` | `ajv-instance`, `js-yaml`, `operation-card-schema` |
 | `types.ts` | Card and routing type contracts | `OperationCard`, `SuitabilityRule` | `contracts/envelope` |
-| `schema-validator.ts` | JSON schema validation wrappers | `validateInput()`, `validateOutput()` | `ajv` |
+| `schema-validator.ts` | JSON schema validation wrappers | `validateInput()`, `validateOutput()` | `ajv-instance` |
 | `operation-card-schema.ts` | AJV-compatible card schema | `operationCardSchema` | none |
-
-### Task Contracts
-
-**Purpose**: Capability/task identifier constants used by tooling and references.  
-**Location**: `packages/core/src/core/contracts/tasks/`
-
-| Module | Purpose | Key Exports | Depends On |
-|---|---|---|---|
-| `*.ts` task contract files | One lightweight constant per capability (`issue.*`, `pr.*`, `workflow_*`, `release.*`, `project_v2.*`, etc.) | per-file task constant (for example `repoViewTask`, `prMergeExecuteTask`) | none |
 
 ### Execution Pipeline
 
@@ -93,8 +85,6 @@
 | `cli/assets/skills/ghx/SKILL.md` | Canonical setup skill template copied to dist and written by setup | none (markdown asset) | `cli/commands/setup.ts`, `scripts/copy-registry-cards.mjs` |
 | `cli/commands/capabilities-list.ts` | CLI capability discovery list command | `capabilitiesListCommand()` | `agent-interface/tools/list-capabilities-tool` |
 | `cli/commands/capabilities-explain.ts` | CLI capability discovery explain command | `capabilitiesExplainCommand()` | `agent-interface/tools/explain-tool` |
-| `cli/commands/doctor.ts` | Reserved diagnostics command scaffold (not wired in CLI parser yet) | `doctorCommand()` | none |
-| `cli/commands/routes.ts` | Reserved route inspection scaffold (not wired in CLI parser yet) | `routesCommand()` | none |
 | `agent-interface/tools/list-capabilities-tool.ts` | Exposes card list to agents | `listCapabilities()` | `registry/index` |
 | `agent-interface/tools/explain-tool.ts` | Explains one capability from card metadata | `explainCapability()` | `registry/index` |
 | `agent-interface/tools/execute-tool.ts` | Wraps `executeTask` for agent tool calls | `createExecuteTool()` | `contracts/envelope` |

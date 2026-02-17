@@ -46,4 +46,12 @@ describe("mapErrorToCode", () => {
   it("maps not-found for 404 even with 'auth' in message", () => {
     expect(mapErrorToCode(new Error("auth route returned 404"))).toBe("NOT_FOUND")
   })
+
+  it("maps auth even when message contains 'invalid'", () => {
+    expect(mapErrorToCode(new Error("invalid authorization header"))).toBe("AUTH")
+  })
+
+  it("maps unauthorized to auth over validation", () => {
+    expect(mapErrorToCode(new Error("Unauthorized: invalid token"))).toBe("AUTH")
+  })
 })
