@@ -8,6 +8,7 @@ export function makeAssertions(overrides: Partial<ScenarioAssertions> = {}): Sce
 }
 
 export function makeScenario(overrides: Partial<Scenario> = {}): Scenario {
+  const { assertions: assertionOverrides, ...restOverrides } = overrides
   return {
     id: "test-scenario-001",
     name: "Test Scenario",
@@ -16,8 +17,8 @@ export function makeScenario(overrides: Partial<Scenario> = {}): Scenario {
     prompt_template: "do {{task}} with {{input_json}}",
     timeout_ms: 1000,
     allowed_retries: 0,
-    assertions: makeAssertions(overrides.assertions),
+    assertions: makeAssertions(assertionOverrides),
     tags: [],
-    ...overrides,
+    ...restOverrides,
   }
 }

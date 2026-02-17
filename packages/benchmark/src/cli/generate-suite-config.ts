@@ -37,8 +37,8 @@ export function parseArgs(argv: string[]): ParsedArgs {
   const scenarioSet = parseStrictFlagValue(normalized, "--scenario-set") ?? "ci-verify-pr"
 
   const repetitionsRaw = parseStrictFlagValue(normalized, "--repetitions") ?? "3"
-  const repetitions = Number.parseInt(repetitionsRaw, 10)
-  if (!Number.isFinite(repetitions)) {
+  const repetitions = Number(repetitionsRaw)
+  if (!Number.isFinite(repetitions) || !Number.isInteger(repetitions)) {
     throw new Error(`Invalid --repetitions value: ${repetitionsRaw}`)
   }
 

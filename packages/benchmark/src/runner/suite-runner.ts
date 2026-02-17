@@ -735,6 +735,8 @@ export async function runScenario(
           session.id,
           remainingTimeoutMs,
           scenario.id,
+          undefined,
+          cfg,
         ))
       let assistantAndParts = coercePromptResponse(hydrated)
 
@@ -783,6 +785,7 @@ export async function runScenario(
             remaining,
             scenario.id,
             assistantAndParts.assistant.id,
+            cfg,
           ))
 
         assistantAndParts = coercePromptResponse(next)
@@ -834,6 +837,7 @@ export async function runScenario(
             remaining,
             scenario.id,
             assistant.id,
+            cfg,
           ))
 
         assistantAndParts = coercePromptResponse(next)

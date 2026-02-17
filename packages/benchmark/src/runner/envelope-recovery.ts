@@ -9,7 +9,7 @@ import { isObject } from "../utils/guards.js"
 
 export function extractEnvelopeFromParts(parts: SessionMessagePart[]): {
   text: string
-  envelope: unknown | null
+  envelope: unknown
 } {
   const text = parts
     .filter((part) => part.type === "text" && typeof part.text === "string")

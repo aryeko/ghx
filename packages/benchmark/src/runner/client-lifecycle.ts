@@ -68,8 +68,12 @@ async function loadGhxSkillInstruction(): Promise<string> {
 }
 
 function resolveGhTokenFromCli(): string | null {
-  const result = spawnSync("gh", ["auth", "token"], { encoding: "utf8" })
-  if (result.status !== 0) {
+  const result = spawnSync("gh", ["auth", "token"], {
+    encoding: "utf8",
+    timeout: 5000,
+    killSignal: "SIGTERM",
+  })
+  if (result.error || result.status !== 0) {
     return null
   }
 

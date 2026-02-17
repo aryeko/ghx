@@ -7,6 +7,7 @@ import { readJsonlFile } from "../utils/jsonl.js"
 import { runIfDirectEntry } from "./entry.js"
 import { parseFlagValue, parseMultiFlagValues, parseRequiredFlag } from "./flag-utils.js"
 import type { SuiteRunnerConfig } from "./suite-config-schema.js"
+import { suiteRunnerConfigSchema } from "./suite-config-schema.js"
 
 type SeedPolicy = "with_seed" | "read_only"
 
@@ -278,7 +279,7 @@ async function materializeAttemptConfig(
   scenarioIds: string[],
 ): Promise<void> {
   const rawConfig = await readFile(paths.suiteConfigBasePath, "utf8")
-  const config = JSON.parse(rawConfig) as SuiteRunnerConfig
+  const config = suiteRunnerConfigSchema.parse(JSON.parse(rawConfig)) as SuiteRunnerConfig
 
   config.benchmark.base.env = {
     ...(config.benchmark.base.env ?? {}),
