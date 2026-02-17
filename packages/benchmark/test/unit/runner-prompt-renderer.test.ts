@@ -1,20 +1,18 @@
 import { describe, expect, it } from "vitest"
-import type { Scenario } from "../../src/domain/types.js"
 import {
   buildOutputSchema,
   forcedToolCommandHint,
   modeScopedAssertions,
   renderPrompt,
 } from "../../src/runner/prompt/prompt-renderer.js"
+import { makeScenario } from "../helpers/scenario-factory.js"
 
-const scenario = {
+const scenario = makeScenario({
   id: "issue-list-001",
   name: "Issue list",
   task: "issue.list",
   input: { owner: "o", name: "r", state: "open", first: 5 },
   prompt_template: "task={{task}} input={{input_json}}",
-  timeout_ms: 1000,
-  allowed_retries: 0,
   fixture: { repo: "o/r" },
   assertions: {
     must_succeed: true,
@@ -23,8 +21,7 @@ const scenario = {
     required_meta_fields: ["route_used"],
     expected_route_used: "cli",
   },
-  tags: [],
-} satisfies Scenario
+})
 
 describe("prompt renderer", () => {
   it("removes strict route requirement for non-ghx modes", () => {
@@ -68,7 +65,7 @@ describe("prompt renderer", () => {
   })
 
   it("builds direct command hints for list/view tasks and fallback", () => {
-    const base = {
+    const base = makeScenario({
       ...scenario,
       input: {
         owner: "octo",
@@ -79,7 +76,7 @@ describe("prompt renderer", () => {
         prNumber: 34,
       },
       fixture: { repo: "octo/hello" },
-    } satisfies Scenario
+    })
 
     expect(
       forcedToolCommandHint({ ...base, task: "issue.comments.list" }, "agent_direct"),
