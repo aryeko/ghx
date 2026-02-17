@@ -1,10 +1,24 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import {
   bootstrapCI,
   coefficientOfVariation,
   iqr,
   percentile,
 } from "../../src/report/statistics.js"
+
+// Deterministic PRNG (mulberry32) to make bootstrapCI tests repeatable
+function mulberry32(seed: number) {
+  let s = seed
+  return () => {
+    s |= 0
+    s = (s + 0x6d2b79f5) | 0
+    let t = Math.imul(s ^ (s >>> 15), 1 | s)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+let originalRandom: typeof Math.random
 
 describe("statistics", () => {
   describe("percentile", () => {
@@ -104,6 +118,15 @@ describe("statistics", () => {
   })
 
   describe("bootstrapCI", () => {
+    beforeEach(() => {
+      originalRandom = Math.random
+      Math.random = mulberry32(42)
+    })
+
+    afterEach(() => {
+      Math.random = originalRandom
+    })
+
     it("returns [0, 0] for empty array", () => {
       const [lower, upper] = bootstrapCI([])
       expect(lower).toBe(0)
@@ -124,7 +147,7 @@ describe("statistics", () => {
       expect(lower).toBeLessThan(upper)
     })
 
-    it("respects confidence parameter (tighter for higher confidence)", () => {
+    it("respects confidence parameter (wider for higher confidence)", () => {
       const values = Array.from({ length: 100 }, (_, i) => i + 1)
       const ci95 = bootstrapCI(values, 0.95, 1000)
       const ci99 = bootstrapCI(values, 0.99, 1000)
@@ -133,12 +156,13 @@ describe("statistics", () => {
       expect(ci99Width).toBeGreaterThan(ci95Width)
     })
 
-    it("computes narrower CI with more iterations", () => {
+    it("produces valid CI with varying iterations", () => {
       const values = Array.from({ length: 100 }, (_, i) => i + 1)
       const ci1k = bootstrapCI(values, 0.95, 1000)
       const ci10k = bootstrapCI(values, 0.95, 10000)
       expect(ci1k[1] - ci1k[0]).toBeGreaterThan(0)
       expect(ci10k[1] - ci10k[0]).toBeGreaterThan(0)
+      expect(ci10k[0]).toBeLessThan(ci10k[1])
     })
 
     it("maintains correct order: lower <= upper", () => {

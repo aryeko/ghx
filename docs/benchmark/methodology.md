@@ -74,8 +74,8 @@ Recommended verify sequence for PR validation:
 - quick path (repo root): `pnpm run benchmark:verify:pr`
 
 1. `pnpm --filter @ghx-dev/core run build`
-2. `pnpm --filter @ghx-dev/benchmark run benchmark -- agent_direct 4 --scenario-set ci-verify-pr`
-3. `pnpm --filter @ghx-dev/benchmark run benchmark -- ghx 4 --scenario-set ci-verify-pr`
+2. `pnpm --filter @ghx-dev/benchmark run benchmark -- agent_direct 4 --scenario-set default`
+3. `pnpm --filter @ghx-dev/benchmark run benchmark -- ghx 4 --scenario-set default`
 4. `pnpm --filter @ghx-dev/benchmark run report`
 5. `pnpm --filter @ghx-dev/benchmark exec tsx src/cli/report.ts --gate --gate-profile verify_pr`
 

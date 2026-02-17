@@ -398,20 +398,19 @@ function buildGateV2(
       threshold: thresholds.minToolCallReductionPct,
       operator: ">=",
     },
-    {
-      name: "efficiency_cost_reduction",
-      passed:
-        ghxRouter.medianCostUsd > 0 && agentDirect.medianCostUsd > 0
-          ? safeReductionPct(agentDirect.medianCostUsd, ghxRouter.medianCostUsd) >=
-            thresholds.minCostReductionPct
-          : false,
-      value:
+    (() => {
+      const costReduction =
         ghxRouter.medianCostUsd > 0 && agentDirect.medianCostUsd > 0
           ? safeReductionPct(agentDirect.medianCostUsd, ghxRouter.medianCostUsd)
-          : 0,
-      threshold: thresholds.minCostReductionPct,
-      operator: ">=",
-    },
+          : 0
+      return {
+        name: "efficiency_cost_reduction" as const,
+        passed: costReduction >= thresholds.minCostReductionPct,
+        value: costReduction,
+        threshold: thresholds.minCostReductionPct,
+        operator: ">=" as const,
+      }
+    })(),
   ]
 
   return {
@@ -450,7 +449,7 @@ export function buildSummary(
 
   let deltaVsAgentDirect: DeltaSummary | null = null
   if (agentDirect && ghxRouter) {
-    const agentDirectTokensActive = grouped.agent_direct ?? []
+    const agentDirectRows = grouped.agent_direct ?? []
 
     deltaVsAgentDirect = {
       tokensReductionPct: safeReductionPct(
@@ -470,9 +469,9 @@ export function buildSummary(
       outputValidityRatePct: ghxRouter.outputValidityRate,
       costReductionPct: safeReductionPct(agentDirect.medianCostUsd, ghxRouter.medianCostUsd),
       tokensActiveReductionCI: bootstrapCI(
-        agentDirectTokensActive.map((row) => activeTokens(row)).filter((v) => v > 0),
+        agentDirectRows.map((row) => activeTokens(row)).filter((v) => v > 0),
       ),
-      latencyReductionCI: bootstrapCI(agentDirectTokensActive.map((row) => row.latency_ms_wall)),
+      latencyReductionCI: bootstrapCI(agentDirectRows.map((row) => row.latency_ms_wall)),
     }
   }
 

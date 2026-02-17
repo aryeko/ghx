@@ -5,7 +5,7 @@ import { executeTask } from "../../src/core/routing/engine.js"
 import { createGithubClient } from "../../src/gql/client.js"
 
 describe("executeTask project_v2.item.field.update", () => {
-  it("returns validation error envelope for missing value", async () => {
+  it("returns adapter unsupported when CLI unavailable", async () => {
     const githubClient = createGithubClient({
       async execute<TData>(): Promise<TData> {
         return {} as TData

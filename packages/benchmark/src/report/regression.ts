@@ -19,7 +19,11 @@ export async function loadHistory(path: string): Promise<HistoryEntry[]> {
     const content = await readFile(path, "utf8")
     const entries = parseJsonlLines<HistoryEntry>(content)
     return entries
-  } catch {
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return []
+    }
+    console.warn(`Warning: Failed to load history from ${path}:`, error)
     return []
   }
 }

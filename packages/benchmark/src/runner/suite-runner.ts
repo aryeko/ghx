@@ -702,13 +702,12 @@ export async function runWorkflowScenario(
 
       const checkpointResults: Array<{ name: string; passed: boolean }> = []
 
+      const { executeTask, createGithubClientFromToken } = await import("@ghx-dev/core")
+      const ghToken = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? ""
+      const githubClient = createGithubClientFromToken(ghToken)
+
       for (const checkpoint of scenario.assertions.checkpoints) {
         try {
-          const { executeTask } = await import("@ghx-dev/core")
-          const { createGithubClientFromToken } = await import("@ghx-dev/core")
-          const ghToken = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? ""
-          const githubClient = createGithubClientFromToken(ghToken)
-
           const verificationResult = await executeTask(
             {
               task: checkpoint.verification_task,

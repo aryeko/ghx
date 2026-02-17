@@ -9,9 +9,7 @@ import {
   loadHistory,
 } from "../../src/report/regression.js"
 
-const createModeSummary = (
-  overrides: Partial<ModeSummary> | undefined = undefined,
-): ModeSummary => ({
+const createModeSummary = (overrides?: Partial<ModeSummary>): ModeSummary => ({
   mode: "ghx",
   modelSignature: "test/model/default",
   runs: 10,
@@ -35,9 +33,7 @@ const createModeSummary = (
 })
 
 const createSummary = (
-  modes:
-    | Partial<Record<"agent_direct" | "mcp" | "ghx", Partial<ModeSummary>>>
-    | undefined = undefined,
+  modes?: Partial<Record<"agent_direct" | "mcp" | "ghx", Partial<ModeSummary>>>,
 ): BenchmarkSummary => {
   const modesRecord = modes ?? {}
   return {
@@ -67,9 +63,7 @@ const createSummary = (
   }
 }
 
-const createHistoryEntry = (
-  overrides: Partial<HistoryEntry> | undefined = undefined,
-): HistoryEntry => ({
+const createHistoryEntry = (overrides?: Partial<HistoryEntry>): HistoryEntry => ({
   timestamp: new Date().toISOString(),
   commit: "abc123",
   branch: "main",

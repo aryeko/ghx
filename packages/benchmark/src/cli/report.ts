@@ -286,8 +286,8 @@ function validateComparableCohort(agentRows: BenchmarkRow[], ghxRows: BenchmarkR
 }
 
 function extractGitInfo(): { commit: string | null; branch: string | null } {
-  const commit = process.env.GIT_COMMIT ?? null
-  const branch = process.env.GIT_BRANCH ?? null
+  const commit = process.env.BENCH_GIT_COMMIT ?? null
+  const branch = process.env.BENCH_GIT_BRANCH ?? null
   return { commit, branch }
 }
 
@@ -360,11 +360,11 @@ export async function main(args: string[] = process.argv.slice(2)): Promise<void
     gate_passed: summary.gateV2.passed,
   }
 
-  await appendToHistory(historyPath, historyEntry)
-  console.log(`Appended history entry to ${historyPath}`)
-
   const history = await loadHistory(historyPath)
   const regressions = detectRegressions(summary, history)
+
+  await appendToHistory(historyPath, historyEntry)
+  console.log(`Appended history entry to ${historyPath}`)
   if (regressions.length > 0) {
     const regressionMarkdown = formatRegressionWarnings(regressions)
     markdown = `${markdown}\n\n${regressionMarkdown}`

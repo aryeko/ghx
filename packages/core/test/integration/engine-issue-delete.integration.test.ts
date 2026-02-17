@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import type { TaskRequest } from "../../src/core/contracts/task.js"
 import { executeTask } from "../../src/core/routing/engine.js"
@@ -37,10 +37,9 @@ describe("executeTask issue.delete", () => {
   })
 
   it("returns validation error envelope for missing issueId", async () => {
+    const execute = vi.fn(async () => ({}))
     const githubClient = createGithubClient({
-      async execute<TData>(): Promise<TData> {
-        return {} as TData
-      },
+      execute: execute as <TData>() => Promise<TData>,
     })
 
     const request: TaskRequest = {
@@ -58,5 +57,6 @@ describe("executeTask issue.delete", () => {
     expect(result.ok).toBe(false)
     expect(result.error?.code).toBe("VALIDATION")
     expect(result.meta.reason).toBe("INPUT_VALIDATION")
+    expect(execute).not.toHaveBeenCalled()
   })
 })
