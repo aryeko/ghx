@@ -34,12 +34,9 @@
   },
   "nx": {
     "targets": {
-      "ci": {
+      "ci": {},
+      "ci:extra": {
         "dependsOn": [
-          "lint",
-          "typecheck",
-          "test:coverage",
-          "build",
           "check:scenarios"
         ]
       },
