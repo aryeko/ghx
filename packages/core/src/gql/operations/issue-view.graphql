@@ -6,6 +6,12 @@ query IssueView($owner: String!, $name: String!, $issueNumber: Int!) {
       title
       state
       url
+      body
+      labels(first: 20) {
+        nodes {
+          name
+        }
+      }
     }
   }
 }

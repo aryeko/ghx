@@ -66,6 +66,11 @@ describe("capabilityRegistry", () => {
         fallbackRoutes: [],
       },
       {
+        task: "issue.labels.add",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
         task: "issue.assignees.update",
         defaultRoute: "graphql",
         fallbackRoutes: [],
@@ -133,6 +138,11 @@ describe("capabilityRegistry", () => {
       {
         task: "pr.diff.list_files",
         defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
+        task: "pr.diff.view",
+        defaultRoute: "cli",
         fallbackRoutes: [],
       },
       {
@@ -251,7 +261,7 @@ describe("capabilityRegistry", () => {
         fallbackRoutes: [],
       },
       {
-        task: "workflow_run.get",
+        task: "workflow_run.view",
         defaultRoute: "cli",
         fallbackRoutes: [],
       },

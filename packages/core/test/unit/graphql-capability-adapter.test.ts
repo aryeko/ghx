@@ -446,6 +446,7 @@ describe("runGraphqlCapability", () => {
         reopened: true,
       })),
       deleteIssue: vi.fn(async () => ({ id: "issue-1", number: 501, deleted: true })),
+      addIssueLabels: vi.fn(async () => ({ id: "issue-1", labels: ["bug", "batch-b"] })),
       updateIssueLabels: vi.fn(async () => ({ id: "issue-1", labels: ["bug", "batch-b"] })),
       updateIssueAssignees: vi.fn(async () => ({ id: "issue-1", assignees: ["octocat"] })),
       setIssueMilestone: vi.fn(async () => ({ id: "issue-1", milestoneNumber: 3 })),
@@ -504,6 +505,10 @@ describe("runGraphqlCapability", () => {
     const closeResult = await runGraphqlCapability(client, "issue.close", { issueId: "issue-1" })
     const reopenResult = await runGraphqlCapability(client, "issue.reopen", { issueId: "issue-1" })
     const deleteResult = await runGraphqlCapability(client, "issue.delete", { issueId: "issue-1" })
+    const labelsAddResult = await runGraphqlCapability(client, "issue.labels.add", {
+      issueId: "issue-1",
+      labels: ["bug", "batch-b"],
+    })
     const labelsResult = await runGraphqlCapability(client, "issue.labels.update", {
       issueId: "issue-1",
       labels: ["bug", "batch-b"],
@@ -551,6 +556,7 @@ describe("runGraphqlCapability", () => {
     expect(closeResult.ok).toBe(true)
     expect(reopenResult.ok).toBe(true)
     expect(deleteResult.ok).toBe(true)
+    expect(labelsAddResult.ok).toBe(true)
     expect(labelsResult.ok).toBe(true)
     expect(assigneesResult.ok).toBe(true)
     expect(milestoneResult.ok).toBe(true)

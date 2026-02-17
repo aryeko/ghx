@@ -7,7 +7,7 @@ pre-commit:
       stage_fixed: true
     lint:
       glob: "*.{ts,js,mjs}"
-      run: pnpm eslint --max-warnings=0 {staged_files}
+      run: pnpm eslint --max-warnings=0 --no-warn-ignored {staged_files}
     typecheck:
       env:
         NX_DAEMON: "false"

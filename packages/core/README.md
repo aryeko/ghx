@@ -168,7 +168,7 @@ const result = await tool.execute("repo.view", { owner: "aryeko", name: "ghx" })
 
 **Releases** -- `release.list`, `release.get`, `release.create_draft`, `release.update`, `release.publish_draft`
 
-**Workflow Controls** -- `workflow.list`, `workflow.get`, `workflow_dispatch.run`, `workflow_run.get`, `workflow_run.rerun_failed`, `workflow_run.rerun_all`, `workflow_run.cancel`, `workflow_run.artifacts.list`
+**Workflow Controls** -- `workflow.list`, `workflow.get`, `workflow_dispatch.run`, `workflow_run.view`, `workflow_run.rerun_failed`, `workflow_run.rerun_all`, `workflow_run.cancel`, `workflow_run.artifacts.list`
 
 **Projects v2** -- `project_v2.org.get`, `project_v2.user.get`, `project_v2.fields.list`, `project_v2.items.list`, `project_v2.item.add_issue`, `project_v2.item.field.update`
 

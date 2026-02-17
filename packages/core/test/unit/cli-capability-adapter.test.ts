@@ -97,7 +97,7 @@ describe("runCliCapability", () => {
     )
   })
 
-  it("supports issue.view and pr.view success paths", async () => {
+  it("supports issue.view and pr.view success paths with body and labels", async () => {
     const runner = {
       run: vi
         .fn()
@@ -108,12 +108,22 @@ describe("runCliCapability", () => {
             title: "Issue",
             state: "OPEN",
             url: "u",
+            body: "Issue body text",
+            labels: [{ id: "l1", name: "bug", description: "", color: "d73a4a" }],
           }),
           stderr: "",
           exitCode: 0,
         })
         .mockResolvedValueOnce({
-          stdout: JSON.stringify({ id: "pr-id", number: 9, title: "PR", state: "OPEN", url: "u" }),
+          stdout: JSON.stringify({
+            id: "pr-id",
+            number: 9,
+            title: "PR",
+            state: "OPEN",
+            url: "u",
+            body: "PR body text",
+            labels: [{ id: "l2", name: "enhancement", description: "", color: "a2eeef" }],
+          }),
           stderr: "",
           exitCode: 0,
         }),
@@ -131,7 +141,21 @@ describe("runCliCapability", () => {
     })
 
     expect(issueResult.ok).toBe(true)
+    expect(issueResult.data).toEqual(
+      expect.objectContaining({
+        id: "issue-id",
+        body: "Issue body text",
+        labels: ["bug"],
+      }),
+    )
     expect(prResult.ok).toBe(true)
+    expect(prResult.data).toEqual(
+      expect.objectContaining({
+        id: "pr-id",
+        body: "PR body text",
+        labels: ["enhancement"],
+      }),
+    )
     expect(runner.run).toHaveBeenNthCalledWith(
       1,
       "gh",
@@ -901,6 +925,32 @@ describe("runCliCapability", () => {
     )
   })
 
+  it("supports pr.diff.view returning raw diff text", async () => {
+    const diffText =
+      "diff --git a/file.ts b/file.ts\n--- a/file.ts\n+++ b/file.ts\n@@ -1 +1 @@\n-old\n+new\n"
+    const runner = {
+      run: vi.fn(async () => ({
+        stdout: diffText,
+        stderr: "",
+        exitCode: 0,
+      })),
+    }
+
+    const result = await runCliCapability(runner, "pr.diff.view", {
+      owner: "acme",
+      name: "modkit",
+      prNumber: 42,
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.data).toEqual({ diff: diffText })
+    expect(runner.run).toHaveBeenCalledWith(
+      "gh",
+      ["pr", "diff", "42", "--repo", "acme/modkit"],
+      10_000,
+    )
+  })
+
   it("executes Batch A check reruns and reviewer/assignee updates", async () => {
     const runner = {
       run: vi.fn(async () => ({
@@ -1663,7 +1713,7 @@ describe("runCliCapability", () => {
       name: "modkit",
       workflowId: "ci.yml",
     })
-    const workflowRunGet = await runCliCapability(runner, "workflow_run.get", {
+    const workflowRunGet = await runCliCapability(runner, "workflow_run.view", {
       owner: "acme",
       name: "modkit",
       runId: 123,
@@ -2682,6 +2732,7 @@ describe("runCliCapability", () => {
         message: "assignees",
       },
       { capabilityId: "pr.branch.update", params: { prNumber: 0 }, message: "prNumber" },
+      { capabilityId: "pr.diff.view", params: { prNumber: 0 }, message: "prNumber" },
       {
         capabilityId: "workflow.list",
         params: { owner: "acme", name: "modkit", first: 0 },
@@ -2693,7 +2744,7 @@ describe("runCliCapability", () => {
         message: "workflowId",
       },
       {
-        capabilityId: "workflow_run.get",
+        capabilityId: "workflow_run.view",
         params: { owner: "acme", name: "modkit", runId: 0 },
         message: "runId",
       },
@@ -3006,7 +3057,7 @@ describe("runCliCapability", () => {
       name: "modkit",
       workflowId: "ci.yml",
     })
-    const workflowRunGetResult = await runCliCapability(runner, "workflow_run.get", {
+    const workflowRunGetResult = await runCliCapability(runner, "workflow_run.view", {
       owner: "acme",
       name: "modkit",
       runId: 123,
@@ -3096,6 +3147,7 @@ describe("runCliCapability", () => {
       updatedAt: null,
       startedAt: null,
       url: null,
+      jobs: [],
     })
 
     expect(artifactsResult.ok).toBe(true)

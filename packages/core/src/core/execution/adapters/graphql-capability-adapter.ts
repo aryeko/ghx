@@ -5,6 +5,7 @@ import type {
   IssueCommentCreateInput,
   IssueCommentsListInput,
   IssueCreateInput,
+  IssueLabelsAddInput,
   IssueLabelsUpdateInput,
   IssueLinkedPrsListInput,
   IssueListInput,
@@ -38,6 +39,7 @@ export type GraphqlCapabilityId =
   | "issue.close"
   | "issue.reopen"
   | "issue.delete"
+  | "issue.labels.add"
   | "issue.labels.update"
   | "issue.assignees.update"
   | "issue.milestone.set"
@@ -119,6 +121,7 @@ export async function runGraphqlCapability(
         | "closeIssue"
         | "reopenIssue"
         | "deleteIssue"
+        | "addIssueLabels"
         | "updateIssueLabels"
         | "updateIssueAssignees"
         | "setIssueMilestone"
@@ -192,6 +195,14 @@ export async function runGraphqlCapability(
         return unsupportedGraphqlCapability(capabilityId)
       }
       const data = await client.deleteIssue(params as IssueMutationInput)
+      return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
+    }
+
+    if (capabilityId === "issue.labels.add") {
+      if (!client.addIssueLabels) {
+        return unsupportedGraphqlCapability(capabilityId)
+      }
+      const data = await client.addIssueLabels(params as IssueLabelsAddInput)
       return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
     }
 

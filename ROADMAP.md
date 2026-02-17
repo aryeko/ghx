@@ -99,7 +99,7 @@ Exit criteria:
 
 - `workflow.list`
 - `workflow.get`
-- `workflow_run.get`
+- `workflow_run.view`
 - `workflow_run.rerun_all`
 - `workflow_run.cancel`
 - `workflow_run.artifacts.list`

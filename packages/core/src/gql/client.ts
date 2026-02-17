@@ -82,6 +82,11 @@ export type IssueLabelsUpdateInput = {
   labels: string[]
 }
 
+export type IssueLabelsAddInput = {
+  issueId: string
+  labels: string[]
+}
+
 export type IssueAssigneesUpdateInput = {
   issueId: string
   assignees: string[]
@@ -136,10 +141,20 @@ export type IssueViewData = {
   title: string
   state: string
   url: string
+  body: string
+  labels: string[]
+}
+
+export type IssueListItemData = {
+  id: string
+  number: number
+  title: string
+  state: string
+  url: string
 }
 
 export type IssueListData = {
-  items: Array<IssueViewData>
+  items: Array<IssueListItemData>
   pageInfo: {
     endCursor: string | null
     hasNextPage: boolean
@@ -174,6 +189,11 @@ export type IssueMutationData = {
 }
 
 export type IssueLabelsUpdateData = {
+  id: string
+  labels: string[]
+}
+
+export type IssueLabelsAddData = {
   id: string
   labels: string[]
 }
@@ -240,10 +260,20 @@ export type PrViewData = {
   title: string
   state: string
   url: string
+  body: string
+  labels: string[]
+}
+
+export type PrListItemData = {
+  id: string
+  number: number
+  title: string
+  state: string
+  url: string
 }
 
 export type PrListData = {
-  items: Array<PrViewData>
+  items: Array<PrListItemData>
   pageInfo: {
     endCursor: string | null
     hasNextPage: boolean
@@ -345,6 +375,7 @@ export interface GithubClient extends GraphqlClient {
   reopenIssue(input: IssueMutationInput): Promise<IssueMutationData>
   deleteIssue(input: IssueMutationInput): Promise<IssueMutationData>
   updateIssueLabels(input: IssueLabelsUpdateInput): Promise<IssueLabelsUpdateData>
+  addIssueLabels(input: IssueLabelsAddInput): Promise<IssueLabelsAddData>
   updateIssueAssignees(input: IssueAssigneesUpdateInput): Promise<IssueAssigneesUpdateData>
   setIssueMilestone(input: IssueMilestoneSetInput): Promise<IssueMilestoneSetData>
   createIssueComment(input: IssueCommentCreateInput): Promise<IssueCommentCreateData>
@@ -460,6 +491,11 @@ function assertIssueMutationInput(input: IssueMutationInput): void {
 }
 
 function assertIssueLabelsUpdateInput(input: IssueLabelsUpdateInput): void {
+  assertIssueMutationInput({ issueId: input.issueId })
+  assertStringArray(input.labels, "Labels")
+}
+
+function assertIssueLabelsAddInput(input: IssueLabelsAddInput): void {
   assertIssueMutationInput({ issueId: input.issueId })
   assertStringArray(input.labels, "Labels")
 }
@@ -755,6 +791,23 @@ const ISSUE_LABELS_UPDATE_MUTATION = `
   }
 `
 
+const ISSUE_LABELS_ADD_MUTATION = `
+  mutation IssueLabelsAdd($labelableId: ID!, $labelIds: [ID!]!) {
+    addLabelsToLabelable(input: { labelableId: $labelableId, labelIds: $labelIds }) {
+      labelable {
+        ... on Issue {
+          id
+          labels(first: 50) {
+            nodes {
+              name
+            }
+          }
+        }
+      }
+    }
+  }
+`
+
 const ISSUE_ASSIGNEES_UPDATE_MUTATION = `
   mutation IssueAssigneesUpdate($issueId: ID!, $assigneeIds: [ID!]!) {
     updateIssue(input: { id: $issueId, assigneeIds: $assigneeIds }) {
@@ -1032,6 +1085,8 @@ async function runIssueView(
     title: issue.title,
     state: issue.state,
     url: issue.url,
+    body: issue.body ?? "",
+    labels: (issue.labels?.nodes ?? []).flatMap((n) => (n ? [n.name] : [])),
   }
 }
 
@@ -1271,6 +1326,56 @@ async function runIssueLabelsUpdate(
 
   return {
     id: assertNonEmptyString(issue?.["id"], "Issue id"),
+    labels: labelNodes
+      .map((label) => asRecord(label)?.["name"])
+      .filter((name): name is string => typeof name === "string"),
+  }
+}
+
+async function runIssueLabelsAdd(
+  graphqlClient: GraphqlClient,
+  input: IssueLabelsAddInput,
+): Promise<IssueLabelsAddData> {
+  assertIssueLabelsAddInput(input)
+
+  const lookupResult = await graphqlClient.query<unknown, GraphqlVariables>(
+    ISSUE_LABELS_LOOKUP_QUERY,
+    {
+      issueId: input.issueId,
+    },
+  )
+  const availableLabels = Array.isArray(
+    asRecord(asRecord(asRecord(asRecord(lookupResult)?.node)?.repository)?.labels)?.nodes,
+  )
+    ? (asRecord(asRecord(asRecord(asRecord(lookupResult)?.node)?.repository)?.labels)
+        ?.nodes as unknown[])
+    : []
+  const labelIdsByName = new Map<string, string>()
+  for (const label of availableLabels) {
+    const labelRecord = asRecord(label)
+    if (typeof labelRecord?.name === "string" && typeof labelRecord?.id === "string") {
+      labelIdsByName.set(labelRecord.name.toLowerCase(), labelRecord.id)
+    }
+  }
+  const labelIds = input.labels.map((labelName) => {
+    const id = labelIdsByName.get(labelName.toLowerCase())
+    if (!id) {
+      throw new Error(`Label not found: ${labelName}`)
+    }
+    return id
+  })
+
+  const result = await graphqlClient.query<unknown, GraphqlVariables>(ISSUE_LABELS_ADD_MUTATION, {
+    labelableId: input.issueId,
+    labelIds,
+  })
+  const mutation = asRecord(asRecord(result)?.["addLabelsToLabelable"])
+  const labelable = asRecord(mutation?.["labelable"])
+  const labels = asRecord(labelable?.["labels"])
+  const labelNodes = Array.isArray(labels?.["nodes"]) ? labels["nodes"] : []
+
+  return {
+    id: assertNonEmptyString(labelable?.["id"], "Issue id"),
     labels: labelNodes
       .map((label) => asRecord(label)?.["name"])
       .filter((name): name is string => typeof name === "string"),
@@ -1625,6 +1730,8 @@ async function runPrView(sdk: SdkClients["pr"], input: PrViewInput): Promise<PrV
     title: pr.title,
     state: pr.state,
     url: pr.url,
+    body: pr.body ?? "",
+    labels: (pr.labels?.nodes ?? []).flatMap((n) => (n ? [n.name] : [])),
   }
 }
 
@@ -2097,6 +2204,7 @@ export function createGithubClient(transport: GraphqlTransport): GithubClient {
     reopenIssue: (input) => runIssueReopen(graphqlClient, input),
     deleteIssue: (input) => runIssueDelete(graphqlClient, input),
     updateIssueLabels: (input) => runIssueLabelsUpdate(graphqlClient, input),
+    addIssueLabels: (input) => runIssueLabelsAdd(graphqlClient, input),
     updateIssueAssignees: (input) => runIssueAssigneesUpdate(graphqlClient, input),
     setIssueMilestone: (input) => runIssueMilestoneSet(graphqlClient, input),
     createIssueComment: (input) => runIssueCommentCreate(graphqlClient, input),

@@ -17,6 +17,8 @@ describe("executeTask issue.view", () => {
                 title: "Fix parser edge case",
                 state: "OPEN",
                 url: "https://github.com/go-modkit/modkit/issues/210",
+                body: "Fix the parser edge case for multiline strings",
+                labels: { nodes: [{ name: "bug" }, { name: "parser" }] },
               },
             },
           } as TData
@@ -44,6 +46,8 @@ describe("executeTask issue.view", () => {
       expect.objectContaining({
         number: 210,
         title: "Fix parser edge case",
+        body: "Fix the parser edge case for multiline strings",
+        labels: ["bug", "parser"],
       }),
     )
   })

@@ -3,7 +3,7 @@
   "id": "ci-diagnose-run-wf-001",
   "name": "Diagnose a failed CI workflow run",
   "prompt": "Workflow run {{runId}} in {{owner}}/{{name}} has failed. Get the run details to confirm its status and conclusion, then list all jobs in the run to identify which job failed.",
-  "expected_capabilities": ["workflow_run.get", "workflow_run.jobs.list"],
+  "expected_capabilities": ["workflow_run.view", "workflow_run.jobs.list"],
   "timeout_ms": 180000,
   "allowed_retries": 1,
   "fixture": {

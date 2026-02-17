@@ -19,6 +19,11 @@ export type IssueViewQuery = {
       title: string
       state: Types.IssueState
       url: any
+      body: string
+      labels?: {
+        __typename?: "LabelConnection"
+        nodes?: Array<{ __typename?: "Label"; name: string } | null> | null
+      } | null
     } | null
   } | null
 }
@@ -32,6 +37,12 @@ export const IssueViewDocument = `
       title
       state
       url
+      body
+      labels(first: 20) {
+        nodes {
+          name
+        }
+      }
     }
   }
 }

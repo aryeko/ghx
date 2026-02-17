@@ -27,6 +27,7 @@ export type CliCapabilityId =
   | "pr.reviewers.request"
   | "pr.assignees.update"
   | "pr.branch.update"
+  | "pr.diff.view"
   | "check_run.annotations.list"
   | "workflow_runs.list"
   | "workflow_run.jobs.list"
@@ -34,7 +35,7 @@ export type CliCapabilityId =
   | "workflow_job.logs.analyze"
   | "workflow.list"
   | "workflow.get"
-  | "workflow_run.get"
+  | "workflow_run.view"
   | "workflow_run.rerun_all"
   | "workflow_run.cancel"
   | "workflow_run.artifacts.list"
@@ -558,6 +559,20 @@ function buildArgs(
     return args
   }
 
+  if (capabilityId === "pr.diff.view") {
+    const prNumber = parseStrictPositiveInt(params.prNumber)
+    if (prNumber === null) {
+      throw new Error("Missing or invalid prNumber for pr.diff.view")
+    }
+
+    const args = [...commandTokens(card, "pr diff"), String(prNumber)]
+    if (repo) {
+      args.push("--repo", repo)
+    }
+
+    return args
+  }
+
   if (capabilityId === "check_run.annotations.list") {
     const checkRunId = parseStrictPositiveInt(params.checkRunId)
     if (checkRunId === null) {
@@ -666,10 +681,10 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "workflow_run.get") {
+  if (capabilityId === "workflow_run.view") {
     const runId = parseStrictPositiveInt(params.runId)
     if (runId === null) {
-      throw new Error("Missing or invalid runId for workflow_run.get")
+      throw new Error("Missing or invalid runId for workflow_run.view")
     }
 
     const args = [...commandTokens(card, "run view"), String(runId)]
@@ -681,7 +696,7 @@ function buildArgs(
       "--json",
       jsonFieldsFromCard(
         card,
-        "databaseId,workflowName,status,conclusion,headBranch,headSha,url,event,createdAt,updatedAt,startedAt",
+        "databaseId,workflowName,status,conclusion,headBranch,headSha,url,event,createdAt,updatedAt,startedAt,jobs",
       ),
     )
     return args
@@ -1720,11 +1735,36 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "workflow_run.get") {
+  if (capabilityId === "workflow_run.view") {
     const input =
       typeof data === "object" && data !== null && !Array.isArray(data)
         ? (data as Record<string, unknown>)
         : {}
+
+    const rawJobs = Array.isArray(input.jobs) ? input.jobs : []
+    const jobs = rawJobs.map((job) => {
+      if (typeof job !== "object" || job === null || Array.isArray(job)) {
+        return {
+          id: 0,
+          name: null,
+          status: null,
+          conclusion: null,
+          startedAt: null,
+          completedAt: null,
+          url: null,
+        }
+      }
+      const record = job as Record<string, unknown>
+      return {
+        id: typeof record.databaseId === "number" ? record.databaseId : 0,
+        name: typeof record.name === "string" ? record.name : null,
+        status: typeof record.status === "string" ? record.status : null,
+        conclusion: typeof record.conclusion === "string" ? record.conclusion : null,
+        startedAt: typeof record.startedAt === "string" ? record.startedAt : null,
+        completedAt: typeof record.completedAt === "string" ? record.completedAt : null,
+        url: typeof record.url === "string" ? record.url : null,
+      }
+    })
 
     return {
       id: typeof input.databaseId === "number" ? input.databaseId : 0,
@@ -1738,6 +1778,7 @@ function normalizeCliData(
       updatedAt: typeof input.updatedAt === "string" ? input.updatedAt : null,
       startedAt: typeof input.startedAt === "string" ? input.startedAt : null,
       url: typeof input.url === "string" ? input.url : null,
+      jobs,
     }
   }
 
@@ -1914,8 +1955,27 @@ function normalizeCliData(
     }
   }
 
+  if (capabilityId === "pr.diff.view") {
+    return { diff: typeof data === "string" ? data : "" }
+  }
+
   if (capabilityId === "issue.view" || capabilityId === "pr.view") {
-    return normalizeListItem(data)
+    const item = normalizeListItem(data)
+    const raw =
+      typeof data === "object" && data !== null && !Array.isArray(data)
+        ? (data as Record<string, unknown>)
+        : {}
+    return {
+      ...item,
+      body: typeof raw.body === "string" ? raw.body : "",
+      labels: Array.isArray(raw.labels)
+        ? (raw.labels as unknown[])
+            .map((l) =>
+              typeof l === "object" && l !== null ? (l as Record<string, unknown>).name : undefined,
+            )
+            .filter((n): n is string => typeof n === "string")
+        : [],
+    }
   }
 
   return data
@@ -2036,7 +2096,9 @@ export async function runCliCapability(
     }
 
     const data =
-      capabilityId === "workflow_job.logs.get" || capabilityId === "workflow_job.logs.analyze"
+      capabilityId === "workflow_job.logs.get" ||
+      capabilityId === "workflow_job.logs.analyze" ||
+      capabilityId === "pr.diff.view"
         ? result.stdout
         : NON_JSON_STDOUT_CAPABILITIES.has(capabilityId)
           ? {}

@@ -4,8 +4,8 @@ import type { TaskRequest } from "../../src/core/contracts/task.js"
 import { executeTask } from "../../src/core/routing/engine.js"
 import { createGithubClient } from "../../src/gql/client.js"
 
-describe("executeTask workflow_run.get", () => {
-  it("returns cli envelope for workflow_run.get", async () => {
+describe("executeTask workflow_run.view", () => {
+  it("returns cli envelope for workflow_run.view", async () => {
     const githubClient = createGithubClient({
       async execute<TData>(): Promise<TData> {
         return {} as TData
@@ -13,7 +13,7 @@ describe("executeTask workflow_run.get", () => {
     })
 
     const request: TaskRequest = {
-      task: "workflow_run.get",
+      task: "workflow_run.view",
       input: {
         owner: "go-modkit",
         name: "modkit",
@@ -28,11 +28,28 @@ describe("executeTask workflow_run.get", () => {
       cliRunner: {
         run: async () => ({
           stdout: JSON.stringify({
-            id: 456,
-            name: "CI",
+            databaseId: 456,
+            workflowName: "CI",
             status: "completed",
             conclusion: "success",
+            headBranch: "main",
+            headSha: "abc123",
+            event: "push",
+            createdAt: "2024-01-01T00:00:00Z",
+            updatedAt: "2024-01-01T00:05:00Z",
+            startedAt: "2024-01-01T00:00:01Z",
             url: "https://github.com/go-modkit/modkit/actions/runs/456",
+            jobs: [
+              {
+                databaseId: 789,
+                name: "build",
+                status: "completed",
+                conclusion: "success",
+                startedAt: "2024-01-01T00:00:02Z",
+                completedAt: "2024-01-01T00:03:00Z",
+                url: "https://github.com/go-modkit/modkit/actions/runs/456/jobs/789",
+              },
+            ],
           }),
           stderr: "",
           exitCode: 0,
@@ -42,6 +59,22 @@ describe("executeTask workflow_run.get", () => {
 
     expect(result.ok).toBe(true)
     expect(result.meta.route_used).toBe("cli")
+    expect(result.data).toEqual(
+      expect.objectContaining({
+        id: 456,
+        workflowName: "CI",
+        status: "completed",
+        conclusion: "success",
+        jobs: [
+          expect.objectContaining({
+            id: 789,
+            name: "build",
+            status: "completed",
+            conclusion: "success",
+          }),
+        ],
+      }),
+    )
   })
 
   it("returns validation error envelope for missing runId", async () => {
@@ -52,7 +85,7 @@ describe("executeTask workflow_run.get", () => {
     })
 
     const request: TaskRequest = {
-      task: "workflow_run.get",
+      task: "workflow_run.view",
       input: {
         owner: "go-modkit",
         name: "modkit",
