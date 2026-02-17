@@ -62,14 +62,20 @@ function resolveGhTokenFromCli(): string | null {
   return token.length > 0 ? token : null
 }
 
+export interface BenchmarkClient {
+  client: unknown
+  systemInstruction: string
+}
+
 export async function withIsolatedBenchmarkClient<T>(
   mode: BenchmarkMode,
   providerId: string,
   modelId: string,
-  run: (client: unknown) => Promise<T>,
+  run: (ctx: BenchmarkClient) => Promise<T>,
 ): Promise<T> {
   const isolatedXdgConfigHome = await mkdtemp(join(tmpdir(), "ghx-benchmark-opencode-"))
   const instructions = await modeInstructions(mode, loadGhxSkillInstruction)
+  const systemInstruction = instructions.join("\n\n")
   if (mode === "ghx") {
     await ensureBenchmarkGhxAliasReady()
   }
@@ -162,7 +168,7 @@ export async function withIsolatedBenchmarkClient<T>(
       }
     }
 
-    return await run(client)
+    return await run({ client, systemInstruction })
   } finally {
     if (server) {
       server.close()

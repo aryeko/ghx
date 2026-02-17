@@ -160,6 +160,14 @@ describe("runSuite", () => {
       }),
     )
 
+    expect(session.promptAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          system: expect.stringContaining("ghx"),
+        }),
+      }),
+    )
+
     expect(mkdirMock).toHaveBeenCalled()
     expect(appendFileMock).toHaveBeenCalled()
     const appendCalls = appendFileMock.mock.calls as unknown[][]

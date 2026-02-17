@@ -17,7 +17,7 @@ import { loadFixtureManifest, resolveWorkflowFixtureBindings } from "../fixture/
 import { seedFixtureManifest } from "../fixture/seed.js"
 import { loadScenarioSets, loadScenarios } from "../scenario/loader.js"
 import { isObject } from "../utils/guards.js"
-import { withIsolatedBenchmarkClient } from "./client-lifecycle.js"
+import { type BenchmarkClient, withIsolatedBenchmarkClient } from "./client-lifecycle.js"
 import { loadRunnerConfig, type RunnerConfig } from "./config.js"
 import { renderWorkflowPrompt } from "./prompt/prompt-renderer.js"
 import {
@@ -631,7 +631,7 @@ function evaluateCheckpoint(
 }
 
 export async function runWorkflowScenario(
-  client: unknown,
+  benchmarkClient: BenchmarkClient,
   scenario: WorkflowScenario,
   mode: BenchmarkMode,
   iteration: number,
@@ -647,6 +647,7 @@ export async function runWorkflowScenario(
   }
   const providerId = modelOverride?.providerId ?? process.env.BENCH_PROVIDER_ID ?? "openai"
   const modelId = modelOverride?.modelId ?? process.env.BENCH_MODEL_ID ?? "gpt-5.1-codex-mini"
+  const { client, systemInstruction } = benchmarkClient
   const scenarioStartedAt = Date.now()
   let externalRetryCount = 0
 
@@ -671,6 +672,7 @@ export async function runWorkflowScenario(
           body: {
             model: { providerID: providerId, modelID: modelId },
             agent: workflowConfig.openCodeMode ?? undefined,
+            system: systemInstruction,
             parts: [{ type: "text", text: renderWorkflowPrompt(scenario, mode) }],
           },
         }),
@@ -1033,20 +1035,16 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
       if (warmupScenario) {
         console.log(`[benchmark] warm-up canary: running ${warmupScenario.id}`)
         try {
-          const warmupResult = await withIsolatedBenchmarkClient(
-            mode,
-            providerId,
-            modelId,
-            (client) =>
-              runWorkflowScenario(
-                client,
-                warmupScenario,
-                mode,
-                0,
-                null,
-                { providerId, modelId },
-                suiteConfig,
-              ),
+          const warmupResult = await withIsolatedBenchmarkClient(mode, providerId, modelId, (ctx) =>
+            runWorkflowScenario(
+              ctx,
+              warmupScenario,
+              mode,
+              0,
+              null,
+              { providerId, modelId },
+              suiteConfig,
+            ),
           )
           console.log(
             `[benchmark] warm-up canary: ${warmupResult.success ? "success" : "failed"} (${warmupResult.latency_ms_wall}ms)`,
@@ -1081,9 +1079,9 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
         let latestResult: BenchmarkRow | null = null
 
         for (let attempt = 0; attempt <= scenario.allowed_retries; attempt += 1) {
-          const result = await withIsolatedBenchmarkClient(mode, providerId, modelId, (client) =>
+          const result = await withIsolatedBenchmarkClient(mode, providerId, modelId, (ctx) =>
             runWorkflowScenario(
-              client,
+              ctx,
               scenario,
               mode,
               iteration,
