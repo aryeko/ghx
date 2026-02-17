@@ -1,5 +1,5 @@
 import type { ErrorObject, ValidateFunction } from "ajv"
-import { Ajv } from "ajv"
+import { ajv } from "./ajv-instance.js"
 
 type SchemaValidationError = {
   instancePath: string
@@ -14,11 +14,6 @@ type SchemaValidationResult =
       ok: false
       errors: SchemaValidationError[]
     }
-
-const ajv = new Ajv({
-  allErrors: true,
-  strict: false,
-})
 
 const validatorCache = new WeakMap<Record<string, unknown>, ValidateFunction>()
 
