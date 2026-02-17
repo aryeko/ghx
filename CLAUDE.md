@@ -127,6 +127,5 @@ Documentation hub: `docs/README.md`. Key sections:
 - `docs/guides/` — CLI usage, library API, agent integration, result envelope, error handling, routing explained
 - `docs/benchmark/` — methodology, running benchmarks, scenario authoring, metrics, reporting
 - `docs/contributing/` — development setup, testing, code style, adding capabilities, CI, publishing
-- `docs/archive/` — completed design documents (historical reference)
 
 If architecture, module, or file layout changes, update `docs/architecture/repository-structure.md`.
