@@ -34,7 +34,9 @@
     "benchmark:verify:release": "nx run-many -t verify:release",
     "ghx:gql:check": "nx run-many -t gql:check",
     "dep-graph": "nx graph",
-    "cache:clean": "nx reset"
+    "cache:clean": "nx reset",
+    "agent:run": "./scripts/agent-run.sh",
+    "agent:run:branch": "./scripts/agent-run.sh --branch"
   },
   "repository": {
     "type": "git",
@@ -71,6 +73,7 @@
     "lefthook": "^2.1.1",
     "nx": "22.5.1",
     "typescript": "catalog:",
+    "@devcontainers/cli": "^0.75.0",
     "typescript-eslint": "^8.43.0"
   }
 }
