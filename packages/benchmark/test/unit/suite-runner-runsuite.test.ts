@@ -100,14 +100,40 @@ function createSessionMocks(options?: { firstPromptFails?: boolean }) {
   return session
 }
 
+function mockWorkflow(overrides?: Record<string, unknown>) {
+  return {
+    type: "workflow",
+    id: "repo-view-wf-001",
+    name: "Repo view",
+    prompt: "View repo a/b.",
+    expected_capabilities: ["repo.view"],
+    timeout_ms: 1000,
+    allowed_retries: 0,
+    fixture: { repo: "a/b" },
+    assertions: {
+      expected_outcome: "success",
+      checkpoints: [
+        {
+          name: "check-repo",
+          verification_task: "repo.view",
+          verification_input: { owner: "a", name: "b" },
+          condition: "non_empty",
+        },
+      ],
+    },
+    tags: [],
+    ...overrides,
+  }
+}
+
 describe("runSuite", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     seedFixtureManifestMock.mockReset()
     accessMock.mockResolvedValue(undefined)
     loadScenarioSetsMock.mockResolvedValue({
-      default: ["repo-view-001"],
-      "pr-operations-all": ["repo-view-001"],
+      default: ["repo-view-wf-001"],
+      "pr-operations-all": ["repo-view-wf-001"],
       "pr-review-reads": [],
       "pr-thread-mutations": [],
       "ci-diagnostics": [],
@@ -120,24 +146,7 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
     await mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null, skipWarmup: true })
@@ -170,7 +179,7 @@ describe("runSuite", () => {
     loadScenariosMock.mockResolvedValue([
       {
         type: "workflow",
-        id: "repo-view-001",
+        id: "repo-view-wf-001",
         name: "Repo view",
         prompt: "View repo {{owner}}/{{name}}.",
         expected_capabilities: ["repo.view"],
@@ -241,24 +250,7 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
     await mod.runSuite({
@@ -286,44 +278,19 @@ describe("runSuite", () => {
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
     loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-      {
-        id: "pr-view-001",
+      mockWorkflow(),
+      mockWorkflow({
+        id: "pr-view-wf-001",
         name: "PR view",
-        task: "pr.view",
-        input: { owner: "a", name: "b", prNumber: 1 },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
+        prompt: "View PR #1 in a/b.",
+        expected_capabilities: ["pr.view"],
+      }),
     ])
 
     loadScenarioSetsMock.mockResolvedValue({
-      default: ["repo-view-001"],
-      "pr-operations-all": ["repo-view-001", "pr-view-001"],
-      "pr-review-reads": ["pr-view-001"],
+      default: ["repo-view-wf-001"],
+      "pr-operations-all": ["repo-view-wf-001", "pr-view-wf-001"],
+      "pr-review-reads": ["pr-view-wf-001"],
       "pr-thread-mutations": [],
       "ci-diagnostics": [],
       "ci-log-analysis": [],
@@ -342,7 +309,7 @@ describe("runSuite", () => {
     const appendCalls = appendFileMock.mock.calls as unknown[][]
     const firstWrite = appendCalls[0]?.[1]
     const row = JSON.parse(firstWrite as string)
-    expect(row.scenario_id).toBe("pr-view-001")
+    expect(row.scenario_id).toBe("pr-view-wf-001")
     expect(row.scenario_set).toBe("pr-review-reads")
   })
 
@@ -352,38 +319,13 @@ describe("runSuite", () => {
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
     loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-      {
-        id: "pr-view-001",
+      mockWorkflow(),
+      mockWorkflow({
+        id: "pr-view-wf-001",
         name: "PR view",
-        task: "pr.view",
-        input: { owner: "a", name: "b", prNumber: 1 },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
+        prompt: "View PR #1 in a/b.",
+        expected_capabilities: ["pr.view"],
+      }),
     ])
 
     const root = await mkdtemp(join(tmpdir(), "ghx-bench-output-"))
@@ -393,7 +335,7 @@ describe("runSuite", () => {
     await mod.runSuite({
       mode: "ghx",
       repetitions: 1,
-      scenarioFilter: ["repo-view-001", "pr-view-001"],
+      scenarioFilter: ["repo-view-wf-001", "pr-view-wf-001"],
       providerId: "openai",
       modelId: "gpt-5.1-codex-mini",
       outputJsonlPath: outFile,
@@ -417,30 +359,13 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
     await mod.runSuite({
       mode: "ghx",
       repetitions: 1,
-      scenarioFilter: ["repo-view-001"],
+      scenarioFilter: ["repo-view-wf-001"],
       scenarioSet: "pr-review-reads",
     })
 
@@ -455,24 +380,7 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
     await expect(
@@ -492,27 +400,10 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
     loadScenarioSetsMock.mockResolvedValue({
       default: ["missing-scenario-id"],
-      "pr-operations-all": ["repo-view-001"],
+      "pr-operations-all": ["repo-view-wf-001"],
       "pr-review-reads": [],
       "pr-thread-mutations": [],
       "ci-diagnostics": [],
@@ -531,27 +422,10 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
     loadScenarioSetsMock.mockResolvedValue({
       default: [],
-      "pr-operations-all": ["repo-view-001"],
+      "pr-operations-all": ["repo-view-wf-001"],
       "pr-review-reads": [],
       "pr-thread-mutations": [],
       "ci-diagnostics": [],
@@ -573,14 +447,7 @@ describe("runSuite", () => {
     accessMock.mockRejectedValueOnce(new Error("missing fixture manifest"))
 
     loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "OWNER_PLACEHOLDER", name: "REPO_PLACEHOLDER" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
+      mockWorkflow({
         fixture: {
           repo: "aryeko/ghx-bench-fixtures",
           bindings: {
@@ -588,13 +455,7 @@ describe("runSuite", () => {
             "input.name": "repo.name",
           },
         },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
+      }),
     ])
 
     const mod = await import("../../src/runner/suite-runner.js")
@@ -613,7 +474,7 @@ describe("runSuite", () => {
     loadScenariosMock.mockResolvedValue([
       {
         type: "workflow",
-        id: "repo-view-001",
+        id: "repo-view-wf-001",
         name: "Repo view",
         prompt: "View repo {{owner}}/{{name}}.",
         expected_capabilities: ["repo.view"],
@@ -682,24 +543,7 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const root = await mkdtemp(join(tmpdir(), "ghx-bench-seed-"))
     const fixturePath = join(root, "seeded-fixture.json")
@@ -746,24 +590,7 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
     await expect(
@@ -783,24 +610,7 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     accessMock.mockRejectedValueOnce(new Error("missing explicit manifest"))
 
@@ -849,24 +659,7 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 1,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow({ allowed_retries: 1 })])
 
     const mod = await import("../../src/runner/suite-runner.js")
     await mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null, skipWarmup: true })
@@ -927,25 +720,7 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 10,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-          require_tool_calls: false,
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow({ timeout_ms: 10 })])
 
     const mod = await import("../../src/runner/suite-runner.js")
     await mod.runSuite({
@@ -968,24 +743,7 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: -1,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow({ allowed_retries: -1 })])
 
     const mod = await import("../../src/runner/suite-runner.js")
     await expect(
@@ -1013,24 +771,7 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
 
@@ -1106,24 +847,7 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
 
@@ -1173,22 +897,7 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     lstatMock.mockRejectedValueOnce(new Error("missing alias"))
 
@@ -1209,24 +918,7 @@ describe("runSuite", () => {
       server: { close },
     })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const fsPromises = await import("node:fs/promises")
     const lstatSpy = vi.spyOn(fsPromises, "lstat").mockRejectedValueOnce(new Error("missing alias"))
@@ -1255,24 +947,7 @@ describe("runSuite", () => {
       server: { close },
     })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
     await expect(
@@ -1295,24 +970,7 @@ describe("runSuite", () => {
       server: { close },
     })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
     await expect(
@@ -1338,24 +996,7 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
 
@@ -1396,24 +1037,7 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
 
@@ -1504,25 +1128,7 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-          expected_route_used: "cli",
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
     await mod.runSuite({ mode: "mcp", repetitions: 1, scenarioFilter: null, skipWarmup: true })
@@ -1548,24 +1154,7 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
     await mod.runSuite({ mode: "ghx", repetitions: 2, scenarioFilter: null, skipWarmup: true })
