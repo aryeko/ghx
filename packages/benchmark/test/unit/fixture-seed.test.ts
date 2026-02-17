@@ -275,14 +275,6 @@ describe("fixture seed", () => {
         return success([{ id: "PR_seed", number: 17 }])
       }
 
-      if (
-        joined.includes(
-          "api repos/aryeko/ghx-bench-fixtures/contents/.bench/main-seed-seedtest.md --method PUT",
-        )
-      ) {
-        return success({})
-      }
-
       if (joined.includes("api graphql") && joined.includes("reviewThreads")) {
         return success({
           data: {
@@ -462,14 +454,6 @@ describe("fixture seed", () => {
         return success([{ id: "PR_existing", number: 25 }])
       }
 
-      if (
-        joined.includes(
-          "api repos/aryeko/ghx-bench-fixtures/contents/.bench/main-seed-seedtest.md --method PUT",
-        )
-      ) {
-        return success({})
-      }
-
       if (joined.includes("api graphql") && joined.includes("reviewThreads")) {
         graphqlCalls += 1
         if (graphqlCalls === 1) {
@@ -606,14 +590,6 @@ describe("fixture seed", () => {
         joined.includes("--json id,number")
       ) {
         return success([{ id: "PR_seed", number: 17 }])
-      }
-
-      if (
-        joined.includes(
-          "api repos/aryeko/ghx-bench-fixtures/contents/.bench/main-seed-seedtest.md --method PUT",
-        )
-      ) {
-        return success({})
       }
 
       if (joined.includes("api graphql") && joined.includes("reviewThreads")) {
@@ -769,14 +745,6 @@ describe("fixture seed", () => {
         return success([{ id: "PR_seed", number: 17 }])
       }
 
-      if (
-        joined.includes(
-          "api repos/aryeko/ghx-bench-fixtures/contents/.bench/main-seed-seedtest.md --method PUT",
-        )
-      ) {
-        return success({})
-      }
-
       if (joined.includes("api graphql") && joined.includes("reviewThreads")) {
         return success({
           data: {
@@ -876,14 +844,6 @@ describe("fixture seed", () => {
         joined.includes("--json id,number")
       ) {
         return success([{ id: "PR_seed", number: 17 }])
-      }
-
-      if (
-        joined.includes(
-          "api repos/aryeko/ghx-bench-fixtures/contents/.bench/main-seed-seedtest.md --method PUT",
-        )
-      ) {
-        return success({})
       }
 
       if (joined.includes("api graphql") && joined.includes("reviewThreads")) {

@@ -307,38 +307,6 @@ function createSeedPr(
   }
 }
 
-function createMainlineFixtureCommit(repo: string, seedId: string): void {
-  const { owner, name } = parseRepo(repo)
-  const contentPath = `.bench/main-seed-${seedId}.md`
-  const body = `# Benchmark mainline seed\nseed: ${seedId}\n`
-  const encodedBody = Buffer.from(body, "utf8").toString("base64")
-
-  const existing = tryRunGhJson<{ sha?: string }>([
-    "api",
-    `repos/${owner}/${name}/contents/${contentPath}?ref=main`,
-  ])
-  const existingSha =
-    typeof existing?.sha === "string" && existing.sha.length > 0 ? existing.sha : null
-
-  const args = [
-    "api",
-    `repos/${owner}/${name}/contents/${contentPath}`,
-    "--method",
-    "PUT",
-    "-f",
-    `message=chore: seed mainline fixture (${seedId})`,
-    "-f",
-    `content=${encodedBody}`,
-    "-f",
-    "branch=main",
-  ]
-  if (existingSha) {
-    args.push("-f", `sha=${existingSha}`)
-  }
-
-  runGhJson(args)
-}
-
 function getPrHeadSha(repo: string, prNumber: number): string | null {
   const result = tryRunGhJson([
     "pr",
@@ -1122,12 +1090,6 @@ async function buildManifest(
   const blockerIssue = issue
   const parentIssue = issue
   const pr = findSeededPr(repo, seedLabel) ?? createSeedPr(repo, seedId, seedLabel)
-  try {
-    createMainlineFixtureCommit(repo, seedId)
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error)
-    console.warn(`warning: skipping mainline fixture commit — ${message}`)
-  }
   const prThreadId = ensurePrThread(repo, pr.number, seedId)
 
   let prWithReviews: PrWithReviews | null = null
