@@ -1,4 +1,4 @@
-capability_id: pr.comment.unresolve
+capability_id: pr.thread.unresolve
 version: "1.0.0"
 description: Unresolve a pull request review thread.
 input_schema:

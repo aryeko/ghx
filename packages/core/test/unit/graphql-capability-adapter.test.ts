@@ -168,7 +168,7 @@ describe("runGraphqlCapability", () => {
     )
   })
 
-  it("routes pr.comments.list through the GraphQL client", async () => {
+  it("routes pr.thread.list through the GraphQL client", async () => {
     const client = {
       fetchRepoView: vi.fn(),
       fetchIssueView: vi.fn(),
@@ -215,7 +215,7 @@ describe("runGraphqlCapability", () => {
       unresolveReviewThread: vi.fn(),
     }
 
-    const result = await runGraphqlCapability(client, "pr.comments.list", {
+    const result = await runGraphqlCapability(client, "pr.thread.list", {
       owner: "acme",
       name: "modkit",
       prNumber: 1,
@@ -236,7 +236,7 @@ describe("runGraphqlCapability", () => {
     )
   })
 
-  it("routes pr.reviews.list through the GraphQL client", async () => {
+  it("routes pr.review.list through the GraphQL client", async () => {
     const client = {
       fetchRepoView: vi.fn(),
       fetchIssueView: vi.fn(),
@@ -268,7 +268,7 @@ describe("runGraphqlCapability", () => {
       unresolveReviewThread: vi.fn(),
     }
 
-    const result = await runGraphqlCapability(client, "pr.reviews.list", {
+    const result = await runGraphqlCapability(client, "pr.review.list", {
       owner: "acme",
       name: "modkit",
       prNumber: 1,
@@ -284,7 +284,7 @@ describe("runGraphqlCapability", () => {
     )
   })
 
-  it("routes pr.diff.list_files through the GraphQL client", async () => {
+  it("routes pr.diff.files through the GraphQL client", async () => {
     const client = {
       fetchRepoView: vi.fn(),
       fetchIssueView: vi.fn(),
@@ -312,7 +312,7 @@ describe("runGraphqlCapability", () => {
       unresolveReviewThread: vi.fn(),
     }
 
-    const result = await runGraphqlCapability(client, "pr.diff.list_files", {
+    const result = await runGraphqlCapability(client, "pr.diff.files", {
       owner: "acme",
       name: "modkit",
       prNumber: 1,
@@ -328,7 +328,7 @@ describe("runGraphqlCapability", () => {
     )
   })
 
-  it("routes pr.comment.reply through the GraphQL client", async () => {
+  it("routes pr.thread.reply through the GraphQL client", async () => {
     const client = {
       fetchRepoView: vi.fn(),
       fetchIssueView: vi.fn(),
@@ -344,7 +344,7 @@ describe("runGraphqlCapability", () => {
       unresolveReviewThread: vi.fn(),
     }
 
-    const result = await runGraphqlCapability(client, "pr.comment.reply", {
+    const result = await runGraphqlCapability(client, "pr.thread.reply", {
       threadId: "thread-1",
       body: "Thanks, addressed",
     })
@@ -353,7 +353,7 @@ describe("runGraphqlCapability", () => {
     expect(result.data).toEqual({ id: "thread-1", isResolved: false })
   })
 
-  it("routes pr.comment.resolve and pr.comment.unresolve through the GraphQL client", async () => {
+  it("routes pr.thread.resolve and pr.thread.unresolve through the GraphQL client", async () => {
     const client = {
       fetchRepoView: vi.fn(),
       fetchIssueView: vi.fn(),
@@ -369,10 +369,10 @@ describe("runGraphqlCapability", () => {
       unresolveReviewThread: vi.fn(async () => ({ id: "thread-1", isResolved: false })),
     }
 
-    const resolveResult = await runGraphqlCapability(client, "pr.comment.resolve", {
+    const resolveResult = await runGraphqlCapability(client, "pr.thread.resolve", {
       threadId: "thread-1",
     })
-    const unresolveResult = await runGraphqlCapability(client, "pr.comment.unresolve", {
+    const unresolveResult = await runGraphqlCapability(client, "pr.thread.unresolve", {
       threadId: "thread-1",
     })
 
@@ -398,12 +398,12 @@ describe("runGraphqlCapability", () => {
       unresolveReviewThread: vi.fn(),
     }
 
-    const replyResult = await runGraphqlCapability(client, "pr.comment.reply", {
+    const replyResult = await runGraphqlCapability(client, "pr.thread.reply", {
       threadId: "",
       body: "ok",
     })
 
-    const resolveResult = await runGraphqlCapability(client, "pr.comment.resolve", {
+    const resolveResult = await runGraphqlCapability(client, "pr.thread.resolve", {
       threadId: "",
     })
 

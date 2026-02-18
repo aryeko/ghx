@@ -12,7 +12,7 @@ function createBaseWorkflowScenario(): WorkflowScenario {
     id: "pr-resolve-wf-001",
     name: "PR resolve",
     prompt: "Resolve review threads on PR #{{prNumber}} in {{owner}}/{{name}}.",
-    expected_capabilities: ["pr.comment.resolve"],
+    expected_capabilities: ["pr.thread.resolve"],
   })
 }
 
@@ -186,7 +186,7 @@ describe("fixture manifest", () => {
       id: "pr-resolve-wf-001",
       name: "PR resolve",
       prompt: "Resolve review threads on PR #{{prNumber}} in {{owner}}/{{name}}.",
-      expected_capabilities: ["pr.comment.resolve"],
+      expected_capabilities: ["pr.thread.resolve"],
       assertions: {
         expected_outcome: "success",
         checkpoints: [

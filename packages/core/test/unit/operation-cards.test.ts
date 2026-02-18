@@ -35,24 +35,23 @@ describe("operation cards registry", () => {
       "issue.blocked_by.remove",
       "pr.view",
       "pr.list",
-      "pr.comments.list",
-      "pr.reviews.list",
-      "pr.diff.list_files",
+      "pr.create",
+      "pr.update",
+      "pr.thread.list",
+      "pr.thread.reply",
+      "pr.thread.resolve",
+      "pr.thread.unresolve",
+      "pr.review.list",
+      "pr.review.request",
+      "pr.review.submit",
+      "pr.diff.files",
       "pr.diff.view",
-      "pr.status.checks",
-      "pr.checks.get_failed",
-      "pr.mergeability.view",
-      "pr.comment.reply",
-      "pr.comment.resolve",
-      "pr.comment.unresolve",
-      "pr.ready_for_review.set",
-      "pr.review.submit_approve",
-      "pr.review.submit_request_changes",
-      "pr.review.submit_comment",
-      "pr.merge.execute",
+      "pr.checks.list",
+      "pr.checks.failed",
       "pr.checks.rerun_failed",
       "pr.checks.rerun_all",
-      "pr.reviewers.request",
+      "pr.merge.status",
+      "pr.merge",
       "pr.assignees.update",
       "pr.branch.update",
       "check_run.annotations.list",
@@ -136,15 +135,15 @@ describe("operation cards registry", () => {
   it("requires explicit pagination input for list capabilities", () => {
     const issueListCard = getOperationCard("issue.list")
     const prListCard = getOperationCard("pr.list")
-    const prCommentsCard = getOperationCard("pr.comments.list")
+    const prThreadCard = getOperationCard("pr.thread.list")
 
     expect(issueListCard?.input_schema.required).toEqual(["owner", "name"])
     expect(prListCard?.input_schema.required).toEqual(["owner", "name"])
-    expect(prCommentsCard?.input_schema.required).toEqual(["owner", "name", "prNumber"])
+    expect(prThreadCard?.input_schema.required).toEqual(["owner", "name", "prNumber"])
   })
 
-  it("supports unresolved and outdated filters for pr.comments.list", () => {
-    const card = getOperationCard("pr.comments.list")
+  it("supports unresolved and outdated filters for pr.thread.list", () => {
+    const card = getOperationCard("pr.thread.list")
     const properties = card?.input_schema.properties as Record<string, unknown>
 
     expect(properties.unresolvedOnly).toEqual({ type: "boolean" })
@@ -204,20 +203,20 @@ describe("operation cards registry", () => {
     expect(result.ok).toBe(false)
   })
 
-  it("documents Batch A execution capabilities as mutating CLI operations", () => {
-    const batchACapabilities = [
-      "pr.review.submit_approve",
-      "pr.review.submit_request_changes",
-      "pr.review.submit_comment",
-      "pr.merge.execute",
+  it("documents mutating PR capabilities as CLI-preferred operations", () => {
+    const mutatingCapabilities = [
+      "pr.review.submit",
+      "pr.merge",
+      "pr.create",
+      "pr.update",
       "pr.checks.rerun_failed",
       "pr.checks.rerun_all",
-      "pr.reviewers.request",
+      "pr.review.request",
       "pr.assignees.update",
       "pr.branch.update",
     ]
 
-    for (const capabilityId of batchACapabilities) {
+    for (const capabilityId of mutatingCapabilities) {
       const card = getOperationCard(capabilityId)
 
       expect(card).toBeDefined()

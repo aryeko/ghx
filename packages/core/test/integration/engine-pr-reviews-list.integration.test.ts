@@ -4,7 +4,7 @@ import type { TaskRequest } from "../../src/core/contracts/task.js"
 import { executeTask } from "../../src/core/routing/engine.js"
 import { createGithubClient } from "../../src/gql/client.js"
 
-describe("executeTask pr.reviews.list", () => {
+describe("executeTask pr.review.list", () => {
   it("returns validation error envelope for missing prNumber", async () => {
     const githubClient = createGithubClient({
       async execute<TData>(): Promise<TData> {
@@ -13,7 +13,7 @@ describe("executeTask pr.reviews.list", () => {
     })
 
     const request: TaskRequest = {
-      task: "pr.reviews.list",
+      task: "pr.review.list",
       input: {
         owner: "go-modkit",
         name: "modkit",

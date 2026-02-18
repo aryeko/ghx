@@ -7,7 +7,7 @@ const workflowScenario: WorkflowScenario = {
   id: "test-wf-001",
   name: "Test workflow",
   prompt: "Fix the review comments on PR #42.",
-  expected_capabilities: ["pr.comment.resolve"],
+  expected_capabilities: ["pr.thread.resolve"],
   timeout_ms: 180_000,
   allowed_retries: 1,
   assertions: {

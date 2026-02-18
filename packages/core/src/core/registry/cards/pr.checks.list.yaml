@@ -1,6 +1,6 @@
-capability_id: pr.checks.get_failed
+capability_id: pr.checks.list
 version: "1.0.0"
-description: List failed pull request checks.
+description: List pull request check statuses with summary counts.
 input_schema:
   type: object
   required: [owner, name, prNumber]

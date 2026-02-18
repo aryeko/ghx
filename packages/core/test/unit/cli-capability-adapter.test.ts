@@ -687,7 +687,7 @@ describe("runCliCapability", () => {
     expect(String(result.error?.details ?? "")).not.toContain("ghp_supersecrettokenvalue123")
   })
 
-  it("normalizes pr.status.checks from gh pr checks output", async () => {
+  it("normalizes pr.checks.list from gh pr checks output", async () => {
     const runner = {
       run: vi.fn(async () => ({
         stdout: JSON.stringify([
@@ -711,7 +711,7 @@ describe("runCliCapability", () => {
       })),
     }
 
-    const result = await runCliCapability(runner, "pr.status.checks", {
+    const result = await runCliCapability(runner, "pr.checks.list", {
       owner: "acme",
       name: "modkit",
       prNumber: 10,
@@ -734,7 +734,7 @@ describe("runCliCapability", () => {
     )
   })
 
-  it("filters failed checks for pr.checks.get_failed", async () => {
+  it("filters failed checks for pr.checks.failed", async () => {
     const runner = {
       run: vi.fn(async () => ({
         stdout: JSON.stringify([
@@ -758,7 +758,7 @@ describe("runCliCapability", () => {
       })),
     }
 
-    const result = await runCliCapability(runner, "pr.checks.get_failed", {
+    const result = await runCliCapability(runner, "pr.checks.failed", {
       owner: "acme",
       name: "modkit",
       prNumber: 10,
@@ -773,7 +773,7 @@ describe("runCliCapability", () => {
     )
   })
 
-  it("normalizes mergeability fields for pr.mergeability.view", async () => {
+  it("normalizes mergeability fields for pr.merge.status", async () => {
     const runner = {
       run: vi.fn(async () => ({
         stdout: JSON.stringify({
@@ -788,7 +788,7 @@ describe("runCliCapability", () => {
       })),
     }
 
-    const result = await runCliCapability(runner, "pr.mergeability.view", {
+    const result = await runCliCapability(runner, "pr.merge.status", {
       owner: "acme",
       name: "modkit",
       prNumber: 10,
@@ -804,7 +804,7 @@ describe("runCliCapability", () => {
     })
   })
 
-  it("executes ready-for-review mutation through gh pr ready", async () => {
+  it("executes pr.update (draft status change) through gh pr ready", async () => {
     const runner = {
       run: vi.fn(async () => ({
         stdout: "",
@@ -813,15 +813,15 @@ describe("runCliCapability", () => {
       })),
     }
 
-    const result = await runCliCapability(runner, "pr.ready_for_review.set", {
+    const result = await runCliCapability(runner, "pr.update", {
       owner: "acme",
       name: "modkit",
       prNumber: 10,
-      ready: true,
+      draft: false,
     })
 
     expect(result.ok).toBe(true)
-    expect(result.data).toEqual({ prNumber: 10, isDraft: false })
+    expect(result.data).toEqual({ number: 10, url: "", title: "", state: "OPEN", draft: false })
     expect(runner.run).toHaveBeenCalledWith(
       "gh",
       ["pr", "ready", "10", "--repo", "acme/modkit"],
@@ -829,7 +829,7 @@ describe("runCliCapability", () => {
     )
   })
 
-  it("executes Batch A PR review and merge mutations", async () => {
+  it("executes PR operations: review.submit (APPROVE/REQUEST_CHANGES/COMMENT), merge, and branch updates", async () => {
     const runner = {
       run: vi.fn(async () => ({
         stdout: "",
@@ -838,25 +838,28 @@ describe("runCliCapability", () => {
       })),
     }
 
-    const approve = await runCliCapability(runner, "pr.review.submit_approve", {
+    const approve = await runCliCapability(runner, "pr.review.submit", {
       owner: "acme",
       name: "modkit",
       prNumber: 10,
+      event: "APPROVE",
       body: "Ship it",
     })
-    const requestChanges = await runCliCapability(runner, "pr.review.submit_request_changes", {
+    const requestChanges = await runCliCapability(runner, "pr.review.submit", {
       owner: "acme",
       name: "modkit",
       prNumber: 10,
+      event: "REQUEST_CHANGES",
       body: "Please add tests",
     })
-    const comment = await runCliCapability(runner, "pr.review.submit_comment", {
+    const comment = await runCliCapability(runner, "pr.review.submit", {
       owner: "acme",
       name: "modkit",
       prNumber: 10,
+      event: "COMMENT",
       body: "Looks good with one note",
     })
-    const merge = await runCliCapability(runner, "pr.merge.execute", {
+    const merge = await runCliCapability(runner, "pr.merge", {
       owner: "acme",
       name: "modkit",
       prNumber: 10,
@@ -972,7 +975,7 @@ describe("runCliCapability", () => {
       prNumber: 10,
       runId: 88,
     })
-    const reviewers = await runCliCapability(runner, "pr.reviewers.request", {
+    const reviewers = await runCliCapability(runner, "pr.review.request", {
       owner: "acme",
       name: "modkit",
       prNumber: 10,
@@ -1102,13 +1105,14 @@ describe("runCliCapability", () => {
       })),
     }
 
-    const invalidReviewBody = await runCliCapability(runner, "pr.review.submit_comment", {
+    const invalidReviewBody = await runCliCapability(runner, "pr.review.submit", {
       owner: "acme",
       name: "modkit",
       prNumber: 10,
+      event: "COMMENT",
       body: "",
     })
-    const invalidMergeMethod = await runCliCapability(runner, "pr.merge.execute", {
+    const invalidMergeMethod = await runCliCapability(runner, "pr.merge", {
       owner: "acme",
       name: "modkit",
       prNumber: 10,
@@ -1120,7 +1124,7 @@ describe("runCliCapability", () => {
       prNumber: 10,
       runId: 0,
     })
-    const invalidReviewers = await runCliCapability(runner, "pr.reviewers.request", {
+    const invalidReviewers = await runCliCapability(runner, "pr.review.request", {
       owner: "acme",
       name: "modkit",
       prNumber: 10,
@@ -1292,27 +1296,21 @@ describe("runCliCapability", () => {
       })),
     }
 
-    const checksResult = await runCliCapability(runner, "pr.status.checks", {
+    const checksResult = await runCliCapability(runner, "pr.checks.list", {
       owner: "acme",
       name: "modkit",
       prNumber: 0,
     })
-    const mergeabilityResult = await runCliCapability(runner, "pr.mergeability.view", {
+    const mergeabilityResult = await runCliCapability(runner, "pr.merge.status", {
       owner: "acme",
       name: "modkit",
       prNumber: 0,
     })
-    const readyResult = await runCliCapability(runner, "pr.ready_for_review.set", {
-      owner: "acme",
-      name: "modkit",
-      prNumber: 1,
-      ready: "yes",
-    })
-    const readyInvalidPrResult = await runCliCapability(runner, "pr.ready_for_review.set", {
+    const readyInvalidPrResult = await runCliCapability(runner, "pr.update", {
       owner: "acme",
       name: "modkit",
       prNumber: 0,
-      ready: true,
+      draft: true,
     })
     const workflowListResult = await runCliCapability(runner, "workflow.runs.list", {
       owner: "acme",
@@ -1333,7 +1331,6 @@ describe("runCliCapability", () => {
 
     expect(checksResult.ok).toBe(false)
     expect(mergeabilityResult.ok).toBe(false)
-    expect(readyResult.ok).toBe(false)
     expect(readyInvalidPrResult.ok).toBe(false)
     expect(workflowListResult.ok).toBe(false)
 
@@ -1369,11 +1366,11 @@ describe("runCliCapability", () => {
       event: "push",
       status: "completed",
     })
-    await runCliCapability(runner, "pr.ready_for_review.set", {
+    await runCliCapability(runner, "pr.update", {
       owner: "acme",
       name: "modkit",
       prNumber: 10,
-      ready: false,
+      draft: true,
     })
 
     const workflowRunCall = runner.run.mock.calls.find(
@@ -1422,7 +1419,7 @@ describe("runCliCapability", () => {
       }),
     }
 
-    const checksResult = await runCliCapability(runner, "pr.status.checks", {
+    const checksResult = await runCliCapability(runner, "pr.checks.list", {
       owner: "acme",
       name: "modkit",
       prNumber: 1,
@@ -1513,7 +1510,7 @@ describe("runCliCapability", () => {
       }),
     }
 
-    const checksResult = await runCliCapability(runner, "pr.status.checks", {
+    const checksResult = await runCliCapability(runner, "pr.checks.list", {
       owner: "acme",
       name: "modkit",
       prNumber: 1,
@@ -1565,7 +1562,7 @@ describe("runCliCapability", () => {
       }),
     }
 
-    const mergeabilityResult = await runCliCapability(runner, "pr.mergeability.view", {
+    const mergeabilityResult = await runCliCapability(runner, "pr.merge.status", {
       owner: "acme",
       name: "modkit",
       prNumber: 2,
@@ -2629,20 +2626,24 @@ describe("runCliCapability", () => {
     }
 
     const cases = [
-      { capabilityId: "pr.review.submit_approve", params: { prNumber: 0 }, message: "prNumber" },
       {
-        capabilityId: "pr.review.submit_request_changes",
-        params: { prNumber: 1 },
+        capabilityId: "pr.review.submit",
+        params: { prNumber: 0, event: "APPROVE" },
+        message: "prNumber",
+      },
+      {
+        capabilityId: "pr.review.submit",
+        params: { owner: "acme", name: "modkit", prNumber: 1, event: "COMMENT" },
         message: "body",
       },
-      { capabilityId: "pr.merge.execute", params: { prNumber: 0 }, message: "prNumber" },
+      { capabilityId: "pr.merge", params: { prNumber: 0 }, message: "prNumber" },
       {
-        capabilityId: "pr.merge.execute",
+        capabilityId: "pr.merge",
         params: { prNumber: 1, method: "fast-forward" },
         message: "method",
       },
       {
-        capabilityId: "pr.merge.execute",
+        capabilityId: "pr.merge",
         params: { prNumber: 1, method: "merge", deleteBranch: "yes" },
         message: "deleteBranch",
       },
@@ -2652,12 +2653,12 @@ describe("runCliCapability", () => {
         message: "prNumber",
       },
       {
-        capabilityId: "pr.reviewers.request",
+        capabilityId: "pr.review.request",
         params: { prNumber: 0, reviewers: ["octocat"] },
         message: "prNumber",
       },
       {
-        capabilityId: "pr.reviewers.request",
+        capabilityId: "pr.review.request",
         params: { prNumber: 1, reviewers: [] },
         message: "reviewers",
       },
@@ -2891,7 +2892,7 @@ describe("runCliCapability", () => {
         .mockResolvedValueOnce({ stdout: "updated assignees", stderr: "", exitCode: 0 }),
     }
 
-    const reviewersResult = await runCliCapability(runner, "pr.reviewers.request", {
+    const reviewersResult = await runCliCapability(runner, "pr.review.request", {
       owner: "acme",
       name: "modkit",
       prNumber: 42,

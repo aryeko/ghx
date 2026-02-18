@@ -1,4 +1,4 @@
-capability_id: pr.mergeability.view
+capability_id: pr.merge.status
 version: "1.0.0"
 description: View pull request mergeability and readiness signals.
 input_schema:

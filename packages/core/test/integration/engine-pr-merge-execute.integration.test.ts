@@ -4,8 +4,8 @@ import type { TaskRequest } from "../../src/core/contracts/task.js"
 import { executeTask } from "../../src/core/routing/engine.js"
 import { createGithubClient } from "../../src/gql/client.js"
 
-describe("executeTask pr.merge.execute", () => {
-  it("returns cli envelope for pr.merge.execute", async () => {
+describe("executeTask pr.merge", () => {
+  it("returns cli envelope for pr.merge", async () => {
     const githubClient = createGithubClient({
       async execute<TData>(): Promise<TData> {
         return {} as TData
@@ -13,7 +13,7 @@ describe("executeTask pr.merge.execute", () => {
     })
 
     const request: TaskRequest = {
-      task: "pr.merge.execute",
+      task: "pr.merge",
       input: {
         owner: "go-modkit",
         name: "modkit",
@@ -50,7 +50,7 @@ describe("executeTask pr.merge.execute", () => {
     })
 
     const request: TaskRequest = {
-      task: "pr.merge.execute",
+      task: "pr.merge",
       input: {
         owner: "go-modkit",
         name: "modkit",

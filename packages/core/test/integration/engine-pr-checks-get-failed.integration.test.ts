@@ -4,8 +4,8 @@ import type { TaskRequest } from "../../src/core/contracts/task.js"
 import { executeTask } from "../../src/core/routing/engine.js"
 import { createGithubClient } from "../../src/gql/client.js"
 
-describe("executeTask pr.checks.get_failed", () => {
-  it("returns cli envelope for pr.checks.get_failed", async () => {
+describe("executeTask pr.checks.failed", () => {
+  it("returns cli envelope for pr.checks.failed", async () => {
     const githubClient = createGithubClient({
       async execute<TData>(): Promise<TData> {
         return {} as TData
@@ -13,7 +13,7 @@ describe("executeTask pr.checks.get_failed", () => {
     })
 
     const request: TaskRequest = {
-      task: "pr.checks.get_failed",
+      task: "pr.checks.failed",
       input: {
         owner: "go-modkit",
         name: "modkit",
@@ -52,7 +52,7 @@ describe("executeTask pr.checks.get_failed", () => {
     })
 
     const request: TaskRequest = {
-      task: "pr.checks.get_failed",
+      task: "pr.checks.failed",
       input: {
         owner: "go-modkit",
         name: "modkit",

@@ -4,7 +4,7 @@ import type { TaskRequest } from "../../src/core/contracts/task.js"
 import { executeTask } from "../../src/core/routing/engine.js"
 import { createGithubClient } from "../../src/gql/client.js"
 
-describe("executeTask pr.comment.unresolve", () => {
+describe("executeTask pr.thread.unresolve", () => {
   it("returns validation error envelope for missing threadId", async () => {
     const githubClient = createGithubClient({
       async execute<TData>(): Promise<TData> {
@@ -13,7 +13,7 @@ describe("executeTask pr.comment.unresolve", () => {
     })
 
     const request: TaskRequest = {
-      task: "pr.comment.unresolve",
+      task: "pr.thread.unresolve",
       input: {},
     }
 

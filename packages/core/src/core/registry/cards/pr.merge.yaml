@@ -1,4 +1,4 @@
-capability_id: pr.merge.execute
+capability_id: pr.merge
 version: "1.0.0"
 description: Execute a pull request merge.
 input_schema:

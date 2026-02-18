@@ -126,17 +126,52 @@ describe("capabilityRegistry", () => {
         fallbackRoutes: ["graphql"],
       },
       {
-        task: "pr.comments.list",
+        task: "pr.create",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "pr.update",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "pr.thread.list",
         defaultRoute: "graphql",
         fallbackRoutes: [],
       },
       {
-        task: "pr.reviews.list",
+        task: "pr.thread.reply",
         defaultRoute: "graphql",
         fallbackRoutes: [],
       },
       {
-        task: "pr.diff.list_files",
+        task: "pr.thread.resolve",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
+        task: "pr.thread.unresolve",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
+        task: "pr.review.list",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
+        task: "pr.review.request",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "pr.review.submit",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "pr.diff.files",
         defaultRoute: "graphql",
         fallbackRoutes: [],
       },
@@ -146,57 +181,12 @@ describe("capabilityRegistry", () => {
         fallbackRoutes: [],
       },
       {
-        task: "pr.status.checks",
+        task: "pr.checks.list",
         defaultRoute: "cli",
         fallbackRoutes: [],
       },
       {
-        task: "pr.checks.get_failed",
-        defaultRoute: "cli",
-        fallbackRoutes: [],
-      },
-      {
-        task: "pr.mergeability.view",
-        defaultRoute: "cli",
-        fallbackRoutes: [],
-      },
-      {
-        task: "pr.comment.reply",
-        defaultRoute: "graphql",
-        fallbackRoutes: [],
-      },
-      {
-        task: "pr.comment.resolve",
-        defaultRoute: "graphql",
-        fallbackRoutes: [],
-      },
-      {
-        task: "pr.comment.unresolve",
-        defaultRoute: "graphql",
-        fallbackRoutes: [],
-      },
-      {
-        task: "pr.ready_for_review.set",
-        defaultRoute: "cli",
-        fallbackRoutes: [],
-      },
-      {
-        task: "pr.review.submit_approve",
-        defaultRoute: "cli",
-        fallbackRoutes: [],
-      },
-      {
-        task: "pr.review.submit_request_changes",
-        defaultRoute: "cli",
-        fallbackRoutes: [],
-      },
-      {
-        task: "pr.review.submit_comment",
-        defaultRoute: "cli",
-        fallbackRoutes: [],
-      },
-      {
-        task: "pr.merge.execute",
+        task: "pr.checks.failed",
         defaultRoute: "cli",
         fallbackRoutes: [],
       },
@@ -211,7 +201,12 @@ describe("capabilityRegistry", () => {
         fallbackRoutes: [],
       },
       {
-        task: "pr.reviewers.request",
+        task: "pr.merge.status",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "pr.merge",
         defaultRoute: "cli",
         fallbackRoutes: [],
       },

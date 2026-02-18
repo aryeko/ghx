@@ -1,4 +1,4 @@
-capability_id: pr.reviewers.request
+capability_id: pr.review.request
 version: "1.0.0"
 description: Request pull request reviewers.
 input_schema:

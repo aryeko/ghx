@@ -1,13 +1,16 @@
-capability_id: pr.review.submit_request_changes
+capability_id: pr.review.submit
 version: "1.0.0"
-description: Submit a pull request review requesting changes.
+description: Submit a pull request review (approve, request changes, or comment).
 input_schema:
   type: object
-  required: [owner, name, prNumber, body]
+  required: [owner, name, prNumber, event]
   properties:
     owner: { type: string, minLength: 1 }
     name: { type: string, minLength: 1 }
     prNumber: { type: integer, minimum: 1 }
+    event:
+      type: string
+      enum: [APPROVE, COMMENT, REQUEST_CHANGES]
     body: { type: string, minLength: 1 }
   additionalProperties: false
 output_schema:
@@ -15,9 +18,9 @@ output_schema:
   required: [prNumber, event, submitted, body]
   properties:
     prNumber: { type: integer, minimum: 1 }
-    event: { type: string, const: REQUEST_CHANGES }
+    event: { type: string, enum: [APPROVE, COMMENT, REQUEST_CHANGES] }
     submitted: { type: boolean }
-    body: { type: string, minLength: 1 }
+    body: { type: [string, "null"] }
   additionalProperties: false
 routing:
   preferred: cli

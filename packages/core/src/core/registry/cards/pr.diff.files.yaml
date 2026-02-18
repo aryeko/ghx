@@ -1,6 +1,6 @@
-capability_id: pr.reviews.list
+capability_id: pr.diff.files
 version: "1.0.0"
-description: List pull request reviews.
+description: List changed files in a pull request diff.
 input_schema:
   type: object
   required: [owner, name, prNumber]
@@ -19,15 +19,11 @@ output_schema:
       type: array
       items:
         type: object
-        required: [id, authorLogin, body, state, submittedAt, url, commitOid]
+        required: [path, additions, deletions]
         properties:
-          id: { type: string, minLength: 1 }
-          authorLogin: { type: [string, "null"] }
-          body: { type: string }
-          state: { type: string }
-          submittedAt: { type: [string, "null"] }
-          url: { type: string, minLength: 1 }
-          commitOid: { type: [string, "null"] }
+          path: { type: string, minLength: 1 }
+          additions: { type: integer, minimum: 0 }
+          deletions: { type: integer, minimum: 0 }
         additionalProperties: false
     pageInfo:
       type: object
@@ -41,7 +37,7 @@ routing:
   preferred: graphql
   fallbacks: []
 graphql:
-  operationName: PrReviewsList
-  documentPath: src/gql/operations/pr-reviews-list.graphql
+  operationName: PrDiffListFiles
+  documentPath: src/gql/operations/pr-diff-list-files.graphql
 cli:
   command: pr view

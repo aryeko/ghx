@@ -4,8 +4,8 @@ import type { TaskRequest } from "../../src/core/contracts/task.js"
 import { executeTask } from "../../src/core/routing/engine.js"
 import { createGithubClient } from "../../src/gql/client.js"
 
-describe("executeTask pr.mergeability.view", () => {
-  it("returns cli envelope for pr.mergeability.view", async () => {
+describe("executeTask pr.merge.status", () => {
+  it("returns cli envelope for pr.merge.status", async () => {
     const githubClient = createGithubClient({
       async execute<TData>(): Promise<TData> {
         return {} as TData
@@ -13,7 +13,7 @@ describe("executeTask pr.mergeability.view", () => {
     })
 
     const request: TaskRequest = {
-      task: "pr.mergeability.view",
+      task: "pr.merge.status",
       input: {
         owner: "go-modkit",
         name: "modkit",
@@ -50,7 +50,7 @@ describe("executeTask pr.mergeability.view", () => {
     })
 
     const request: TaskRequest = {
-      task: "pr.mergeability.view",
+      task: "pr.merge.status",
       input: {
         owner: "go-modkit",
         name: "modkit",

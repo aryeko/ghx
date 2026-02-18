@@ -9,7 +9,7 @@ describe("validateScenario", () => {
       id: "pr-review-wf-001",
       name: "PR review workflow",
       prompt: "Resolve review threads on PR #42 in aryeko/ghx-bench-fixtures.",
-      expected_capabilities: ["pr.comment.resolve"],
+      expected_capabilities: ["pr.thread.resolve"],
       timeout_ms: 90000,
       allowed_retries: 0,
       fixture: {

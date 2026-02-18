@@ -1,12 +1,11 @@
-capability_id: pr.comment.reply
+capability_id: pr.thread.resolve
 version: "1.0.0"
-description: Reply to a pull request review thread.
+description: Resolve a pull request review thread.
 input_schema:
   type: object
-  required: [threadId, body]
+  required: [threadId]
   properties:
     threadId: { type: string, minLength: 1 }
-    body: { type: string, minLength: 1 }
   additionalProperties: false
 output_schema:
   type: object
@@ -19,5 +18,5 @@ routing:
   preferred: graphql
   fallbacks: []
 graphql:
-  operationName: PrCommentReply
-  documentPath: src/gql/operations/pr-comment-reply.graphql
+  operationName: PrCommentResolve
+  documentPath: src/gql/operations/pr-comment-resolve.graphql

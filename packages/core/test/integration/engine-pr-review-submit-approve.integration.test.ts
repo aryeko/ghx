@@ -4,8 +4,8 @@ import type { TaskRequest } from "../../src/core/contracts/task.js"
 import { executeTask } from "../../src/core/routing/engine.js"
 import { createGithubClient } from "../../src/gql/client.js"
 
-describe("executeTask pr.review.submit_approve", () => {
-  it("returns cli envelope for pr.review.submit_approve", async () => {
+describe("executeTask pr.review.submit", () => {
+  it("returns cli envelope for pr.review.submit", async () => {
     const githubClient = createGithubClient({
       async execute<TData>(): Promise<TData> {
         return {} as TData
@@ -13,11 +13,12 @@ describe("executeTask pr.review.submit_approve", () => {
     })
 
     const request: TaskRequest = {
-      task: "pr.review.submit_approve",
+      task: "pr.review.submit",
       input: {
         owner: "go-modkit",
         name: "modkit",
         prNumber: 232,
+        event: "APPROVE",
         body: "Looks good!",
       },
     }
@@ -50,11 +51,12 @@ describe("executeTask pr.review.submit_approve", () => {
     })
 
     const request: TaskRequest = {
-      task: "pr.review.submit_approve",
+      task: "pr.review.submit",
       input: {
         owner: "go-modkit",
         name: "modkit",
         prNumber: 0,
+        event: "APPROVE",
         body: "Looks good!",
       },
     }

@@ -8,7 +8,7 @@ function createValidWorkflowScenario(): Record<string, unknown> {
     id: "repo-view-wf-001",
     name: "Repo view workflow",
     prompt: "Resolve review threads on PR #42 in aryeko/ghx-bench-fixtures.",
-    expected_capabilities: ["pr.comment.resolve"],
+    expected_capabilities: ["pr.thread.resolve"],
     timeout_ms: 180_000,
     allowed_retries: 0,
     fixture: {

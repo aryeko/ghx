@@ -14,20 +14,20 @@ export type CliCapabilityId =
   | "issue.comments.list"
   | "pr.view"
   | "pr.list"
-  | "pr.status.checks"
-  | "pr.checks.get_failed"
-  | "pr.mergeability.view"
-  | "pr.ready_for_review.set"
-  | "pr.review.submit_approve"
-  | "pr.review.submit_request_changes"
-  | "pr.review.submit_comment"
-  | "pr.merge.execute"
+  | "pr.create"
+  | "pr.update"
+  | "pr.checks.list"
+  | "pr.checks.failed"
+  | "pr.merge.status"
+  | "pr.review.submit"
+  | "pr.merge"
   | "pr.checks.rerun_failed"
   | "pr.checks.rerun_all"
-  | "pr.reviewers.request"
+  | "pr.review.request"
   | "pr.assignees.update"
   | "pr.branch.update"
   | "pr.diff.view"
+  | "pr.diff.files"
   | "check_run.annotations.list"
   | "workflow.runs.list"
   | "workflow.job.logs.raw"
@@ -65,9 +65,13 @@ const DEFAULT_LIST_FIRST = 30
 const MAX_WORKFLOW_JOB_LOG_CHARS = 50_000
 const REDACTED_CLI_ERROR_MESSAGE = "gh command failed; stderr redacted for safety"
 const NON_JSON_STDOUT_CAPABILITIES = new Set<CliCapabilityId>([
+  "pr.create",
+  "pr.update",
   "pr.checks.rerun_failed",
   "pr.checks.rerun_all",
-  "pr.reviewers.request",
+  "pr.review.request",
+  "pr.review.submit",
+  "pr.merge",
   "pr.assignees.update",
   "pr.branch.update",
   "workflow.run.cancel",
@@ -337,7 +341,7 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "pr.status.checks" || capabilityId === "pr.checks.get_failed") {
+  if (capabilityId === "pr.checks.list" || capabilityId === "pr.checks.failed") {
     const prNumber = parseStrictPositiveInt(params.prNumber)
     if (prNumber === null) {
       throw new Error(`Missing or invalid prNumber for ${capabilityId}`)
@@ -352,10 +356,10 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "pr.mergeability.view") {
+  if (capabilityId === "pr.merge.status") {
     const prNumber = parseStrictPositiveInt(params.prNumber)
     if (prNumber === null) {
-      throw new Error("Missing or invalid prNumber for pr.mergeability.view")
+      throw new Error("Missing or invalid prNumber for pr.merge.status")
     }
 
     const args = [...commandTokens(card, "pr view"), String(prNumber)]
@@ -370,36 +374,59 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "pr.ready_for_review.set") {
+  if (capabilityId === "pr.update") {
     const prNumber = parseStrictPositiveInt(params.prNumber)
     if (prNumber === null) {
-      throw new Error("Missing or invalid prNumber for pr.ready_for_review.set")
+      throw new Error("Missing or invalid prNumber for pr.update")
     }
 
-    if (typeof params.ready !== "boolean") {
-      throw new Error("Missing or invalid ready for pr.ready_for_review.set")
+    const title = parseNonEmptyString(params.title)
+    const body = typeof params.body === "string" ? params.body : null
+    const hasDraft = typeof params.draft === "boolean"
+    const hasEditFields = title !== null || body !== null
+
+    if (!hasEditFields && !hasDraft) {
+      throw new Error("Missing title, body, or draft for pr.update")
     }
 
-    const args = [...commandTokens(card, "pr ready"), String(prNumber)]
+    if (hasEditFields) {
+      const args = [...commandTokens(card, "pr edit"), String(prNumber)]
+      if (repo) {
+        args.push("--repo", repo)
+      }
+
+      if (title !== null) {
+        args.push("--title", title)
+      }
+
+      if (body !== null) {
+        args.push("--body", body)
+      }
+
+      return args
+    }
+
+    const args = ["pr", "ready", String(prNumber)]
     if (repo) {
       args.push("--repo", repo)
     }
 
-    if (!params.ready) {
+    if (params.draft === true) {
       args.push("--undo")
     }
 
     return args
   }
 
-  if (
-    capabilityId === "pr.review.submit_approve" ||
-    capabilityId === "pr.review.submit_request_changes" ||
-    capabilityId === "pr.review.submit_comment"
-  ) {
+  if (capabilityId === "pr.review.submit") {
     const prNumber = parseStrictPositiveInt(params.prNumber)
     if (prNumber === null) {
-      throw new Error(`Missing or invalid prNumber for ${capabilityId}`)
+      throw new Error("Missing or invalid prNumber for pr.review.submit")
+    }
+
+    const event = params.event
+    if (event !== "APPROVE" && event !== "COMMENT" && event !== "REQUEST_CHANGES") {
+      throw new Error("Missing or invalid event for pr.review.submit")
     }
 
     const args = [...commandTokens(card, "pr review"), String(prNumber)]
@@ -407,7 +434,7 @@ function buildArgs(
       args.push("--repo", repo)
     }
 
-    if (capabilityId === "pr.review.submit_approve") {
+    if (event === "APPROVE") {
       args.push("--approve")
       const body = parseNonEmptyString(params.body)
       if (body) {
@@ -418,10 +445,10 @@ function buildArgs(
 
     const body = parseNonEmptyString(params.body)
     if (body === null) {
-      throw new Error(`Missing or invalid body for ${capabilityId}`)
+      throw new Error("Missing or invalid body for pr.review.submit")
     }
 
-    if (capabilityId === "pr.review.submit_request_changes") {
+    if (event === "REQUEST_CHANGES") {
       args.push("--request-changes", "--body", body)
       return args
     }
@@ -430,19 +457,19 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "pr.merge.execute") {
+  if (capabilityId === "pr.merge") {
     const prNumber = parseStrictPositiveInt(params.prNumber)
     if (prNumber === null) {
-      throw new Error("Missing or invalid prNumber for pr.merge.execute")
+      throw new Error("Missing or invalid prNumber for pr.merge")
     }
 
     const method = params.method === undefined ? "merge" : params.method
     if (method !== "merge" && method !== "squash" && method !== "rebase") {
-      throw new Error("Missing or invalid method for pr.merge.execute")
+      throw new Error("Missing or invalid method for pr.merge")
     }
 
     if (params.deleteBranch !== undefined && typeof params.deleteBranch !== "boolean") {
-      throw new Error("Missing or invalid deleteBranch for pr.merge.execute")
+      throw new Error("Missing or invalid deleteBranch for pr.merge")
     }
 
     const args = [...commandTokens(card, "pr merge"), String(prNumber)]
@@ -456,6 +483,59 @@ function buildArgs(
       args.push("--delete-branch")
     }
 
+    return args
+  }
+
+  if (capabilityId === "pr.create") {
+    const title = parseNonEmptyString(params.title)
+    if (title === null) {
+      throw new Error("Missing or invalid title for pr.create")
+    }
+
+    const head = parseNonEmptyString(params.head)
+    if (head === null) {
+      throw new Error("Missing or invalid head for pr.create")
+    }
+
+    const args = [...commandTokens(card, "pr create"), "--title", title, "--head", head]
+    if (repo) {
+      args.push("--repo", repo)
+    }
+
+    const body = parseNonEmptyString(params.body)
+    if (body) {
+      args.push("--body", body)
+    }
+
+    const base = parseNonEmptyString(params.base)
+    if (base) {
+      args.push("--base", base)
+    }
+
+    if (params.draft === true) {
+      args.push("--draft")
+    }
+
+    return args
+  }
+
+  if (capabilityId === "pr.diff.files") {
+    const prNumber = parseStrictPositiveInt(params.prNumber)
+    if (prNumber === null) {
+      throw new Error("Missing or invalid prNumber for pr.diff.files")
+    }
+
+    const first = parseListFirst(params.first)
+    if (first === null) {
+      throw new Error("Missing or invalid first for pr.diff.files")
+    }
+
+    const args = [...commandTokens(card, "pr view"), String(prNumber)]
+    if (repo) {
+      args.push("--repo", repo)
+    }
+
+    args.push("--json", jsonFieldsFromCard(card, "files"))
     return args
   }
 
@@ -482,10 +562,10 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "pr.reviewers.request") {
+  if (capabilityId === "pr.review.request") {
     const prNumber = parseStrictPositiveInt(params.prNumber)
     if (prNumber === null) {
-      throw new Error("Missing or invalid prNumber for pr.reviewers.request")
+      throw new Error("Missing or invalid prNumber for pr.review.request")
     }
 
     const reviewers = Array.isArray(params.reviewers)
@@ -495,7 +575,7 @@ function buildArgs(
       : []
 
     if (reviewers.length === 0) {
-      throw new Error("Missing or invalid reviewers for pr.reviewers.request")
+      throw new Error("Missing or invalid reviewers for pr.review.request")
     }
 
     const args = [...commandTokens(card, "pr edit"), String(prNumber)]
@@ -1418,14 +1498,14 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "pr.status.checks" || capabilityId === "pr.checks.get_failed") {
+  if (capabilityId === "pr.checks.list" || capabilityId === "pr.checks.failed") {
     const checks = Array.isArray(data) ? data.map((entry) => normalizeCheckItem(entry)) : []
     const failed = checks.filter((entry) => isCheckFailureBucket(entry.bucket))
     const pending = checks.filter((entry) => isCheckPendingBucket(entry.bucket))
     const passed = checks.filter((entry) => isCheckPassBucket(entry.bucket))
 
     return {
-      items: capabilityId === "pr.checks.get_failed" ? failed : checks,
+      items: capabilityId === "pr.checks.failed" ? failed : checks,
       summary: {
         total: checks.length,
         failed: failed.length,
@@ -1435,7 +1515,7 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "pr.mergeability.view") {
+  if (capabilityId === "pr.merge.status") {
     const input =
       typeof data === "object" && data !== null && !Array.isArray(data)
         ? (data as Record<string, unknown>)
@@ -1450,28 +1530,42 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "pr.ready_for_review.set") {
+  if (capabilityId === "pr.update") {
     const prNumber = Number(params.prNumber)
-    const ready = Boolean(params.ready)
+    const hasDraft = typeof params.draft === "boolean"
+
+    if (hasDraft && params.title === undefined && params.body === undefined) {
+      return {
+        number: prNumber,
+        url: "",
+        title: "",
+        state: "OPEN",
+        draft: params.draft as boolean,
+      }
+    }
+
+    const input =
+      typeof data === "object" && data !== null && !Array.isArray(data)
+        ? (data as Record<string, unknown>)
+        : {}
 
     return {
-      prNumber,
-      isDraft: !ready,
+      number: prNumber,
+      url: typeof input.url === "string" ? input.url : "",
+      title: typeof input.title === "string" ? input.title : "",
+      state: typeof input.state === "string" ? input.state : "OPEN",
+      draft:
+        typeof input.isDraft === "boolean"
+          ? input.isDraft
+          : typeof params.draft === "boolean"
+            ? params.draft
+            : false,
     }
   }
 
-  if (
-    capabilityId === "pr.review.submit_approve" ||
-    capabilityId === "pr.review.submit_request_changes" ||
-    capabilityId === "pr.review.submit_comment"
-  ) {
+  if (capabilityId === "pr.review.submit") {
     const prNumber = Number(params.prNumber)
-    const event =
-      capabilityId === "pr.review.submit_approve"
-        ? "APPROVE"
-        : capabilityId === "pr.review.submit_request_changes"
-          ? "REQUEST_CHANGES"
-          : "COMMENT"
+    const event = String(params.event)
 
     return {
       prNumber,
@@ -1481,7 +1575,7 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "pr.merge.execute") {
+  if (capabilityId === "pr.merge") {
     const method =
       params.method === "squash" || params.method === "rebase" ? params.method : "merge"
     return {
@@ -1489,6 +1583,16 @@ function normalizeCliData(
       method,
       queued: true,
       deleteBranch: params.deleteBranch === true,
+    }
+  }
+
+  if (capabilityId === "pr.create") {
+    return {
+      number: 0,
+      url: "",
+      title: typeof params.title === "string" ? params.title : "",
+      state: "OPEN",
+      draft: params.draft === true,
     }
   }
 
@@ -1508,7 +1612,7 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "pr.reviewers.request") {
+  if (capabilityId === "pr.review.request") {
     const reviewers = Array.isArray(params.reviewers)
       ? params.reviewers.filter(
           (value): value is string => typeof value === "string" && value.trim().length > 0,
@@ -2004,6 +2108,80 @@ export async function runCliCapability(
       const normalized = normalizeCliData(capabilityId, parseCliData(result.stdout), params, {
         wasDraft: true,
       })
+      return normalizeResult(normalized, "cli", { capabilityId, reason: "CARD_FALLBACK" })
+    }
+
+    if (capabilityId === "pr.update") {
+      const prNumber = parseStrictPositiveInt(params.prNumber)
+      if (prNumber === null) {
+        throw new Error("Missing or invalid prNumber for pr.update")
+      }
+
+      const owner = String(params.owner ?? "")
+      const name = String(params.name ?? "")
+      const repo = owner && name ? `${owner}/${name}` : ""
+
+      const title = parseNonEmptyString(params.title)
+      const body = typeof params.body === "string" ? params.body : null
+      const hasDraft = typeof params.draft === "boolean"
+      const hasEditFields = title !== null || body !== null
+
+      if (!hasEditFields && !hasDraft) {
+        throw new Error("Missing title, body, or draft for pr.update")
+      }
+
+      if (hasEditFields) {
+        const editArgs = ["pr", "edit", String(prNumber)]
+        if (repo) {
+          editArgs.push("--repo", repo)
+        }
+        if (title !== null) {
+          editArgs.push("--title", title)
+        }
+        if (body !== null) {
+          editArgs.push("--body", body)
+        }
+        const editResult = await runner.run("gh", editArgs, DEFAULT_TIMEOUT_MS)
+        if (editResult.exitCode !== 0) {
+          const code = mapErrorToCode(editResult.stderr)
+          return normalizeError(
+            {
+              code,
+              message: sanitizeCliErrorMessage(editResult.stderr, editResult.exitCode),
+              retryable: isRetryableErrorCode(code),
+              details: { capabilityId, exitCode: editResult.exitCode },
+            },
+            "cli",
+            { capabilityId, reason: "CARD_FALLBACK" },
+          )
+        }
+      }
+
+      if (hasDraft) {
+        const readyArgs = ["pr", "ready", String(prNumber)]
+        if (repo) {
+          readyArgs.push("--repo", repo)
+        }
+        if (params.draft === true) {
+          readyArgs.push("--undo")
+        }
+        const readyResult = await runner.run("gh", readyArgs, DEFAULT_TIMEOUT_MS)
+        if (readyResult.exitCode !== 0) {
+          const code = mapErrorToCode(readyResult.stderr)
+          return normalizeError(
+            {
+              code,
+              message: sanitizeCliErrorMessage(readyResult.stderr, readyResult.exitCode),
+              retryable: isRetryableErrorCode(code),
+              details: { capabilityId, exitCode: readyResult.exitCode },
+            },
+            "cli",
+            { capabilityId, reason: "CARD_FALLBACK" },
+          )
+        }
+      }
+
+      const normalized = normalizeCliData(capabilityId, {}, params)
       return normalizeResult(normalized, "cli", { capabilityId, reason: "CARD_FALLBACK" })
     }
 
