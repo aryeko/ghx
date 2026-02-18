@@ -22,10 +22,8 @@ output_schema:
     defaultBranch: { type: [string, "null"] }
   additionalProperties: false
 routing:
-  preferred: cli
-  fallbacks: [graphql]
-  notes:
-    - Prefer CLI for low-latency structured fetches when gh authentication is available.
+  preferred: graphql
+  fallbacks: [cli]
 graphql:
   operationName: RepoView
   documentPath: src/gql/operations/repo-view.graphql

@@ -20,8 +20,8 @@ output_schema:
     state: { type: string }
   additionalProperties: false
 routing:
-  preferred: cli
-  fallbacks: []
+  preferred: graphql
+  fallbacks: [cli]
 cli:
   command: pr view
   jsonFields: [mergeable, mergeStateStatus, reviewDecision, isDraft, state]

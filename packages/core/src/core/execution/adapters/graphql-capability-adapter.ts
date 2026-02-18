@@ -19,6 +19,7 @@ import type {
   PrCommentsListInput,
   PrDiffListFilesInput,
   PrListInput,
+  PrMergeStatusInput,
   PrReviewsListInput,
   PrViewInput,
   RepoViewInput,
@@ -56,6 +57,7 @@ export type GraphqlCapabilityId =
   | "pr.review.list"
   | "pr.diff.files"
   | "pr.thread.reply"
+  | "pr.merge.status"
   | "pr.thread.resolve"
   | "pr.thread.unresolve"
 
@@ -109,6 +111,7 @@ export async function runGraphqlCapability(
     | "fetchPrCommentsList"
     | "fetchPrReviewsList"
     | "fetchPrDiffListFiles"
+    | "fetchPrMergeStatus"
     | "replyToReviewThread"
     | "resolveReviewThread"
     | "unresolveReviewThread"
@@ -303,6 +306,11 @@ export async function runGraphqlCapability(
 
     if (capabilityId === "pr.review.list") {
       const data = await client.fetchPrReviewsList(withDefaultFirst(params) as PrReviewsListInput)
+      return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
+    }
+
+    if (capabilityId === "pr.merge.status") {
+      const data = await client.fetchPrMergeStatus(params as PrMergeStatusInput)
       return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
     }
 

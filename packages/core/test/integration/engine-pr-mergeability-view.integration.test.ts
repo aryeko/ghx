@@ -5,10 +5,20 @@ import { executeTask } from "../../src/core/routing/engine.js"
 import { createGithubClient } from "../../src/gql/client.js"
 
 describe("executeTask pr.merge.status", () => {
-  it("returns cli envelope for pr.merge.status", async () => {
+  it("returns graphql envelope for pr.merge.status", async () => {
     const githubClient = createGithubClient({
       async execute<TData>(): Promise<TData> {
-        return {} as TData
+        return {
+          repository: {
+            pullRequest: {
+              mergeable: "MERGEABLE",
+              mergeStateStatus: "CLEAN",
+              reviewDecision: "APPROVED",
+              isDraft: false,
+              state: "OPEN",
+            },
+          },
+        } as TData
       },
     })
 
@@ -23,23 +33,11 @@ describe("executeTask pr.merge.status", () => {
 
     const result = await executeTask(request, {
       githubClient,
-      ghCliAvailable: true,
-      ghAuthenticated: true,
-      cliRunner: {
-        run: async () => ({
-          stdout: JSON.stringify({
-            mergeable: true,
-            mergeableState: "clean",
-            mergeConflictCount: 0,
-          }),
-          stderr: "",
-          exitCode: 0,
-        }),
-      },
+      githubToken: "test-token",
     })
 
     expect(result.ok).toBe(true)
-    expect(result.meta.route_used).toBe("cli")
+    expect(result.meta.route_used).toBe("graphql")
   })
 
   it("returns validation error envelope for invalid prNumber", async () => {

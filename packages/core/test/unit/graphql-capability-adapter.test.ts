@@ -23,6 +23,7 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
@@ -56,6 +57,7 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
@@ -96,6 +98,7 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
@@ -145,6 +148,7 @@ describe("runGraphqlCapability", () => {
         items: [],
         pageInfo: { hasNextPage: false, endCursor: null },
       })),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
@@ -178,6 +182,7 @@ describe("runGraphqlCapability", () => {
       fetchPrList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       fetchPrCommentsList: vi.fn(async () => ({
         items: [
           {
@@ -263,6 +268,7 @@ describe("runGraphqlCapability", () => {
         },
       })),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
@@ -307,6 +313,7 @@ describe("runGraphqlCapability", () => {
           endCursor: null,
         },
       })),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
@@ -328,6 +335,46 @@ describe("runGraphqlCapability", () => {
     )
   })
 
+  it("routes pr.merge.status through the GraphQL client", async () => {
+    const client = {
+      fetchRepoView: vi.fn(),
+      fetchIssueView: vi.fn(),
+      fetchIssueList: vi.fn(),
+      fetchIssueCommentsList: vi.fn(),
+      fetchPrView: vi.fn(),
+      fetchPrList: vi.fn(),
+      fetchPrCommentsList: vi.fn(),
+      fetchPrReviewsList: vi.fn(),
+      fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(async () => ({
+        mergeable: "MERGEABLE",
+        mergeStateStatus: "CLEAN",
+        reviewDecision: "APPROVED",
+        isDraft: false,
+        state: "OPEN",
+      })),
+      replyToReviewThread: vi.fn(),
+      resolveReviewThread: vi.fn(),
+      unresolveReviewThread: vi.fn(),
+    }
+
+    const result = await runGraphqlCapability(client, "pr.merge.status", {
+      owner: "acme",
+      name: "modkit",
+      prNumber: 1,
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.meta.route_used).toBe("graphql")
+    expect(result.data).toEqual({
+      mergeable: "MERGEABLE",
+      mergeStateStatus: "CLEAN",
+      reviewDecision: "APPROVED",
+      isDraft: false,
+      state: "OPEN",
+    })
+  })
+
   it("routes pr.thread.reply through the GraphQL client", async () => {
     const client = {
       fetchRepoView: vi.fn(),
@@ -339,6 +386,7 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(async () => ({ id: "thread-1", isResolved: false })),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
@@ -364,6 +412,7 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(async () => ({ id: "thread-1", isResolved: true })),
       unresolveReviewThread: vi.fn(async () => ({ id: "thread-1", isResolved: false })),
@@ -393,6 +442,7 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
@@ -488,6 +538,7 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
@@ -586,6 +637,7 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
@@ -613,6 +665,7 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
@@ -639,6 +692,7 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),

@@ -7,8 +7,8 @@ describe("capabilityRegistry", () => {
     expect(capabilityRegistry).toEqual([
       {
         task: "repo.view",
-        defaultRoute: "cli",
-        fallbackRoutes: ["graphql"],
+        defaultRoute: "graphql",
+        fallbackRoutes: ["cli"],
       },
       {
         task: "repo.labels.list",
@@ -202,8 +202,8 @@ describe("capabilityRegistry", () => {
       },
       {
         task: "pr.merge.status",
-        defaultRoute: "cli",
-        fallbackRoutes: [],
+        defaultRoute: "graphql",
+        fallbackRoutes: ["cli"],
       },
       {
         task: "pr.merge",
