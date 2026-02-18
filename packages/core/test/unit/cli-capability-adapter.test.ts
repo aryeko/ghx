@@ -1232,41 +1232,6 @@ describe("runCliCapability", () => {
     )
   })
 
-  it("normalizes workflow run jobs list", async () => {
-    const runner = {
-      run: vi.fn(async () => ({
-        stdout: JSON.stringify({
-          jobs: [
-            {
-              databaseId: 11,
-              name: "build",
-              status: "completed",
-              conclusion: "success",
-              startedAt: "2025-01-01T00:00:00Z",
-              completedAt: "2025-01-01T00:01:00Z",
-              url: "https://example.com/job/11",
-            },
-          ],
-        }),
-        stderr: "",
-        exitCode: 0,
-      })),
-    }
-
-    const result = await runCliCapability(runner, "workflow.run.jobs.list", {
-      owner: "acme",
-      name: "modkit",
-      runId: 200,
-    })
-
-    expect(result.ok).toBe(true)
-    expect(result.data).toEqual(
-      expect.objectContaining({
-        items: [expect.objectContaining({ id: 11, name: "build" })],
-      }),
-    )
-  })
-
   it("returns bounded workflow job logs payload", async () => {
     const runner = {
       run: vi.fn(async () => ({
@@ -1354,11 +1319,7 @@ describe("runCliCapability", () => {
       name: "modkit",
       first: 0,
     })
-    const workflowJobsResult = await runCliCapability(runner, "workflow.run.jobs.list", {
-      owner: "acme",
-      name: "modkit",
-      runId: 0,
-    })
+
     const workflowLogsResult = await runCliCapability(runner, "workflow.job.logs.raw", {
       owner: "acme",
       name: "modkit",
@@ -1375,7 +1336,7 @@ describe("runCliCapability", () => {
     expect(readyResult.ok).toBe(false)
     expect(readyInvalidPrResult.ok).toBe(false)
     expect(workflowListResult.ok).toBe(false)
-    expect(workflowJobsResult.ok).toBe(false)
+
     expect(workflowLogsResult.ok).toBe(false)
     expect(checkRunInvalidIdResult.ok).toBe(false)
     expect(runner.run).not.toHaveBeenCalled()
@@ -1471,11 +1432,6 @@ describe("runCliCapability", () => {
       name: "modkit",
       first: 1,
     })
-    const jobsResult = await runCliCapability(runner, "workflow.run.jobs.list", {
-      owner: "acme",
-      name: "modkit",
-      runId: 1,
-    })
     const annotationsResult = await runCliCapability(runner, "check_run.annotations.list", {
       owner: "acme",
       name: "modkit",
@@ -1506,11 +1462,6 @@ describe("runCliCapability", () => {
     expect(runsResult.data).toEqual(
       expect.objectContaining({
         items: [expect.objectContaining({ id: 0, workflowName: null, status: null })],
-      }),
-    )
-    expect(jobsResult.data).toEqual(
-      expect.objectContaining({
-        items: [expect.objectContaining({ id: 0, name: null, status: null })],
       }),
     )
     expect(annotationsResult.data).toEqual(
@@ -1572,12 +1523,6 @@ describe("runCliCapability", () => {
       name: "modkit",
       first: 1,
     })
-    const jobsResult = await runCliCapability(runner, "workflow.run.jobs.list", {
-      owner: "acme",
-      name: "modkit",
-      runId: 1,
-    })
-
     expect(checksResult.data).toEqual(
       expect.objectContaining({
         items: [],
@@ -1596,11 +1541,6 @@ describe("runCliCapability", () => {
             url: null,
           }),
         ],
-      }),
-    )
-    expect(jobsResult.data).toEqual(
-      expect.objectContaining({
-        items: [],
       }),
     )
   })

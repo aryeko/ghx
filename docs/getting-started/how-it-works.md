@@ -290,7 +290,7 @@ ghx supports three execution routes because each is optimal for different scenar
 
 - `pr.list` with filtering
 - `issue.comments.list` with pagination
-- `workflow_run.jobs.list` (deeply nested query)
+
 
 ### REST (Planned)
 

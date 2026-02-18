@@ -202,40 +202,6 @@ npx ghx run workflow_run.view --input '{
 
 ---
 
-### Jobs
-
-#### `workflow_run.jobs.list`
-
-**Description:** List jobs in a workflow run.
-
-**Input:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| owner | string | yes | Repository owner |
-| name | string | yes | Repository name |
-| runId | integer | yes | Workflow run ID (1+) |
-
-**Output:**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| items | array | Jobs (id, name, status, conclusion, startedAt, completedAt, url) |
-
-**Routes:** cli (preferred)
-
-**Example:**
-
-```bash
-npx ghx run workflow_run.jobs.list --input '{
-  "owner": "octocat",
-  "name": "hello-world",
-  "runId": 123456789
-}'
-```
-
----
-
 ### Run Control
 
 #### `workflow_run.cancel`

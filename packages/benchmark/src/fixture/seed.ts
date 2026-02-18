@@ -373,6 +373,75 @@ function findPrThreadId(repo: string, prNumber: number): string | null {
   return typeof id === "string" && id.length > 0 ? id : null
 }
 
+function getAllPrThreadIds(repo: string, prNumber: number): string[] {
+  const { owner, name } = parseRepo(repo)
+  const result = tryRunGhJson([
+    "api",
+    "graphql",
+    "-f",
+    "query=query($owner:String!,$repo:String!,$num:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$num){reviewThreads(first:20){nodes{id}}}}}",
+    "-F",
+    `owner=${owner}`,
+    "-F",
+    `repo=${name}`,
+    "-F",
+    `num=${prNumber}`,
+  ])
+
+  if (typeof result !== "object" || result === null) {
+    return []
+  }
+
+  const nodes = (
+    ((result as { data?: unknown }).data as { repository?: unknown } | undefined)?.repository as
+      | { pullRequest?: unknown }
+      | undefined
+  )?.pullRequest as { reviewThreads?: unknown } | undefined
+
+  const threadNodes = parseArrayResponse((nodes?.reviewThreads ?? {}) as unknown)
+  return threadNodes
+    .filter(
+      (node): node is { id: string } =>
+        typeof node === "object" &&
+        node !== null &&
+        typeof (node as { id?: unknown }).id === "string",
+    )
+    .map((node) => node.id)
+}
+
+export function resetPrReviewThreads(repo: string, prNumber: number, reviewerToken: string): void {
+  const threadIds = getAllPrThreadIds(repo, prNumber)
+
+  for (const threadId of threadIds) {
+    tryRunGhWithToken(
+      [
+        "api",
+        "graphql",
+        "-f",
+        "query=mutation($threadId:ID!){unresolveReviewThread(input:{threadId:$threadId}){thread{id isResolved}}}",
+        "-F",
+        `threadId=${threadId}`,
+      ],
+      reviewerToken,
+    )
+  }
+
+  const firstThreadId = threadIds[0]
+  if (firstThreadId) {
+    tryRunGhWithToken(
+      [
+        "api",
+        "graphql",
+        "-f",
+        "query=mutation($threadId:ID!){resolveReviewThread(input:{threadId:$threadId}){thread{id isResolved}}}",
+        "-F",
+        `threadId=${firstThreadId}`,
+      ],
+      reviewerToken,
+    )
+  }
+}
+
 function ensurePrThread(repo: string, prNumber: number, seedId: string): string {
   const existingThreadId = findPrThreadId(repo, prNumber)
   if (existingThreadId) {

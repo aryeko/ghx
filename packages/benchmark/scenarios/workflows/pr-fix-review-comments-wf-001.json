@@ -18,7 +18,8 @@
       "input.name": "repo.name",
       "input.prNumber": "resources.pr_with_reviews.number"
     },
-    "requires": ["pr_with_reviews"]
+    "requires": ["pr_with_reviews"],
+    "reseed_per_iteration": true
   },
   "assertions": {
     "expected_outcome": "success",

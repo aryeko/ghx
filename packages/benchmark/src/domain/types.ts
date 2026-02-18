@@ -133,6 +133,7 @@ export type WorkflowScenario = {
     branch?: string
     bindings?: Record<string, string>
     requires?: string[]
+    reseed_per_iteration?: boolean
   }
   assertions: WorkflowAssertions
   tags: string[]

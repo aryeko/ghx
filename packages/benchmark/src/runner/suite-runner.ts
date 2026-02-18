@@ -13,8 +13,9 @@ import type {
   WorkflowScenario,
 } from "../domain/types.js"
 import { aggregateToolCounts } from "../extract/tool-usage.js"
+import { mintFixtureAppToken } from "../fixture/app-auth.js"
 import { loadFixtureManifest, resolveWorkflowFixtureBindings } from "../fixture/manifest.js"
-import { seedFixtureManifest } from "../fixture/seed.js"
+import { resetPrReviewThreads, seedFixtureManifest } from "../fixture/seed.js"
 import { loadScenarioSets, loadScenarios } from "../scenario/loader.js"
 import { isObject } from "../utils/guards.js"
 import { type BenchmarkClient, withIsolatedBenchmarkClient } from "./client-lifecycle.js"
@@ -1057,6 +1058,9 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
       }
     }
 
+    const needsReseed = selectedScenarios.some((s) => s.fixture?.reseed_per_iteration)
+    const reseedReviewerToken = needsReseed ? await mintFixtureAppToken() : null
+
     let completedExecutions = 0
     let successExecutions = 0
     emitProgressEvent("suite_started", {
@@ -1069,6 +1073,20 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
 
     for (const scenario of selectedScenarios) {
       for (let iteration = 1; iteration <= repetitions; iteration += 1) {
+        if (
+          iteration > 1 &&
+          scenario.fixture?.reseed_per_iteration &&
+          fixtureManifest &&
+          reseedReviewerToken
+        ) {
+          const prWithReviews = fixtureManifest.resources.pr_with_reviews as
+            | { number?: unknown }
+            | undefined
+          const prNumber = typeof prWithReviews?.number === "number" ? prWithReviews.number : null
+          if (prNumber !== null) {
+            resetPrReviewThreads(fixtureManifest.repo.full_name, prNumber, reseedReviewerToken)
+          }
+        }
         emitProgressEvent("scenario_started", {
           scenario_id: scenario.id,
           iteration,

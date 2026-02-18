@@ -30,7 +30,6 @@ export type CliCapabilityId =
   | "pr.diff.view"
   | "check_run.annotations.list"
   | "workflow.runs.list"
-  | "workflow.run.jobs.list"
   | "workflow.job.logs.raw"
   | "workflow.job.logs.get"
   | "workflow.list"
@@ -617,21 +616,6 @@ function buildArgs(
       "--json",
       jsonFieldsFromCard(card, "databaseId,workflowName,status,conclusion,headBranch,url"),
     )
-    return args
-  }
-
-  if (capabilityId === "workflow.run.jobs.list") {
-    const runId = parseStrictPositiveInt(params.runId)
-    if (runId === null) {
-      throw new Error("Missing or invalid runId for workflow.run.jobs.list")
-    }
-
-    const args = [...commandTokens(card, "run view"), String(runId)]
-    if (repo) {
-      args.push("--repo", repo)
-    }
-
-    args.push("--json", "jobs")
     return args
   }
 
@@ -1626,41 +1610,6 @@ function normalizeCliData(
         hasNextPage: false,
         endCursor: null,
       },
-    }
-  }
-
-  if (capabilityId === "workflow.run.jobs.list") {
-    const root =
-      typeof data === "object" && data !== null && !Array.isArray(data)
-        ? (data as Record<string, unknown>)
-        : {}
-    const jobs = Array.isArray(root.jobs) ? root.jobs : []
-
-    return {
-      items: jobs.map((job) => {
-        if (typeof job !== "object" || job === null || Array.isArray(job)) {
-          return {
-            id: 0,
-            name: null,
-            status: null,
-            conclusion: null,
-            startedAt: null,
-            completedAt: null,
-            url: null,
-          }
-        }
-
-        const record = job as Record<string, unknown>
-        return {
-          id: typeof record.databaseId === "number" ? record.databaseId : 0,
-          name: typeof record.name === "string" ? record.name : null,
-          status: typeof record.status === "string" ? record.status : null,
-          conclusion: typeof record.conclusion === "string" ? record.conclusion : null,
-          startedAt: typeof record.startedAt === "string" ? record.startedAt : null,
-          completedAt: typeof record.completedAt === "string" ? record.completedAt : null,
-          url: typeof record.url === "string" ? record.url : null,
-        }
-      }),
     }
   }
 

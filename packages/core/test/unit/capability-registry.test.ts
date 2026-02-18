@@ -320,11 +320,7 @@ describe("capabilityRegistry", () => {
         defaultRoute: "cli",
         fallbackRoutes: [],
       },
-      {
-        task: "workflow.run.jobs.list",
-        defaultRoute: "cli",
-        fallbackRoutes: [],
-      },
+
       {
         task: "workflow.run.rerun_all",
         defaultRoute: "cli",

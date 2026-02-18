@@ -164,7 +164,7 @@ const result = await tool.execute("repo.view", { owner: "aryeko", name: "ghx" })
 
 **Pull Requests (execute)** -- `pr.comment.reply`, `pr.comment.resolve`, `pr.comment.unresolve`, `pr.ready_for_review.set`, `pr.review.submit_approve`, `pr.review.submit_request_changes`, `pr.review.submit_comment`, `pr.merge.execute`, `pr.checks.rerun_failed`, `pr.checks.rerun_all`, `pr.reviewers.request`, `pr.assignees.update`, `pr.branch.update`
 
-**CI Diagnostics** -- `check_run.annotations.list`, `workflow_runs.list`, `workflow_run.jobs.list`, `workflow_job.logs.get`, `workflow_job.logs.analyze`
+**CI Diagnostics** -- `check_run.annotations.list`, `workflow_runs.list`, `workflow_job.logs.get`, `workflow_job.logs.analyze`
 
 **Releases** -- `release.list`, `release.get`, `release.create_draft`, `release.update`, `release.publish_draft`
 

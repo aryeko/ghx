@@ -87,7 +87,7 @@ graph TB
 | `workflow_dispatch.run` | Trigger a workflow dispatch event. | cli (preferred) |
 | `workflow_runs.list` | List workflow runs for a repository. | cli (preferred) |
 | `workflow_run.view` | View a workflow run with its jobs. | cli (preferred) |
-| `workflow_run.jobs.list` | List jobs in a workflow run. | cli (preferred) |
+
 | `workflow_run.cancel` | Cancel a workflow run. | cli (preferred) |
 | `workflow_run.rerun_all` | Rerun all jobs in a workflow run. | cli (preferred) |
 | `workflow_run.rerun_failed` | Rerun failed jobs for a workflow run. | cli (preferred) |

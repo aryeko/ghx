@@ -74,7 +74,7 @@ describe("operation cards registry", () => {
       "workflow.job.logs.raw",
       "workflow.run.artifacts.list",
       "workflow.run.cancel",
-      "workflow.run.jobs.list",
+
       "workflow.run.rerun_all",
       "workflow.run.rerun_failed",
       "workflow.run.view",

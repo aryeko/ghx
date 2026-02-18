@@ -37,6 +37,7 @@ const fixtureSchema = z
     branch: z.string().optional(),
     bindings: z.record(z.string(), z.string().min(1)).optional(),
     requires: z.array(z.string().min(1)).optional(),
+    reseed_per_iteration: z.boolean().optional(),
   })
   .superRefine((value, context) => {
     if (!value.bindings) {

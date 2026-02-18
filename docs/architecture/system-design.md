@@ -77,7 +77,7 @@ Every capability returns:
 - Pull request reads: `pr.view`, `pr.list`, `pr.comments.list`, `pr.reviews.list`, `pr.diff.list_files`
 - Pull request checks + mergeability: `pr.status.checks`, `pr.checks.get_failed`, `pr.mergeability.view`
 - Pull request thread mutations: `pr.comment.reply`, `pr.comment.resolve`, `pr.comment.unresolve`, `pr.ready_for_review.set`
-- CI diagnostics/logs: `check_run.annotations.list`, `workflow_runs.list`, `workflow_run.jobs.list`, `workflow_job.logs.get`, `workflow_job.logs.analyze`
+- CI diagnostics/logs: `check_run.annotations.list`, `workflow_runs.list`, `workflow_job.logs.get`, `workflow_job.logs.analyze`
 - Route preferences are capability-specific and defined in cards (`preferred` + `fallbacks`), with REST still outside active routing for current capabilities
 
 ## Source References

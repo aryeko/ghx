@@ -182,7 +182,7 @@ Workflow scenarios differ from atomic scenarios by:
 - `workflow.get`
 - `workflow.dispatch-run`
 - `workflow-run.get`
-- `workflow-run.jobs.list`
+
 - `workflow-job.logs.get` or similar
 
 **Complexity:** High
