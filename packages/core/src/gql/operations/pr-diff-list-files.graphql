@@ -8,8 +8,7 @@ query PrDiffListFiles($owner: String!, $name: String!, $prNumber: Int!, $first: 
           deletions
         }
         pageInfo {
-          hasNextPage
-          endCursor
+          ...PageInfoFields
         }
       }
     }

@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "../generated/common-types.js"
+import { PrCoreFieldsFragmentDoc } from "./fragments/pr-core-fields.generated.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type IssueLinkedPrsListQueryVariables = Types.Exact<{
@@ -93,11 +94,7 @@ export const IssueLinkedPrsListDocument = `
             subject {
               __typename
               ... on PullRequest {
-                id
-                number
-                title
-                state
-                url
+                ...PrCoreFields
               }
             }
           }
@@ -106,7 +103,7 @@ export const IssueLinkedPrsListDocument = `
     }
   }
 }
-    `
+    ${PrCoreFieldsFragmentDoc}`
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

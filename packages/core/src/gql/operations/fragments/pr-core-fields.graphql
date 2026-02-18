@@ -1,0 +1,7 @@
+fragment PrCoreFields on PullRequest {
+  id
+  number
+  title
+  state
+  url
+}

@@ -12,8 +12,7 @@ query IssueCommentsList($owner: String!, $name: String!, $issueNumber: Int!, $fi
           }
         }
         pageInfo {
-          endCursor
-          hasNextPage
+          ...PageInfoFields
         }
       }
     }

@@ -10,7 +10,7 @@ export default tseslint.config(
       "**/dist/**",
       "**/.nx/**",
       "packages/core/src/gql/generated/**",
-      "packages/core/src/gql/operations/*.generated.ts",
+      "packages/core/src/gql/operations/**/*.generated.ts",
     ],
   },
   js.configs.recommended,

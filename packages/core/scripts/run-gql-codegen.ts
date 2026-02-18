@@ -6,10 +6,21 @@ import { resolveGithubToken } from "./get-github-token.js"
 
 function fixGeneratedImportExtensions(packageRoot: string): void {
   const opsDir = join(packageRoot, "src", "gql", "operations")
-  const files = readdirSync(opsDir).filter((f) => f.endsWith(".generated.ts"))
+  fixImportsInDir(opsDir)
+
+  const fragmentsDir = join(opsDir, "fragments")
+  try {
+    fixImportsInDir(fragmentsDir)
+  } catch {
+    // fragments directory may not exist
+  }
+}
+
+function fixImportsInDir(dir: string): void {
+  const files = readdirSync(dir).filter((f) => f.endsWith(".generated.ts"))
 
   for (const file of files) {
-    const filePath = join(opsDir, file)
+    const filePath = join(dir, file)
     const content = readFileSync(filePath, "utf8")
     const fixed = content.replace(/from '(\.\.?\/[^']+?)(?<!\.js)'/g, "from '$1.js'")
     if (fixed !== content) {

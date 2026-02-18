@@ -8,11 +8,7 @@ query IssueLinkedPrsList($owner: String!, $name: String!, $issueNumber: Int!) {
             subject {
               __typename
               ... on PullRequest {
-                id
-                number
-                title
-                state
-                url
+                ...PrCoreFields
               }
             }
           }

@@ -1,5 +1,7 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "../generated/common-types.js"
+import { IssueCoreFieldsFragmentDoc } from "./fragments/issue-core-fields.generated.js"
+import { PageInfoFieldsFragmentDoc } from "./fragments/page-info-fields.generated.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type IssueListQueryVariables = Types.Exact<{
@@ -37,20 +39,16 @@ export const IssueListDocument = `
       orderBy: {field: CREATED_AT, direction: DESC}
     ) {
       nodes {
-        id
-        number
-        title
-        state
-        url
+        ...IssueCoreFields
       }
       pageInfo {
-        endCursor
-        hasNextPage
+        ...PageInfoFields
       }
     }
   }
 }
-    `
+    ${IssueCoreFieldsFragmentDoc}
+${PageInfoFieldsFragmentDoc}`
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

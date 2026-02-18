@@ -1,5 +1,7 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "../generated/common-types.js"
+import { PageInfoFieldsFragmentDoc } from "./fragments/page-info-fields.generated.js"
+import { PrCoreFieldsFragmentDoc } from "./fragments/pr-core-fields.generated.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type PrListQueryVariables = Types.Exact<{
@@ -37,20 +39,16 @@ export const PrListDocument = `
       orderBy: {field: CREATED_AT, direction: DESC}
     ) {
       nodes {
-        id
-        number
-        title
-        state
-        url
+        ...PrCoreFields
       }
       pageInfo {
-        endCursor
-        hasNextPage
+        ...PageInfoFields
       }
     }
   }
 }
-    `
+    ${PrCoreFieldsFragmentDoc}
+${PageInfoFieldsFragmentDoc}`
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

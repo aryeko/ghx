@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "../generated/common-types.js"
+import { PrCoreFieldsFragmentDoc } from "./fragments/pr-core-fields.generated.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type PrViewQueryVariables = Types.Exact<{
@@ -14,12 +15,12 @@ export type PrViewQuery = {
     __typename?: "Repository"
     pullRequest?: {
       __typename?: "PullRequest"
+      body: string
       id: string
       number: number
       title: string
       state: Types.PullRequestState
       url: any
-      body: string
       labels?: {
         __typename?: "LabelConnection"
         nodes?: Array<{ __typename?: "Label"; name: string } | null> | null
@@ -32,11 +33,7 @@ export const PrViewDocument = `
     query PrView($owner: String!, $name: String!, $prNumber: Int!) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $prNumber) {
-      id
-      number
-      title
-      state
-      url
+      ...PrCoreFields
       body
       labels(first: 20) {
         nodes {
@@ -46,7 +43,7 @@ export const PrViewDocument = `
     }
   }
 }
-    `
+    ${PrCoreFieldsFragmentDoc}`
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,
