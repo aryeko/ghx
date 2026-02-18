@@ -1892,7 +1892,7 @@ async function runPrCommentsList(
 ): Promise<PrCommentsListData> {
   assertPrCommentsListInput(input)
 
-  const unresolvedOnly = input.unresolvedOnly ?? false
+  const unresolvedOnly = input.unresolvedOnly ?? true
   const includeOutdated = input.includeOutdated ?? true
 
   const filteredThreads: Array<{ thread: PrReviewThreadData; cursor: string | null }> = []

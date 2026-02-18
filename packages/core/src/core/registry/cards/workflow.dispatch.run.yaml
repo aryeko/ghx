@@ -1,4 +1,4 @@
-capability_id: workflow_dispatch.run
+capability_id: workflow.dispatch.run
 version: "1.0.0"
 description: Trigger a workflow dispatch event.
 input_schema:

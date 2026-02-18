@@ -1,6 +1,6 @@
-capability_id: workflow_run.rerun_all
+capability_id: workflow.run.rerun_failed
 version: "1.0.0"
-description: Rerun all jobs in a workflow run.
+description: Rerun failed jobs for a workflow run.
 input_schema:
   type: object
   required: [owner, name, runId]
@@ -11,13 +11,13 @@ input_schema:
   additionalProperties: false
 output_schema:
   type: object
-  required: [runId, status]
+  required: [runId, rerunFailed]
   properties:
     runId: { type: integer, minimum: 1 }
-    status: { const: requested }
+    rerunFailed: { type: boolean }
   additionalProperties: false
 routing:
   preferred: cli
   fallbacks: []
 cli:
-  command: run rerun
+  command: api

@@ -134,7 +134,7 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(async () => ({
         items: [],
         pageInfo: { hasNextPage: false, endCursor: null },
-        filterApplied: { unresolvedOnly: false, includeOutdated: true },
+        filterApplied: { unresolvedOnly: true, includeOutdated: true },
         scan: { pagesScanned: 1, sourceItemsScanned: 0, scanTruncated: false },
       })),
       fetchPrReviewsList: vi.fn(async () => ({

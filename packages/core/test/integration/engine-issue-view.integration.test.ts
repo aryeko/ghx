@@ -52,6 +52,31 @@ describe("executeTask issue.view", () => {
     )
   })
 
+  it("returns validation error envelope for invalid issue input", async () => {
+    const githubClient = createGithubClient({
+      async execute<TData>(): Promise<TData> {
+        return {} as TData
+      },
+    })
+
+    const request: TaskRequest = {
+      task: "issue.view",
+      input: { owner: "go-modkit", name: "modkit", issueNumber: 0 },
+    }
+
+    const result = await executeTask(request, {
+      githubClient,
+      githubToken: "test-token",
+      ghCliAvailable: false,
+      ghAuthenticated: false,
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("VALIDATION")
+    expect(result.meta.reason).toBe("INPUT_VALIDATION")
+    expect(result.meta.route_used).toBe("graphql")
+  })
+
   it("returns unknown error envelope for not-found issue", async () => {
     const githubClient = createGithubClient({
       async execute<TData>(query: string): Promise<TData> {

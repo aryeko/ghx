@@ -29,16 +29,16 @@ export type CliCapabilityId =
   | "pr.branch.update"
   | "pr.diff.view"
   | "check_run.annotations.list"
-  | "workflow_runs.list"
-  | "workflow_run.jobs.list"
-  | "workflow_job.logs.get"
-  | "workflow_job.logs.analyze"
+  | "workflow.runs.list"
+  | "workflow.run.jobs.list"
+  | "workflow.job.logs.raw"
+  | "workflow.job.logs.get"
   | "workflow.list"
   | "workflow.get"
-  | "workflow_run.view"
-  | "workflow_run.rerun_all"
-  | "workflow_run.cancel"
-  | "workflow_run.artifacts.list"
+  | "workflow.run.view"
+  | "workflow.run.rerun_all"
+  | "workflow.run.cancel"
+  | "workflow.run.artifacts.list"
   | "project_v2.org.get"
   | "project_v2.user.get"
   | "project_v2.fields.list"
@@ -50,8 +50,8 @@ export type CliCapabilityId =
   | "release.create_draft"
   | "release.update"
   | "release.publish_draft"
-  | "workflow_dispatch.run"
-  | "workflow_run.rerun_failed"
+  | "workflow.dispatch.run"
+  | "workflow.run.rerun_failed"
 
 export type CliCommandRunner = {
   run(
@@ -71,9 +71,9 @@ const NON_JSON_STDOUT_CAPABILITIES = new Set<CliCapabilityId>([
   "pr.reviewers.request",
   "pr.assignees.update",
   "pr.branch.update",
-  "workflow_run.cancel",
-  "workflow_run.rerun_failed",
-  "workflow_run.rerun_all",
+  "workflow.run.cancel",
+  "workflow.run.rerun_failed",
+  "workflow.run.rerun_all",
 ])
 const REPO_ISSUE_TYPES_GRAPHQL_QUERY =
   "query($owner:String!,$name:String!,$first:Int!,$after:String){repository(owner:$owner,name:$name){issueTypes(first:$first,after:$after){nodes{id name color isEnabled} pageInfo{hasNextPage endCursor}}}}"
@@ -590,10 +590,10 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "workflow_runs.list") {
+  if (capabilityId === "workflow.runs.list") {
     const first = parseListFirst(params.first)
     if (first === null) {
-      throw new Error("Missing or invalid first for workflow_runs.list")
+      throw new Error("Missing or invalid first for workflow.runs.list")
     }
 
     const args = commandTokens(card, "run list")
@@ -620,10 +620,10 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "workflow_run.jobs.list") {
+  if (capabilityId === "workflow.run.jobs.list") {
     const runId = parseStrictPositiveInt(params.runId)
     if (runId === null) {
-      throw new Error("Missing or invalid runId for workflow_run.jobs.list")
+      throw new Error("Missing or invalid runId for workflow.run.jobs.list")
     }
 
     const args = [...commandTokens(card, "run view"), String(runId)]
@@ -635,7 +635,7 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "workflow_job.logs.get" || capabilityId === "workflow_job.logs.analyze") {
+  if (capabilityId === "workflow.job.logs.raw" || capabilityId === "workflow.job.logs.get") {
     const jobId = parseStrictPositiveInt(params.jobId)
     if (jobId === null) {
       throw new Error(`Missing or invalid jobId for ${capabilityId}`)
@@ -681,10 +681,10 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "workflow_run.view") {
+  if (capabilityId === "workflow.run.view") {
     const runId = parseStrictPositiveInt(params.runId)
     if (runId === null) {
-      throw new Error("Missing or invalid runId for workflow_run.view")
+      throw new Error("Missing or invalid runId for workflow.run.view")
     }
 
     const args = [...commandTokens(card, "run view"), String(runId)]
@@ -702,7 +702,7 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "workflow_run.rerun_all" || capabilityId === "workflow_run.cancel") {
+  if (capabilityId === "workflow.run.rerun_all" || capabilityId === "workflow.run.cancel") {
     const runId = parseStrictPositiveInt(params.runId)
     if (runId === null) {
       throw new Error(`Missing or invalid runId for ${capabilityId}`)
@@ -711,7 +711,7 @@ function buildArgs(
     const args = [
       ...commandTokens(
         card,
-        capabilityId === "workflow_run.rerun_all" ? "run rerun" : "run cancel",
+        capabilityId === "workflow.run.rerun_all" ? "run rerun" : "run cancel",
       ),
       String(runId),
     ]
@@ -723,10 +723,10 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "workflow_run.artifacts.list") {
+  if (capabilityId === "workflow.run.artifacts.list") {
     const runId = parseStrictPositiveInt(params.runId)
     if (runId === null) {
-      throw new Error("Missing or invalid runId for workflow_run.artifacts.list")
+      throw new Error("Missing or invalid runId for workflow.run.artifacts.list")
     }
 
     const args = [...commandTokens(card, "run view"), String(runId)]
@@ -948,16 +948,16 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "workflow_dispatch.run") {
+  if (capabilityId === "workflow.dispatch.run") {
     requireRepo(owner, name, capabilityId)
     const workflowId = parseNonEmptyString(params.workflowId)
     if (workflowId === null) {
-      throw new Error("Missing or invalid workflowId for workflow_dispatch.run")
+      throw new Error("Missing or invalid workflowId for workflow.dispatch.run")
     }
 
     const ref = parseNonEmptyString(params.ref)
     if (ref === null) {
-      throw new Error("Missing or invalid ref for workflow_dispatch.run")
+      throw new Error("Missing or invalid ref for workflow.dispatch.run")
     }
 
     const args = [
@@ -975,19 +975,19 @@ function buildArgs(
         params.inputs === null ||
         Array.isArray(params.inputs)
       ) {
-        throw new Error("Missing or invalid inputs for workflow_dispatch.run")
+        throw new Error("Missing or invalid inputs for workflow.dispatch.run")
       }
 
       const inputEntries = Object.entries(params.inputs as Record<string, unknown>)
       for (const [key, value] of inputEntries) {
         if (!key.trim()) {
-          throw new Error("Missing or invalid inputs for workflow_dispatch.run")
+          throw new Error("Missing or invalid inputs for workflow.dispatch.run")
         }
 
         if (
           !(typeof value === "string" || typeof value === "number" || typeof value === "boolean")
         ) {
-          throw new Error("Missing or invalid inputs for workflow_dispatch.run")
+          throw new Error("Missing or invalid inputs for workflow.dispatch.run")
         }
 
         args.push("-f", `inputs[${key}]=${String(value)}`)
@@ -997,11 +997,11 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "workflow_run.rerun_failed") {
+  if (capabilityId === "workflow.run.rerun_failed") {
     requireRepo(owner, name, capabilityId)
     const runId = parseStrictPositiveInt(params.runId)
     if (runId === null) {
-      throw new Error("Missing or invalid runId for workflow_run.rerun_failed")
+      throw new Error("Missing or invalid runId for workflow.run.rerun_failed")
     }
 
     const args = [
@@ -1596,7 +1596,7 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "workflow_runs.list") {
+  if (capabilityId === "workflow.runs.list") {
     const runs = Array.isArray(data) ? data : []
 
     return {
@@ -1629,7 +1629,7 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "workflow_run.jobs.list") {
+  if (capabilityId === "workflow.run.jobs.list") {
     const root =
       typeof data === "object" && data !== null && !Array.isArray(data)
         ? (data as Record<string, unknown>)
@@ -1664,7 +1664,7 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "workflow_job.logs.get") {
+  if (capabilityId === "workflow.job.logs.raw") {
     const jobId = Number(params.jobId)
 
     const rawLog = typeof data === "string" ? data : String(data)
@@ -1677,7 +1677,7 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "workflow_job.logs.analyze") {
+  if (capabilityId === "workflow.job.logs.get") {
     const jobId = Number(params.jobId)
 
     const rawLog = typeof data === "string" ? data : String(data)
@@ -1735,7 +1735,7 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "workflow_run.view") {
+  if (capabilityId === "workflow.run.view") {
     const input =
       typeof data === "object" && data !== null && !Array.isArray(data)
         ? (data as Record<string, unknown>)
@@ -1782,21 +1782,21 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "workflow_run.rerun_all") {
+  if (capabilityId === "workflow.run.rerun_all") {
     return {
       runId: Number(params.runId),
       status: "requested",
     }
   }
 
-  if (capabilityId === "workflow_run.cancel") {
+  if (capabilityId === "workflow.run.cancel") {
     return {
       runId: Number(params.runId),
       status: "cancel_requested",
     }
   }
 
-  if (capabilityId === "workflow_run.artifacts.list") {
+  if (capabilityId === "workflow.run.artifacts.list") {
     const root =
       typeof data === "object" && data !== null && !Array.isArray(data)
         ? (data as Record<string, unknown>)
@@ -1940,7 +1940,7 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "workflow_dispatch.run") {
+  if (capabilityId === "workflow.dispatch.run") {
     return {
       workflowId: String(params.workflowId),
       ref: String(params.ref),
@@ -1948,7 +1948,7 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "workflow_run.rerun_failed") {
+  if (capabilityId === "workflow.run.rerun_failed") {
     return {
       runId: Number(params.runId),
       rerunFailed: true,
@@ -2096,8 +2096,8 @@ export async function runCliCapability(
     }
 
     const data =
-      capabilityId === "workflow_job.logs.get" ||
-      capabilityId === "workflow_job.logs.analyze" ||
+      capabilityId === "workflow.job.logs.raw" ||
+      capabilityId === "workflow.job.logs.get" ||
       capabilityId === "pr.diff.view"
         ? result.stdout
         : NON_JSON_STDOUT_CAPABILITIES.has(capabilityId)

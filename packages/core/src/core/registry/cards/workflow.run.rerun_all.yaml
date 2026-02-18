@@ -1,6 +1,6 @@
-capability_id: workflow_run.cancel
+capability_id: workflow.run.rerun_all
 version: "1.0.0"
-description: Cancel a workflow run.
+description: Rerun all jobs in a workflow run.
 input_schema:
   type: object
   required: [owner, name, runId]
@@ -14,10 +14,10 @@ output_schema:
   required: [runId, status]
   properties:
     runId: { type: integer, minimum: 1 }
-    status: { const: cancel_requested }
+    status: { const: requested }
   additionalProperties: false
 routing:
   preferred: cli
   fallbacks: []
 cli:
-  command: run cancel
+  command: run rerun

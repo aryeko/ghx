@@ -603,6 +603,21 @@ function createPrWithReviews(
     }
   }
 
+  const firstThreadId = findPrThreadId(repo, prNumber)
+  if (firstThreadId) {
+    tryRunGhWithToken(
+      [
+        "api",
+        "graphql",
+        "-f",
+        "query=mutation($threadId:ID!){resolveReviewThread(input:{threadId:$threadId}){thread{id isResolved}}}",
+        "-F",
+        `threadId=${firstThreadId}`,
+      ],
+      reviewerToken,
+    )
+  }
+
   return {
     id: prNodeId,
     number: prNumber,

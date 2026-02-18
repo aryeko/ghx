@@ -22,10 +22,10 @@ output_schema:
     labels: { type: array, items: { type: string } }
   additionalProperties: false
 routing:
-  preferred: cli
-  fallbacks: [graphql]
+  preferred: graphql
+  fallbacks: [cli]
   notes:
-    - Prefer CLI for low-latency structured fetches when gh authentication is available.
+    - Prefer GraphQL for structured fetch; CLI fallback if gh auth unavailable.
 graphql:
   operationName: PrView
   documentPath: src/gql/operations/pr-view.graphql

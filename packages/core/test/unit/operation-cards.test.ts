@@ -56,16 +56,8 @@ describe("operation cards registry", () => {
       "pr.assignees.update",
       "pr.branch.update",
       "check_run.annotations.list",
-      "workflow_runs.list",
-      "workflow_run.jobs.list",
-      "workflow_job.logs.get",
-      "workflow_job.logs.analyze",
       "workflow.list",
       "workflow.get",
-      "workflow_run.view",
-      "workflow_run.rerun_all",
-      "workflow_run.cancel",
-      "workflow_run.artifacts.list",
       "project_v2.org.get",
       "project_v2.user.get",
       "project_v2.fields.list",
@@ -77,16 +69,24 @@ describe("operation cards registry", () => {
       "release.create_draft",
       "release.update",
       "release.publish_draft",
-      "workflow_dispatch.run",
-      "workflow_run.rerun_failed",
+      "workflow.dispatch.run",
+      "workflow.job.logs.get",
+      "workflow.job.logs.raw",
+      "workflow.run.artifacts.list",
+      "workflow.run.cancel",
+      "workflow.run.jobs.list",
+      "workflow.run.rerun_all",
+      "workflow.run.rerun_failed",
+      "workflow.run.view",
+      "workflow.runs.list",
     ])
   })
 
   it("marks release and delivery batch cards as CLI-preferred", () => {
     const releaseCreateDraft = getOperationCard("release.create_draft")
     const releasePublishDraft = getOperationCard("release.publish_draft")
-    const workflowDispatchRun = getOperationCard("workflow_dispatch.run")
-    const workflowRunRerunFailed = getOperationCard("workflow_run.rerun_failed")
+    const workflowDispatchRun = getOperationCard("workflow.dispatch.run")
+    const workflowRunRerunFailed = getOperationCard("workflow.run.rerun_failed")
 
     expect(releaseCreateDraft?.routing.preferred).toBe("cli")
     expect(releasePublishDraft?.routing.preferred).toBe("cli")

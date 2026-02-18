@@ -74,6 +74,6 @@ describe("executeTask pr.view", () => {
     expect(result.ok).toBe(false)
     expect(result.error?.code).toBe("VALIDATION")
     expect(result.meta.reason).toBe("INPUT_VALIDATION")
-    expect(result.meta.route_used).toBe("cli")
+    expect(result.meta.route_used).toBe("graphql")
   })
 })

@@ -1,6 +1,6 @@
 capability_id: pr.comments.list
 version: "1.0.0"
-description: List pull request review threads with unresolved filtering.
+description: List pull request review threads (unresolved only by default; pass unresolvedOnly:false to include resolved).
 input_schema:
   type: object
   required: [owner, name, prNumber]

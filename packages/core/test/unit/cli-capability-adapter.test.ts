@@ -1080,7 +1080,7 @@ describe("runCliCapability", () => {
       })),
     }
 
-    const rerunResult = await runCliCapability(runner, "workflow_run.rerun_failed", {
+    const rerunResult = await runCliCapability(runner, "workflow.run.rerun_failed", {
       owner: "acme",
       name: "modkit",
       runId: 88,
@@ -1218,7 +1218,7 @@ describe("runCliCapability", () => {
       })),
     }
 
-    const result = await runCliCapability(runner, "workflow_runs.list", {
+    const result = await runCliCapability(runner, "workflow.runs.list", {
       owner: "acme",
       name: "modkit",
       first: 20,
@@ -1253,7 +1253,7 @@ describe("runCliCapability", () => {
       })),
     }
 
-    const result = await runCliCapability(runner, "workflow_run.jobs.list", {
+    const result = await runCliCapability(runner, "workflow.run.jobs.list", {
       owner: "acme",
       name: "modkit",
       runId: 200,
@@ -1276,7 +1276,7 @@ describe("runCliCapability", () => {
       })),
     }
 
-    const result = await runCliCapability(runner, "workflow_job.logs.get", {
+    const result = await runCliCapability(runner, "workflow.job.logs.raw", {
       owner: "acme",
       name: "modkit",
       jobId: 300,
@@ -1299,7 +1299,7 @@ describe("runCliCapability", () => {
       })),
     }
 
-    const result = await runCliCapability(runner, "workflow_job.logs.analyze", {
+    const result = await runCliCapability(runner, "workflow.job.logs.get", {
       owner: "acme",
       name: "modkit",
       jobId: 300,
@@ -1349,17 +1349,17 @@ describe("runCliCapability", () => {
       prNumber: 0,
       ready: true,
     })
-    const workflowListResult = await runCliCapability(runner, "workflow_runs.list", {
+    const workflowListResult = await runCliCapability(runner, "workflow.runs.list", {
       owner: "acme",
       name: "modkit",
       first: 0,
     })
-    const workflowJobsResult = await runCliCapability(runner, "workflow_run.jobs.list", {
+    const workflowJobsResult = await runCliCapability(runner, "workflow.run.jobs.list", {
       owner: "acme",
       name: "modkit",
       runId: 0,
     })
-    const workflowLogsResult = await runCliCapability(runner, "workflow_job.logs.get", {
+    const workflowLogsResult = await runCliCapability(runner, "workflow.job.logs.raw", {
       owner: "acme",
       name: "modkit",
       jobId: 0,
@@ -1400,7 +1400,7 @@ describe("runCliCapability", () => {
       }),
     }
 
-    await runCliCapability(runner, "workflow_runs.list", {
+    await runCliCapability(runner, "workflow.runs.list", {
       owner: "acme",
       name: "modkit",
       first: 10,
@@ -1466,12 +1466,12 @@ describe("runCliCapability", () => {
       name: "modkit",
       prNumber: 1,
     })
-    const runsResult = await runCliCapability(runner, "workflow_runs.list", {
+    const runsResult = await runCliCapability(runner, "workflow.runs.list", {
       owner: "acme",
       name: "modkit",
       first: 1,
     })
-    const jobsResult = await runCliCapability(runner, "workflow_run.jobs.list", {
+    const jobsResult = await runCliCapability(runner, "workflow.run.jobs.list", {
       owner: "acme",
       name: "modkit",
       runId: 1,
@@ -1567,12 +1567,12 @@ describe("runCliCapability", () => {
       name: "modkit",
       prNumber: 1,
     })
-    const runsResult = await runCliCapability(runner, "workflow_runs.list", {
+    const runsResult = await runCliCapability(runner, "workflow.runs.list", {
       owner: "acme",
       name: "modkit",
       first: 1,
     })
-    const jobsResult = await runCliCapability(runner, "workflow_run.jobs.list", {
+    const jobsResult = await runCliCapability(runner, "workflow.run.jobs.list", {
       owner: "acme",
       name: "modkit",
       runId: 1,
@@ -1630,7 +1630,7 @@ describe("runCliCapability", () => {
       name: "modkit",
       prNumber: 2,
     })
-    const logsResult = await runCliCapability(runner, "workflow_job.logs.get", {
+    const logsResult = await runCliCapability(runner, "workflow.job.logs.raw", {
       owner: "acme",
       name: "modkit",
       jobId: 2,
@@ -1713,22 +1713,22 @@ describe("runCliCapability", () => {
       name: "modkit",
       workflowId: "ci.yml",
     })
-    const workflowRunGet = await runCliCapability(runner, "workflow_run.view", {
+    const workflowRunGet = await runCliCapability(runner, "workflow.run.view", {
       owner: "acme",
       name: "modkit",
       runId: 123,
     })
-    const rerunAll = await runCliCapability(runner, "workflow_run.rerun_all", {
+    const rerunAll = await runCliCapability(runner, "workflow.run.rerun_all", {
       owner: "acme",
       name: "modkit",
       runId: 123,
     })
-    const cancel = await runCliCapability(runner, "workflow_run.cancel", {
+    const cancel = await runCliCapability(runner, "workflow.run.cancel", {
       owner: "acme",
       name: "modkit",
       runId: 123,
     })
-    const artifacts = await runCliCapability(runner, "workflow_run.artifacts.list", {
+    const artifacts = await runCliCapability(runner, "workflow.run.artifacts.list", {
       owner: "acme",
       name: "modkit",
       runId: 123,
@@ -1813,7 +1813,7 @@ describe("runCliCapability", () => {
       })),
     }
 
-    const result = await runCliCapability(runner, "workflow_dispatch.run", {
+    const result = await runCliCapability(runner, "workflow.dispatch.run", {
       owner: "acme",
       name: "modkit",
       workflowId: "release.yml",
@@ -2305,7 +2305,7 @@ describe("runCliCapability", () => {
         }),
     }
 
-    const dispatchResult = await runCliCapability(runner, "workflow_dispatch.run", {
+    const dispatchResult = await runCliCapability(runner, "workflow.dispatch.run", {
       owner: "acme",
       name: "modkit",
       workflowId: "release.yml",
@@ -2316,13 +2316,13 @@ describe("runCliCapability", () => {
       },
     })
 
-    const rerunResult = await runCliCapability(runner, "workflow_run.rerun_failed", {
+    const rerunResult = await runCliCapability(runner, "workflow.run.rerun_failed", {
       owner: "acme",
       name: "modkit",
       runId: 500,
     })
 
-    const invalidDispatchResult = await runCliCapability(runner, "workflow_dispatch.run", {
+    const invalidDispatchResult = await runCliCapability(runner, "workflow.dispatch.run", {
       owner: "acme",
       name: "modkit",
       workflowId: "release.yml",
@@ -2559,7 +2559,7 @@ describe("runCliCapability", () => {
         }),
     }
 
-    const artifactsResult = await runCliCapability(runner, "workflow_run.artifacts.list", {
+    const artifactsResult = await runCliCapability(runner, "workflow.run.artifacts.list", {
       owner: "acme",
       name: "modkit",
       runId: 123,
@@ -2744,17 +2744,17 @@ describe("runCliCapability", () => {
         message: "workflowId",
       },
       {
-        capabilityId: "workflow_run.view",
+        capabilityId: "workflow.run.view",
         params: { owner: "acme", name: "modkit", runId: 0 },
         message: "runId",
       },
       {
-        capabilityId: "workflow_run.rerun_all",
+        capabilityId: "workflow.run.rerun_all",
         params: { owner: "acme", name: "modkit", runId: 0 },
         message: "runId",
       },
       {
-        capabilityId: "workflow_run.artifacts.list",
+        capabilityId: "workflow.run.artifacts.list",
         params: { owner: "acme", name: "modkit", runId: 0 },
         message: "runId",
       },
@@ -2794,22 +2794,22 @@ describe("runCliCapability", () => {
         message: "releaseId",
       },
       {
-        capabilityId: "workflow_dispatch.run",
+        capabilityId: "workflow.dispatch.run",
         params: { owner: "acme", name: "modkit", ref: "main" },
         message: "workflowId",
       },
       {
-        capabilityId: "workflow_dispatch.run",
+        capabilityId: "workflow.dispatch.run",
         params: { owner: "acme", name: "modkit", workflowId: "ci" },
         message: "ref",
       },
       {
-        capabilityId: "workflow_dispatch.run",
+        capabilityId: "workflow.dispatch.run",
         params: { owner: "acme", name: "modkit", workflowId: "ci", ref: "main", inputs: null },
         message: "inputs",
       },
       {
-        capabilityId: "workflow_dispatch.run",
+        capabilityId: "workflow.dispatch.run",
         params: {
           owner: "acme",
           name: "modkit",
@@ -2820,7 +2820,7 @@ describe("runCliCapability", () => {
         message: "inputs",
       },
       {
-        capabilityId: "workflow_dispatch.run",
+        capabilityId: "workflow.dispatch.run",
         params: {
           owner: "acme",
           name: "modkit",
@@ -2831,7 +2831,7 @@ describe("runCliCapability", () => {
         message: "inputs",
       },
       {
-        capabilityId: "workflow_run.rerun_failed",
+        capabilityId: "workflow.run.rerun_failed",
         params: { owner: "acme", name: "modkit", runId: 0 },
         message: "runId",
       },
@@ -3057,12 +3057,12 @@ describe("runCliCapability", () => {
       name: "modkit",
       workflowId: "ci.yml",
     })
-    const workflowRunGetResult = await runCliCapability(runner, "workflow_run.view", {
+    const workflowRunGetResult = await runCliCapability(runner, "workflow.run.view", {
       owner: "acme",
       name: "modkit",
       runId: 123,
     })
-    const artifactsResult = await runCliCapability(runner, "workflow_run.artifacts.list", {
+    const artifactsResult = await runCliCapability(runner, "workflow.run.artifacts.list", {
       owner: "acme",
       name: "modkit",
       runId: 123,

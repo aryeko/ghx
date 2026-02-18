@@ -1,6 +1,6 @@
-capability_id: workflow_run.jobs.list
+capability_id: workflow.run.view
 version: "1.0.0"
-description: List jobs in a workflow run.
+description: View a workflow run with its jobs.
 input_schema:
   type: object
   required: [owner, name, runId]
@@ -11,9 +11,20 @@ input_schema:
   additionalProperties: false
 output_schema:
   type: object
-  required: [items]
+  required: [id, workflowName, status, conclusion, headBranch, headSha, event, createdAt, updatedAt, startedAt, url, jobs]
   properties:
-    items:
+    id: { type: integer, minimum: 0 }
+    workflowName: { type: [string, "null"] }
+    status: { type: [string, "null"] }
+    conclusion: { type: [string, "null"] }
+    headBranch: { type: [string, "null"] }
+    headSha: { type: [string, "null"] }
+    event: { type: [string, "null"] }
+    createdAt: { type: [string, "null"] }
+    updatedAt: { type: [string, "null"] }
+    startedAt: { type: [string, "null"] }
+    url: { type: [string, "null"] }
+    jobs:
       type: array
       items:
         type: object
@@ -33,3 +44,4 @@ routing:
   fallbacks: []
 cli:
   command: run view
+  jsonFields: [databaseId,workflowName,status,conclusion,headBranch,headSha,url,event,createdAt,updatedAt,startedAt,jobs]

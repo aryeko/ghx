@@ -22,8 +22,8 @@ describe("capabilityRegistry", () => {
       },
       {
         task: "issue.view",
-        defaultRoute: "cli",
-        fallbackRoutes: ["graphql"],
+        defaultRoute: "graphql",
+        fallbackRoutes: ["cli"],
       },
       {
         task: "issue.list",
@@ -117,8 +117,8 @@ describe("capabilityRegistry", () => {
       },
       {
         task: "pr.view",
-        defaultRoute: "cli",
-        fallbackRoutes: ["graphql"],
+        defaultRoute: "graphql",
+        fallbackRoutes: ["cli"],
       },
       {
         task: "pr.list",
@@ -231,52 +231,12 @@ describe("capabilityRegistry", () => {
         fallbackRoutes: [],
       },
       {
-        task: "workflow_runs.list",
-        defaultRoute: "cli",
-        fallbackRoutes: [],
-      },
-      {
-        task: "workflow_run.jobs.list",
-        defaultRoute: "cli",
-        fallbackRoutes: [],
-      },
-      {
-        task: "workflow_job.logs.get",
-        defaultRoute: "cli",
-        fallbackRoutes: [],
-      },
-      {
-        task: "workflow_job.logs.analyze",
-        defaultRoute: "cli",
-        fallbackRoutes: [],
-      },
-      {
         task: "workflow.list",
         defaultRoute: "cli",
         fallbackRoutes: [],
       },
       {
         task: "workflow.get",
-        defaultRoute: "cli",
-        fallbackRoutes: [],
-      },
-      {
-        task: "workflow_run.view",
-        defaultRoute: "cli",
-        fallbackRoutes: [],
-      },
-      {
-        task: "workflow_run.rerun_all",
-        defaultRoute: "cli",
-        fallbackRoutes: [],
-      },
-      {
-        task: "workflow_run.cancel",
-        defaultRoute: "cli",
-        fallbackRoutes: [],
-      },
-      {
-        task: "workflow_run.artifacts.list",
         defaultRoute: "cli",
         fallbackRoutes: [],
       },
@@ -336,12 +296,52 @@ describe("capabilityRegistry", () => {
         fallbackRoutes: [],
       },
       {
-        task: "workflow_dispatch.run",
+        task: "workflow.dispatch.run",
         defaultRoute: "cli",
         fallbackRoutes: [],
       },
       {
-        task: "workflow_run.rerun_failed",
+        task: "workflow.job.logs.get",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "workflow.job.logs.raw",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "workflow.run.artifacts.list",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "workflow.run.cancel",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "workflow.run.jobs.list",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "workflow.run.rerun_all",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "workflow.run.rerun_failed",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "workflow.run.view",
+        defaultRoute: "cli",
+        fallbackRoutes: [],
+      },
+      {
+        task: "workflow.runs.list",
         defaultRoute: "cli",
         fallbackRoutes: [],
       },

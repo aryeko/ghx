@@ -4,8 +4,8 @@ import type { TaskRequest } from "../../src/core/contracts/task.js"
 import { executeTask } from "../../src/core/routing/engine.js"
 import { createGithubClient } from "../../src/gql/client.js"
 
-describe("executeTask workflow_run.jobs.list", () => {
-  it("returns cli envelope for workflow_run.jobs.list", async () => {
+describe("executeTask workflow.run.jobs.list", () => {
+  it("returns cli envelope for workflow.run.jobs.list", async () => {
     const githubClient = createGithubClient({
       async execute<TData>(): Promise<TData> {
         return {} as TData
@@ -13,7 +13,7 @@ describe("executeTask workflow_run.jobs.list", () => {
     })
 
     const request: TaskRequest = {
-      task: "workflow_run.jobs.list",
+      task: "workflow.run.jobs.list",
       input: {
         owner: "go-modkit",
         name: "modkit",
@@ -59,7 +59,7 @@ describe("executeTask workflow_run.jobs.list", () => {
     })
 
     const request: TaskRequest = {
-      task: "workflow_run.jobs.list",
+      task: "workflow.run.jobs.list",
       input: {
         owner: "go-modkit",
         name: "modkit",

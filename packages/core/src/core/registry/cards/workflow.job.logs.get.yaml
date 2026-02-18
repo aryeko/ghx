@@ -1,4 +1,4 @@
-capability_id: workflow_job.logs.analyze
+capability_id: workflow.job.logs.get
 version: "1.0.0"
 description: Fetch and analyze workflow job logs.
 input_schema:

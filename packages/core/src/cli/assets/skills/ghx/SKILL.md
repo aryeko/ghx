@@ -20,7 +20,7 @@ If you don't know the capability ID or required inputs, list by domain:
 ghx capabilities list --domain pr
 ```
 
-Domains: `repo`, `issue`, `pr`, `release`, `workflow`, `workflow_run`, `project_v2`, `check_run`.
+Domains: `repo`, `issue`, `pr`, `release`, `workflow`, `project_v2`, `check_run`.
 Required inputs shown in brackets (e.g. `[owner, name, prNumber]`).
 
 Use `ghx capabilities explain <capability_id>` to see full input/output schema.
