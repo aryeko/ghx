@@ -344,6 +344,37 @@ npx ghx capabilities explain workflow.dispatch.run
 npx ghx capabilities explain workflow.job.logs.get
 ```
 
+### Chain Mutations Atomically
+
+When multiple mutations must happen together (e.g., update labels and assignees on the same
+issue), use `executeTasks()` instead of sequential `executeTask` calls. It executes the chain
+in at most 2 HTTP round-trips regardless of how many steps you have:
+
+```ts
+import { executeTasks, createGithubClientFromToken } from "@ghx-dev/core"
+
+const chain = await executeTasks(
+  [
+    { task: "issue.labels.update", input: { issueId: "I_kwDOOx...", labels: ["docs"] } },
+    { task: "issue.assignees.update", input: { issueId: "I_kwDOOx...", assignees: ["YOUR_USERNAME"] } },
+  ],
+  { githubClient, githubToken: token },
+)
+
+console.log(chain.status) // "success" | "partial" | "failed"
+```
+
+From the CLI:
+
+```bash
+ghx chain --steps '[
+  {"task":"issue.labels.update","input":{"issueId":"I_kwDOOx...","labels":["docs"]}},
+  {"task":"issue.assignees.update","input":{"issueId":"I_kwDOOx...","assignees":["YOUR_USERNAME"]}}
+]'
+```
+
+See [Chaining Capabilities](../guides/chaining-capabilities.md) for details.
+
 ### Build a Real Workflow
 
 Combine multiple capabilities to solve a problem:
@@ -415,7 +446,7 @@ You're ready to:
 1. Build more complex workflows
 2. Integrate ghx into automation scripts
 3. Set up ghx for coding agents
-4. Explore the full 69-capability API
+4. Explore the full 66-capability API
 
 ## Next Resources
 

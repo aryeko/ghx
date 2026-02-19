@@ -32,11 +32,12 @@ classDiagram
     class GraphQLMetadata {
         operation?: string
         field_mapping?: Record
+        resolution?: ResolutionBlock
     }
 
-    class CompositeMetadata {
-        steps: CompositeStep[]
-        output_strategy: string
+    class ResolutionBlock {
+        lookup: LookupSpec
+        inject: InjectSpec[]
     }
 
     class Route {
@@ -46,7 +47,7 @@ classDiagram
     OperationCard --> RoutingPolicy
     OperationCard --> CLIMetadata
     OperationCard --> GraphQLMetadata
-    OperationCard --> CompositeMetadata
+    GraphQLMetadata --> ResolutionBlock
     RoutingPolicy --> Route
 ```
 
@@ -64,30 +65,29 @@ Each operation card includes:
 | `routing.preferred` | Primary route(s) to attempt first | Yes |
 | `routing.fallbacks` | Secondary routes in order of preference | Yes |
 | `cli` | CLI command metadata and output mapping | No |
-| `graphql` | GraphQL operation and field mapping | No |
-| `composite` | Composite capability steps and output strategy | No |
+| `graphql` | GraphQL operation, field mapping, and optional resolution block | No |
 
 ## Current Capability Surface
 
-`ghx` currently defines **69 capabilities** across these domains (66 atomic + 3 composite):
+`ghx` currently defines **66 capabilities** across these domains:
 
 | Domain | Count | Purpose |
 |--------|-------|---------|
-| **Issues** | 21 | Create, read, update, close, link, label, milestone, assign issues; composite batch operations |
-| **Pull Requests** | 22 | Read PR metadata, lists, reviews, threads, checks, mergeability, mutations; composite batch operations |
+| **Issues** | 19 | Create, read, update, close, link, label, milestone, assign issues |
+| **Pull Requests** | 21 | Read PR metadata, lists, reviews, threads, checks, mergeability, mutations |
 | **Releases** | 5 | Query and draft releases, publish, update |
 | **Workflows** | 11 | Query workflow runs, jobs, logs, cancel, rerun; list workflows; dispatch |
 | **Repositories** | 3 | Repo metadata, label listing, issue type listing |
 | **Projects (v2)** | 6 | Query and mutate projects, fields, items |
 | **Check Runs** | 1 | List check run annotations |
 
-### Issue Capabilities (21)
+### Issue Capabilities (19)
 
-`issue.view`, `issue.list`, `issue.create`, `issue.update`, `issue.close`, `issue.reopen`, `issue.delete`, `issue.comments.list`, `issue.comments.create`, `issue.labels.update`, `issue.labels.add`, `issue.assignees.update`, `issue.milestone.set`, `issue.linked_prs.list`, `issue.parent.set`, `issue.parent.remove`, `issue.blocked_by.add`, `issue.blocked_by.remove`, `issue.relations.get`, `issue.triage.composite`, `issue.update.composite`
+`issue.view`, `issue.list`, `issue.create`, `issue.update`, `issue.close`, `issue.reopen`, `issue.delete`, `issue.comments.list`, `issue.comments.create`, `issue.labels.update`, `issue.labels.add`, `issue.assignees.update`, `issue.milestone.set`, `issue.linked_prs.list`, `issue.parent.set`, `issue.parent.remove`, `issue.blocked_by.add`, `issue.blocked_by.remove`, `issue.relations.get`
 
-### Pull Request Capabilities (22)
+### Pull Request Capabilities (21)
 
-`pr.view`, `pr.list`, `pr.create`, `pr.update`, `pr.thread.list`, `pr.thread.reply`, `pr.thread.resolve`, `pr.thread.unresolve`, `pr.review.list`, `pr.review.submit`, `pr.review.request`, `pr.diff.files`, `pr.diff.view`, `pr.checks.list`, `pr.checks.failed`, `pr.checks.rerun_failed`, `pr.checks.rerun_all`, `pr.merge.status`, `pr.merge`, `pr.branch.update`, `pr.assignees.update`, `pr.threads.composite`
+`pr.view`, `pr.list`, `pr.create`, `pr.update`, `pr.thread.list`, `pr.thread.reply`, `pr.thread.resolve`, `pr.thread.unresolve`, `pr.review.list`, `pr.review.submit`, `pr.review.request`, `pr.diff.files`, `pr.diff.view`, `pr.checks.list`, `pr.checks.failed`, `pr.checks.rerun_failed`, `pr.checks.rerun_all`, `pr.merge.status`, `pr.merge`, `pr.branch.update`, `pr.assignees.update`
 
 ### Release Capabilities (5)
 
@@ -109,28 +109,65 @@ Each operation card includes:
 
 `check_run.annotations.list`
 
-## Composite Capabilities
+## Card-Defined Resolution
 
-Composite capabilities batch multiple GraphQL mutations into a single network round-trip using `gql/batch.ts`. They are declared with a `composite` field instead of `cli`/`graphql` fields:
+Some GraphQL capabilities require a two-phase execution: first a **lookup query** to resolve
+human-readable names (labels, assignees, milestones) into GitHub node IDs, then the actual
+**mutation**. This is declared with a `graphql.resolution` block in the card.
+
+### Resolution Block Schema
 
 ```yaml
-composite:
-  steps:
-    - capability_id: issue.labels.update
-      params_map:
-        issueId: issueId
-        labels: labelIds
-    - capability_id: issue.comments.create
-      params_map:
-        issueId: issueId
-        body: body
-  output_strategy: merge
+graphql:
+  operationName: IssueAssigneesUpdate
+  resolution:
+    lookup:
+      operationName: IssueAssigneesLookup   # registered lookup query name
+      vars:
+        issueId: issueId                    # lookup variable → input field
+    inject:
+      - target: assigneeIds                 # mutation variable to populate
+        source: map_array                   # inject variant
+        from_input: assignees               # input field containing names
+        nodes_path: node.repository.assignableUsers.nodes
+        match_field: login                  # field to match against input values
+        extract_field: id                   # field to extract as the resolved ID
 ```
 
-Composite capabilities:
-- Use `routing.preferred: graphql` exclusively (no CLI fallback)
-- Are expanded by `core/execute/composite.ts` → `gql/builders.ts` → `gql/batch.ts`
-- Merge output from all steps into a single `ResultEnvelope`
+### Inject Source Variants
+
+| `source` | Description | Required fields |
+|----------|-------------|-----------------|
+| `scalar` | Extracts a single value from the lookup result at `path` | `path`, `target` |
+| `map_array` | Maps an array of names to IDs using the lookup result | `from_input`, `nodes_path`, `match_field`, `extract_field`, `target` |
+
+**Example — `issue.assignees.update.yaml`** (uses `map_array`):
+
+```yaml
+graphql:
+  operationName: IssueAssigneesUpdate
+  documentPath: src/gql/operations/issue-assignees-update.graphql
+  resolution:
+    lookup:
+      operationName: IssueAssigneesLookup
+      documentPath: src/gql/operations/issue-assignees-lookup.graphql
+      vars:
+        issueId: issueId
+    inject:
+      - target: assigneeIds
+        source: map_array
+        from_input: assignees
+        nodes_path: node.repository.assignableUsers.nodes
+        match_field: login
+        extract_field: id
+```
+
+When a capability declares `graphql.resolution`, `executeTasks()` batches all resolution
+lookups into a single Phase 1 GraphQL query, then batches all mutations into a single Phase 2
+GraphQL mutation — resulting in at most 2 HTTP round-trips regardless of chain length.
+
+See [Chaining Capabilities](../guides/chaining-capabilities.md) for the full two-phase
+execution model.
 
 ## Card Loading & Validation
 

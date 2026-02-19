@@ -91,7 +91,7 @@ ghx/
 | `core/registry/schema-utils.ts` | Schema helper utilities | JSON schema helpers |
 | `core/registry/operation-card-schema.ts` | Card schema definition | `operationCardSchema` |
 | `core/registry/ajv-instance.ts` | Shared AJV instance | `ajv` |
-| `core/registry/cards/*.yaml` | Capability definitions | 69 operation cards (66 atomic + 3 composite) |
+| `core/registry/cards/*.yaml` | Capability definitions | 66 operation cards |
 
 ### Routing Engine (`core/routing`)
 
@@ -111,7 +111,6 @@ ghx/
 | Module | Purpose | Key Exports |
 |--------|---------|-------------|
 | `core/execute/execute.ts` | Route planning & retry loop | `execute()` |
-| `core/execute/composite.ts` | Composite capability expansion | `expandCompositeSteps()` |
 | `core/execution/preflight.ts` | Route readiness checks | `preflightCheck()` |
 | `core/execution/normalizer.ts` | Output normalization | `normalizeResult()`, `normalizeError()` |
 | `core/execution/adapters/cli-capability-adapter.ts` | CLI capability adapter | `runCliCapability()`, `CliCapabilityId` |
@@ -148,7 +147,9 @@ ghx/
 | `gql/capability-registry.ts` | GQL handler registry by capability ID | `GraphqlHandler` map |
 | `gql/types.ts` | GQL input/output contracts | GraphQL domain input/data types |
 | `gql/assertions.ts` | GraphQL input validation helpers | `assert*` validation utilities |
-| `gql/batch.ts` | Composite batch mutation builder | `buildBatchMutation()` |
+| `gql/document-registry.ts` | Lookup & mutation document registry | `getLookupDocument()`, `getMutationDocument()` |
+| `gql/resolve.ts` | Resolution inject helpers | `applyInject()`, `buildMutationVars()` |
+| `gql/batch.ts` | Batch query/mutation builder | `buildBatchQuery()`, `buildBatchMutation()` |
 | `gql/builders.ts` | Per-capability mutation builders | `OPERATION_BUILDERS` |
 | `gql/domains/*.ts` | Domain operation modules | `run*` operation handlers |
 | `gql/operations/*.generated.ts` | Generated operation SDKs | Operation-specific `getSdk()` |

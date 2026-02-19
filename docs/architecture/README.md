@@ -16,7 +16,7 @@ flowchart TB
     end
 
     subgraph Registry["Operation Registry 📋"]
-        Cards["69 Capability Cards"]
+        Cards["66 Capability Cards"]
         Schema["JSON Schema Validation"]
     end
 

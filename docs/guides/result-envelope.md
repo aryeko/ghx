@@ -380,6 +380,99 @@ This means agents can:
 
 ---
 
+## Chain Result Envelope
+
+When using `executeTasks()` (library) or `ghx chain` (CLI), the response is a
+`ChainResultEnvelope` rather than a `ResultEnvelope`.
+
+### Type
+
+```ts
+type ChainStatus = "success" | "partial" | "failed"
+
+interface ChainStepResult {
+  task: string         // capability_id of the step
+  ok: boolean
+  data?: unknown       // step output when ok is true
+  error?: {
+    code: string
+    message: string
+    retryable: boolean
+  }
+}
+
+interface ChainResultEnvelope {
+  status: ChainStatus
+  results: ChainStepResult[]
+  meta: {
+    route_used: "graphql"     // chains always use GraphQL
+    total: number
+    succeeded: number
+    failed: number
+  }
+}
+```
+
+### `ChainStatus` Semantics
+
+| Value | Meaning |
+|-------|---------|
+| `"success"` | All steps completed successfully |
+| `"partial"` | Some steps succeeded, some failed |
+| `"failed"` | No steps succeeded (pre-flight rejection or phase-level error) |
+
+### Reading a Chain Result
+
+```ts
+const chain = await executeTasks(steps, { githubClient, githubToken })
+
+switch (chain.status) {
+  case "success":
+    console.log(`All ${chain.meta.succeeded} steps succeeded`)
+    break
+  case "partial":
+    console.log(`${chain.meta.succeeded}/${chain.meta.total} steps succeeded`)
+    chain.results.filter((r) => !r.ok).forEach((r) => {
+      console.error(`  ${r.task}: [${r.error?.code}] ${r.error?.message}`)
+    })
+    break
+  case "failed":
+    console.error("Chain failed:", chain.results[0]?.error?.message)
+    break
+}
+```
+
+### Example Output
+
+```json
+{
+  "status": "success",
+  "results": [
+    {
+      "task": "issue.labels.update",
+      "ok": true,
+      "data": {"id": "I_kwDOOx...", "labels": ["bug"]}
+    },
+    {
+      "task": "issue.assignees.update",
+      "ok": true,
+      "data": {"id": "I_kwDOOx...", "assignees": ["octocat"]}
+    }
+  ],
+  "meta": {
+    "route_used": "graphql",
+    "total": 2,
+    "succeeded": 2,
+    "failed": 0
+  }
+}
+```
+
+See [Chaining Capabilities](chaining-capabilities.md) for the full two-phase execution model,
+error handling, and supported capabilities.
+
+---
+
 See [Error Handling & Codes](error-handling.md) for detailed error handling
 strategies, and [How Routing Works](routing-explained.md) for understanding why
 certain routes are chosen.

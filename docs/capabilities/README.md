@@ -1,6 +1,6 @@
 # Capabilities Reference
 
-Welcome to ghx's comprehensive capabilities reference. These 69 capabilities form the
+Welcome to ghx's comprehensive capabilities reference. These 66 capabilities form the
 core of ghx's ability to automate GitHub workflows for AI agents.
 
 Capabilities are organized by domain — from managing issues and pull requests to
@@ -11,8 +11,8 @@ orchestrating workflows and tracking projects.
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#F5A623', 'primaryTextColor': '#fff', 'primaryBorderColor': '#D4891A', 'lineColor': '#666'}}}%%
 graph TB
-    Issues["Issues<br/>(21 capabilities)"]
-    PRs["Pull Requests<br/>(22 capabilities)"]
+    Issues["Issues<br/>(19 capabilities)"]
+    PRs["Pull Requests<br/>(21 capabilities)"]
     Releases["Releases<br/>(5 capabilities)"]
     Workflows["Workflows<br/>(11 capabilities)"]
     Repos["Repositories<br/>(3 capabilities)"]
@@ -32,7 +32,7 @@ graph TB
 
 | Capability ID | Description | Routes |
 |---|---|---|
-| **Issues (21)** |
+| **Issues (19)** |
 | `issue.create` | Create a new issue. | graphql (preferred) |
 | `issue.view` | Fetch one issue by number. | cli (preferred), graphql (fallback) |
 | `issue.list` | List repository issues. | cli (preferred), graphql (fallback) |
@@ -52,9 +52,7 @@ graph TB
 | `issue.blocked_by.remove` | Remove a blocked-by relation for an issue. | graphql (preferred) |
 | `issue.linked_prs.list` | List pull requests linked to an issue. | graphql (preferred) |
 | `issue.relations.get` | Get issue parent/children/blocking relations. | graphql (preferred) |
-| `issue.triage.composite` | Set issue labels and create a comment in a single GraphQL batch call. | graphql (preferred) |
-| `issue.update.composite` | Update issue fields, labels, assignees, and milestone in a single GraphQL batch call. | graphql (preferred) |
-| **Pull Requests (22)** |
+| **Pull Requests (21)** |
 | `pr.view` | Fetch one pull request by number. | graphql (preferred), cli (fallback) |
 | `pr.list` | List repository pull requests. | cli (preferred), graphql (fallback) |
 | `pr.create` | Create a pull request. | cli (preferred) |
@@ -76,7 +74,6 @@ graph TB
 | `pr.checks.rerun_failed` | Rerun failed PR workflow checks for a selected run. | cli (preferred) |
 | `pr.diff.files` | List changed files in a pull request diff. | graphql (preferred) |
 | `pr.diff.view` | View the unified diff for a pull request. | cli (preferred) |
-| `pr.threads.composite` | Batch thread reply/resolve operations in a single GraphQL call. | graphql (preferred) |
 | **Releases (5)** |
 | `release.create_draft` | Create a draft release. | cli (preferred) |
 | `release.get` | Get release details by tag name. | cli (preferred) |

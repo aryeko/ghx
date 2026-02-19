@@ -53,6 +53,14 @@ flowchart TB
   G --> H
   H --> I
   C --> J
+
+  subgraph "Atomic Chaining (2+ tasks)"
+    EC["executeTasks()"] --> PF2["Pre-flight validation\n(all steps)"]
+    PF2 -->|"any invalid"| REJ["Reject whole chain"]
+    PF2 -->|"all valid"| P1["Phase 1 — batch resolution query\n≤1 HTTP round-trip"]
+    P1 --> P2["Phase 2 — batch mutation\n≤1 HTTP round-trip"]
+    P2 --> CR["ChainResultEnvelope\nstatus: success / partial / failed"]
+  end
 ```
 
 ## Result Envelope
@@ -73,23 +81,26 @@ Every capability returns:
 
 ## Current Scope
 
-69 capabilities (66 atomic + 3 composite) across 7 domains:
+66 capabilities across 7 domains:
 
-- **Issues** (21): view, list, create, update, close, reopen, delete, comment, label, assign, milestone, link, parent, block, relation, and 2 composite batch capabilities
-- **Pull Requests** (22): view, list, create, update, thread operations, review operations, diff, checks, merge, branch update, and 1 composite batch capability
+- **Issues** (19): view, list, create, update, close, reopen, delete, comment, label, assign, milestone, link, parent, block, relation
+- **Pull Requests** (21): view, list, create, update, thread operations, review operations, diff, checks, merge, branch update
 - **Workflows** (11): view, list, dispatch, run lifecycle, logs, cancel, rerun, artifacts
 - **Releases** (5): get, list, create draft, publish draft, update
 - **Repositories** (3): view, labels list, issue types list
 - **Projects v2** (6): get, fields list, items list, add issue, update field
 - **Check Runs** (1): annotations list
 
-Composite capabilities batch multiple GraphQL mutations into a single network round-trip. Route preferences are capability-specific and defined in cards (`preferred` + `fallbacks`), with REST still outside active routing for current capabilities.
+Route preferences are capability-specific and defined in cards (`preferred` + `fallbacks`), with REST still outside active routing for current capabilities. For multi-capability mutations, use `executeTasks()` — it batches all resolution lookups into one Phase 1 query and all mutations into one Phase 2 mutation (≤2 HTTP round-trips for any chain length).
 
 ## Source References
 
 - `packages/core/src/core/execute/execute.ts`
+- `packages/core/src/core/routing/engine.ts` — `executeTask()`, `executeTasks()`
 - `packages/core/src/core/registry/cards/*.yaml`
-- `packages/core/src/core/contracts/envelope.ts`
+- `packages/core/src/core/contracts/envelope.ts` — `ChainResultEnvelope`, `ChainStepResult`, `ChainStatus`
+- `packages/core/src/gql/document-registry.ts` — lookup & mutation document registry
+- `packages/core/src/gql/resolve.ts` — resolution inject logic
 - `packages/core/src/core/execute/execute-tool.ts`
 - `packages/core/src/core/registry/list-capabilities.ts`
 - `packages/core/src/core/registry/explain-capability.ts`

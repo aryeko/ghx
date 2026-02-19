@@ -78,12 +78,12 @@ Check: **[Benchmark Documentation](benchmark/README.md)**
 
 ## Key Facts
 
-**69 Capabilities** organized by domain (66 atomic + 3 composite):
+**66 Capabilities** organized by domain:
 
 | Domain | Count | Examples |
 |--------|-------|----------|
-| Issues | 21 | Create, update, close, assign labels, manage relations, composite batch ops |
-| Pull Requests | 22 | View, comment, approve, merge, rerun checks, composite batch ops |
+| Issues | 19 | Create, update, close, assign labels, manage relations |
+| Pull Requests | 21 | View, comment, approve, merge, rerun checks |
 | Workflows | 11 | List, dispatch, rerun, cancel, retrieve logs |
 | Releases | 5 | List, create, publish, update drafts |
 | Projects v2 | 6 | View, list items, update fields |
