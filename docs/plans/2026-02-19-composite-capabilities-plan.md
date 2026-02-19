@@ -560,12 +560,17 @@ export type BuiltOperation = {
 }
 
 export type OperationBuilder = {
-  build: (input: Record<string, unknown>) => BuiltOperation
+  /** May be async for multi-step operations (e.g., issue.labels.update does a lookup first) */
+  build: (input: Record<string, unknown>) => BuiltOperation | Promise<BuiltOperation>
   mapResponse: (raw: unknown) => unknown
 }
 
 // Import mutation string constants from client.ts
-// (these are already defined there — export them so builders can reference)
+// IMPORTANT: These constants are currently unexported in client.ts.
+// Add `export` to each constant declaration in client.ts before creating this file:
+//   export const PR_COMMENT_REPLY_MUTATION = ...
+//   export const PR_COMMENT_RESOLVE_MUTATION = ...
+//   export const PR_COMMENT_UNRESOLVE_MUTATION = ...
 import {
   PR_COMMENT_REPLY_MUTATION,
   PR_COMMENT_RESOLVE_MUTATION,
@@ -612,13 +617,29 @@ const resolveBuilder: OperationBuilder = {
   },
 }
 
-// ... unresolve, issue.labels.update, issue.comments.create, etc.
+const unresolveBuilder: OperationBuilder = {
+  build(input) {
+    if (!input.threadId || typeof input.threadId !== "string") {
+      throw new Error("threadId is required")
+    }
+    return {
+      mutation: PR_COMMENT_UNRESOLVE_MUTATION,
+      variables: { threadId: input.threadId },
+    }
+  },
+  mapResponse(raw) {
+    const root = raw as Record<string, unknown>
+    const mutation = root?.unresolveReviewThread as Record<string, unknown>
+    const thread = mutation?.thread as Record<string, unknown>
+    return { id: thread?.id, isResolved: thread?.isResolved }
+  },
+}
 
 export const OPERATION_BUILDERS: Record<string, OperationBuilder> = {
   "pr.thread.reply": replyBuilder,
   "pr.thread.resolve": resolveBuilder,
   "pr.thread.unresolve": unresolveBuilder,
-  // Add issue builders as needed in Task 6
+  // Issue builders added in Task 6 when those composites need them
 }
 ```
 
@@ -737,6 +758,7 @@ routing:
   fallbacks: []
 composite:
   steps:
+    # Available builders — expansion selects per thread based on action field
     - capability_id: pr.thread.reply
       foreach: threads
       params_map:
@@ -746,8 +768,14 @@ composite:
       foreach: threads
       params_map:
         threadId: threadId
+    - capability_id: pr.thread.unresolve
+      foreach: threads
+      params_map:
+        threadId: threadId
   output_strategy: array
 ```
+
+The `action` field on each thread item controls which step(s) execute for that item (see `expandCompositeSteps()` in Task 7).
 
 Update `packages/core/src/core/registry/index.ts` — insert `"pr.threads.composite"` as the first item in the `pr` domain section of `preferredOrder` (before `"pr.view"`):
 
@@ -814,12 +842,14 @@ Expected: FAIL
 
 **Step 3: Write card YAMLs**
 
+> **Note on `issueId`:** These composites accept the GitHub node ID directly (`issueId`). Agents obtain this from a prior `issue.view` call (which returns the node ID). This matches the pattern of `pr.threads.composite` where agents get thread IDs from `pr.reviews.list`. If we later want `owner/name/issueNumber` input, the composite expansion can do a lookup — but for v1, node IDs keep it simple.
+
 Create `packages/core/src/core/registry/cards/issue.triage.composite.yaml`:
 
 ```yaml
 capability_id: issue.triage.composite
 version: "1.0.0"
-description: "Set labels and add a comment to an issue in a single batched call."
+description: "Set labels and add a comment to an issue in a single batched call. Requires the issue's node ID (from issue.view)."
 input_schema:
   type: object
   required: [issueId]
@@ -875,7 +905,7 @@ Create `packages/core/src/core/registry/cards/issue.update.composite.yaml`:
 ```yaml
 capability_id: issue.update.composite
 version: "1.0.0"
-description: "Update issue fields, labels, assignees, and milestone in a single batched call. Provide only the fields you want to change."
+description: "Update issue fields, labels, assignees, and milestone in a single batched call. Provide only the fields you want to change. Requires the issue's node ID (from issue.view)."
 input_schema:
   type: object
   required: [issueId]
@@ -939,6 +969,24 @@ composite:
         issueId: issueId
         milestoneNumber: milestoneNumber
   output_strategy: merge
+```
+
+**Step 3b: Add issue builders to `gql/builders.ts`**
+
+The issue composite steps reference builders that don't exist yet. Add stubs to `builders.ts` (the mutation constants will need to be identified from `client.ts` or created):
+
+```typescript
+// Issue builders — add to OPERATION_BUILDERS registry:
+// "issue.labels.update": issueLabelsUpdateBuilder,
+// "issue.comments.create": issueCommentCreateBuilder,
+// "issue.update": issueUpdateBuilder,
+// "issue.assignees.update": issueAssigneesUpdateBuilder,
+// "issue.milestone.set": issueMilestoneSetBuilder,
+//
+// Each follows the same pattern as PR builders: build() returns
+// { mutation, variables }, mapResponse() extracts typed output.
+// The exact mutation constants and response shapes should be
+// extracted from the corresponding run* methods in client.ts.
 ```
 
 Update `preferredOrder` in `index.ts` — insert composites before `"issue.view"`:
@@ -1028,21 +1076,76 @@ For `pr.threads.composite` with mixed actions, the expansion logic:
 ```typescript
 import type { BatchOperationInput } from "../../gql/batch.js"
 import { OPERATION_BUILDERS, type OperationBuilder } from "../../gql/builders.js"
+import type { CompositeConfig, CompositeStep } from "../registry/types.js"
 
 export type ExpandedOperation = BatchOperationInput & {
   mapResponse: (raw: unknown) => unknown
 }
 
-export function expandCompositeSteps(
-  card: OperationCard,
+/**
+ * Maps action values to the capability_ids that should execute for that action.
+ * Used by composites with per-item action routing (e.g., pr.threads.composite).
+ */
+const ACTION_TO_CAPABILITIES: Record<string, string[]> = {
+  reply: ["pr.thread.reply"],
+  resolve: ["pr.thread.resolve"],
+  reply_and_resolve: ["pr.thread.reply", "pr.thread.resolve"],
+  unresolve: ["pr.thread.unresolve"],
+}
+
+export async function expandCompositeSteps(
+  composite: CompositeConfig,
   input: Record<string, unknown>,
-): ExpandedOperation[] {
-  // For each step in card.composite.steps:
-  //   - Look up builder by step.capability_id
-  //   - If step.foreach: iterate over input[step.foreach] array
-  //   - For each iteration: call builder.build(mappedParams)
-  //   - Assign alias (e.g. "reply0", "resolve0")
-  //   - Store builder.mapResponse alongside
+): Promise<ExpandedOperation[]> {
+  const operations: ExpandedOperation[] = []
+
+  // Build a map of capability_id → step config for param mapping lookup
+  const stepsByCapId = new Map<string, CompositeStep>()
+  for (const step of composite.steps) {
+    stepsByCapId.set(step.capability_id, step)
+  }
+
+  // Determine iteration: if any step has foreach, iterate over that array
+  const foreachKey = composite.steps.find((s) => s.foreach)?.foreach
+  const items = foreachKey
+    ? (input[foreachKey] as Record<string, unknown>[])
+    : [input]
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]!
+
+    // Action-aware: if item has an `action` field, select builders by action
+    const action = item.action as string | undefined
+    const capabilityIds = action
+      ? (ACTION_TO_CAPABILITIES[action] ?? [])
+      : composite.steps.map((s) => s.capability_id)
+
+    for (const capId of capabilityIds) {
+      const builder = OPERATION_BUILDERS[capId]
+      if (!builder) {
+        throw new Error(`No builder registered for capability: ${capId}`)
+      }
+      const step = stepsByCapId.get(capId)
+      if (!step) continue
+
+      // Map item fields to builder input via params_map
+      const stepInput: Record<string, unknown> = {}
+      for (const [builderParam, itemField] of Object.entries(step.params_map)) {
+        stepInput[builderParam] = item[itemField]
+      }
+
+      const built = await builder.build(stepInput)
+      const aliasBase = capId.split(".").pop() ?? capId
+      operations.push({
+        alias: `${aliasBase}${i}`,
+        mutation: built.mutation,
+        variables: built.variables,
+        mapResponse: builder.mapResponse,
+      })
+    }
+  }
+
+  return operations
 }
 ```
 

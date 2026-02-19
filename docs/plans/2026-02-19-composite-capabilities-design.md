@@ -52,8 +52,10 @@ Refactor participating methods into three composable phases:
 
 ```typescript
 type OperationBuilder<TInput, TOutput> = {
-  /** Validates input and assembles { mutation, variables } without executing */
-  build: (input: TInput) => { mutation: string; variables: GraphqlVariables }
+  /** Validates input and assembles { mutation, variables } without executing.
+   *  May be async for multi-step operations (e.g., issue.labels.update
+   *  which does a lookup query before building the mutation). */
+  build: (input: TInput) => MaybePromise<{ mutation: string; variables: GraphqlVariables }>
   /** Maps raw GQL response back to typed output */
   mapResponse: (raw: unknown) => TOutput
 }
@@ -152,7 +154,9 @@ executeTask(task, input)
       → existing single-operation flow
 ```
 
-### 4. Composite Capabilities
+**Action-aware expansion:** The `expandCompositeSteps()` function handles per-item action routing for composites like `pr.threads.composite`. When a `foreach` step iterates over an array where each item has an `action` field, the expansion selects which builder(s) to call per item based on the action value — e.g., `reply_and_resolve` emits two builder calls (reply + resolve) for that item. The YAML composite config declares the _available_ steps and their param mappings; the expansion logic determines which steps apply to each item. This keeps the YAML simple while supporting mixed-action arrays.
+
+### 5. Composite Capabilities
 
 #### `pr.threads.composite`
 
@@ -190,14 +194,20 @@ Per-thread action determines which GQL operations are emitted:
 ```yaml
 composite:
   steps:
+    # Available builders — expansion selects per thread based on action field
     - capability_id: pr.thread.reply
       foreach: "threads"
       params_map: { threadId: "threadId", body: "body" }
     - capability_id: pr.thread.resolve
       foreach: "threads"
       params_map: { threadId: "threadId" }
+    - capability_id: pr.thread.unresolve
+      foreach: "threads"
+      params_map: { threadId: "threadId" }
   output_strategy: array
 ```
+
+The `action` field on each thread item controls which step(s) execute for that item — see section 4 (Action-aware expansion).
 
 **Call reduction:** 2N → 1 (for N threads with reply+resolve)
 
@@ -300,7 +310,7 @@ composite:
 
 **Call reduction:** up to 4 → 1
 
-### 5. Capability Listing Order
+### 6. Capability Listing Order
 
 Composite capabilities appear first within each domain in `ghx capabilities list`:
 
@@ -322,7 +332,7 @@ issue:
 
 Cards with `.composite` suffix sort to the top of their domain group.
 
-### 6. SKILL.md Update
+### 7. SKILL.md Update
 
 Add generic instruction to prefer composites (no enumeration of individual caps):
 
@@ -335,7 +345,7 @@ sequential atomic calls. Check `ghx capabilities list` for available
 composites — their descriptions explain what they combine.
 ```
 
-### 7. Projected Impact
+### 8. Projected Impact
 
 **Benchmark: `pr-fix-review-comments-wf-001`**
 
@@ -346,9 +356,9 @@ composites — their descriptions explain what they combine.
 | Tokens | 21,430 | ~13,000 |
 | GitHub API calls | 18 | ~6 |
 
-### 8. Testing Strategy
+### 9. Testing Strategy
 
-- **Unit tests** for `buildBatchDocument()` — alias/variable prefixing, document construction
+- **Unit tests** for `buildBatchMutation()` — alias/variable prefixing, document construction
 - **Unit tests** for `expandCompositeSteps()` — foreach expansion, params mapping, mixed actions
 - **Unit tests** for composite execution path — mock GQL transport, verify single request
 - **Unit tests** for partial failure handling — some aliases succeed, some fail
@@ -357,7 +367,7 @@ composites — their descriptions explain what they combine.
 
 Coverage target: 95% on new code.
 
-### 9. Dropped Ideas
+### 10. Dropped Ideas
 
 - **`pr.review.submit_with_context`** — diff is a prerequisite read; agent must reason about diffs before submitting. Can't batch across the reasoning step.
 - **`workflow.run.diagnose`** — `run.view` output (job IDs) is needed before `job.logs.get`. Sequential data dependency.
