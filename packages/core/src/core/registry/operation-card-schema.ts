@@ -51,6 +51,61 @@ export const operationCardSchema = {
           },
           additionalProperties: false,
         },
+        resolution: {
+          type: "object",
+          required: ["lookup", "inject"],
+          properties: {
+            lookup: {
+              type: "object",
+              required: ["operationName", "documentPath", "vars"],
+              properties: {
+                operationName: { type: "string", minLength: 1 },
+                documentPath: { type: "string", minLength: 1 },
+                vars: { type: "object" },
+              },
+              additionalProperties: false,
+            },
+            inject: {
+              type: "array",
+              minItems: 1,
+              items: {
+                oneOf: [
+                  {
+                    type: "object",
+                    required: ["target", "source", "path"],
+                    properties: {
+                      target: { type: "string", minLength: 1 },
+                      source: { const: "scalar" },
+                      path: { type: "string", minLength: 1 },
+                    },
+                    additionalProperties: false,
+                  },
+                  {
+                    type: "object",
+                    required: [
+                      "target",
+                      "source",
+                      "from_input",
+                      "nodes_path",
+                      "match_field",
+                      "extract_field",
+                    ],
+                    properties: {
+                      target: { type: "string", minLength: 1 },
+                      source: { const: "map_array" },
+                      from_input: { type: "string", minLength: 1 },
+                      nodes_path: { type: "string", minLength: 1 },
+                      match_field: { type: "string", minLength: 1 },
+                      extract_field: { type: "string", minLength: 1 },
+                    },
+                    additionalProperties: false,
+                  },
+                ],
+              },
+            },
+          },
+          additionalProperties: false,
+        },
       },
       additionalProperties: false,
     },

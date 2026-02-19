@@ -21,6 +21,32 @@ export interface CompositeConfig {
   output_strategy: "merge" | "array" | "last"
 }
 
+export interface ScalarInject {
+  target: string
+  source: "scalar"
+  path: string
+}
+
+export interface MapArrayInject {
+  target: string
+  source: "map_array"
+  from_input: string
+  nodes_path: string
+  match_field: string
+  extract_field: string
+}
+
+export type InjectSpec = ScalarInject | MapArrayInject
+
+export interface ResolutionConfig {
+  lookup: {
+    operationName: string
+    documentPath: string
+    vars: Record<string, string>
+  }
+  inject: InjectSpec[]
+}
+
 export interface OperationCard<Input = Record<string, unknown>> {
   capability_id: string
   version: string
@@ -38,6 +64,7 @@ export interface OperationCard<Input = Record<string, unknown>> {
     documentPath: string
     variables?: Record<string, string>
     limits?: { maxPageSize?: number }
+    resolution?: ResolutionConfig
   }
   cli?: {
     command: string
