@@ -4,6 +4,9 @@ import { mapErrorToCode } from "@core/core/errors/map-error.js"
 import { isRetryableErrorCode } from "@core/core/errors/retryability.js"
 import type { OperationCard } from "@core/core/registry/types.js"
 import { normalizeError, normalizeResult } from "../normalizer.js"
+import type { CliCommandRunner } from "./cli-adapter.js"
+
+export type { CliCommandRunner }
 
 export type CliCapabilityId =
   | "repo.view"
@@ -51,14 +54,6 @@ export type CliCapabilityId =
   | "release.publish_draft"
   | "workflow.dispatch.run"
   | "workflow.run.rerun_failed"
-
-export type CliCommandRunner = {
-  run(
-    command: string,
-    args: string[],
-    timeoutMs: number,
-  ): Promise<{ stdout: string; stderr: string; exitCode: number }>
-}
 
 const DEFAULT_TIMEOUT_MS = 10_000
 const DEFAULT_LIST_FIRST = 30
