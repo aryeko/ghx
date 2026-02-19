@@ -3,8 +3,8 @@ import { executeTask } from "@core/core/routing/engine.js"
 import { createGithubClient } from "@core/gql/github-client.js"
 import { describe, expect, it, vi } from "vitest"
 
-describe("executeTask issue.linked_prs.list", () => {
-  it("returns graphql envelope for issue.linked_prs.list", async () => {
+describe("executeTask issue.relations.prs.list", () => {
+  it("returns graphql envelope for issue.relations.prs.list", async () => {
     const githubClient = createGithubClient({
       async execute<TData>(query: string): Promise<TData> {
         if (query.includes("query IssueLinkedPrs")) {
@@ -37,7 +37,7 @@ describe("executeTask issue.linked_prs.list", () => {
     })
 
     const request: TaskRequest = {
-      task: "issue.linked_prs.list",
+      task: "issue.relations.prs.list",
       input: {
         owner: "go-modkit",
         name: "modkit",
@@ -68,7 +68,7 @@ describe("executeTask issue.linked_prs.list", () => {
     })
 
     const request: TaskRequest = {
-      task: "issue.linked_prs.list",
+      task: "issue.relations.prs.list",
       input: {
         owner: "go-modkit",
         name: "modkit",

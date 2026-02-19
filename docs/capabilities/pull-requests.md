@@ -83,7 +83,7 @@ npx ghx run pr.list --input '{
 
 ### Merge and Branch
 
-#### `pr.merge.execute`
+#### `pr.merge`
 
 **Description:** Execute a pull request merge.
 
@@ -111,7 +111,7 @@ npx ghx run pr.list --input '{
 **Example:**
 
 ```bash
-npx ghx run pr.merge.execute --input '{
+npx ghx run pr.merge --input '{
   "owner": "octocat",
   "name": "hello-world",
   "prNumber": 123,
@@ -155,9 +155,9 @@ npx ghx run pr.branch.update --input '{
 
 ---
 
-#### `pr.ready_for_review.set`
+#### `pr.update`
 
-**Description:** Mark pull request as ready for review or draft.
+**Description:** Update pull request metadata (title, body, draft status).
 
 **Input:**
 
@@ -166,25 +166,29 @@ npx ghx run pr.branch.update --input '{
 | owner | string | yes | Repository owner |
 | name | string | yes | Repository name |
 | prNumber | integer | yes | PR number (1+) |
-| ready | boolean | yes | true for ready, false for draft |
+| title | string | no | New PR title |
+| body | string | no | New PR body (markdown) |
+| draft | boolean | no | true for draft, false for ready |
 
 **Output:**
 
 | Field | Type | Description |
 |-------|------|-------------|
 | prNumber | integer | PR number |
-| isDraft | boolean | true if draft, false if ready |
+| title | string | Updated title |
+| body | string | Updated body |
+| isDraft | boolean | Current draft state |
 
 **Routes:** cli (preferred)
 
 **Example:**
 
 ```bash
-npx ghx run pr.ready_for_review.set --input '{
+npx ghx run pr.update --input '{
   "owner": "octocat",
   "name": "hello-world",
   "prNumber": 123,
-  "ready": true
+  "draft": false
 }'
 ```
 
@@ -192,9 +196,9 @@ npx ghx run pr.ready_for_review.set --input '{
 
 ### Assignees and Reviewers
 
-#### `pr.assignees.update`
+#### `pr.assignees.add`
 
-**Description:** Update pull request assignees.
+**Description:** Add assignees to a pull request.
 
 **Input:**
 
@@ -203,16 +207,14 @@ npx ghx run pr.ready_for_review.set --input '{
 | owner | string | yes | Repository owner |
 | name | string | yes | Repository name |
 | prNumber | integer | yes | PR number (1+) |
-| add | array | conditional | Usernames to add |
-| remove | array | conditional | Usernames to remove |
+| assignees | array | yes | Usernames to add (min 1) |
 
 **Output:**
 
 | Field | Type | Description |
 |-------|------|-------------|
 | prNumber | integer | PR number |
-| add | array | Added usernames |
-| remove | array | Removed usernames |
+| assignees | array | Added usernames |
 | updated | boolean | true if changed |
 
 **Routes:** cli (preferred)
@@ -220,17 +222,53 @@ npx ghx run pr.ready_for_review.set --input '{
 **Example:**
 
 ```bash
-npx ghx run pr.assignees.update --input '{
+npx ghx run pr.assignees.add --input '{
   "owner": "octocat",
   "name": "hello-world",
   "prNumber": 123,
-  "add": ["alice", "bob"]
+  "assignees": ["alice", "bob"]
 }'
 ```
 
 ---
 
-#### `pr.reviewers.request`
+#### `pr.assignees.remove`
+
+**Description:** Remove assignees from a pull request.
+
+**Input:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| owner | string | yes | Repository owner |
+| name | string | yes | Repository name |
+| prNumber | integer | yes | PR number (1+) |
+| assignees | array | yes | Usernames to remove (min 1) |
+
+**Output:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| prNumber | integer | PR number |
+| assignees | array | Removed usernames |
+| updated | boolean | true if changed |
+
+**Routes:** cli (preferred)
+
+**Example:**
+
+```bash
+npx ghx run pr.assignees.remove --input '{
+  "owner": "octocat",
+  "name": "hello-world",
+  "prNumber": 123,
+  "assignees": ["alice"]
+}'
+```
+
+---
+
+#### `pr.reviews.request`
 
 **Description:** Request pull request reviewers.
 
@@ -256,7 +294,7 @@ npx ghx run pr.assignees.update --input '{
 **Example:**
 
 ```bash
-npx ghx run pr.reviewers.request --input '{
+npx ghx run pr.reviews.request --input '{
   "owner": "octocat",
   "name": "hello-world",
   "prNumber": 123,
@@ -268,7 +306,7 @@ npx ghx run pr.reviewers.request --input '{
 
 ### Comments and Review Threads
 
-#### `pr.comments.list`
+#### `pr.threads.list`
 
 **Description:** List pull request review threads with unresolved filtering.
 
@@ -298,7 +336,7 @@ npx ghx run pr.reviewers.request --input '{
 **Example:**
 
 ```bash
-npx ghx run pr.comments.list --input '{
+npx ghx run pr.threads.list --input '{
   "owner": "octocat",
   "name": "hello-world",
   "prNumber": 123,
@@ -309,7 +347,7 @@ npx ghx run pr.comments.list --input '{
 
 ---
 
-#### `pr.comment.reply`
+#### `pr.threads.reply`
 
 **Description:** Reply to a pull request review thread.
 
@@ -332,7 +370,7 @@ npx ghx run pr.comments.list --input '{
 **Example:**
 
 ```bash
-npx ghx run pr.comment.reply --input '{
+npx ghx run pr.threads.reply --input '{
   "threadId": "PRRT_kwDODhlyV4567890",
   "body": "Good point. I will update the implementation."
 }'
@@ -340,7 +378,7 @@ npx ghx run pr.comment.reply --input '{
 
 ---
 
-#### `pr.comment.resolve`
+#### `pr.threads.resolve`
 
 **Description:** Resolve a pull request review thread.
 
@@ -362,14 +400,14 @@ npx ghx run pr.comment.reply --input '{
 **Example:**
 
 ```bash
-npx ghx run pr.comment.resolve --input '{
+npx ghx run pr.threads.resolve --input '{
   "threadId": "PRRT_kwDODhlyV4567890"
 }'
 ```
 
 ---
 
-#### `pr.comment.unresolve`
+#### `pr.threads.unresolve`
 
 **Description:** Unresolve a pull request review thread.
 
@@ -391,7 +429,7 @@ npx ghx run pr.comment.resolve --input '{
 **Example:**
 
 ```bash
-npx ghx run pr.comment.unresolve --input '{
+npx ghx run pr.threads.unresolve --input '{
   "threadId": "PRRT_kwDODhlyV4567890"
 }'
 ```
@@ -436,9 +474,9 @@ npx ghx run pr.reviews.list --input '{
 
 ---
 
-#### `pr.review.submit_approve`
+#### `pr.reviews.submit`
 
-**Description:** Submit an approving pull request review.
+**Description:** Submit a pull request review (approve, request changes, or comment).
 
 **Input:**
 
@@ -447,6 +485,7 @@ npx ghx run pr.reviews.list --input '{
 | owner | string | yes | Repository owner |
 | name | string | yes | Repository name |
 | prNumber | integer | yes | PR number (1+) |
+| event | string | yes | Review event (APPROVE, COMMENT, REQUEST_CHANGES) |
 | body | string | no | Review comment body (markdown, min 1 char) |
 
 **Output:**
@@ -454,94 +493,21 @@ npx ghx run pr.reviews.list --input '{
 | Field | Type | Description |
 |-------|------|-------------|
 | prNumber | integer | PR number |
-| event | string | APPROVE |
+| event | string | Review event submitted |
 | submitted | boolean | true |
 | body | string or null | Review body |
 
-**Routes:** cli (preferred)
+**Routes:** graphql (preferred)
 
 **Example:**
 
 ```bash
-npx ghx run pr.review.submit_approve --input '{
+npx ghx run pr.reviews.submit --input '{
   "owner": "octocat",
   "name": "hello-world",
   "prNumber": 123,
+  "event": "APPROVE",
   "body": "Looks good! Ready to merge."
-}'
-```
-
----
-
-#### `pr.review.submit_comment`
-
-**Description:** Submit a comment-only pull request review.
-
-**Input:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| owner | string | yes | Repository owner |
-| name | string | yes | Repository name |
-| prNumber | integer | yes | PR number (1+) |
-| body | string | yes | Review comment body (markdown, min 1 char) |
-
-**Output:**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| prNumber | integer | PR number |
-| event | string | COMMENT |
-| submitted | boolean | true |
-| body | string | Review body |
-
-**Routes:** cli (preferred)
-
-**Example:**
-
-```bash
-npx ghx run pr.review.submit_comment --input '{
-  "owner": "octocat",
-  "name": "hello-world",
-  "prNumber": 123,
-  "body": "Can you add tests for this feature?"
-}'
-```
-
----
-
-#### `pr.review.submit_request_changes`
-
-**Description:** Submit a pull request review requesting changes.
-
-**Input:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| owner | string | yes | Repository owner |
-| name | string | yes | Repository name |
-| prNumber | integer | yes | PR number (1+) |
-| body | string | yes | Review comment body (markdown, min 1 char) |
-
-**Output:**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| prNumber | integer | PR number |
-| event | string | REQUEST_CHANGES |
-| submitted | boolean | true |
-| body | string | Review body |
-
-**Routes:** cli (preferred)
-
-**Example:**
-
-```bash
-npx ghx run pr.review.submit_request_changes --input '{
-  "owner": "octocat",
-  "name": "hello-world",
-  "prNumber": 123,
-  "body": "Need to refactor error handling before merge."
 }'
 ```
 
@@ -549,114 +515,7 @@ npx ghx run pr.review.submit_request_changes --input '{
 
 ### Checks and Status
 
-#### `pr.checks.get_failed`
-
-**Description:** List failed pull request checks.
-
-**Input:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| owner | string | yes | Repository owner |
-| name | string | yes | Repository name |
-| prNumber | integer | yes | PR number (1+) |
-
-**Output:**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| items | array | Failed checks (name, state, workflow, link) |
-| summary | object | Summary (total, failed, pending, passed) |
-
-**Routes:** cli (preferred)
-
-**Example:**
-
-```bash
-npx ghx run pr.checks.get_failed --input '{
-  "owner": "octocat",
-  "name": "hello-world",
-  "prNumber": 123
-}'
-```
-
----
-
-#### `pr.checks.rerun_all`
-
-**Description:** Rerun all PR workflow checks for a selected run.
-
-**Input:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| owner | string | yes | Repository owner |
-| name | string | yes | Repository name |
-| prNumber | integer | yes | PR number (1+) |
-| runId | integer | yes | Workflow run ID (1+) |
-
-**Output:**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| prNumber | integer | PR number |
-| runId | integer | Workflow run ID |
-| mode | string | all |
-| queued | boolean | true |
-
-**Routes:** cli (preferred)
-
-**Example:**
-
-```bash
-npx ghx run pr.checks.rerun_all --input '{
-  "owner": "octocat",
-  "name": "hello-world",
-  "prNumber": 123,
-  "runId": 5678
-}'
-```
-
----
-
-#### `pr.checks.rerun_failed`
-
-**Description:** Rerun failed PR workflow checks for a selected run.
-
-**Input:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| owner | string | yes | Repository owner |
-| name | string | yes | Repository name |
-| prNumber | integer | yes | PR number (1+) |
-| runId | integer | yes | Workflow run ID (1+) |
-
-**Output:**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| prNumber | integer | PR number |
-| runId | integer | Workflow run ID |
-| mode | string | failed |
-| queued | boolean | true |
-
-**Routes:** cli (preferred)
-
-**Example:**
-
-```bash
-npx ghx run pr.checks.rerun_failed --input '{
-  "owner": "octocat",
-  "name": "hello-world",
-  "prNumber": 123,
-  "runId": 5678
-}'
-```
-
----
-
-#### `pr.status.checks`
+#### `pr.checks.list`
 
 **Description:** List pull request check statuses with summary counts.
 
@@ -680,7 +539,7 @@ npx ghx run pr.checks.rerun_failed --input '{
 **Example:**
 
 ```bash
-npx ghx run pr.status.checks --input '{
+npx ghx run pr.checks.list --input '{
   "owner": "octocat",
   "name": "hello-world",
   "prNumber": 123
@@ -689,9 +548,79 @@ npx ghx run pr.status.checks --input '{
 
 ---
 
+#### `pr.checks.rerun.all`
+
+**Description:** Rerun all PR workflow checks for a selected run.
+
+**Input:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| owner | string | yes | Repository owner |
+| name | string | yes | Repository name |
+| prNumber | integer | yes | PR number (1+) |
+| runId | integer | yes | Workflow run ID (1+) |
+
+**Output:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| runId | integer | Workflow run ID |
+| queued | boolean | true |
+
+**Routes:** cli (preferred)
+
+**Example:**
+
+```bash
+npx ghx run pr.checks.rerun.all --input '{
+  "owner": "octocat",
+  "name": "hello-world",
+  "prNumber": 123,
+  "runId": 5678
+}'
+```
+
+---
+
+#### `pr.checks.rerun.failed`
+
+**Description:** Rerun failed PR workflow checks for a selected run.
+
+**Input:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| owner | string | yes | Repository owner |
+| name | string | yes | Repository name |
+| prNumber | integer | yes | PR number (1+) |
+| runId | integer | yes | Workflow run ID (1+) |
+
+**Output:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| runId | integer | Workflow run ID |
+| queued | boolean | true |
+
+**Routes:** cli (preferred)
+
+**Example:**
+
+```bash
+npx ghx run pr.checks.rerun.failed --input '{
+  "owner": "octocat",
+  "name": "hello-world",
+  "prNumber": 123,
+  "runId": 5678
+}'
+```
+
+---
+
 ### Diff and Mergeability
 
-#### `pr.diff.list_files`
+#### `pr.diff.files`
 
 **Description:** List changed files in a pull request diff.
 
@@ -717,7 +646,7 @@ npx ghx run pr.status.checks --input '{
 **Example:**
 
 ```bash
-npx ghx run pr.diff.list_files --input '{
+npx ghx run pr.diff.files --input '{
   "owner": "octocat",
   "name": "hello-world",
   "prNumber": 123,
@@ -759,7 +688,7 @@ npx ghx run pr.diff.view --input '{
 
 ---
 
-#### `pr.mergeability.view`
+#### `pr.merge.status`
 
 **Description:** View pull request mergeability and readiness signals.
 
@@ -781,12 +710,12 @@ npx ghx run pr.diff.view --input '{
 | isDraft | boolean | true if draft |
 | state | string | PR state |
 
-**Routes:** cli (preferred)
+**Routes:** graphql (preferred), cli (fallback)
 
 **Example:**
 
 ```bash
-npx ghx run pr.mergeability.view --input '{
+npx ghx run pr.merge.status --input '{
   "owner": "octocat",
   "name": "hello-world",
   "prNumber": 123
