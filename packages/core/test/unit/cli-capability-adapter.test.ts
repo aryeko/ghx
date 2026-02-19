@@ -950,7 +950,7 @@ describe("runCliCapability", () => {
 
     expect(rerunFailed.ok).toBe(true)
     expect(rerunFailed.data).toEqual({
-      runId: "88",
+      runId: 88,
       queued: true,
     })
     expect(runner.run).toHaveBeenNthCalledWith(
@@ -984,7 +984,7 @@ describe("runCliCapability", () => {
 
     expect(rerunResult.ok).toBe(true)
     expect(rerunResult.data).toEqual({
-      runId: "88",
+      runId: 88,
       queued: true,
     })
   })
@@ -1488,7 +1488,7 @@ describe("runCliCapability", () => {
     expect(workflowList.ok).toBe(true)
     expect(workflowGet.ok).toBe(true)
     expect(workflowRunGet.ok).toBe(true)
-    expect(rerunAll.data).toEqual({ runId: "123", queued: true })
+    expect(rerunAll.data).toEqual({ runId: 123, queued: true })
     expect(cancel.data).toEqual({ runId: 123, status: "cancel_requested" })
     expect(artifacts.data).toEqual(
       expect.objectContaining({
@@ -2089,7 +2089,7 @@ describe("runCliCapability", () => {
     })
     expect(rerunResult.ok).toBe(true)
     expect(rerunResult.data).toEqual({
-      runId: "500",
+      runId: 500,
       queued: true,
     })
 

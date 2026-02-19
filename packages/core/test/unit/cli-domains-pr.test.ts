@@ -282,7 +282,7 @@ describe("pr domain handlers", () => {
   })
 
   describe("pr.checks.rerun.failed", () => {
-    it("succeeds with runId string and queued", async () => {
+    it("succeeds with runId integer and queued", async () => {
       const runner = mockRunner(0, "", "")
 
       const result = await h("pr.checks.rerun.failed")(
@@ -293,7 +293,7 @@ describe("pr domain handlers", () => {
 
       expect(result.ok).toBe(true)
       expect(result.data).toMatchObject({
-        runId: "999",
+        runId: 999,
         queued: true,
       })
     })
@@ -318,7 +318,7 @@ describe("pr domain handlers", () => {
 
       expect(result.ok).toBe(true)
       expect(result.data).toMatchObject({
-        runId: "999",
+        runId: 999,
         queued: true,
       })
       expect(runSpy).toHaveBeenCalledTimes(2)
@@ -339,7 +339,7 @@ describe("pr domain handlers", () => {
   })
 
   describe("pr.checks.rerun.all", () => {
-    it("succeeds with runId string and queued", async () => {
+    it("succeeds with runId integer and queued", async () => {
       const runner = mockRunner(0, "", "")
 
       const result = await h("pr.checks.rerun.all")(
@@ -350,7 +350,7 @@ describe("pr domain handlers", () => {
 
       expect(result.ok).toBe(true)
       expect(result.data).toMatchObject({
-        runId: "999",
+        runId: 999,
         queued: true,
       })
     })

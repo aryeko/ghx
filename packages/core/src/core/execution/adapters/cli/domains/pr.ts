@@ -578,7 +578,7 @@ const handlePrChecksRerunFailed: CliHandler = async (runner, params, card) => {
         if (repo) rerunAllArgs.push("--repo", repo)
         const rerunAllResult = await runner.run("gh", rerunAllArgs, DEFAULT_TIMEOUT_MS)
         if (rerunAllResult.exitCode === 0) {
-          return normalizeResult({ runId: String(params.runId), queued: true }, "cli", {
+          return normalizeResult({ runId, queued: true }, "cli", {
             capabilityId: "pr.checks.rerun.failed",
             reason: "CARD_FALLBACK",
           })
@@ -609,7 +609,7 @@ const handlePrChecksRerunFailed: CliHandler = async (runner, params, card) => {
       )
     }
 
-    return normalizeResult({ runId: String(params.runId), queued: true }, "cli", {
+    return normalizeResult({ runId, queued: true }, "cli", {
       capabilityId: "pr.checks.rerun.failed",
       reason: "CARD_FALLBACK",
     })
@@ -655,7 +655,7 @@ const handlePrChecksRerunAll: CliHandler = async (runner, params, card) => {
       )
     }
 
-    return normalizeResult({ runId: String(params.runId), queued: true }, "cli", {
+    return normalizeResult({ runId, queued: true }, "cli", {
       capabilityId: "pr.checks.rerun.all",
       reason: "CARD_FALLBACK",
     })

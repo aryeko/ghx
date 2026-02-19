@@ -588,7 +588,7 @@ export const handleWorkflowRunRerunAll: CliHandler = async (runner, params, card
     }
 
     const normalized = {
-      runId: String(runId),
+      runId,
       queued: true,
     }
 
@@ -877,7 +877,7 @@ export const handleWorkflowRunRerunFailed: CliHandler = async (runner, params, c
     }
 
     const normalized = {
-      runId: String(runId),
+      runId,
       queued: true,
     }
 

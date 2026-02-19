@@ -487,7 +487,7 @@ Final line`
 
       expect(result.ok).toBe(true)
       expect(result.data).toMatchObject({
-        runId: "123456",
+        runId: 123456,
         queued: true,
       })
       expect(result.meta.capability_id).toBe("workflow.run.rerun.all")
@@ -718,7 +718,7 @@ Final line`
 
       expect(result.ok).toBe(true)
       expect(result.data).toMatchObject({
-        runId: "123456",
+        runId: 123456,
         queued: true,
       })
       expect(result.meta.capability_id).toBe("workflow.run.rerun.failed")
