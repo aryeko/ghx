@@ -1,7 +1,7 @@
 import type { TaskRequest } from "@core/core/contracts/task.js"
 import { capabilityRegistry } from "@core/core/routing/capability-registry.js"
 import { executeTask } from "@core/core/routing/engine.js"
-import { createGithubClient } from "@core/gql/client.js"
+import { createGithubClient } from "@core/gql/github-client.js"
 import { describe, expect, it } from "vitest"
 
 describe("executeTask repo.view", () => {
@@ -562,7 +562,7 @@ describe("executeTask repo.view", () => {
   })
 
   it("returns REST unsupported when card fallback explicitly uses rest", async () => {
-    const card = (await import("../../src/core/registry/index.js")).getOperationCard("repo.view")
+    const card = (await import("@core/core/registry/index.js")).getOperationCard("repo.view")
     if (!card) {
       throw new Error("repo.view card missing")
     }

@@ -1,4 +1,4 @@
-import type { GithubClient } from "@core/gql/client.js"
+import type { GithubClient } from "../../gql/github-client.js"
 import type { ResultEnvelope, RouteSource } from "../contracts/envelope.js"
 import type { TaskRequest } from "../contracts/task.js"
 import { errorCodes } from "../errors/codes.js"
@@ -8,10 +8,7 @@ import {
   type CliCommandRunner,
   runCliCapability,
 } from "../execution/adapters/cli-capability-adapter.js"
-import {
-  type GraphqlCapabilityId,
-  runGraphqlCapability,
-} from "../execution/adapters/graphql-capability-adapter.js"
+import { runGraphqlCapability } from "../execution/adapters/graphql-capability-adapter.js"
 import { createSafeCliCommandRunner } from "../execution/cli/safe-runner.js"
 import { normalizeError } from "../execution/normalizer.js"
 import { preflightCheck } from "../execution/preflight.js"
@@ -20,22 +17,7 @@ import { routePreferenceOrder } from "./policy.js"
 import type { RouteReasonCode } from "./reason-codes.js"
 
 type ExecutionDeps = {
-  githubClient: Pick<
-    GithubClient,
-    | "fetchRepoView"
-    | "fetchIssueCommentsList"
-    | "fetchIssueList"
-    | "fetchIssueView"
-    | "fetchPrList"
-    | "fetchPrView"
-    | "fetchPrCommentsList"
-    | "fetchPrReviewsList"
-    | "fetchPrDiffListFiles"
-    | "fetchPrMergeStatus"
-    | "replyToReviewThread"
-    | "resolveReviewThread"
-    | "unresolveReviewThread"
-  >
+  githubClient: GithubClient
   githubToken?: string | null
   cliRunner?: CliCommandRunner
   ghCliAvailable?: boolean
@@ -189,7 +171,7 @@ export async function executeTask(
       graphql: async () =>
         runGraphqlCapability(
           deps.githubClient,
-          request.task as GraphqlCapabilityId,
+          request.task,
           request.input as Record<string, unknown>,
         ),
       cli: async () => {

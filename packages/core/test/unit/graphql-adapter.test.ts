@@ -1,5 +1,5 @@
 import { runGraphqlAdapter } from "@core/core/execution/adapters/graphql-adapter.js"
-import { createGraphqlClient } from "@core/gql/client.js"
+import { createGraphqlClient } from "@core/gql/transport.js"
 import { describe, expect, it } from "vitest"
 
 describe("runGraphqlAdapter", () => {

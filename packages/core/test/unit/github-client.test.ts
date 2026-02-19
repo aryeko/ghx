@@ -1,4 +1,4 @@
-import { createGithubClient, createGithubClientFromToken } from "@core/gql/client.js"
+import { createGithubClient, createGithubClientFromToken } from "@core/gql/github-client.js"
 import { describe, expect, it, vi } from "vitest"
 
 describe("createGithubClient", () => {

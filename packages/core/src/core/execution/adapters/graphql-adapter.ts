@@ -1,8 +1,8 @@
-import type { ResultEnvelope } from "@core/core/contracts/envelope.js"
-import { mapErrorToCode } from "@core/core/errors/map-error.js"
-import { isRetryableErrorCode } from "@core/core/errors/retryability.js"
-import type { RouteReasonCode } from "@core/core/routing/reason-codes.js"
-import type { GraphqlClient, GraphqlVariables } from "@core/gql/client.js"
+import type { GraphqlClient, GraphqlVariables } from "../../../gql/transport.js"
+import type { ResultEnvelope } from "../../contracts/envelope.js"
+import { mapErrorToCode } from "../../errors/map-error.js"
+import { isRetryableErrorCode } from "../../errors/retryability.js"
+import type { RouteReasonCode } from "../../routing/reason-codes.js"
 import { normalizeError, normalizeResult } from "../normalizer.js"
 
 export interface GraphqlAdapterRequest {

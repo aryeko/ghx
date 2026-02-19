@@ -1,4 +1,5 @@
 import type { OperationCard } from "@core/core/registry/types.js"
+import type { GithubClient } from "@core/gql/github-client.js"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const executeMock = vi.fn()
@@ -40,7 +41,7 @@ describe("executeTask engine wiring", () => {
       },
     )
 
-    const { executeTask } = await import("../../src/core/routing/engine.js")
+    const { executeTask } = await import("@core/core/routing/engine.js")
 
     const result = await executeTask(
       {
@@ -62,7 +63,7 @@ describe("executeTask engine wiring", () => {
           replyToReviewThread: vi.fn(),
           resolveReviewThread: vi.fn(),
           unresolveReviewThread: vi.fn(),
-        },
+        } as unknown as GithubClient,
       },
     )
 
@@ -101,7 +102,7 @@ describe("executeTask engine wiring", () => {
       },
     )
 
-    const { executeTask } = await import("../../src/core/routing/engine.js")
+    const { executeTask } = await import("@core/core/routing/engine.js")
 
     const result = await executeTask(
       {
@@ -123,7 +124,7 @@ describe("executeTask engine wiring", () => {
           replyToReviewThread: vi.fn(),
           resolveReviewThread: vi.fn(),
           unresolveReviewThread: vi.fn(),
-        },
+        } as unknown as GithubClient,
         cliRunner,
         skipGhPreflight: true,
       },
