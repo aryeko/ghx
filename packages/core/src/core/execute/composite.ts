@@ -31,6 +31,12 @@ export function expandCompositeSteps(
 
   // Determine iteration: if any step has foreach, iterate over that array
   const foreachKey = composite.steps.find((s) => s.foreach)?.foreach
+  if (foreachKey !== undefined) {
+    const raw = input[foreachKey]
+    if (!Array.isArray(raw)) {
+      throw new Error(`Composite foreach key "${foreachKey}" must be an array, got ${typeof raw}`)
+    }
+  }
   const items = foreachKey ? (input[foreachKey] as Record<string, unknown>[]) : [input]
 
   for (let i = 0; i < items.length; i++) {

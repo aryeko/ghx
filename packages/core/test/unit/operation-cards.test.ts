@@ -14,8 +14,6 @@ describe("operation cards registry", () => {
       "repo.view",
       "repo.labels.list",
       "repo.issue_types.list",
-      "issue.triage.composite",
-      "issue.update.composite",
       "issue.view",
       "issue.list",
       "issue.comments.list",

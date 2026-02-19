@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest"
-import type {
-  CompositeConfig,
-  CompositeStep,
-  OperationCard,
-} from "../../src/core/registry/types.js"
+import type { OperationCard } from "../../src/core/registry/types.js"
 
 describe("CompositeConfig types", () => {
   it("allows OperationCard with composite field", () => {
@@ -26,8 +22,9 @@ describe("CompositeConfig types", () => {
       },
     }
     expect(card.composite).toBeDefined()
-    expect(card.composite!.steps).toHaveLength(1)
-    expect(card.composite!.output_strategy).toBe("array")
+    if (!card.composite) return
+    expect(card.composite.steps).toHaveLength(1)
+    expect(card.composite.output_strategy).toBe("array")
   })
 
   it("allows OperationCard without composite field", () => {
