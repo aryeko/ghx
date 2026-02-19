@@ -68,7 +68,7 @@
     "prepack": "pnpm run build",
     "gql:generate": "tsx scripts/run-gql-codegen.ts && biome check --write --no-errors-on-unmatched src/gql/generated src/gql/operations",
     "gql:schema:refresh": "graphql-codegen --config codegen.schema.ts",
-    "gql:verify": "pnpm run gql:generate && git diff --exit-code -- src/gql/generated src/gql/operations/*.generated.ts src/gql/operations/fragments/*.generated.ts"
+    "gql:verify": "pnpm run gql:generate && git diff --exit-code -- ':(glob)src/gql/**/*.generated.ts'"
   },
   "nx": {
     "targets": {
