@@ -2396,8 +2396,8 @@ describe("runCliCapability", () => {
     })
 
     expect(result.ok).toBe(false)
-    expect(result.error?.code).toBe("UNKNOWN")
-    expect(result.error?.message).toContain("Missing owner/name/releaseId")
+    expect(result.error?.code).toBe("VALIDATION")
+    expect(result.error?.message).toContain("Missing or invalid releaseId")
     expect(runner.run).not.toHaveBeenCalled()
   })
 
@@ -2462,7 +2462,7 @@ describe("runCliCapability", () => {
       expect.objectContaining({
         items: [
           {
-            id: 0,
+            id: null,
             name: null,
             sizeInBytes: null,
             archiveDownloadUrl: null,
