@@ -39,6 +39,8 @@ import type {
   PrListInput,
   PrMergeStatusData,
   PrMergeStatusInput,
+  PrReviewSubmitData,
+  PrReviewSubmitInput,
   PrReviewsListData,
   PrReviewsListInput,
   PrViewData,
@@ -80,6 +82,7 @@ export interface GithubClient extends GraphqlClient {
   replyToReviewThread(input: ReplyToReviewThreadInput): Promise<ReviewThreadMutationData>
   resolveReviewThread(input: ReviewThreadMutationInput): Promise<ReviewThreadMutationData>
   unresolveReviewThread(input: ReviewThreadMutationInput): Promise<ReviewThreadMutationData>
+  submitPrReview(input: PrReviewSubmitInput): Promise<PrReviewSubmitData>
 }
 
 export function createGithubClientFromToken(
@@ -159,5 +162,6 @@ export function createGithubClient(transport: GraphqlTransport): GithubClient {
       (await loadPrMutations()).runResolveReviewThread(transport, input),
     unresolveReviewThread: async (input) =>
       (await loadPrMutations()).runUnresolveReviewThread(transport, input),
+    submitPrReview: async (input) => (await loadPrMutations()).runSubmitPrReview(transport, input),
   }
 }

@@ -20,6 +20,7 @@ import type {
   PrDiffListFilesInput,
   PrListInput,
   PrMergeStatusInput,
+  PrReviewSubmitInput,
   PrReviewsListInput,
   PrViewInput,
   RepoViewInput,
@@ -235,6 +236,15 @@ const handlers = new Map<string, GraphqlHandler>([
     (c, p) => {
       const threadId = requireNonEmptyString(p, "threadId", "pr.thread.unresolve")
       return c.unresolveReviewThread({ threadId })
+    },
+  ],
+  [
+    "pr.review.submit",
+    (c, p) => {
+      if (!c.submitPrReview) {
+        throw new Error("submitPrReview operation not available")
+      }
+      return c.submitPrReview(p as PrReviewSubmitInput)
     },
   ],
 ])

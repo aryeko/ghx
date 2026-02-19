@@ -12,18 +12,30 @@ input_schema:
       type: string
       enum: [APPROVE, COMMENT, REQUEST_CHANGES]
     body: { type: string, minLength: 1 }
+    comments:
+      type: array
+      items:
+        type: object
+        required: [path, body, line]
+        properties:
+          path: { type: string, minLength: 1 }
+          body: { type: string, minLength: 1 }
+          line: { type: integer, minimum: 1 }
+          side: { type: string, enum: [LEFT, RIGHT] }
+        additionalProperties: false
   additionalProperties: false
 output_schema:
   type: object
-  required: [prNumber, event, submitted, body]
+  required: [id, state, url, body]
   properties:
-    prNumber: { type: integer, minimum: 1 }
-    event: { type: string, enum: [APPROVE, COMMENT, REQUEST_CHANGES] }
-    submitted: { type: boolean }
+    id: { type: [string, "null"] }
+    state: { type: [string, "null"] }
+    url: { type: [string, "null"] }
     body: { type: [string, "null"] }
   additionalProperties: false
 routing:
-  preferred: cli
+  preferred: graphql
   fallbacks: []
-cli:
-  command: pr review
+graphql:
+  operationName: PrReviewSubmit
+  documentPath: src/gql/operations/pr-review-submit.graphql

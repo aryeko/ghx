@@ -8,12 +8,20 @@ import { getSdk as getPrCommentReplySdk } from "../operations/pr-comment-reply.g
 import { getSdk as getPrCommentResolveSdk } from "../operations/pr-comment-resolve.generated.js"
 import { getSdk as getPrCommentUnresolveSdk } from "../operations/pr-comment-unresolve.generated.js"
 import { getSdk as getPrCommentsListSdk } from "../operations/pr-comments-list.generated.js"
+import { getSdk as getPrNodeIdSdk } from "../operations/pr-node-id.generated.js"
+import {
+  getSdk as getPrReviewSubmitSdk,
+  type PrReviewSubmitMutationVariables,
+} from "../operations/pr-review-submit.generated.js"
 import { getSdk as getReviewThreadStateSdk } from "../operations/review-thread-state.generated.js"
 import type { GraphqlTransport } from "../transport.js"
 import { createGraphqlRequestClient } from "../transport.js"
 import type {
+  DraftComment,
   PrCommentsListData,
   PrCommentsListInput,
+  PrReviewSubmitData,
+  PrReviewSubmitInput,
   PrReviewThreadCommentData,
   PrReviewThreadData,
   ReplyToReviewThreadInput,
@@ -255,4 +263,63 @@ export async function runUnresolveReviewThread(
     threadId: input.threadId,
   })
   return parseReviewThreadMutationResult(result, "unresolveReviewThread")
+}
+
+function assertPrReviewSubmitInput(input: PrReviewSubmitInput): void {
+  if (input.owner.trim().length === 0 || input.name.trim().length === 0) {
+    throw new Error("Repository owner and name are required")
+  }
+  if (!Number.isInteger(input.prNumber) || input.prNumber <= 0) {
+    throw new Error("PR number must be a positive integer")
+  }
+  if (!input.event || typeof input.event !== "string") {
+    throw new Error("Review event is required")
+  }
+}
+
+export async function runSubmitPrReview(
+  transport: GraphqlTransport,
+  input: PrReviewSubmitInput,
+): Promise<PrReviewSubmitData> {
+  assertPrReviewSubmitInput(input)
+
+  const client = createGraphqlRequestClient(transport)
+  const prIdResult = await getPrNodeIdSdk(client).PrNodeId({
+    owner: input.owner,
+    name: input.name,
+    prNumber: input.prNumber,
+  })
+
+  const pullRequestId = prIdResult.repository?.pullRequest?.id
+  if (!pullRequestId) {
+    throw new Error("Failed to retrieve pull request ID")
+  }
+
+  const threads = input.comments
+    ? input.comments.map((comment: DraftComment) => ({
+        path: comment.path,
+        body: comment.body,
+        line: comment.line,
+        ...(comment.side ? { side: comment.side } : {}),
+      }))
+    : []
+
+  const result = await getPrReviewSubmitSdk(client).PrReviewSubmit({
+    pullRequestId,
+    event: input.event as PrReviewSubmitMutationVariables["event"],
+    ...(input.body === undefined ? {} : { body: input.body }),
+    ...(threads.length === 0 ? {} : { threads }),
+  })
+
+  const review = asRecord(asRecord(result.addPullRequestReview)?.pullRequestReview)
+  if (!review || typeof review.id !== "string") {
+    throw new Error("Failed to parse pull request review response")
+  }
+
+  return {
+    id: review.id,
+    state: typeof review.state === "string" ? review.state : "",
+    url: typeof review.url === "string" ? review.url : "",
+    body: typeof review.body === "string" ? review.body : null,
+  }
 }

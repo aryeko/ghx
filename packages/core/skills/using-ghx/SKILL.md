@@ -1,5 +1,5 @@
 ---
-description: Execute GitHub operations via ghx — deterministic routing, normalized output, 66 capabilities
+description: Execute GitHub operations via ghx — deterministic routing, normalized output, 69 capabilities
 ---
 
 # ghx CLI Skill
@@ -28,6 +28,13 @@ Domains: `repo`, `issue`, `pr`, `release`, `workflow`, `project_v2`, `check_run`
 Required inputs shown in brackets (e.g. `[owner, name, prNumber]`).
 
 Use `ghx capabilities explain <capability_id>` to see full input/output schema.
+
+## Composite Capabilities
+
+When a workflow involves multiple operations on the same resource,
+prefer composite capabilities (suffixed with `.composite`) over
+sequential atomic calls. Check `ghx capabilities list` for available
+composites — their descriptions explain what they combine.
 
 ## Examples
 

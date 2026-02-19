@@ -16,6 +16,8 @@ describe("operation cards registry", () => {
       "repo.view",
       "repo.labels.list",
       "repo.issue_types.list",
+      "issue.triage.composite",
+      "issue.update.composite",
       "issue.view",
       "issue.list",
       "issue.comments.list",
@@ -35,6 +37,7 @@ describe("operation cards registry", () => {
       "issue.parent.remove",
       "issue.blocked_by.add",
       "issue.blocked_by.remove",
+      "pr.threads.composite",
       "pr.view",
       "pr.list",
       "pr.create",
@@ -220,7 +223,6 @@ describe("operation cards registry", () => {
 
   it("documents mutating PR capabilities as CLI-preferred operations", () => {
     const mutatingCapabilities = [
-      "pr.review.submit",
       "pr.merge",
       "pr.create",
       "pr.update",
@@ -239,5 +241,13 @@ describe("operation cards registry", () => {
       expect(card?.routing.fallbacks).toEqual([])
       expect(card?.cli?.command).toMatch(/^pr |^run /)
     }
+  })
+
+  it("pr.review.submit prefers GraphQL for inline comments support", () => {
+    const card = getOperationCard("pr.review.submit")
+    expect(card).toBeDefined()
+    expect(card?.routing.preferred).toBe("graphql")
+    expect(card?.routing.fallbacks).toEqual([])
+    expect(card?.graphql).toBeDefined()
   })
 })

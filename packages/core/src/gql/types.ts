@@ -3,6 +3,7 @@ import type { IssueListQueryVariables } from "./operations/issue-list.generated.
 import type { IssueViewQueryVariables } from "./operations/issue-view.generated.js"
 import type { PrDiffListFilesQueryVariables } from "./operations/pr-diff-list-files.generated.js"
 import type { PrListQueryVariables } from "./operations/pr-list.generated.js"
+import type { PrReviewSubmitMutationVariables } from "./operations/pr-review-submit.generated.js"
 import type { PrReviewsListQueryVariables } from "./operations/pr-reviews-list.generated.js"
 import type { PrViewQueryVariables } from "./operations/pr-view.generated.js"
 import type { RepoViewQueryVariables } from "./operations/repo-view.generated.js"
@@ -344,4 +345,27 @@ export type ReplyToReviewThreadInput = ReviewThreadMutationInput & {
 export type ReviewThreadMutationData = {
   id: string
   isResolved: boolean
+}
+
+export type DraftComment = {
+  path: string
+  body: string
+  line: number
+  side?: "LEFT" | "RIGHT"
+}
+
+export type PrReviewSubmitInput = {
+  owner: string
+  name: string
+  prNumber: number
+  event: PrReviewSubmitMutationVariables["event"]
+  body?: string
+  comments?: DraftComment[]
+}
+
+export type PrReviewSubmitData = {
+  id: string
+  state: string
+  url: string
+  body: string | null
 }
