@@ -97,6 +97,9 @@ Parameter values are substituted into the argument list; the adapter ensures saf
 ### Location
 
 - **Main adapter**: `packages/core/src/core/execution/adapters/cli-capability-adapter.ts`
+- **Handler registry**: `packages/core/src/core/execution/adapters/cli/capability-registry.ts`
+- **Shared helpers**: `packages/core/src/core/execution/adapters/cli/helpers.ts`
+- **Domain modules**: `packages/core/src/core/execution/adapters/cli/domains/*.ts` (`repo`, `issue`, `pr`, `workflow`, `project-v2`, `release`)
 - **Safe runner**: `packages/core/src/core/execution/cli/safe-runner.ts`
 - **Generic wrapper**: `packages/core/src/core/execution/adapters/cli-adapter.ts`
 
@@ -222,11 +225,11 @@ To add adapter support for a new capability:
      output_format: "json"
    ```
 
-2. Add implementation in `cli-capability-adapter.ts`:
-   - Parse input parameters
-   - Build command arguments
-   - Execute via safe CLI runner
-   - Transform output if needed
+2. Add the handler to the appropriate domain module in `core/execution/adapters/cli/domains/*.ts`:
+   - Use the shared helpers from `cli/helpers.ts` for common arg-building patterns
+   - Add an entry to the domain file's exported `handlers: Record<string, CliHandler>` map
+   - `cli/capability-registry.ts` imports and spreads domain `handlers` maps, so no explicit registration call is needed
+   - Update the `CliCapabilityId` union in `cli-capability-adapter.ts` to include the new capability ID
 
 3. Add tests in `packages/core/test/unit/` and `packages/core/test/integration/`
 

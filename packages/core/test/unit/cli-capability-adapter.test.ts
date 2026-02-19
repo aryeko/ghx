@@ -2396,8 +2396,8 @@ describe("runCliCapability", () => {
     })
 
     expect(result.ok).toBe(false)
-    expect(result.error?.code).toBe("UNKNOWN")
-    expect(result.error?.message).toContain("Missing owner/name/releaseId")
+    expect(result.error?.code).toBe("VALIDATION")
+    expect(result.error?.message).toContain("Missing or invalid releaseId")
     expect(runner.run).not.toHaveBeenCalled()
   })
 
@@ -2462,7 +2462,7 @@ describe("runCliCapability", () => {
       expect.objectContaining({
         items: [
           {
-            id: 0,
+            id: null,
             name: null,
             sizeInBytes: null,
             archiveDownloadUrl: null,
@@ -4421,5 +4421,19 @@ ERROR: Critical issue`,
         startedAt: null,
       }),
     )
+  })
+
+  it("returns error when no handler is registered for unknown capability ID", async () => {
+    const runner = { run: vi.fn() }
+
+    const result = await runCliCapability(
+      runner as Parameters<typeof runCliCapability>[0],
+      "unknown.capability" as Parameters<typeof runCliCapability>[1],
+      {},
+    )
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.message).toContain("No CLI handler registered for capability")
+    expect(result.meta.route_used).toBe("cli")
   })
 })
