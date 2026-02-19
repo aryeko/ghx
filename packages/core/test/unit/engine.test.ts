@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { OperationCard } from "../../src/core/registry/types.js"
+import type { GithubClient } from "../../src/gql/github-client.js"
 
 const executeMock = vi.fn()
 const getOperationCardMock = vi.fn()
@@ -63,7 +64,7 @@ describe("executeTask engine wiring", () => {
           replyToReviewThread: vi.fn(),
           resolveReviewThread: vi.fn(),
           unresolveReviewThread: vi.fn(),
-        },
+        } as unknown as GithubClient,
       },
     )
 
@@ -124,7 +125,7 @@ describe("executeTask engine wiring", () => {
           replyToReviewThread: vi.fn(),
           resolveReviewThread: vi.fn(),
           unresolveReviewThread: vi.fn(),
-        },
+        } as unknown as GithubClient,
         cliRunner,
         skipGhPreflight: true,
       },
