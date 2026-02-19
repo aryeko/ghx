@@ -11,7 +11,7 @@ describe("validateOperationCard", () => {
     output_schema: { type: "object" },
     routing: {
       preferred: "graphql" as const,
-      fallbacks: [] as const[],
+      fallbacks: [] as readonly string[],
     },
   }
 

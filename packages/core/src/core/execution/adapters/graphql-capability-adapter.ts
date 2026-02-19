@@ -20,8 +20,8 @@ import type {
   PrDiffListFilesInput,
   PrListInput,
   PrMergeStatusInput,
-  PrReviewsListInput,
   PrReviewSubmitInput,
+  PrReviewsListInput,
   PrViewInput,
   RepoViewInput,
 } from "../../../gql/client.js"

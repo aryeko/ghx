@@ -38,6 +38,7 @@ type ExecutionDeps = {
     | "replyToReviewThread"
     | "resolveReviewThread"
     | "unresolveReviewThread"
+    | "submitPrReview"
   > & {
     query?: GithubClient["query"]
   }
@@ -136,7 +137,7 @@ async function executeComposite(
 
   try {
     // Expand composite steps into individual operations
-    const expandedOperations = await expandCompositeSteps(card.composite, input)
+    const expandedOperations = expandCompositeSteps(card.composite, input)
 
     if (expandedOperations.length === 0) {
       return normalizeError(
@@ -159,7 +160,8 @@ async function executeComposite(
     const { document, variables } = buildBatchMutation(batchInput)
 
     // Execute single GraphQL request
-    if (!deps.githubClient.query) {
+    const queryFn = deps.githubClient.query
+    if (!queryFn) {
       return normalizeError(
         {
           code: errorCodes.AdapterUnsupported,
@@ -170,7 +172,7 @@ async function executeComposite(
         { capabilityId: card.capability_id, reason },
       )
     }
-    const batchResult = await deps.githubClient.query(document, variables)
+    const batchResult = await queryFn(document, variables)
 
     // Map results back through each builder's mapResponse
     const results: unknown[] = []

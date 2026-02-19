@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest"
-import {
-  replyBuilder,
-  resolveBuilder,
-  unresolveBuilder,
-} from "../../src/gql/builders.js"
+import { replyBuilder, resolveBuilder, unresolveBuilder } from "../../src/gql/builders.js"
 
 describe("OperationBuilder exports", () => {
   it("exports replyBuilder", () => {

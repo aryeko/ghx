@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest"
-
-import { capabilityRegistry } from "../../src/core/routing/capability-registry.js"
 import { getOperationCard, listOperationCards } from "../../src/core/registry/index.js"
+import { capabilityRegistry } from "../../src/core/routing/capability-registry.js"
 
 describe("capabilityRegistry", () => {
   it("is generated from operation cards with deterministic route order", () => {
@@ -360,10 +359,12 @@ describe("composite capability cards", () => {
   it("loads pr.threads.composite card with composite config", () => {
     const card = getOperationCard("pr.threads.composite")
     expect(card).toBeDefined()
-    expect(card!.composite).toBeDefined()
-    expect(card!.routing.preferred).toBe("graphql")
-    expect(card!.composite!.output_strategy).toBe("array")
-    expect(card!.composite!.steps.length).toBeGreaterThan(0)
+    if (!card) return
+    expect(card.composite).toBeDefined()
+    expect(card.routing.preferred).toBe("graphql")
+    if (!card.composite) return
+    expect(card.composite.output_strategy).toBe("array")
+    expect(card.composite.steps.length).toBeGreaterThan(0)
   })
 
   it("lists pr.threads.composite before pr.view", () => {
@@ -376,15 +377,18 @@ describe("composite capability cards", () => {
   it("loads issue.triage.composite card", () => {
     const card = getOperationCard("issue.triage.composite")
     expect(card).toBeDefined()
-    expect(card!.composite).toBeDefined()
-    expect(card!.routing.preferred).toBe("graphql")
-    expect(card!.composite!.output_strategy).toBe("merge")
+    if (!card) return
+    expect(card.composite).toBeDefined()
+    expect(card.routing.preferred).toBe("graphql")
+    if (!card.composite) return
+    expect(card.composite.output_strategy).toBe("merge")
   })
 
   it("loads issue.update.composite card", () => {
     const card = getOperationCard("issue.update.composite")
     expect(card).toBeDefined()
-    expect(card!.composite).toBeDefined()
+    if (!card) return
+    expect(card.composite).toBeDefined()
   })
 
   it("lists issue composites before issue.view", () => {

@@ -17,10 +17,10 @@ const ACTION_TO_CAPABILITIES: Record<string, string[]> = {
   unresolve: ["pr.thread.unresolve"],
 }
 
-export async function expandCompositeSteps(
+export function expandCompositeSteps(
   composite: CompositeConfig,
   input: Record<string, unknown>,
-): Promise<ExpandedOperation[]> {
+): ExpandedOperation[] {
   const operations: ExpandedOperation[] = []
 
   // Build a map of capability_id → step config for param mapping lookup
@@ -57,7 +57,7 @@ export async function expandCompositeSteps(
         stepInput[builderParam] = item[itemField]
       }
 
-      const built = await builder.build(stepInput)
+      const built = builder.build(stepInput)
       const aliasBase = capId.split(".").pop() ?? capId
       operations.push({
         alias: `${aliasBase}${i}`,

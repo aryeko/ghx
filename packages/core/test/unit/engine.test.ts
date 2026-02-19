@@ -63,6 +63,7 @@ describe("executeTask engine wiring", () => {
           replyToReviewThread: vi.fn(),
           resolveReviewThread: vi.fn(),
           unresolveReviewThread: vi.fn(),
+          submitPrReview: vi.fn(),
         },
       },
     )
@@ -124,6 +125,7 @@ describe("executeTask engine wiring", () => {
           replyToReviewThread: vi.fn(),
           resolveReviewThread: vi.fn(),
           unresolveReviewThread: vi.fn(),
+          submitPrReview: vi.fn(),
         },
         cliRunner,
         skipGhPreflight: true,

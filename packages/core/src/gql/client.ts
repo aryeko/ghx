@@ -2164,13 +2164,19 @@ async function runSubmitPrReview(
 ): Promise<PrReviewSubmitData> {
   assertPrReviewSubmitInput(input)
 
-  const prViewData = await runPrView(graphqlClient, {
-    owner: input.owner,
-    name: input.name,
-    prNumber: input.prNumber,
-  })
+  const prIdResult = await graphqlClient.query<
+    { repository?: { pullRequest?: { id: string } | null } | null },
+    GraphqlVariables
+  >(
+    `query PrNodeId($owner: String!, $name: String!, $prNumber: Int!) {
+      repository(owner: $owner, name: $name) {
+        pullRequest(number: $prNumber) { id }
+      }
+    }`,
+    { owner: input.owner, name: input.name, prNumber: input.prNumber },
+  )
 
-  const pullRequestId = (prViewData as Record<string, unknown>).id as string
+  const pullRequestId = prIdResult.repository?.pullRequest?.id
   if (!pullRequestId) {
     throw new Error("Failed to retrieve pull request ID")
   }
