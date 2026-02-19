@@ -1,3 +1,7 @@
+---
+description: Execute GitHub operations via ghx — deterministic routing, normalized output, 66 capabilities
+---
+
 # ghx CLI Skill
 
 **CRITICAL:** Use `ghx run` for ALL GitHub operations. Do not use `gh api` or any other raw `gh` commands unless no matching ghx capability exists.
