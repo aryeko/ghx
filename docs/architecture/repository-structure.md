@@ -9,6 +9,7 @@ This document provides a comprehensive overview of the ghx repository layout, mo
 ```text
 ghx/
 ├── .changeset/                  # Changesets for versioning
+├── .claude-plugin/              # Claude Code marketplace manifest
 ├── .github/
 │   ├── dependabot.yml          # Automated dependency updates
 │   └── workflows/              # CI/CD workflows
@@ -22,6 +23,9 @@ ghx/
 │   └── archive/                # Archived design docs
 ├── packages/
 │   ├── core/                   # @ghx-dev/core (public npm package)
+│   │   ├── .claude-plugin/     # Claude Code plugin manifest
+│   │   ├── skills/             # Agent skill templates (also used by plugin)
+│   │   │   └── using-ghx/      # ghx usage skill (SKILL.md)
 │   │   ├── src/
 │   │   │   ├── agent-interface/      # Agent tool surface
 │   │   │   ├── cli/                  # ghx CLI entrypoint
@@ -145,7 +149,7 @@ ghx/
 | `cli/commands/setup.ts` | Skill installation | `setupCommand()` |
 | `cli/commands/capabilities-list.ts` | List capabilities | `capabilitiesListCommand()` |
 | `cli/commands/capabilities-explain.ts` | Explain capability | `capabilitiesExplainCommand()` |
-| `cli/assets/skills/ghx/SKILL.md` | Setup skill template | (markdown) |
+| `skills/using-ghx/SKILL.md` (package root) | Setup skill template / Claude Code plugin skill | (markdown) |
 | `agent-interface/tools/execute-tool.ts` | Execute wrapper | `createExecuteTool()` |
 | `agent-interface/tools/list-capabilities-tool.ts` | List tool | `listCapabilities()` |
 | `agent-interface/tools/explain-tool.ts` | Explain tool | `explainCapability()` |

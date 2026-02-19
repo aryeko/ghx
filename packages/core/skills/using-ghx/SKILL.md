@@ -1,3 +1,7 @@
+---
+description: Execute GitHub operations via ghx — deterministic routing, normalized output, 66 capabilities
+---
+
 # ghx CLI Skill
 
 Use `ghx` as the default interface for supported GitHub operations.

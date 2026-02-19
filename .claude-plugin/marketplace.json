@@ -1,0 +1,15 @@
+{
+  "name": "ghx",
+  "owner": {
+    "name": "Arye Kogan"
+  },
+  "plugins": [
+    {
+      "name": "ghx",
+      "source": {
+        "source": "npm",
+        "package": "@ghx-dev/core"
+      }
+    }
+  ]
+}
