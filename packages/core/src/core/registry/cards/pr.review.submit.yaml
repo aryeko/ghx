@@ -1,6 +1,6 @@
 capability_id: pr.review.submit
 version: "1.0.0"
-description: Submit a pull request review (approve, request changes, or comment).
+description: Submit a pull request review (approve, request changes, or comment). GitHub requires a non-empty body for COMMENT and REQUEST_CHANGES events.
 input_schema:
   type: object
   required: [owner, name, prNumber, event]

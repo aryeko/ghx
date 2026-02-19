@@ -27,7 +27,7 @@ describe("validateScenario", () => {
           {
             name: "check-threads-resolved",
             verification_task: "pr.view",
-            verification_input: { owner: "aryeko", name: "ghx-bench-fixtures", number: 42 },
+            verification_input: { owner: "aryeko", name: "ghx-bench-fixtures", prNumber: 42 },
             condition: "non_empty",
           },
         ],
