@@ -35,13 +35,14 @@ export interface CompositeStep {
 
 export interface CompositeConfig {
   steps: CompositeStep[]
-  batching: "graphql_aliases" | "sequential" | "parallel_cli"
   output_strategy: "merge" | "array" | "last"
 }
 
 // Added to OperationCard:
 composite?: CompositeConfig
 ```
+
+Composites are **GraphQL-only** — no CLI fallback. If GraphQL preflight fails, the composite returns an error instructing the agent to use atomic capabilities instead. The agent can always fall back to calling atomic caps individually (which have their own CLI routes).
 
 ### 2. GraphQL Alias Batching Engine
 
@@ -104,12 +105,9 @@ executeTask(task, input)
   → loadCard(task)
   → if card.composite:
       → expandCompositeSteps(card, input)
-      → if batching === "graphql_aliases":
-          → buildBatchDocument(expandedSteps)
-          → single GraphQL request
-          → unpack aliased results
-      → else if batching === "sequential":
-          → execute steps one by one (CLI fallback)
+      → buildBatchDocument(expandedSteps)
+      → single GraphQL request
+      → unpack aliased results
       → aggregate results per output_strategy
   → else:
       → existing single-operation flow
@@ -159,7 +157,6 @@ composite:
     - capability_id: pr.thread.resolve
       foreach: "threads"
       params_map: { threadId: "threadId" }
-  batching: graphql_aliases
   output_strategy: array
 ```
 
@@ -220,7 +217,6 @@ composite:
       params_map: { issueId: "issueId", labelIds: "labelIds" }
     - capability_id: issue.comments.create
       params_map: { issueId: "issueId", body: "body" }
-  batching: graphql_aliases
   output_strategy: merge
 ```
 
@@ -260,7 +256,6 @@ composite:
       params_map: { issueId: "issueId", assigneeIds: "assigneeIds" }
     - capability_id: issue.milestone.set
       params_map: { issueId: "issueId", milestoneId: "milestoneId" }
-  batching: graphql_aliases
   output_strategy: merge
 ```
 
@@ -327,6 +322,7 @@ Coverage target: 95% on new code.
 
 - **`pr.review.submit_with_context`** — diff is a prerequisite read; agent must reason about diffs before submitting. Can't batch across the reasoning step.
 - **`workflow.run.diagnose`** — `run.view` output (job IDs) is needed before `job.logs.get`. Sequential data dependency.
+- **CLI fallback for composites** — composites exist for GraphQL batching. If GraphQL isn't available, agents can call atomic capabilities individually (which have their own CLI routes). Adding `sequential`/`parallel_cli` batching strategies adds complexity for no value.
 - **Transport-level batching (Approach C)** — doesn't reduce agent tool calls, only API calls. Less value.
 - **Workflow capabilities (Approach B)** — too opinionated, embeds business logic, harder to test.
 

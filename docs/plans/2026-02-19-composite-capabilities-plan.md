@@ -44,13 +44,11 @@ describe("CompositeConfig types", () => {
             params_map: { threadId: "threadId", body: "body" },
           },
         ],
-        batching: "graphql_aliases",
         output_strategy: "array",
       },
     }
     expect(card.composite).toBeDefined()
     expect(card.composite!.steps).toHaveLength(1)
-    expect(card.composite!.batching).toBe("graphql_aliases")
     expect(card.composite!.output_strategy).toBe("array")
   })
 
@@ -86,7 +84,6 @@ export interface CompositeStep {
 
 export interface CompositeConfig {
   steps: CompositeStep[]
-  batching: "graphql_aliases" | "sequential" | "parallel_cli"
   output_strategy: "merge" | "array" | "last"
 }
 ```
@@ -130,7 +127,6 @@ it("accepts card with valid composite config", () => {
           params_map: { threadId: "threadId" },
         },
       ],
-      batching: "graphql_aliases",
       output_strategy: "array",
     },
   }
@@ -138,13 +134,12 @@ it("accepts card with valid composite config", () => {
   expect(result).toEqual({ ok: true })
 })
 
-it("rejects card with invalid batching strategy", () => {
+it("rejects card with invalid output_strategy", () => {
   const card = {
     ...validBaseCard,
     composite: {
       steps: [{ capability_id: "pr.thread.reply", params_map: {} }],
-      batching: "invalid",
-      output_strategy: "array",
+      output_strategy: "invalid",
     },
   }
   const result = validateOperationCard(card)
@@ -156,7 +151,6 @@ it("rejects composite with empty steps array", () => {
     ...validBaseCard,
     composite: {
       steps: [],
-      batching: "graphql_aliases",
       output_strategy: "array",
     },
   }
@@ -177,7 +171,7 @@ Add `composite` property to `operation-card-schema.ts` inside the `properties` o
 ```typescript
 composite: {
   type: "object",
-  required: ["steps", "batching", "output_strategy"],
+  required: ["steps", "output_strategy"],
   properties: {
     steps: {
       type: "array",
@@ -193,7 +187,6 @@ composite: {
         additionalProperties: false,
       },
     },
-    batching: { enum: ["graphql_aliases", "sequential", "parallel_cli"] },
     output_strategy: { enum: ["merge", "array", "last"] },
   },
   additionalProperties: false,
@@ -706,7 +699,7 @@ it("loads pr.threads.composite card with composite config", () => {
   const card = getOperationCard("pr.threads.composite")
   expect(card).toBeDefined()
   expect(card!.composite).toBeDefined()
-  expect(card!.composite!.batching).toBe("graphql_aliases")
+  expect(card!.routing.preferred).toBe("graphql")
   expect(card!.composite!.output_strategy).toBe("array")
   expect(card!.composite!.steps.length).toBeGreaterThan(0)
 })
@@ -787,7 +780,6 @@ composite:
       foreach: threads
       params_map:
         threadId: threadId
-  batching: graphql_aliases
   output_strategy: array
 ```
 
@@ -829,7 +821,7 @@ it("loads issue.triage.composite card", () => {
   const card = getOperationCard("issue.triage.composite")
   expect(card).toBeDefined()
   expect(card!.composite).toBeDefined()
-  expect(card!.composite!.batching).toBe("graphql_aliases")
+  expect(card!.routing.preferred).toBe("graphql")
   expect(card!.composite!.output_strategy).toBe("merge")
 })
 
@@ -909,7 +901,6 @@ composite:
       params_map:
         issueId: issueId
         body: body
-  batching: graphql_aliases
   output_strategy: merge
 ```
 
@@ -981,7 +972,6 @@ composite:
       params_map:
         issueId: issueId
         milestoneNumber: milestoneNumber
-  batching: graphql_aliases
   output_strategy: merge
 ```
 
@@ -1062,7 +1052,7 @@ In `packages/core/src/core/routing/engine.ts`, modify `executeTask()`:
 
 ```typescript
 // After loading the card and before calling execute():
-if (card.composite && card.composite.batching === "graphql_aliases") {
+if (card.composite) {
   return executeComposite(card, request.input as Record<string, unknown>, deps)
 }
 // ... existing execute() call
