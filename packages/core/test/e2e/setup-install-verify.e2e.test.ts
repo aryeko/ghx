@@ -91,7 +91,7 @@ describe("ghx setup e2e install/verify", () => {
 
       const skillPath = join(projectDir, ".agents", "skills", "ghx", "SKILL.md")
       const skillContent = readFileSync(skillPath, "utf8")
-      expect(skillContent).toContain("## Session Bootstrap (run once)")
+      expect(skillContent).toContain("# ghx CLI Skill")
 
       const verifyAfter = run(
         "pnpm",

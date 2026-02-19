@@ -14,30 +14,30 @@ export type CliCapabilityId =
   | "issue.comments.list"
   | "pr.view"
   | "pr.list"
-  | "pr.status.checks"
-  | "pr.checks.get_failed"
-  | "pr.mergeability.view"
-  | "pr.ready_for_review.set"
-  | "pr.review.submit_approve"
-  | "pr.review.submit_request_changes"
-  | "pr.review.submit_comment"
-  | "pr.merge.execute"
+  | "pr.create"
+  | "pr.update"
+  | "pr.checks.list"
+  | "pr.checks.failed"
+  | "pr.merge.status"
+  | "pr.review.submit"
+  | "pr.merge"
   | "pr.checks.rerun_failed"
   | "pr.checks.rerun_all"
-  | "pr.reviewers.request"
+  | "pr.review.request"
   | "pr.assignees.update"
   | "pr.branch.update"
+  | "pr.diff.view"
+  | "pr.diff.files"
   | "check_run.annotations.list"
-  | "workflow_runs.list"
-  | "workflow_run.jobs.list"
-  | "workflow_job.logs.get"
-  | "workflow_job.logs.analyze"
+  | "workflow.runs.list"
+  | "workflow.job.logs.raw"
+  | "workflow.job.logs.get"
   | "workflow.list"
   | "workflow.get"
-  | "workflow_run.get"
-  | "workflow_run.rerun_all"
-  | "workflow_run.cancel"
-  | "workflow_run.artifacts.list"
+  | "workflow.run.view"
+  | "workflow.run.rerun_all"
+  | "workflow.run.cancel"
+  | "workflow.run.artifacts.list"
   | "project_v2.org.get"
   | "project_v2.user.get"
   | "project_v2.fields.list"
@@ -49,8 +49,8 @@ export type CliCapabilityId =
   | "release.create_draft"
   | "release.update"
   | "release.publish_draft"
-  | "workflow_dispatch.run"
-  | "workflow_run.rerun_failed"
+  | "workflow.dispatch.run"
+  | "workflow.run.rerun_failed"
 
 export type CliCommandRunner = {
   run(
@@ -65,14 +65,18 @@ const DEFAULT_LIST_FIRST = 30
 const MAX_WORKFLOW_JOB_LOG_CHARS = 50_000
 const REDACTED_CLI_ERROR_MESSAGE = "gh command failed; stderr redacted for safety"
 const NON_JSON_STDOUT_CAPABILITIES = new Set<CliCapabilityId>([
+  "pr.create",
+  "pr.update",
   "pr.checks.rerun_failed",
   "pr.checks.rerun_all",
-  "pr.reviewers.request",
+  "pr.review.request",
+  "pr.review.submit",
+  "pr.merge",
   "pr.assignees.update",
   "pr.branch.update",
-  "workflow_run.cancel",
-  "workflow_run.rerun_failed",
-  "workflow_run.rerun_all",
+  "workflow.run.cancel",
+  "workflow.run.rerun_failed",
+  "workflow.run.rerun_all",
 ])
 const REPO_ISSUE_TYPES_GRAPHQL_QUERY =
   "query($owner:String!,$name:String!,$first:Int!,$after:String){repository(owner:$owner,name:$name){issueTypes(first:$first,after:$after){nodes{id name color isEnabled} pageInfo{hasNextPage endCursor}}}}"
@@ -241,7 +245,7 @@ function buildArgs(
       args.push("--repo", repo)
     }
 
-    args.push("--json", jsonFieldsFromCard(card, "id,number,title,state,url"))
+    args.push("--json", jsonFieldsFromCard(card, "id,number,title,state,url,body,labels"))
     return args
   }
 
@@ -313,7 +317,7 @@ function buildArgs(
       args.push("--repo", repo)
     }
 
-    args.push("--json", jsonFieldsFromCard(card, "id,number,title,state,url"))
+    args.push("--json", jsonFieldsFromCard(card, "id,number,title,state,url,body,labels"))
     return args
   }
 
@@ -337,7 +341,7 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "pr.status.checks" || capabilityId === "pr.checks.get_failed") {
+  if (capabilityId === "pr.checks.list" || capabilityId === "pr.checks.failed") {
     const prNumber = parseStrictPositiveInt(params.prNumber)
     if (prNumber === null) {
       throw new Error(`Missing or invalid prNumber for ${capabilityId}`)
@@ -352,10 +356,10 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "pr.mergeability.view") {
+  if (capabilityId === "pr.merge.status") {
     const prNumber = parseStrictPositiveInt(params.prNumber)
     if (prNumber === null) {
-      throw new Error("Missing or invalid prNumber for pr.mergeability.view")
+      throw new Error("Missing or invalid prNumber for pr.merge.status")
     }
 
     const args = [...commandTokens(card, "pr view"), String(prNumber)]
@@ -370,36 +374,59 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "pr.ready_for_review.set") {
+  if (capabilityId === "pr.update") {
     const prNumber = parseStrictPositiveInt(params.prNumber)
     if (prNumber === null) {
-      throw new Error("Missing or invalid prNumber for pr.ready_for_review.set")
+      throw new Error("Missing or invalid prNumber for pr.update")
     }
 
-    if (typeof params.ready !== "boolean") {
-      throw new Error("Missing or invalid ready for pr.ready_for_review.set")
+    const title = parseNonEmptyString(params.title)
+    const body = typeof params.body === "string" ? params.body : null
+    const hasDraft = typeof params.draft === "boolean"
+    const hasEditFields = title !== null || body !== null
+
+    if (!hasEditFields && !hasDraft) {
+      throw new Error("Missing title, body, or draft for pr.update")
     }
 
-    const args = [...commandTokens(card, "pr ready"), String(prNumber)]
+    if (hasEditFields) {
+      const args = [...commandTokens(card, "pr edit"), String(prNumber)]
+      if (repo) {
+        args.push("--repo", repo)
+      }
+
+      if (title !== null) {
+        args.push("--title", title)
+      }
+
+      if (body !== null) {
+        args.push("--body", body)
+      }
+
+      return args
+    }
+
+    const args = ["pr", "ready", String(prNumber)]
     if (repo) {
       args.push("--repo", repo)
     }
 
-    if (!params.ready) {
+    if (params.draft === true) {
       args.push("--undo")
     }
 
     return args
   }
 
-  if (
-    capabilityId === "pr.review.submit_approve" ||
-    capabilityId === "pr.review.submit_request_changes" ||
-    capabilityId === "pr.review.submit_comment"
-  ) {
+  if (capabilityId === "pr.review.submit") {
     const prNumber = parseStrictPositiveInt(params.prNumber)
     if (prNumber === null) {
-      throw new Error(`Missing or invalid prNumber for ${capabilityId}`)
+      throw new Error("Missing or invalid prNumber for pr.review.submit")
+    }
+
+    const event = params.event
+    if (event !== "APPROVE" && event !== "COMMENT" && event !== "REQUEST_CHANGES") {
+      throw new Error("Missing or invalid event for pr.review.submit")
     }
 
     const args = [...commandTokens(card, "pr review"), String(prNumber)]
@@ -407,7 +434,7 @@ function buildArgs(
       args.push("--repo", repo)
     }
 
-    if (capabilityId === "pr.review.submit_approve") {
+    if (event === "APPROVE") {
       args.push("--approve")
       const body = parseNonEmptyString(params.body)
       if (body) {
@@ -418,10 +445,10 @@ function buildArgs(
 
     const body = parseNonEmptyString(params.body)
     if (body === null) {
-      throw new Error(`Missing or invalid body for ${capabilityId}`)
+      throw new Error("Missing or invalid body for pr.review.submit")
     }
 
-    if (capabilityId === "pr.review.submit_request_changes") {
+    if (event === "REQUEST_CHANGES") {
       args.push("--request-changes", "--body", body)
       return args
     }
@@ -430,19 +457,19 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "pr.merge.execute") {
+  if (capabilityId === "pr.merge") {
     const prNumber = parseStrictPositiveInt(params.prNumber)
     if (prNumber === null) {
-      throw new Error("Missing or invalid prNumber for pr.merge.execute")
+      throw new Error("Missing or invalid prNumber for pr.merge")
     }
 
     const method = params.method === undefined ? "merge" : params.method
     if (method !== "merge" && method !== "squash" && method !== "rebase") {
-      throw new Error("Missing or invalid method for pr.merge.execute")
+      throw new Error("Missing or invalid method for pr.merge")
     }
 
     if (params.deleteBranch !== undefined && typeof params.deleteBranch !== "boolean") {
-      throw new Error("Missing or invalid deleteBranch for pr.merge.execute")
+      throw new Error("Missing or invalid deleteBranch for pr.merge")
     }
 
     const args = [...commandTokens(card, "pr merge"), String(prNumber)]
@@ -456,6 +483,59 @@ function buildArgs(
       args.push("--delete-branch")
     }
 
+    return args
+  }
+
+  if (capabilityId === "pr.create") {
+    const title = parseNonEmptyString(params.title)
+    if (title === null) {
+      throw new Error("Missing or invalid title for pr.create")
+    }
+
+    const head = parseNonEmptyString(params.head)
+    if (head === null) {
+      throw new Error("Missing or invalid head for pr.create")
+    }
+
+    const args = [...commandTokens(card, "pr create"), "--title", title, "--head", head]
+    if (repo) {
+      args.push("--repo", repo)
+    }
+
+    const body = parseNonEmptyString(params.body)
+    if (body) {
+      args.push("--body", body)
+    }
+
+    const base = parseNonEmptyString(params.base)
+    if (base) {
+      args.push("--base", base)
+    }
+
+    if (params.draft === true) {
+      args.push("--draft")
+    }
+
+    return args
+  }
+
+  if (capabilityId === "pr.diff.files") {
+    const prNumber = parseStrictPositiveInt(params.prNumber)
+    if (prNumber === null) {
+      throw new Error("Missing or invalid prNumber for pr.diff.files")
+    }
+
+    const first = parseListFirst(params.first)
+    if (first === null) {
+      throw new Error("Missing or invalid first for pr.diff.files")
+    }
+
+    const args = [...commandTokens(card, "pr view"), String(prNumber)]
+    if (repo) {
+      args.push("--repo", repo)
+    }
+
+    args.push("--json", jsonFieldsFromCard(card, "files"))
     return args
   }
 
@@ -482,10 +562,10 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "pr.reviewers.request") {
+  if (capabilityId === "pr.review.request") {
     const prNumber = parseStrictPositiveInt(params.prNumber)
     if (prNumber === null) {
-      throw new Error("Missing or invalid prNumber for pr.reviewers.request")
+      throw new Error("Missing or invalid prNumber for pr.review.request")
     }
 
     const reviewers = Array.isArray(params.reviewers)
@@ -495,7 +575,7 @@ function buildArgs(
       : []
 
     if (reviewers.length === 0) {
-      throw new Error("Missing or invalid reviewers for pr.reviewers.request")
+      throw new Error("Missing or invalid reviewers for pr.review.request")
     }
 
     const args = [...commandTokens(card, "pr edit"), String(prNumber)]
@@ -558,6 +638,20 @@ function buildArgs(
     return args
   }
 
+  if (capabilityId === "pr.diff.view") {
+    const prNumber = parseStrictPositiveInt(params.prNumber)
+    if (prNumber === null) {
+      throw new Error("Missing or invalid prNumber for pr.diff.view")
+    }
+
+    const args = [...commandTokens(card, "pr diff"), String(prNumber)]
+    if (repo) {
+      args.push("--repo", repo)
+    }
+
+    return args
+  }
+
   if (capabilityId === "check_run.annotations.list") {
     const checkRunId = parseStrictPositiveInt(params.checkRunId)
     if (checkRunId === null) {
@@ -575,10 +669,10 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "workflow_runs.list") {
+  if (capabilityId === "workflow.runs.list") {
     const first = parseListFirst(params.first)
     if (first === null) {
-      throw new Error("Missing or invalid first for workflow_runs.list")
+      throw new Error("Missing or invalid first for workflow.runs.list")
     }
 
     const args = commandTokens(card, "run list")
@@ -605,22 +699,7 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "workflow_run.jobs.list") {
-    const runId = parseStrictPositiveInt(params.runId)
-    if (runId === null) {
-      throw new Error("Missing or invalid runId for workflow_run.jobs.list")
-    }
-
-    const args = [...commandTokens(card, "run view"), String(runId)]
-    if (repo) {
-      args.push("--repo", repo)
-    }
-
-    args.push("--json", "jobs")
-    return args
-  }
-
-  if (capabilityId === "workflow_job.logs.get" || capabilityId === "workflow_job.logs.analyze") {
+  if (capabilityId === "workflow.job.logs.raw" || capabilityId === "workflow.job.logs.get") {
     const jobId = parseStrictPositiveInt(params.jobId)
     if (jobId === null) {
       throw new Error(`Missing or invalid jobId for ${capabilityId}`)
@@ -666,10 +745,10 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "workflow_run.get") {
+  if (capabilityId === "workflow.run.view") {
     const runId = parseStrictPositiveInt(params.runId)
     if (runId === null) {
-      throw new Error("Missing or invalid runId for workflow_run.get")
+      throw new Error("Missing or invalid runId for workflow.run.view")
     }
 
     const args = [...commandTokens(card, "run view"), String(runId)]
@@ -681,13 +760,13 @@ function buildArgs(
       "--json",
       jsonFieldsFromCard(
         card,
-        "databaseId,workflowName,status,conclusion,headBranch,headSha,url,event,createdAt,updatedAt,startedAt",
+        "databaseId,workflowName,status,conclusion,headBranch,headSha,url,event,createdAt,updatedAt,startedAt,jobs",
       ),
     )
     return args
   }
 
-  if (capabilityId === "workflow_run.rerun_all" || capabilityId === "workflow_run.cancel") {
+  if (capabilityId === "workflow.run.rerun_all" || capabilityId === "workflow.run.cancel") {
     const runId = parseStrictPositiveInt(params.runId)
     if (runId === null) {
       throw new Error(`Missing or invalid runId for ${capabilityId}`)
@@ -696,7 +775,7 @@ function buildArgs(
     const args = [
       ...commandTokens(
         card,
-        capabilityId === "workflow_run.rerun_all" ? "run rerun" : "run cancel",
+        capabilityId === "workflow.run.rerun_all" ? "run rerun" : "run cancel",
       ),
       String(runId),
     ]
@@ -708,10 +787,10 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "workflow_run.artifacts.list") {
+  if (capabilityId === "workflow.run.artifacts.list") {
     const runId = parseStrictPositiveInt(params.runId)
     if (runId === null) {
-      throw new Error("Missing or invalid runId for workflow_run.artifacts.list")
+      throw new Error("Missing or invalid runId for workflow.run.artifacts.list")
     }
 
     const args = [...commandTokens(card, "run view"), String(runId)]
@@ -933,16 +1012,16 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "workflow_dispatch.run") {
+  if (capabilityId === "workflow.dispatch.run") {
     requireRepo(owner, name, capabilityId)
     const workflowId = parseNonEmptyString(params.workflowId)
     if (workflowId === null) {
-      throw new Error("Missing or invalid workflowId for workflow_dispatch.run")
+      throw new Error("Missing or invalid workflowId for workflow.dispatch.run")
     }
 
     const ref = parseNonEmptyString(params.ref)
     if (ref === null) {
-      throw new Error("Missing or invalid ref for workflow_dispatch.run")
+      throw new Error("Missing or invalid ref for workflow.dispatch.run")
     }
 
     const args = [
@@ -960,19 +1039,19 @@ function buildArgs(
         params.inputs === null ||
         Array.isArray(params.inputs)
       ) {
-        throw new Error("Missing or invalid inputs for workflow_dispatch.run")
+        throw new Error("Missing or invalid inputs for workflow.dispatch.run")
       }
 
       const inputEntries = Object.entries(params.inputs as Record<string, unknown>)
       for (const [key, value] of inputEntries) {
         if (!key.trim()) {
-          throw new Error("Missing or invalid inputs for workflow_dispatch.run")
+          throw new Error("Missing or invalid inputs for workflow.dispatch.run")
         }
 
         if (
           !(typeof value === "string" || typeof value === "number" || typeof value === "boolean")
         ) {
-          throw new Error("Missing or invalid inputs for workflow_dispatch.run")
+          throw new Error("Missing or invalid inputs for workflow.dispatch.run")
         }
 
         args.push("-f", `inputs[${key}]=${String(value)}`)
@@ -982,11 +1061,11 @@ function buildArgs(
     return args
   }
 
-  if (capabilityId === "workflow_run.rerun_failed") {
+  if (capabilityId === "workflow.run.rerun_failed") {
     requireRepo(owner, name, capabilityId)
     const runId = parseStrictPositiveInt(params.runId)
     if (runId === null) {
-      throw new Error("Missing or invalid runId for workflow_run.rerun_failed")
+      throw new Error("Missing or invalid runId for workflow.run.rerun_failed")
     }
 
     const args = [
@@ -1419,14 +1498,14 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "pr.status.checks" || capabilityId === "pr.checks.get_failed") {
+  if (capabilityId === "pr.checks.list" || capabilityId === "pr.checks.failed") {
     const checks = Array.isArray(data) ? data.map((entry) => normalizeCheckItem(entry)) : []
     const failed = checks.filter((entry) => isCheckFailureBucket(entry.bucket))
     const pending = checks.filter((entry) => isCheckPendingBucket(entry.bucket))
     const passed = checks.filter((entry) => isCheckPassBucket(entry.bucket))
 
     return {
-      items: capabilityId === "pr.checks.get_failed" ? failed : checks,
+      items: capabilityId === "pr.checks.failed" ? failed : checks,
       summary: {
         total: checks.length,
         failed: failed.length,
@@ -1436,7 +1515,7 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "pr.mergeability.view") {
+  if (capabilityId === "pr.merge.status") {
     const input =
       typeof data === "object" && data !== null && !Array.isArray(data)
         ? (data as Record<string, unknown>)
@@ -1451,28 +1530,43 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "pr.ready_for_review.set") {
+  if (capabilityId === "pr.update") {
     const prNumber = Number(params.prNumber)
-    const ready = Boolean(params.ready)
+    const hasDraft = typeof params.draft === "boolean"
+    const fallbackUrl = `https://github.com/${params.owner}/${params.name}/pull/${prNumber}`
+
+    if (hasDraft && params.title === undefined && params.body === undefined) {
+      return {
+        number: prNumber,
+        url: fallbackUrl,
+        title: "",
+        state: "OPEN",
+        draft: params.draft as boolean,
+      }
+    }
+
+    const input =
+      typeof data === "object" && data !== null && !Array.isArray(data)
+        ? (data as Record<string, unknown>)
+        : {}
 
     return {
-      prNumber,
-      isDraft: !ready,
+      number: prNumber,
+      url: typeof input.url === "string" && input.url.length > 0 ? input.url : fallbackUrl,
+      title: typeof input.title === "string" ? input.title : "",
+      state: typeof input.state === "string" ? input.state : "OPEN",
+      draft:
+        typeof input.isDraft === "boolean"
+          ? input.isDraft
+          : typeof params.draft === "boolean"
+            ? params.draft
+            : false,
     }
   }
 
-  if (
-    capabilityId === "pr.review.submit_approve" ||
-    capabilityId === "pr.review.submit_request_changes" ||
-    capabilityId === "pr.review.submit_comment"
-  ) {
+  if (capabilityId === "pr.review.submit") {
     const prNumber = Number(params.prNumber)
-    const event =
-      capabilityId === "pr.review.submit_approve"
-        ? "APPROVE"
-        : capabilityId === "pr.review.submit_request_changes"
-          ? "REQUEST_CHANGES"
-          : "COMMENT"
+    const event = String(params.event)
 
     return {
       prNumber,
@@ -1482,7 +1576,7 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "pr.merge.execute") {
+  if (capabilityId === "pr.merge") {
     const method =
       params.method === "squash" || params.method === "rebase" ? params.method : "merge"
     return {
@@ -1490,6 +1584,22 @@ function normalizeCliData(
       method,
       queued: true,
       deleteBranch: params.deleteBranch === true,
+    }
+  }
+
+  if (capabilityId === "pr.create") {
+    const raw = data != null && typeof data === "object" ? (data as Record<string, unknown>) : null
+    const stdout =
+      typeof data === "string" ? data : typeof raw?._stdout === "string" ? raw._stdout : ""
+    const urlMatch = stdout.match(/https:\/\/github\.com\/[^/]+\/[^/]+\/pull\/(\d+)/)
+    return {
+      number: urlMatch ? Number(urlMatch[1]) : Number(params.prNumber) || 1,
+      url: urlMatch
+        ? urlMatch[0]
+        : stdout.trim() || `https://github.com/${params.owner}/${params.name}/pull/0`,
+      title: typeof params.title === "string" ? params.title : "",
+      state: "OPEN",
+      draft: params.draft === true,
     }
   }
 
@@ -1509,7 +1619,7 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "pr.reviewers.request") {
+  if (capabilityId === "pr.review.request") {
     const reviewers = Array.isArray(params.reviewers)
       ? params.reviewers.filter(
           (value): value is string => typeof value === "string" && value.trim().length > 0,
@@ -1581,7 +1691,7 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "workflow_runs.list") {
+  if (capabilityId === "workflow.runs.list") {
     const runs = Array.isArray(data) ? data : []
 
     return {
@@ -1614,42 +1724,7 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "workflow_run.jobs.list") {
-    const root =
-      typeof data === "object" && data !== null && !Array.isArray(data)
-        ? (data as Record<string, unknown>)
-        : {}
-    const jobs = Array.isArray(root.jobs) ? root.jobs : []
-
-    return {
-      items: jobs.map((job) => {
-        if (typeof job !== "object" || job === null || Array.isArray(job)) {
-          return {
-            id: 0,
-            name: null,
-            status: null,
-            conclusion: null,
-            startedAt: null,
-            completedAt: null,
-            url: null,
-          }
-        }
-
-        const record = job as Record<string, unknown>
-        return {
-          id: typeof record.databaseId === "number" ? record.databaseId : 0,
-          name: typeof record.name === "string" ? record.name : null,
-          status: typeof record.status === "string" ? record.status : null,
-          conclusion: typeof record.conclusion === "string" ? record.conclusion : null,
-          startedAt: typeof record.startedAt === "string" ? record.startedAt : null,
-          completedAt: typeof record.completedAt === "string" ? record.completedAt : null,
-          url: typeof record.url === "string" ? record.url : null,
-        }
-      }),
-    }
-  }
-
-  if (capabilityId === "workflow_job.logs.get") {
+  if (capabilityId === "workflow.job.logs.raw") {
     const jobId = Number(params.jobId)
 
     const rawLog = typeof data === "string" ? data : String(data)
@@ -1662,7 +1737,7 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "workflow_job.logs.analyze") {
+  if (capabilityId === "workflow.job.logs.get") {
     const jobId = Number(params.jobId)
 
     const rawLog = typeof data === "string" ? data : String(data)
@@ -1720,11 +1795,36 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "workflow_run.get") {
+  if (capabilityId === "workflow.run.view") {
     const input =
       typeof data === "object" && data !== null && !Array.isArray(data)
         ? (data as Record<string, unknown>)
         : {}
+
+    const rawJobs = Array.isArray(input.jobs) ? input.jobs : []
+    const jobs = rawJobs.map((job) => {
+      if (typeof job !== "object" || job === null || Array.isArray(job)) {
+        return {
+          id: 0,
+          name: null,
+          status: null,
+          conclusion: null,
+          startedAt: null,
+          completedAt: null,
+          url: null,
+        }
+      }
+      const record = job as Record<string, unknown>
+      return {
+        id: typeof record.databaseId === "number" ? record.databaseId : 0,
+        name: typeof record.name === "string" ? record.name : null,
+        status: typeof record.status === "string" ? record.status : null,
+        conclusion: typeof record.conclusion === "string" ? record.conclusion : null,
+        startedAt: typeof record.startedAt === "string" ? record.startedAt : null,
+        completedAt: typeof record.completedAt === "string" ? record.completedAt : null,
+        url: typeof record.url === "string" ? record.url : null,
+      }
+    })
 
     return {
       id: typeof input.databaseId === "number" ? input.databaseId : 0,
@@ -1738,24 +1838,25 @@ function normalizeCliData(
       updatedAt: typeof input.updatedAt === "string" ? input.updatedAt : null,
       startedAt: typeof input.startedAt === "string" ? input.startedAt : null,
       url: typeof input.url === "string" ? input.url : null,
+      jobs,
     }
   }
 
-  if (capabilityId === "workflow_run.rerun_all") {
+  if (capabilityId === "workflow.run.rerun_all") {
     return {
       runId: Number(params.runId),
       status: "requested",
     }
   }
 
-  if (capabilityId === "workflow_run.cancel") {
+  if (capabilityId === "workflow.run.cancel") {
     return {
       runId: Number(params.runId),
       status: "cancel_requested",
     }
   }
 
-  if (capabilityId === "workflow_run.artifacts.list") {
+  if (capabilityId === "workflow.run.artifacts.list") {
     const root =
       typeof data === "object" && data !== null && !Array.isArray(data)
         ? (data as Record<string, unknown>)
@@ -1899,7 +2000,7 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "workflow_dispatch.run") {
+  if (capabilityId === "workflow.dispatch.run") {
     return {
       workflowId: String(params.workflowId),
       ref: String(params.ref),
@@ -1907,15 +2008,34 @@ function normalizeCliData(
     }
   }
 
-  if (capabilityId === "workflow_run.rerun_failed") {
+  if (capabilityId === "workflow.run.rerun_failed") {
     return {
       runId: Number(params.runId),
       rerunFailed: true,
     }
   }
 
+  if (capabilityId === "pr.diff.view") {
+    return { diff: typeof data === "string" ? data : "" }
+  }
+
   if (capabilityId === "issue.view" || capabilityId === "pr.view") {
-    return normalizeListItem(data)
+    const item = normalizeListItem(data)
+    const raw =
+      typeof data === "object" && data !== null && !Array.isArray(data)
+        ? (data as Record<string, unknown>)
+        : {}
+    return {
+      ...item,
+      body: typeof raw.body === "string" ? raw.body : "",
+      labels: Array.isArray(raw.labels)
+        ? (raw.labels as unknown[])
+            .map((l) =>
+              typeof l === "object" && l !== null ? (l as Record<string, unknown>).name : undefined,
+            )
+            .filter((n): n is string => typeof n === "string")
+        : [],
+    }
   }
 
   return data
@@ -1998,6 +2118,80 @@ export async function runCliCapability(
       return normalizeResult(normalized, "cli", { capabilityId, reason: "CARD_FALLBACK" })
     }
 
+    if (capabilityId === "pr.update") {
+      const prNumber = parseStrictPositiveInt(params.prNumber)
+      if (prNumber === null) {
+        throw new Error("Missing or invalid prNumber for pr.update")
+      }
+
+      const owner = String(params.owner ?? "")
+      const name = String(params.name ?? "")
+      const repo = owner && name ? `${owner}/${name}` : ""
+
+      const title = parseNonEmptyString(params.title)
+      const body = typeof params.body === "string" ? params.body : null
+      const hasDraft = typeof params.draft === "boolean"
+      const hasEditFields = title !== null || body !== null
+
+      if (!hasEditFields && !hasDraft) {
+        throw new Error("Missing title, body, or draft for pr.update")
+      }
+
+      if (hasEditFields) {
+        const editArgs = ["pr", "edit", String(prNumber)]
+        if (repo) {
+          editArgs.push("--repo", repo)
+        }
+        if (title !== null) {
+          editArgs.push("--title", title)
+        }
+        if (body !== null) {
+          editArgs.push("--body", body)
+        }
+        const editResult = await runner.run("gh", editArgs, DEFAULT_TIMEOUT_MS)
+        if (editResult.exitCode !== 0) {
+          const code = mapErrorToCode(editResult.stderr)
+          return normalizeError(
+            {
+              code,
+              message: sanitizeCliErrorMessage(editResult.stderr, editResult.exitCode),
+              retryable: isRetryableErrorCode(code),
+              details: { capabilityId, exitCode: editResult.exitCode },
+            },
+            "cli",
+            { capabilityId, reason: "CARD_FALLBACK" },
+          )
+        }
+      }
+
+      if (hasDraft) {
+        const readyArgs = ["pr", "ready", String(prNumber)]
+        if (repo) {
+          readyArgs.push("--repo", repo)
+        }
+        if (params.draft === true) {
+          readyArgs.push("--undo")
+        }
+        const readyResult = await runner.run("gh", readyArgs, DEFAULT_TIMEOUT_MS)
+        if (readyResult.exitCode !== 0) {
+          const code = mapErrorToCode(readyResult.stderr)
+          return normalizeError(
+            {
+              code,
+              message: sanitizeCliErrorMessage(readyResult.stderr, readyResult.exitCode),
+              retryable: isRetryableErrorCode(code),
+              details: { capabilityId, exitCode: readyResult.exitCode },
+            },
+            "cli",
+            { capabilityId, reason: "CARD_FALLBACK" },
+          )
+        }
+      }
+
+      const normalized = normalizeCliData(capabilityId, {}, params)
+      return normalizeResult(normalized, "cli", { capabilityId, reason: "CARD_FALLBACK" })
+    }
+
     const args = buildArgs(capabilityId, params, card)
     const result = await runner.run("gh", args, DEFAULT_TIMEOUT_MS)
 
@@ -2036,10 +2230,14 @@ export async function runCliCapability(
     }
 
     const data =
-      capabilityId === "workflow_job.logs.get" || capabilityId === "workflow_job.logs.analyze"
+      capabilityId === "workflow.job.logs.raw" ||
+      capabilityId === "workflow.job.logs.get" ||
+      capabilityId === "pr.diff.view"
         ? result.stdout
         : NON_JSON_STDOUT_CAPABILITIES.has(capabilityId)
-          ? {}
+          ? capabilityId === "pr.create"
+            ? { _stdout: result.stdout }
+            : {}
           : parseCliData(result.stdout)
     const normalized = normalizeCliData(capabilityId, data, params)
     return normalizeResult(normalized, "cli", { capabilityId, reason: "CARD_FALLBACK" })

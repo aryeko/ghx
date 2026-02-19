@@ -159,9 +159,9 @@ npx ghx run workflow_runs.list --input '{
 
 ---
 
-#### `workflow_run.get`
+#### `workflow_run.view`
 
-**Description:** Get a workflow run.
+**Description:** View a workflow run with its jobs.
 
 **Input:**
 
@@ -186,47 +186,14 @@ npx ghx run workflow_runs.list --input '{
 | updatedAt | string or null | ISO timestamp |
 | startedAt | string or null | ISO timestamp |
 | url | string or null | Run URL |
+| jobs | array | Jobs (id, name, status, conclusion, startedAt, completedAt, url) |
 
 **Routes:** cli (preferred)
 
 **Example:**
 
 ```bash
-npx ghx run workflow_run.get --input '{
-  "owner": "octocat",
-  "name": "hello-world",
-  "runId": 123456789
-}'
-```
-
----
-
-### Jobs
-
-#### `workflow_run.jobs.list`
-
-**Description:** List jobs in a workflow run.
-
-**Input:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| owner | string | yes | Repository owner |
-| name | string | yes | Repository name |
-| runId | integer | yes | Workflow run ID (1+) |
-
-**Output:**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| items | array | Jobs (id, name, status, conclusion, startedAt, completedAt, url) |
-
-**Routes:** cli (preferred)
-
-**Example:**
-
-```bash
-npx ghx run workflow_run.jobs.list --input '{
+npx ghx run workflow_run.view --input '{
   "owner": "octocat",
   "name": "hello-world",
   "runId": 123456789

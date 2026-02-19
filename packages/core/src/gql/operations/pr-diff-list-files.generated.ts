@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "../generated/common-types.js"
+import { PageInfoFieldsFragmentDoc } from "./fragments/page-info-fields.generated.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type PrDiffListFilesQueryVariables = Types.Exact<{
@@ -24,7 +25,7 @@ export type PrDiffListFilesQuery = {
           additions: number
           deletions: number
         } | null> | null
-        pageInfo: { __typename?: "PageInfo"; hasNextPage: boolean; endCursor?: string | null }
+        pageInfo: { __typename?: "PageInfo"; endCursor?: string | null; hasNextPage: boolean }
       } | null
     } | null
   } | null
@@ -41,14 +42,13 @@ export const PrDiffListFilesDocument = `
           deletions
         }
         pageInfo {
-          hasNextPage
-          endCursor
+          ...PageInfoFields
         }
       }
     }
   }
 }
-    `
+    ${PageInfoFieldsFragmentDoc}`
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

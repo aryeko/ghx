@@ -67,6 +67,8 @@ npx ghx run issue.create --input '{
 | title | string | Issue title |
 | state | string | Current state |
 | url | string | GitHub web URL |
+| body | string | Issue body text |
+| labels | array | Label names (array of strings) |
 
 **Routes:** cli (preferred), graphql (fallback)
 
@@ -343,6 +345,37 @@ npx ghx run issue.comments.list --input '{
 npx ghx run issue.labels.update --input '{
   "issueId": "I_kwDODhlyV4567890",
   "labels": ["bug", "high-priority", "in-progress"]
+}'
+```
+
+---
+
+#### `issue.labels.add`
+
+**Description:** Add labels to an issue without removing existing labels.
+
+**Input:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| issueId | string | yes | Global issue ID |
+| labels | array | yes | Label names to add (array of strings) |
+
+**Output:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | Global issue ID |
+| labels | array | All label names after addition |
+
+**Routes:** graphql (preferred)
+
+**Example:**
+
+```bash
+npx ghx run issue.labels.add --input '{
+  "issueId": "I_kwDODhlyV4567890",
+  "labels": ["bug", "needs-triage"]
 }'
 ```
 

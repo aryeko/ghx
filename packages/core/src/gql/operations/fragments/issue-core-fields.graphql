@@ -1,0 +1,7 @@
+fragment IssueCoreFields on Issue {
+  id
+  number
+  title
+  state
+  url
+}

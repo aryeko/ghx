@@ -1,0 +1,29 @@
+capability_id: pr.update
+version: "1.0.0"
+description: Update pull request metadata (title, body, draft status).
+input_schema:
+  type: object
+  required: [owner, name, prNumber]
+  properties:
+    owner: { type: string, minLength: 1 }
+    name: { type: string, minLength: 1 }
+    prNumber: { type: integer, minimum: 1 }
+    title: { type: string, minLength: 1 }
+    body: { type: string }
+    draft: { type: boolean }
+  additionalProperties: false
+output_schema:
+  type: object
+  required: [number, url, title, state, draft]
+  properties:
+    number: { type: integer, minimum: 1 }
+    url: { type: string, minLength: 1 }
+    title: { type: string }
+    state: { type: string }
+    draft: { type: boolean }
+  additionalProperties: false
+routing:
+  preferred: cli
+  fallbacks: []
+cli:
+  command: pr edit

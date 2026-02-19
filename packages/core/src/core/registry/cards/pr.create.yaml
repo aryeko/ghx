@@ -1,0 +1,30 @@
+capability_id: pr.create
+version: "1.0.0"
+description: Create a pull request.
+input_schema:
+  type: object
+  required: [owner, name, title, head]
+  properties:
+    owner: { type: string, minLength: 1 }
+    name: { type: string, minLength: 1 }
+    title: { type: string, minLength: 1 }
+    body: { type: string }
+    head: { type: string, minLength: 1 }
+    base: { type: string, minLength: 1 }
+    draft: { type: boolean }
+  additionalProperties: false
+output_schema:
+  type: object
+  required: [number, url, title, state, draft]
+  properties:
+    number: { type: integer, minimum: 1 }
+    url: { type: string, minLength: 1 }
+    title: { type: string }
+    state: { type: string }
+    draft: { type: boolean }
+  additionalProperties: false
+routing:
+  preferred: cli
+  fallbacks: []
+cli:
+  command: pr create

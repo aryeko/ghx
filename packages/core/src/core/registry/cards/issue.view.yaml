@@ -11,22 +11,24 @@ input_schema:
   additionalProperties: false
 output_schema:
   type: object
-  required: [id, number, title, state, url]
+  required: [id, number, title, state, url, body, labels]
   properties:
     id: { type: string, minLength: 1 }
     number: { type: integer, minimum: 1 }
     title: { type: string }
     state: { type: string }
     url: { type: string, minLength: 1 }
+    body: { type: string }
+    labels: { type: array, items: { type: string } }
   additionalProperties: false
 routing:
-  preferred: cli
-  fallbacks: [graphql]
+  preferred: graphql
+  fallbacks: [cli]
   notes:
-    - Prefer CLI for low-latency structured fetches when gh authentication is available.
+    - Prefer GraphQL for structured fetch; CLI fallback if gh auth unavailable.
 graphql:
   operationName: IssueView
   documentPath: src/gql/operations/issue-view.graphql
 cli:
   command: issue view
-  jsonFields: [id, number, title, state, url]
+  jsonFields: [id, number, title, state, url, body, labels]

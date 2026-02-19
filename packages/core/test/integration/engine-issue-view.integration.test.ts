@@ -17,6 +17,8 @@ describe("executeTask issue.view", () => {
                 title: "Fix parser edge case",
                 state: "OPEN",
                 url: "https://github.com/go-modkit/modkit/issues/210",
+                body: "Fix the parser edge case for multiline strings",
+                labels: { nodes: [{ name: "bug" }, { name: "parser" }] },
               },
             },
           } as TData
@@ -44,8 +46,35 @@ describe("executeTask issue.view", () => {
       expect.objectContaining({
         number: 210,
         title: "Fix parser edge case",
+        body: "Fix the parser edge case for multiline strings",
+        labels: ["bug", "parser"],
       }),
     )
+  })
+
+  it("returns validation error envelope for invalid issue input", async () => {
+    const githubClient = createGithubClient({
+      async execute<TData>(): Promise<TData> {
+        return {} as TData
+      },
+    })
+
+    const request: TaskRequest = {
+      task: "issue.view",
+      input: { owner: "go-modkit", name: "modkit", issueNumber: 0 },
+    }
+
+    const result = await executeTask(request, {
+      githubClient,
+      githubToken: "test-token",
+      ghCliAvailable: false,
+      ghAuthenticated: false,
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("VALIDATION")
+    expect(result.meta.reason).toBe("INPUT_VALIDATION")
+    expect(result.meta.route_used).toBe("graphql")
   })
 
   it("returns unknown error envelope for not-found issue", async () => {

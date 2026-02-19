@@ -13,6 +13,7 @@ export type GateV2Thresholds = {
   maxTimeoutStallRatePct: number
   maxRetryRatePct: number
   minSamplesPerScenarioPerMode: number
+  minCostReductionPct: number
 }
 
 export type GateV2ThresholdMap = Record<GateProfile, GateV2Thresholds>
@@ -25,7 +26,7 @@ export type BenchmarkSummary = {
   gateV2: GateV2Summary
 }
 
-type ModeSummary = {
+export type ModeSummary = {
   mode: BenchmarkMode
   modelSignature: string
   runs: number
@@ -38,6 +39,13 @@ type ModeSummary = {
   medianTokensTotal: number
   medianTokensActive: number
   medianToolCalls: number
+  p90LatencyMs: number
+  p95LatencyMs: number
+  iqrLatencyMs: number
+  cvLatency: number
+  p90TokensActive: number
+  p95TokensActive: number
+  medianCostUsd: number
 }
 
 type ProfilingSummary = {
@@ -57,6 +65,9 @@ type DeltaSummary = {
   toolCallReductionPct: number
   successRateDeltaPct: number
   outputValidityRatePct: number
+  costReductionPct: number
+  tokensActiveReductionCI: [number, number]
+  latencyReductionCI: [number, number]
 }
 
 type GateCheck = {
@@ -95,28 +106,25 @@ type GateV2Summary = {
   checks: GateCheck[]
 }
 
-export type ScenarioAssertions = {
-  expected_outcome?: "success" | "expected_error"
-  must_succeed?: boolean
-  expect_valid_output?: boolean
-  required_fields?: string[]
-  required_data_fields?: string[]
-  required_meta_fields?: string[]
-  data_type?: "array" | "object"
-  expected_route_used?: "cli" | "graphql" | "rest"
-  expected_error_code?: string
-  require_tool_calls?: boolean
-  min_tool_calls?: number
-  max_tool_calls?: number
-  require_attempt_trace?: boolean
+export type WorkflowCheckpoint = {
+  name: string
+  verification_task: string
+  verification_input: Record<string, unknown>
+  condition: "empty" | "non_empty" | "count_gte" | "count_eq" | "field_equals"
+  expected_value?: unknown
 }
 
-export type Scenario = {
+export type WorkflowAssertions = {
+  expected_outcome: "success" | "expected_error"
+  checkpoints: WorkflowCheckpoint[]
+}
+
+export type WorkflowScenario = {
+  type: "workflow"
   id: string
   name: string
-  task: string
-  input: Record<string, unknown>
-  prompt_template: string
+  prompt: string
+  expected_capabilities: string[]
   timeout_ms: number
   allowed_retries: number
   fixture?: {
@@ -125,10 +133,13 @@ export type Scenario = {
     branch?: string
     bindings?: Record<string, string>
     requires?: string[]
+    reseed_per_iteration?: boolean
   }
-  assertions: ScenarioAssertions
+  assertions: WorkflowAssertions
   tags: string[]
 }
+
+export type Scenario = WorkflowScenario
 
 export type FixtureManifest = {
   version: 1
@@ -207,4 +218,13 @@ export type BenchmarkRow = {
     type: string
     message: string
   } | null
+}
+
+export type HistoryEntry = {
+  timestamp: string
+  commit: string | null
+  branch: string | null
+  profile: GateProfile
+  modes: Partial<Record<BenchmarkMode, ModeSummary>>
+  gate_passed: boolean
 }

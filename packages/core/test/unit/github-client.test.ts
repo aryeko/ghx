@@ -230,7 +230,7 @@ describe("createGithubClient", () => {
     expect(list.pageInfo.hasNextPage).toBe(true)
   })
 
-  it("exposes typed pr.comments.list helper with unresolved filtering", async () => {
+  it("exposes typed pr.thread.list helper with unresolved filtering", async () => {
     const execute = async <TData>(
       _query: string,
       variables?: Record<string, unknown>,
@@ -501,7 +501,7 @@ describe("createGithubClient", () => {
     expect(list.pageInfo.endCursor).toBe("cursor-2")
   })
 
-  it("throws when pr.comments.list payload is missing threads", async () => {
+  it("throws when pr.thread.list payload is missing threads", async () => {
     const client = createGithubClient({
       async execute<TData>(): Promise<TData> {
         return {
@@ -522,7 +522,7 @@ describe("createGithubClient", () => {
     ).rejects.toThrow("Pull request review threads not found")
   })
 
-  it("throws when pr.comments.list unresolvedOnly/includeOutdated has invalid type", async () => {
+  it("throws when pr.thread.list unresolvedOnly/includeOutdated has invalid type", async () => {
     const client = createGithubClient({
       async execute<TData>(): Promise<TData> {
         return {
@@ -562,7 +562,7 @@ describe("createGithubClient", () => {
     ).rejects.toThrow("includeOutdated must be a boolean")
   })
 
-  it("exposes typed pr.reviews.list helper", async () => {
+  it("exposes typed pr.review.list helper", async () => {
     const client = createGithubClient({
       async execute<TData>(): Promise<TData> {
         return {
@@ -602,7 +602,7 @@ describe("createGithubClient", () => {
     expect(reviews.items[0]?.authorLogin).toBe("octocat")
   })
 
-  it("exposes typed pr.diff.list_files helper", async () => {
+  it("exposes typed pr.diff.files helper", async () => {
     const client = createGithubClient({
       async execute<TData>(): Promise<TData> {
         return {
@@ -638,7 +638,7 @@ describe("createGithubClient", () => {
     expect(files.items[0]?.additions).toBe(5)
   })
 
-  it("throws when pr.reviews.list payload is missing reviews", async () => {
+  it("throws when pr.review.list payload is missing reviews", async () => {
     const client = createGithubClient({
       async execute<TData>(): Promise<TData> {
         return {
@@ -659,7 +659,7 @@ describe("createGithubClient", () => {
     ).rejects.toThrow("Pull request reviews not found")
   })
 
-  it("throws when pr.diff.list_files payload is missing files", async () => {
+  it("throws when pr.diff.files payload is missing files", async () => {
     const client = createGithubClient({
       async execute<TData>(): Promise<TData> {
         return {
@@ -1132,7 +1132,7 @@ describe("createGithubClient", () => {
     })
   })
 
-  it("throws when pr.comment.reply mutation payload is missing comment", async () => {
+  it("throws when pr.thread.reply mutation payload is missing comment", async () => {
     const client = createGithubClient({
       async execute<TData>(query: string): Promise<TData> {
         if (query.includes("mutation PrCommentReply")) {
@@ -1157,7 +1157,7 @@ describe("createGithubClient", () => {
     ).rejects.toThrow("Review thread mutation failed")
   })
 
-  it("throws when pr.comment.reply thread-state lookup returns no node", async () => {
+  it("throws when pr.thread.reply thread-state lookup returns no node", async () => {
     const client = createGithubClient({
       async execute<TData>(query: string): Promise<TData> {
         if (query.includes("mutation PrCommentReply")) {
@@ -1179,7 +1179,7 @@ describe("createGithubClient", () => {
     ).rejects.toThrow("Review thread state lookup failed")
   })
 
-  it("throws when pr.comment.resolve payload has no thread", async () => {
+  it("throws when pr.thread.resolve payload has no thread", async () => {
     const client = createGithubClient({
       async execute<TData>(): Promise<TData> {
         return {
@@ -1214,7 +1214,7 @@ describe("createGithubClient", () => {
     )
   })
 
-  it("validates non-empty body for pr.comment.reply", async () => {
+  it("validates non-empty body for pr.thread.reply", async () => {
     const client = createGithubClient({
       async execute<TData>(): Promise<TData> {
         return {

@@ -1,0 +1,30 @@
+capability_id: pr.merge.status
+version: "1.0.0"
+description: View pull request mergeability and readiness signals.
+input_schema:
+  type: object
+  required: [owner, name, prNumber]
+  properties:
+    owner: { type: string, minLength: 1 }
+    name: { type: string, minLength: 1 }
+    prNumber: { type: integer, minimum: 1 }
+  additionalProperties: false
+output_schema:
+  type: object
+  required: [mergeable, mergeStateStatus, reviewDecision, isDraft, state]
+  properties:
+    mergeable: { type: [string, "null"] }
+    mergeStateStatus: { type: [string, "null"] }
+    reviewDecision: { type: [string, "null"] }
+    isDraft: { type: boolean }
+    state: { type: string }
+  additionalProperties: false
+routing:
+  preferred: graphql
+  fallbacks: [cli]
+graphql:
+  operationName: PrMergeStatus
+  documentPath: src/gql/client.ts
+cli:
+  command: pr view
+  jsonFields: [mergeable, mergeStateStatus, reviewDecision, isDraft, state]

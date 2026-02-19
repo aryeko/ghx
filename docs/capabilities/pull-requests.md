@@ -28,6 +28,8 @@ PRs. Manage reviews, comments, assignees, check runs, and mergeability signals.
 | title | string | PR title |
 | state | string | Current state (OPEN, CLOSED, MERGED) |
 | url | string | GitHub web URL |
+| body | string | PR body text |
+| labels | array | Label names (array of strings) |
 
 **Routes:** cli (preferred), graphql (fallback)
 
@@ -720,6 +722,38 @@ npx ghx run pr.diff.list_files --input '{
   "name": "hello-world",
   "prNumber": 123,
   "first": 50
+}'
+```
+
+---
+
+#### `pr.diff.view`
+
+**Description:** View the unified diff for a pull request.
+
+**Input:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| owner | string | yes | Repository owner |
+| name | string | yes | Repository name |
+| prNumber | integer | yes | PR number (1+) |
+
+**Output:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| diff | string | Unified diff text |
+
+**Routes:** cli (preferred)
+
+**Example:**
+
+```bash
+npx ghx run pr.diff.view --input '{
+  "owner": "octocat",
+  "name": "hello-world",
+  "prNumber": 123
 }'
 ```
 

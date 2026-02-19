@@ -3,28 +3,17 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { describe, expect, it } from "vitest"
-import type { Scenario } from "../../src/domain/types.js"
-import { loadFixtureManifest, resolveScenarioFixtureBindings } from "../../src/fixture/manifest.js"
+import type { WorkflowScenario } from "../../src/domain/types.js"
+import { loadFixtureManifest, resolveWorkflowFixtureBindings } from "../../src/fixture/manifest.js"
+import { makeWorkflowScenario } from "../helpers/scenario-factory.js"
 
-function createBaseScenario(): Scenario {
-  return {
-    id: "pr-view-001",
-    name: "PR view",
-    task: "pr.view",
-    input: {
-      owner: "OWNER_PLACEHOLDER",
-      name: "REPO_PLACEHOLDER",
-      prNumber: 0,
-      nested: "not-object",
-    },
-    prompt_template: "x",
-    timeout_ms: 1000,
-    allowed_retries: 0,
-    assertions: {
-      must_succeed: true,
-    },
-    tags: [],
-  }
+function createBaseWorkflowScenario(): WorkflowScenario {
+  return makeWorkflowScenario({
+    id: "pr-resolve-wf-001",
+    name: "PR resolve",
+    prompt: "Resolve review threads on PR #{{prNumber}} in {{owner}}/{{name}}.",
+    expected_capabilities: ["pr.thread.resolve"],
+  })
 }
 
 describe("fixture manifest", () => {
@@ -83,9 +72,9 @@ describe("fixture manifest", () => {
     await expect(loadFixtureManifest(path)).rejects.toThrow()
   })
 
-  it("resolves scenario input values from fixture bindings", () => {
-    const scenario: Scenario = {
-      ...createBaseScenario(),
+  it("resolves workflow prompt and checkpoint inputs from fixture bindings", () => {
+    const scenario: WorkflowScenario = {
+      ...createBaseWorkflowScenario(),
       fixture: {
         bindings: {
           "input.owner": "repo.owner",
@@ -95,7 +84,7 @@ describe("fixture manifest", () => {
       },
     }
 
-    const resolved = resolveScenarioFixtureBindings(scenario, {
+    const resolved = resolveWorkflowFixtureBindings(scenario, {
       version: 1,
       repo: {
         owner: "aryeko",
@@ -110,18 +99,16 @@ describe("fixture manifest", () => {
       },
     })
 
-    expect(resolved.input.owner).toBe("aryeko")
-    expect(resolved.input.name).toBe("ghx-bench-fixtures")
-    expect(resolved.input.prNumber).toBe(12)
+    expect(resolved.prompt).toContain("aryeko")
+    expect(resolved.prompt).toContain("ghx-bench-fixtures")
+    expect(resolved.prompt).toContain("12")
   })
 
   it("returns original scenario when bindings are missing or empty", () => {
-    const scenarioWithoutBindings: Scenario = {
-      ...createBaseScenario(),
-    }
+    const scenarioWithoutBindings = createBaseWorkflowScenario()
 
-    const scenarioWithEmptyBindings: Scenario = {
-      ...createBaseScenario(),
+    const scenarioWithEmptyBindings: WorkflowScenario = {
+      ...createBaseWorkflowScenario(),
       fixture: {
         bindings: {},
       },
@@ -138,17 +125,17 @@ describe("fixture manifest", () => {
       resources: {},
     }
 
-    expect(resolveScenarioFixtureBindings(scenarioWithoutBindings, manifest)).toBe(
+    expect(resolveWorkflowFixtureBindings(scenarioWithoutBindings, manifest)).toBe(
       scenarioWithoutBindings,
     )
-    expect(resolveScenarioFixtureBindings(scenarioWithEmptyBindings, manifest)).toBe(
+    expect(resolveWorkflowFixtureBindings(scenarioWithEmptyBindings, manifest)).toBe(
       scenarioWithEmptyBindings,
     )
   })
 
   it("throws when a binding source path does not exist", () => {
-    const scenario: Scenario = {
-      ...createBaseScenario(),
+    const scenario: WorkflowScenario = {
+      ...createBaseWorkflowScenario(),
       fixture: {
         bindings: {
           "input.owner": "resources.missing.value",
@@ -157,7 +144,7 @@ describe("fixture manifest", () => {
     }
 
     expect(() =>
-      resolveScenarioFixtureBindings(scenario, {
+      resolveWorkflowFixtureBindings(scenario, {
         version: 1,
         repo: {
           owner: "aryeko",
@@ -170,18 +157,18 @@ describe("fixture manifest", () => {
     ).toThrow("fixture manifest path not found")
   })
 
-  it("throws when destination binding path is invalid", () => {
-    const scenario: Scenario = {
-      ...createBaseScenario(),
+  it("rejects unsafe source binding path segments", () => {
+    const scenario: WorkflowScenario = {
+      ...createBaseWorkflowScenario(),
       fixture: {
         bindings: {
-          "input..owner": "repo.owner",
+          "input.owner": "repo.__proto__.polluted",
         },
       },
     }
 
     expect(() =>
-      resolveScenarioFixtureBindings(scenario, {
+      resolveWorkflowFixtureBindings(scenario, {
         version: 1,
         repo: {
           owner: "aryeko",
@@ -191,20 +178,35 @@ describe("fixture manifest", () => {
         },
         resources: {},
       }),
-    ).toThrow("invalid destination path")
+    ).toThrow("unsafe fixture manifest path segment")
   })
 
-  it("replaces non-object intermediates when setting destination paths", () => {
-    const scenario: Scenario = {
-      ...createBaseScenario(),
+  it("merges resolved context into checkpoint verification_input", () => {
+    const scenario = makeWorkflowScenario({
+      id: "pr-resolve-wf-001",
+      name: "PR resolve",
+      prompt: "Resolve review threads on PR #{{prNumber}} in {{owner}}/{{name}}.",
+      expected_capabilities: ["pr.thread.resolve"],
+      assertions: {
+        expected_outcome: "success",
+        checkpoints: [
+          {
+            name: "check-repo",
+            verification_task: "repo.view",
+            verification_input: { extra: "kept" },
+            condition: "non_empty",
+          },
+        ],
+      },
       fixture: {
         bindings: {
-          "input.nested.value": "repo.owner",
+          "input.owner": "repo.owner",
+          "input.name": "repo.name",
         },
       },
-    }
+    })
 
-    const resolved = resolveScenarioFixtureBindings(scenario, {
+    const resolved = resolveWorkflowFixtureBindings(scenario, {
       version: 1,
       repo: {
         owner: "aryeko",
@@ -215,54 +217,14 @@ describe("fixture manifest", () => {
       resources: {},
     })
 
-    expect(resolved.input.nested).toEqual({ value: "aryeko" })
-  })
-
-  it("rejects unsafe source binding path segments", () => {
-    const scenario: Scenario = {
-      ...createBaseScenario(),
-      fixture: {
-        bindings: {
-          "input.owner": "repo.__proto__.polluted",
-        },
-      },
-    }
-
-    expect(() =>
-      resolveScenarioFixtureBindings(scenario, {
-        version: 1,
-        repo: {
-          owner: "aryeko",
-          name: "ghx-bench-fixtures",
-          full_name: "aryeko/ghx-bench-fixtures",
-          default_branch: "main",
-        },
-        resources: {},
+    const checkpoint = resolved.assertions.checkpoints[0]
+    expect(checkpoint).toBeDefined()
+    expect(checkpoint?.verification_input).toEqual(
+      expect.objectContaining({
+        owner: "aryeko",
+        name: "ghx-bench-fixtures",
+        extra: "kept",
       }),
-    ).toThrow("unsafe fixture manifest path segment")
-  })
-
-  it("rejects unsafe destination binding path segments", () => {
-    const scenario: Scenario = {
-      ...createBaseScenario(),
-      fixture: {
-        bindings: {
-          "input.__proto__.polluted": "repo.owner",
-        },
-      },
-    }
-
-    expect(() =>
-      resolveScenarioFixtureBindings(scenario, {
-        version: 1,
-        repo: {
-          owner: "aryeko",
-          name: "ghx-bench-fixtures",
-          full_name: "aryeko/ghx-bench-fixtures",
-          default_branch: "main",
-        },
-        resources: {},
-      }),
-    ).toThrow("unsafe fixture manifest path segment")
+    )
   })
 })

@@ -12,7 +12,7 @@ const {
   appendFileMock,
   mkdirMock,
   accessMock,
-  lstatSyncMock,
+  lstatMock,
 } = vi.hoisted(() => ({
   createOpencodeMock: vi.fn(),
   loadScenariosMock: vi.fn(),
@@ -21,7 +21,7 @@ const {
   appendFileMock: vi.fn(async () => undefined),
   mkdirMock: vi.fn(async () => undefined),
   accessMock: vi.fn(async () => undefined),
-  lstatSyncMock: vi.fn(),
+  lstatMock: vi.fn(async () => ({ isSymbolicLink: () => true })),
 }))
 
 vi.mock("@opencode-ai/sdk", () => ({
@@ -44,28 +44,14 @@ vi.mock("node:fs/promises", async (importOriginal) => {
     access: accessMock,
     appendFile: appendFileMock,
     mkdir: mkdirMock,
+    lstat: lstatMock,
   }
 })
 
-vi.mock("node:fs", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("node:fs")>()
-  lstatSyncMock.mockImplementation(actual.lstatSync)
-  return {
-    ...actual,
-    lstatSync: lstatSyncMock,
-  }
+vi.mock("node:child_process", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:child_process")>()
+  return { ...actual, spawnSync: vi.fn(actual.spawnSync) }
 })
-
-vi.mock("node:child_process", () => ({
-  spawnSync: vi.fn(() => ({
-    status: 0,
-    stdout: JSON.stringify([
-      { capability_id: "repo.view", description: "Repo view" },
-      { capability_id: "pr.view", description: "PR view" },
-    ]),
-    stderr: "",
-  })),
-}))
 
 const spawnSyncMock = vi.mocked(spawnSync)
 
@@ -114,14 +100,40 @@ function createSessionMocks(options?: { firstPromptFails?: boolean }) {
   return session
 }
 
+function mockWorkflow(overrides?: Record<string, unknown>) {
+  return {
+    type: "workflow",
+    id: "repo-view-wf-001",
+    name: "Repo view",
+    prompt: "View repo a/b.",
+    expected_capabilities: ["repo.view"],
+    timeout_ms: 1000,
+    allowed_retries: 0,
+    fixture: { repo: "a/b" },
+    assertions: {
+      expected_outcome: "success",
+      checkpoints: [
+        {
+          name: "check-repo",
+          verification_task: "repo.view",
+          verification_input: { owner: "a", name: "b" },
+          condition: "non_empty",
+        },
+      ],
+    },
+    tags: [],
+    ...overrides,
+  }
+}
+
 describe("runSuite", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     seedFixtureManifestMock.mockReset()
     accessMock.mockResolvedValue(undefined)
     loadScenarioSetsMock.mockResolvedValue({
-      default: ["repo-view-001"],
-      "pr-operations-all": ["repo-view-001"],
+      default: ["repo-view-wf-001"],
+      "pr-operations-all": ["repo-view-wf-001"],
       "pr-review-reads": [],
       "pr-thread-mutations": [],
       "ci-diagnostics": [],
@@ -134,33 +146,24 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
-    await mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null })
+    await mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null, skipWarmup: true })
 
     expect(createOpencodeMock).toHaveBeenCalledWith(
       expect.objectContaining({
         config: expect.objectContaining({
           instructions: expect.arrayContaining([expect.stringContaining("# ghx CLI Skill")]),
           plugin: [],
+        }),
+      }),
+    )
+
+    expect(session.promptAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({
+          system: expect.stringContaining("ghx"),
         }),
       }),
     )
@@ -183,11 +186,11 @@ describe("runSuite", () => {
 
     loadScenariosMock.mockResolvedValue([
       {
-        id: "repo-view-001",
+        type: "workflow",
+        id: "repo-view-wf-001",
         name: "Repo view",
-        task: "repo.view",
-        input: { owner: "OWNER_PLACEHOLDER", name: "REPO_PLACEHOLDER" },
-        prompt_template: "run {{task}} {{input_json}}",
+        prompt: "View repo {{owner}}/{{name}}.",
+        expected_capabilities: ["repo.view"],
         timeout_ms: 1000,
         allowed_retries: 0,
         fixture: {
@@ -198,9 +201,15 @@ describe("runSuite", () => {
           },
         },
         assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
+          expected_outcome: "success",
+          checkpoints: [
+            {
+              name: "check-repo",
+              verification_task: "repo.view",
+              verification_input: {},
+              condition: "non_empty",
+            },
+          ],
         },
         tags: [],
       },
@@ -229,6 +238,7 @@ describe("runSuite", () => {
       repetitions: 1,
       scenarioFilter: null,
       fixtureManifestPath: fixturePath,
+      skipWarmup: true,
     })
 
     const promptCalls = session.promptAsync.mock.calls as unknown[][]
@@ -238,8 +248,8 @@ describe("runSuite", () => {
       }
     }
     const prompt = String(firstPromptPayload.body?.parts?.[0]?.text ?? "")
-    expect(prompt).toContain('"owner":"aryeko"')
-    expect(prompt).toContain('"name":"ghx-bench-fixtures"')
+    expect(prompt).toContain("aryeko")
+    expect(prompt).toContain("ghx-bench-fixtures")
     expect(close).toHaveBeenCalled()
   })
 
@@ -248,27 +258,15 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
-    await mod.runSuite({ mode: "agent_direct", repetitions: 1, scenarioFilter: null })
+    await mod.runSuite({
+      mode: "agent_direct",
+      repetitions: 1,
+      scenarioFilter: null,
+      skipWarmup: true,
+    })
 
     expect(createOpencodeMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -288,44 +286,19 @@ describe("runSuite", () => {
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
     loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-      {
-        id: "pr-view-001",
+      mockWorkflow(),
+      mockWorkflow({
+        id: "pr-view-wf-001",
         name: "PR view",
-        task: "pr.view",
-        input: { owner: "a", name: "b", prNumber: 1 },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
+        prompt: "View PR #1 in a/b.",
+        expected_capabilities: ["pr.view"],
+      }),
     ])
 
     loadScenarioSetsMock.mockResolvedValue({
-      default: ["repo-view-001"],
-      "pr-operations-all": ["repo-view-001", "pr-view-001"],
-      "pr-review-reads": ["pr-view-001"],
+      default: ["repo-view-wf-001"],
+      "pr-operations-all": ["repo-view-wf-001", "pr-view-wf-001"],
+      "pr-review-reads": ["pr-view-wf-001"],
       "pr-thread-mutations": [],
       "ci-diagnostics": [],
       "ci-log-analysis": [],
@@ -337,13 +310,14 @@ describe("runSuite", () => {
       repetitions: 1,
       scenarioFilter: null,
       scenarioSet: "pr-review-reads",
+      skipWarmup: true,
     })
 
     expect(appendFileMock).toHaveBeenCalledTimes(1)
     const appendCalls = appendFileMock.mock.calls as unknown[][]
     const firstWrite = appendCalls[0]?.[1]
     const row = JSON.parse(firstWrite as string)
-    expect(row.scenario_id).toBe("pr-view-001")
+    expect(row.scenario_id).toBe("pr-view-wf-001")
     expect(row.scenario_set).toBe("pr-review-reads")
   })
 
@@ -353,38 +327,13 @@ describe("runSuite", () => {
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
     loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-      {
-        id: "pr-view-001",
+      mockWorkflow(),
+      mockWorkflow({
+        id: "pr-view-wf-001",
         name: "PR view",
-        task: "pr.view",
-        input: { owner: "a", name: "b", prNumber: 1 },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
+        prompt: "View PR #1 in a/b.",
+        expected_capabilities: ["pr.view"],
+      }),
     ])
 
     const root = await mkdtemp(join(tmpdir(), "ghx-bench-output-"))
@@ -394,7 +343,7 @@ describe("runSuite", () => {
     await mod.runSuite({
       mode: "ghx",
       repetitions: 1,
-      scenarioFilter: ["repo-view-001", "pr-view-001"],
+      scenarioFilter: ["repo-view-wf-001", "pr-view-wf-001"],
       providerId: "openai",
       modelId: "gpt-5.1-codex-mini",
       outputJsonlPath: outFile,
@@ -418,30 +367,13 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
     await mod.runSuite({
       mode: "ghx",
       repetitions: 1,
-      scenarioFilter: ["repo-view-001"],
+      scenarioFilter: ["repo-view-wf-001"],
       scenarioSet: "pr-review-reads",
     })
 
@@ -456,65 +388,19 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
     await expect(
-      mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null, scenarioSet: "missing" }),
+      mod.runSuite({
+        mode: "ghx",
+        repetitions: 1,
+        scenarioFilter: null,
+        scenarioSet: "missing",
+        skipWarmup: true,
+      }),
     ).rejects.toThrow("Unknown scenario set: missing")
     expect(close).not.toHaveBeenCalled()
-  })
-
-  it("fails ghx runSuite early when capability preflight fails", async () => {
-    const session = createSessionMocks()
-    const close = vi.fn()
-    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
-
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
-
-    spawnSyncMock
-      .mockReturnValueOnce({ status: 0, stdout: "", stderr: "" } as never)
-      .mockReturnValueOnce({ status: 0, stdout: "[]", stderr: "" } as never)
-
-    const mod = await import("../../src/runner/suite-runner.js")
-    await expect(
-      mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null }),
-    ).rejects.toThrow("ghx_preflight_failed")
-    expect(appendFileMock).not.toHaveBeenCalled()
   })
 
   it("throws when scenario set references unknown scenario ids", async () => {
@@ -522,27 +408,10 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
     loadScenarioSetsMock.mockResolvedValue({
       default: ["missing-scenario-id"],
-      "pr-operations-all": ["repo-view-001"],
+      "pr-operations-all": ["repo-view-wf-001"],
       "pr-review-reads": [],
       "pr-thread-mutations": [],
       "ci-diagnostics": [],
@@ -551,7 +420,7 @@ describe("runSuite", () => {
 
     const mod = await import("../../src/runner/suite-runner.js")
     await expect(
-      mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null }),
+      mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null, skipWarmup: true }),
     ).rejects.toThrow("references unknown scenario id")
     expect(close).not.toHaveBeenCalled()
   })
@@ -561,27 +430,10 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
     loadScenarioSetsMock.mockResolvedValue({
       default: [],
-      "pr-operations-all": ["repo-view-001"],
+      "pr-operations-all": ["repo-view-wf-001"],
       "pr-review-reads": [],
       "pr-thread-mutations": [],
       "ci-diagnostics": [],
@@ -590,7 +442,7 @@ describe("runSuite", () => {
 
     const mod = await import("../../src/runner/suite-runner.js")
     await expect(
-      mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null }),
+      mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null, skipWarmup: true }),
     ).rejects.toThrow("No scenarios matched filter: default")
     expect(close).not.toHaveBeenCalled()
   })
@@ -603,14 +455,7 @@ describe("runSuite", () => {
     accessMock.mockRejectedValueOnce(new Error("missing fixture manifest"))
 
     loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "OWNER_PLACEHOLDER", name: "REPO_PLACEHOLDER" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
+      mockWorkflow({
         fixture: {
           repo: "aryeko/ghx-bench-fixtures",
           bindings: {
@@ -618,18 +463,12 @@ describe("runSuite", () => {
             "input.name": "repo.name",
           },
         },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
+      }),
     ])
 
     const mod = await import("../../src/runner/suite-runner.js")
     await expect(
-      mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null }),
+      mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null, skipWarmup: true }),
     ).rejects.toThrow(
       "Selected scenarios require fixture bindings but no fixture manifest was provided",
     )
@@ -642,11 +481,11 @@ describe("runSuite", () => {
 
     loadScenariosMock.mockResolvedValue([
       {
-        id: "repo-view-001",
+        type: "workflow",
+        id: "repo-view-wf-001",
         name: "Repo view",
-        task: "repo.view",
-        input: { owner: "OWNER_PLACEHOLDER", name: "REPO_PLACEHOLDER" },
-        prompt_template: "run {{task}} {{input_json}}",
+        prompt: "View repo {{owner}}/{{name}}.",
+        expected_capabilities: ["repo.view"],
         timeout_ms: 1000,
         allowed_retries: 0,
         fixture: {
@@ -657,9 +496,15 @@ describe("runSuite", () => {
           },
         },
         assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
+          expected_outcome: "success",
+          checkpoints: [
+            {
+              name: "check-repo",
+              verification_task: "repo.view",
+              verification_input: {},
+              condition: "non_empty",
+            },
+          ],
         },
         tags: [],
       },
@@ -691,6 +536,7 @@ describe("runSuite", () => {
       repetitions: 1,
       scenarioFilter: null,
       seedIfMissing: true,
+      skipWarmup: true,
     })
 
     expect(seedFixtureManifestMock).toHaveBeenCalledWith({
@@ -705,24 +551,7 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const root = await mkdtemp(join(tmpdir(), "ghx-bench-seed-"))
     const fixturePath = join(root, "seeded-fixture.json")
@@ -753,6 +582,7 @@ describe("runSuite", () => {
       scenarioFilter: null,
       fixtureManifestPath: fixturePath,
       seedIfMissing: true,
+      skipWarmup: true,
     })
 
     expect(seedFixtureManifestMock).toHaveBeenCalledWith({
@@ -763,29 +593,83 @@ describe("runSuite", () => {
     expect(appendFileMock).toHaveBeenCalledTimes(1)
   })
 
-  it("throws when --seed-if-missing is set without a fixture manifest", async () => {
+  it("passes aggregated requires from scenarios when seeding fixtures", async () => {
     const session = createSessionMocks()
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
     loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
+      mockWorkflow({
+        id: "wf-a",
+        fixture: {
+          repo: "a/b",
+          requires: ["issue", "pr"],
+          bindings: { "input.issueNumber": "resources.issue.number" },
         },
-        tags: [],
-      },
+      }),
+      mockWorkflow({
+        id: "wf-b",
+        fixture: {
+          repo: "a/b",
+          requires: ["pr", "release"],
+          bindings: { "input.prNumber": "resources.pr.number" },
+        },
+      }),
     ])
+
+    const root = await mkdtemp(join(tmpdir(), "ghx-bench-seed-req-"))
+    const fixturePath = join(root, "seeded-fixture.json")
+
+    seedFixtureManifestMock.mockImplementation(async ({ outFile }: { outFile: string }) => {
+      await writeFile(
+        outFile,
+        JSON.stringify({
+          version: 1,
+          repo: {
+            owner: "aryeko",
+            name: "ghx-bench-fixtures",
+            full_name: "aryeko/ghx-bench-fixtures",
+            default_branch: "main",
+          },
+          resources: {
+            issue: { number: 1, title: "test" },
+            pr: { number: 2, title: "test-pr" },
+          },
+        }),
+        "utf8",
+      )
+    })
+
+    accessMock.mockRejectedValueOnce(new Error("missing fixture manifest"))
+
+    const mod = await import("../../src/runner/suite-runner.js")
+    await mod.runSuite({
+      mode: "ghx",
+      repetitions: 1,
+      scenarioFilter: ["wf-a", "wf-b"],
+      fixtureManifestPath: fixturePath,
+      seedIfMissing: true,
+      skipWarmup: true,
+    })
+
+    expect(seedFixtureManifestMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repo: "aryeko/ghx-bench-fixtures",
+        outFile: fixturePath,
+        seedId: "default",
+        requires: expect.arrayContaining(["issue", "pr", "release"]),
+      }),
+    )
+    const callArgs = seedFixtureManifestMock.mock.calls[0]?.[0] as { requires: string[] }
+    expect(callArgs.requires).toHaveLength(3)
+  })
+
+  it("throws when --seed-if-missing is set without a fixture manifest", async () => {
+    const session = createSessionMocks()
+    const close = vi.fn()
+    createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
+
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
     await expect(
@@ -794,6 +678,7 @@ describe("runSuite", () => {
         repetitions: 1,
         scenarioFilter: null,
         seedIfMissing: true,
+        skipWarmup: true,
       }),
     ).rejects.toThrow("--seed-if-missing requires --fixture-manifest")
     expect(seedFixtureManifestMock).not.toHaveBeenCalled()
@@ -804,24 +689,7 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     accessMock.mockRejectedValueOnce(new Error("missing explicit manifest"))
 
@@ -832,6 +700,7 @@ describe("runSuite", () => {
         repetitions: 1,
         scenarioFilter: null,
         fixtureManifestPath: "/tmp/does-not-exist-fixture.json",
+        skipWarmup: true,
       }),
     ).rejects.toThrow("Fixture manifest not found: /tmp/does-not-exist-fixture.json")
   })
@@ -844,7 +713,7 @@ describe("runSuite", () => {
 
     const mod = await import("../../src/runner/suite-runner.js")
     await expect(
-      mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: ["none"] }),
+      mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: ["none"], skipWarmup: true }),
     ).rejects.toThrow("No scenarios matched filter")
     expect(close).not.toHaveBeenCalled()
     expect(createOpencodeMock).not.toHaveBeenCalled()
@@ -858,7 +727,7 @@ describe("runSuite", () => {
 
     const mod = await import("../../src/runner/suite-runner.js")
     await expect(
-      mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null }),
+      mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null, skipWarmup: true }),
     ).rejects.toThrow("No benchmark scenarios found")
     expect(close).not.toHaveBeenCalled()
     expect(createOpencodeMock).not.toHaveBeenCalled()
@@ -869,27 +738,10 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 1,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow({ allowed_retries: 1 })])
 
     const mod = await import("../../src/runner/suite-runner.js")
-    await mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null })
+    await mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null, skipWarmup: true })
 
     expect(session.promptAsync).toHaveBeenCalledTimes(2)
     expect(appendFileMock).toHaveBeenCalledTimes(1)
@@ -947,28 +799,15 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 10,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-          require_tool_calls: false,
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow({ timeout_ms: 10 })])
 
     const mod = await import("../../src/runner/suite-runner.js")
-    await mod.runSuite({ mode: "agent_direct", repetitions: 1, scenarioFilter: null })
+    await mod.runSuite({
+      mode: "agent_direct",
+      repetitions: 1,
+      scenarioFilter: null,
+      skipWarmup: true,
+    })
 
     expect(appendFileMock).toHaveBeenCalledTimes(1)
     const appendCalls = appendFileMock.mock.calls as unknown[][]
@@ -983,28 +822,11 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: -1,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow({ allowed_retries: -1 })])
 
     const mod = await import("../../src/runner/suite-runner.js")
     await expect(
-      mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null }),
+      mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null, skipWarmup: true }),
     ).rejects.toThrow("No benchmark result produced")
     expect(close).not.toHaveBeenCalled()
   })
@@ -1028,29 +850,12 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
 
     try {
-      await mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null })
+      await mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null, skipWarmup: true })
 
       expect(process.env.OPENCODE_CONFIG).toBe("from-test-config")
       expect(process.env.OPENCODE_CONFIG_DIR).toBe("from-test-config-dir")
@@ -1105,22 +910,13 @@ describe("runSuite", () => {
     delete process.env.GH_TOKEN
     delete process.env.GITHUB_TOKEN
 
-    const spawnSync = await import("node:child_process")
-    vi.mocked(spawnSync.spawnSync).mockImplementation((_cmd, args) => {
+    spawnSyncMock.mockImplementation((_cmd, args) => {
       if (Array.isArray(args) && args[0] === "auth" && args[1] === "status") {
         return { status: 0, stdout: "ok", stderr: "" } as never
       }
 
       if (Array.isArray(args) && args[0] === "auth" && args[1] === "token") {
         return { status: 1 } as never
-      }
-
-      if (Array.isArray(args) && args.includes("capabilities") && args.includes("list")) {
-        return {
-          status: 0,
-          stdout: JSON.stringify([{ capability_id: "repo.view", description: "Repo view" }]),
-          stderr: "",
-        } as never
       }
 
       return { status: 0 } as never
@@ -1130,29 +926,12 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
 
     try {
-      await mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null })
+      await mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null, skipWarmup: true })
 
       expect(process.env.OPENCODE_CONFIG).toBeUndefined()
       expect(process.env.OPENCODE_CONFIG_DIR).toBeUndefined()
@@ -1192,37 +971,18 @@ describe("runSuite", () => {
     }
   })
 
-  it("fails early when benchmark ghx alias symlink check fails (sync preflight)", async () => {
+  it("fails early when benchmark ghx alias check fails", async () => {
     const session = createSessionMocks()
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
-    lstatSyncMock.mockImplementationOnce(() => {
-      throw new Error("missing alias")
-    })
+    lstatMock.mockRejectedValueOnce(new Error("missing alias"))
 
     const mod = await import("../../src/runner/suite-runner.js")
     await expect(
-      mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null }),
+      mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null, skipWarmup: true }),
     ).rejects.toThrow("benchmark ghx alias missing")
   })
 
@@ -1237,24 +997,7 @@ describe("runSuite", () => {
       server: { close },
     })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const fsPromises = await import("node:fs/promises")
     const lstatSpy = vi.spyOn(fsPromises, "lstat").mockRejectedValueOnce(new Error("missing alias"))
@@ -1262,7 +1005,7 @@ describe("runSuite", () => {
     const mod = await import("../../src/runner/suite-runner.js")
     try {
       await expect(
-        mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null }),
+        mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null, skipWarmup: true }),
       ).rejects.toThrow("benchmark ghx alias missing")
       expect(configGet).not.toHaveBeenCalled()
     } finally {
@@ -1283,28 +1026,11 @@ describe("runSuite", () => {
       server: { close },
     })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
     await expect(
-      mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null }),
+      mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null, skipWarmup: true }),
     ).rejects.toThrow(
       "benchmark_config_invalid: expected non-empty ghx instructions and no plugins",
     )
@@ -1323,28 +1049,16 @@ describe("runSuite", () => {
       server: { close },
     })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
     await expect(
-      mod.runSuite({ mode: "agent_direct", repetitions: 1, scenarioFilter: null }),
+      mod.runSuite({
+        mode: "agent_direct",
+        repetitions: 1,
+        scenarioFilter: null,
+        skipWarmup: true,
+      }),
     ).rejects.toThrow("benchmark_config_invalid: expected agent_direct instruction and no plugins")
   })
 
@@ -1361,29 +1075,17 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
 
     try {
-      await mod.runSuite({ mode: "agent_direct", repetitions: 1, scenarioFilter: null })
+      await mod.runSuite({
+        mode: "agent_direct",
+        repetitions: 1,
+        scenarioFilter: null,
+        skipWarmup: true,
+      })
       expect(process.env.PATH).toBeUndefined()
     } finally {
       if (previousPath === undefined) {
@@ -1414,29 +1116,12 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
 
     try {
-      await mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null })
+      await mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null, skipWarmup: true })
 
       const events = consoleLogSpy.mock.calls
         .map((call) => call[0])
@@ -1490,7 +1175,7 @@ describe("runSuite", () => {
 
     try {
       await expect(
-        mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null }),
+        mod.runSuite({ mode: "ghx", repetitions: 1, scenarioFilter: null, skipWarmup: true }),
       ).rejects.toThrow("No benchmark scenarios found")
 
       const eventNames = consoleLogSpy.mock.calls
@@ -1522,28 +1207,10 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-          expected_route_used: "cli",
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
-    await mod.runSuite({ mode: "mcp", repetitions: 1, scenarioFilter: null })
+    await mod.runSuite({ mode: "mcp", repetitions: 1, scenarioFilter: null, skipWarmup: true })
 
     expect(createOpencodeMock).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1566,27 +1233,10 @@ describe("runSuite", () => {
     const close = vi.fn()
     createOpencodeMock.mockResolvedValue({ client: { session }, server: { close } })
 
-    loadScenariosMock.mockResolvedValue([
-      {
-        id: "repo-view-001",
-        name: "Repo view",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "run {{task}} {{input_json}}",
-        timeout_ms: 1000,
-        allowed_retries: 0,
-        fixture: { repo: "a/b" },
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-        },
-        tags: [],
-      },
-    ])
+    loadScenariosMock.mockResolvedValue([mockWorkflow()])
 
     const mod = await import("../../src/runner/suite-runner.js")
-    await mod.runSuite({ mode: "ghx", repetitions: 2, scenarioFilter: null })
+    await mod.runSuite({ mode: "ghx", repetitions: 2, scenarioFilter: null, skipWarmup: true })
 
     const appendCalls = appendFileMock.mock.calls as unknown[][]
     expect(appendCalls).toHaveLength(2)

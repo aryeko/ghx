@@ -1,11 +1,13 @@
 query PrView($owner: String!, $name: String!, $prNumber: Int!) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $prNumber) {
-      id
-      number
-      title
-      state
-      url
+      ...PrCoreFields
+      body
+      labels(first: 20) {
+        nodes {
+          name
+        }
+      }
     }
   }
 }

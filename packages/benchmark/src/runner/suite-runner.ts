@@ -9,32 +9,18 @@ import type {
   Scenario,
   SessionMessageEntry,
   SessionMessagePart,
+  WorkflowCheckpoint,
+  WorkflowScenario,
 } from "../domain/types.js"
-import { extractAttemptMetrics } from "../extract/attempts.js"
-import { validateEnvelope } from "../extract/envelope.js"
 import { aggregateToolCounts } from "../extract/tool-usage.js"
-import { loadFixtureManifest, resolveScenarioFixtureBindings } from "../fixture/manifest.js"
-import { seedFixtureManifest } from "../fixture/seed.js"
+import { mintFixtureAppToken } from "../fixture/app-auth.js"
+import { loadFixtureManifest, resolveWorkflowFixtureBindings } from "../fixture/manifest.js"
+import { resetPrReviewThreads, seedFixtureManifest } from "../fixture/seed.js"
 import { loadScenarioSets, loadScenarios } from "../scenario/loader.js"
 import { isObject } from "../utils/guards.js"
-import { assertGhxRouterPreflight, withIsolatedBenchmarkClient } from "./client-lifecycle.js"
+import { type BenchmarkClient, withIsolatedBenchmarkClient } from "./client-lifecycle.js"
 import { loadRunnerConfig, type RunnerConfig } from "./config.js"
-import {
-  extractEnvelopeFromMessages,
-  extractEnvelopeFromParts,
-  findBestEnvelopeFromMessages,
-  tryWrapRawDataAsEnvelope,
-} from "./envelope-recovery.js"
-
-export { assertGhxRouterPreflight } from "./client-lifecycle.js"
-
-import { validateFixture } from "./preflight/fixture-preflight.js"
-import {
-  buildOutputSchema,
-  forcedToolCommandHint,
-  modeScopedAssertions,
-  renderPrompt,
-} from "./prompt/prompt-renderer.js"
+import { renderWorkflowPrompt } from "./prompt/prompt-renderer.js"
 import {
   hasAssistantMetadata,
   hasAssistantSignal,
@@ -53,6 +39,7 @@ type RunSuiteOptions = {
   providerId?: string | null
   modelId?: string | null
   outputJsonlPath?: string | null
+  skipWarmup?: boolean
   config?: RunnerConfig
 }
 
@@ -484,15 +471,9 @@ export async function waitForAssistantFromMessages(
       const role = (entry.info as { role?: unknown }).role
       const parts = entry.parts ?? []
       const stepFinish = [...parts].reverse().find((part) => part.type === "step-finish")
-      const hasEnvelopeCandidate = extractEnvelopeFromParts(parts).envelope !== null
       const assistantByRole = role === "assistant"
       const assistantByMetadata = hasAssistantMetadata(entry.info)
       const assistantWithStructuredOutput = hasStructuredOutput(entry.info)
-      const assistantByRoleTextSignal =
-        assistantByRole &&
-        hasTextPart(parts) &&
-        stepFinish?.reason !== "tool-calls" &&
-        hasEnvelopeCandidate
       const assistantByTextSignal =
         previousAssistantId !== undefined &&
         hasTextPart(parts) &&
@@ -507,16 +488,11 @@ export async function waitForAssistantFromMessages(
         hasCompletedStep ||
         assistantWithStructuredOutput
 
-      if (
-        !assistantByRole &&
-        !assistantByMetadata &&
-        !assistantByTextSignal &&
-        !assistantByRoleTextSignal
-      ) {
+      if (!assistantByRole && !assistantByMetadata && !assistantByTextSignal) {
         return false
       }
 
-      return isCompletedAssistant || assistantByTextSignal || assistantByRoleTextSignal
+      return isCompletedAssistant || assistantByTextSignal
     })
 
     if (latestAssistant?.info) {
@@ -539,9 +515,6 @@ export async function waitForAssistantFromMessages(
 
         const parts = entry.parts ?? []
         const stepFinish = [...parts].reverse().find((part) => part.type === "step-finish")
-        const hasEnvelopeCandidate = extractEnvelopeFromParts(parts).envelope !== null
-        const role = (entry.info as { role?: unknown }).role
-        const assistantByRole = role === "assistant"
         const assistantByMetadata = hasAssistantMetadata(entry.info)
         const assistantWithStructuredOutput = hasStructuredOutput(entry.info)
         const hasCompletedStep =
@@ -552,11 +525,7 @@ export async function waitForAssistantFromMessages(
           assistantWithStructuredOutput ||
           (assistantByMetadata &&
             (hasCompletedStep || hasTextPart(parts) || assistantWithStructuredOutput)) ||
-          (hasTextPart(parts) && hasCompletedStep) ||
-          (assistantByRole &&
-            hasTextPart(parts) &&
-            stepFinish?.reason !== "tool-calls" &&
-            hasEnvelopeCandidate)
+          (hasTextPart(parts) && hasCompletedStep)
         )
       })
 
@@ -621,37 +590,50 @@ export function extractPromptResponseFromPromptResult(value: unknown): PromptRes
   return null
 }
 
-function expectedOutcomeFromAssertions(
-  assertions: Scenario["assertions"],
-): "success" | "expected_error" {
-  if (assertions.expected_outcome !== undefined) {
-    return assertions.expected_outcome
+export function resolveCheckpointData(data: unknown): unknown {
+  if (isObject(data) && "items" in data && Array.isArray((data as Record<string, unknown>).items)) {
+    return (data as Record<string, unknown>).items
   }
-
-  return assertions.must_succeed === false ? "expected_error" : "success"
+  return data
 }
 
-function matchesExpectedOutcome(
-  envelope: unknown,
-  expectedOutcome: "success" | "expected_error",
+export function evaluateCheckpoint(
+  checkpoint: WorkflowCheckpoint,
+  result: { ok: boolean; data?: unknown },
 ): boolean {
-  if (!isObject(envelope)) {
+  if (!result.ok) {
     return false
   }
 
-  const ok = envelope.ok === true
-  const error = envelope.error
+  const data = resolveCheckpointData(result.data)
 
-  if (expectedOutcome === "expected_error") {
-    return isObject(error)
+  switch (checkpoint.condition) {
+    case "empty":
+      return Array.isArray(data) ? data.length === 0 : data === null || data === undefined
+    case "non_empty":
+      return Array.isArray(data) ? data.length > 0 : data !== null && data !== undefined
+    case "count_gte":
+      return Array.isArray(data) && data.length >= Number(checkpoint.expected_value)
+    case "count_eq":
+      return Array.isArray(data) && data.length === Number(checkpoint.expected_value)
+    case "field_equals": {
+      if (!isObject(data) || !isObject(checkpoint.expected_value)) {
+        return false
+      }
+      const expected = checkpoint.expected_value as Record<string, unknown>
+      const actual = data as Record<string, unknown>
+      return Object.entries(expected).every(
+        ([key, value]) => JSON.stringify(actual[key]) === JSON.stringify(value),
+      )
+    }
+    default:
+      return false
   }
-
-  return ok && error === null
 }
 
-export async function runScenario(
-  client: unknown,
-  scenario: Scenario,
+export async function runWorkflowScenario(
+  benchmarkClient: BenchmarkClient,
+  scenario: WorkflowScenario,
   mode: BenchmarkMode,
   iteration: number,
   scenarioSet: string | null = null,
@@ -659,29 +641,16 @@ export async function runScenario(
   config?: RunnerConfig,
 ): Promise<BenchmarkRow> {
   const cfg = config ?? loadRunnerConfig()
+  const workflowStallTimeout = Math.floor(scenario.timeout_ms / 3)
+  const workflowConfig: RunnerConfig = {
+    ...cfg,
+    sessionStallTimeoutMs: Math.max(cfg.sessionStallTimeoutMs ?? 0, workflowStallTimeout),
+  }
   const providerId = modelOverride?.providerId ?? process.env.BENCH_PROVIDER_ID ?? "openai"
-  const modelId = modelOverride?.modelId ?? process.env.BENCH_MODEL_ID ?? "gpt-5.3-codex"
+  const modelId = modelOverride?.modelId ?? process.env.BENCH_MODEL_ID ?? "gpt-5.1-codex-mini"
+  const { client, systemInstruction } = benchmarkClient
   const scenarioStartedAt = Date.now()
   let externalRetryCount = 0
-
-  const classifyRunnerFailure = (
-    error: unknown,
-  ): { type: string; message: string; retryable: boolean } => {
-    const message = error instanceof Error ? error.message : String(error)
-    if (message.includes("No assistant message received in session.messages")) {
-      return { type: "runner_timeout_no_first_assistant", message, retryable: true }
-    }
-
-    if (message.includes("Session message stream stalled in session.messages")) {
-      return { type: "runner_timeout_stalled_session", message, retryable: true }
-    }
-
-    if (message.includes("Timed out waiting for assistant message in session.messages")) {
-      return { type: "runner_timeout_wait_for_assistant", message, retryable: true }
-    }
-
-    return { type: "runner_error", message, retryable: false }
-  }
 
   while (true) {
     const attemptStartedAt = Date.now()
@@ -689,8 +658,6 @@ export async function runScenario(
 
     try {
       const sessionApi = getSessionApi(client)
-      const scopedAssertions = modeScopedAssertions(scenario, mode)
-      const benchmarkNonce = randomUUID()
       const sessionResult = await withTimeout(
         sessionApi.create({ url: "/session" }),
         scenario.timeout_ms,
@@ -705,18 +672,9 @@ export async function runScenario(
           path: { id: session.id },
           body: {
             model: { providerID: providerId, modelID: modelId },
-            agent: cfg.openCodeMode ?? undefined,
-            parts: [
-              {
-                type: "text",
-                text: renderPrompt(scenario, mode, benchmarkNonce),
-              },
-            ],
-            format: {
-              type: "json_schema",
-              retryCount: 2,
-              schema: buildOutputSchema(scopedAssertions),
-            },
+            agent: workflowConfig.openCodeMode ?? undefined,
+            system: systemInstruction,
+            parts: [{ type: "text", text: renderWorkflowPrompt(scenario, mode) }],
           },
         }),
         Math.min(15000, scenario.timeout_ms),
@@ -736,186 +694,62 @@ export async function runScenario(
           remainingTimeoutMs,
           scenario.id,
           undefined,
-          cfg,
+          workflowConfig,
         ))
-      let assistantAndParts = coercePromptResponse(hydrated)
+      const assistantAndParts = coercePromptResponse(hydrated)
+      const assistant = assistantAndParts.assistant
 
-      let extracted = extractEnvelopeFromParts(assistantAndParts.parts)
-      if (
-        extracted.envelope === null &&
-        assistantAndParts.assistant.structured_output !== undefined
-      ) {
-        extracted = {
-          ...extracted,
-          envelope: assistantAndParts.assistant.structured_output,
-        }
-      }
+      const allMessages = await fetchSessionMessages(sessionApi, session.id)
+      const toolCounts = aggregateToolCounts(allMessages)
+      const timingBreakdown = extractTimingBreakdown(allMessages)
 
-      let continuationCount = 0
-      while (extracted.envelope === null && continuationCount < 3) {
-        continuationCount += 1
-        const remaining = Math.max(1000, scenario.timeout_ms - (Date.now() - attemptStartedAt))
+      const checkpointResults: Array<{ name: string; passed: boolean }> = []
 
-        const continuationResult = await withTimeout(
-          sessionApi.promptAsync({
-            url: "/session/{id}/prompt_async",
-            path: { id: session.id },
-            body: {
-              messageID: assistantAndParts.assistant.id,
-              model: { providerID: providerId, modelID: modelId },
-              agent: cfg.openCodeMode ?? undefined,
-              parts: [
-                {
-                  type: "text",
-                  text: "Continue and return only one complete JSON object for the final envelope.",
-                },
-              ],
+      const { executeTask, createGithubClientFromToken } = await import("@ghx-dev/core")
+      const ghToken = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? ""
+      const githubClient = createGithubClientFromToken(ghToken)
+
+      for (const checkpoint of scenario.assertions.checkpoints) {
+        try {
+          const verificationResult = await executeTask(
+            {
+              task: checkpoint.verification_task,
+              input: checkpoint.verification_input,
             },
-          }),
-          Math.min(10000, remaining),
-          "session.promptAsync.continue",
-        )
-
-        const immediateContinuation = extractPromptResponseFromPromptResult(continuationResult)
-        const next =
-          immediateContinuation ??
-          (await waitForAssistantFromMessages(
-            sessionApi,
-            session.id,
-            remaining,
-            scenario.id,
-            assistantAndParts.assistant.id,
-            cfg,
-          ))
-
-        assistantAndParts = coercePromptResponse(next)
-        extracted = extractEnvelopeFromParts(assistantAndParts.parts)
-      }
-
-      let assistant = assistantAndParts.assistant
-      let envelope = tryWrapRawDataAsEnvelope(extracted.envelope, scopedAssertions, mode)
-
-      let allMessages = await fetchSessionMessages(sessionApi, session.id)
-      let toolCounts = aggregateToolCounts(allMessages)
-      const requireToolCalls = scopedAssertions.require_tool_calls ?? true
-
-      let forceToolAttempt = 0
-      while (requireToolCalls && toolCounts.toolCalls === 0 && forceToolAttempt < 3) {
-        forceToolAttempt += 1
-        const remaining = Math.max(1000, scenario.timeout_ms - (Date.now() - attemptStartedAt))
-        const forcedCommand = forcedToolCommandHint(scenario, mode)
-        const forcedPromptResult = await withTimeout(
-          sessionApi.promptAsync({
-            url: "/session/{id}/prompt_async",
-            path: { id: session.id },
-            body: {
-              model: { providerID: providerId, modelID: modelId },
-              agent: cfg.openCodeMode ?? undefined,
-              parts: [
-                {
-                  type: "text",
-                  text: `You must execute at least one real tool call before producing the final JSON envelope. Run this exact command now: ${forcedCommand}. Then return the final envelope JSON only.`,
-                },
-              ],
-              format: {
-                type: "json_schema",
-                retryCount: 2,
-                schema: buildOutputSchema(scopedAssertions),
-              },
+            {
+              githubClient,
+              githubToken: ghToken,
+              skipGhPreflight: true,
             },
-          }),
-          Math.min(10000, remaining),
-          "session.promptAsync.tool-required",
-        )
+          )
 
-        const immediateForcedResponse = extractPromptResponseFromPromptResult(forcedPromptResult)
-        const next =
-          immediateForcedResponse ??
-          (await waitForAssistantFromMessages(
-            sessionApi,
-            session.id,
-            remaining,
-            scenario.id,
-            assistant.id,
-            cfg,
-          ))
-
-        assistantAndParts = coercePromptResponse(next)
-        assistant = assistantAndParts.assistant
-        extracted = extractEnvelopeFromParts(assistantAndParts.parts)
-        if (
-          extracted.envelope === null &&
-          assistantAndParts.assistant.structured_output !== undefined
-        ) {
-          extracted = {
-            ...extracted,
-            envelope: assistantAndParts.assistant.structured_output,
-          }
-        }
-
-        envelope = tryWrapRawDataAsEnvelope(extracted.envelope, scopedAssertions, mode)
-        allMessages = await fetchSessionMessages(sessionApi, session.id)
-        toolCounts = aggregateToolCounts(allMessages)
-      }
-
-      if (!validateEnvelope(scopedAssertions, envelope)) {
-        const bestEnvelope = findBestEnvelopeFromMessages(allMessages, scopedAssertions, mode)
-        if (bestEnvelope !== null) {
-          envelope = bestEnvelope
-        } else {
-          const recoveredEnvelope = extractEnvelopeFromMessages(allMessages)
-          if (recoveredEnvelope !== null) {
-            envelope = tryWrapRawDataAsEnvelope(recoveredEnvelope, scopedAssertions, mode)
-          }
+          const passed = evaluateCheckpoint(checkpoint, verificationResult)
+          checkpointResults.push({ name: checkpoint.name, passed })
+        } catch {
+          checkpointResults.push({ name: checkpoint.name, passed: false })
         }
       }
 
-      const outputValid = validateEnvelope(scopedAssertions, envelope)
+      const allCheckpointsPassed = checkpointResults.every((c) => c.passed)
+      const expectedOutcome = scenario.assertions.expected_outcome
+      const success = expectedOutcome === "success" ? allCheckpointsPassed : !allCheckpointsPassed
 
-      const attemptMetrics = extractAttemptMetrics(envelope)
       const latencyWall = Date.now() - scenarioStartedAt
       const sdkLatency =
         typeof assistant.time.completed === "number"
           ? Math.max(0, assistant.time.completed - assistant.time.created)
           : null
-
       const tokenTotal =
         assistant.tokens.input +
         assistant.tokens.output +
         assistant.tokens.reasoning +
         assistant.tokens.cache.read +
         assistant.tokens.cache.write
-      const timingBreakdown = extractTimingBreakdown(allMessages)
 
-      const minToolCalls = scopedAssertions.min_tool_calls ?? 1
-      const maxToolCalls = scopedAssertions.max_tool_calls
-      const hasRequiredToolCalls = requireToolCalls ? toolCounts.toolCalls >= minToolCalls : true
-      const hasValidMaxToolCalls =
-        maxToolCalls === undefined ? true : toolCounts.toolCalls <= maxToolCalls
-      const requiresAttemptTrace = scopedAssertions.require_attempt_trace ?? false
-      const hasAttemptTrace = !requiresAttemptTrace || attemptMetrics.totalAttempts > 0
-      const expectedOutcome = expectedOutcomeFromAssertions(scopedAssertions)
-      const expectValidOutput = scopedAssertions.expect_valid_output ?? true
-      const outputExpectationMet = expectValidOutput ? outputValid : !outputValid
-      const outcomeMatched = matchesExpectedOutcome(envelope, expectedOutcome)
-      const errorReason = !outputExpectationMet
-        ? `Output validation failed: outputValid=${outputValid}, expectValidOutput=${expectValidOutput}`
-        : !outcomeMatched
-          ? `Outcome validation failed: expected_outcome=${expectedOutcome}`
-          : !hasRequiredToolCalls
-            ? `Expected at least ${minToolCalls} tool call(s), got ${toolCounts.toolCalls}`
-            : !hasValidMaxToolCalls
-              ? `Expected at most ${maxToolCalls} tool call(s), got ${toolCounts.toolCalls}`
-              : !hasAttemptTrace
-                ? "Expected attempt trace metadata in output envelope"
-                : null
-
-      const success =
-        outputExpectationMet &&
-        outcomeMatched &&
-        hasRequiredToolCalls &&
-        hasValidMaxToolCalls &&
-        hasAttemptTrace
+      const failedCheckpoints = checkpointResults.filter((c) => !c.passed).map((c) => c.name)
+      const errorReason = !success
+        ? `Workflow checkpoint verification failed: ${failedCheckpoints.join(", ") || "outcome mismatch"}`
+        : null
 
       return {
         timestamp: new Date().toISOString(),
@@ -926,7 +760,7 @@ export async function runScenario(
         iteration,
         session_id: sessionId,
         success,
-        output_valid: outputValid,
+        output_valid: allCheckpointsPassed,
         latency_ms_wall: latencyWall,
         sdk_latency_ms: sdkLatency,
         timing_breakdown: timingBreakdown,
@@ -941,7 +775,7 @@ export async function runScenario(
         cost: assistant.cost,
         tool_calls: toolCounts.toolCalls,
         api_calls: toolCounts.apiCalls,
-        internal_retry_count: attemptMetrics.retryCount,
+        internal_retry_count: 0,
         external_retry_count: externalRetryCount,
         model: {
           provider_id: providerId,
@@ -952,12 +786,7 @@ export async function runScenario(
           repo: cfg.gitRepo,
           commit: cfg.gitCommit,
         },
-        error: errorReason
-          ? {
-              type: "assertion_failed",
-              message: errorReason,
-            }
-          : null,
+        error: errorReason ? { type: "checkpoint_failed", message: errorReason } : null,
       }
     } catch (error: unknown) {
       if (sessionId) {
@@ -967,12 +796,16 @@ export async function runScenario(
           .catch(() => undefined)
       }
 
-      const failure = classifyRunnerFailure(error)
+      const message = error instanceof Error ? error.message : String(error)
+      const retryable =
+        message.includes("No assistant message received") ||
+        message.includes("Session message stream stalled") ||
+        message.includes("Timed out waiting for assistant")
       const retriesAllowed = Number.isFinite(cfg.maxRunnerRetries)
         ? Math.max(0, cfg.maxRunnerRetries)
         : 0
 
-      if (failure.retryable && externalRetryCount < retriesAllowed) {
+      if (retryable && externalRetryCount < retriesAllowed) {
         externalRetryCount += 1
         const backoffMs =
           (Number.isFinite(cfg.runnerRetryBackoffMs) ? Math.max(0, cfg.runnerRetryBackoffMs) : 0) *
@@ -1018,8 +851,8 @@ export async function runScenario(
           commit: cfg.gitCommit,
         },
         error: {
-          type: failure.type,
-          message: failure.message,
+          type: retryable ? "runner_timeout" : "runner_error",
+          message,
         },
       }
     }
@@ -1037,11 +870,12 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
     providerId: providerIdOverride = null,
     modelId: modelIdOverride = null,
     outputJsonlPath = null,
+    skipWarmup = false,
     config: optionsConfig,
   } = options
   const suiteConfig = optionsConfig ?? loadRunnerConfig()
   const providerId = providerIdOverride ?? process.env.BENCH_PROVIDER_ID ?? "openai"
-  const modelId = modelIdOverride ?? process.env.BENCH_MODEL_ID ?? "gpt-5.3-codex"
+  const modelId = modelIdOverride ?? process.env.BENCH_MODEL_ID ?? "gpt-5.1-codex-mini"
   const suiteRunId = randomUUID()
   const progressEventsEnabled = process.env.BENCH_PROGRESS_EVENTS === BENCH_PROGRESS_EVENTS_MODE
   const emitProgressEvent = (
@@ -1079,12 +913,12 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
       )
     }
 
-    let selectedScenarios: Scenario[]
+    let allSelectedScenarios: Scenario[]
     let resolvedScenarioSet: string | null
 
     if (scenarioFilter) {
       const selectedIds = new Set(scenarioFilter)
-      selectedScenarios = scenarios.filter((scenario) => selectedIds.has(scenario.id))
+      allSelectedScenarios = scenarios.filter((scenario) => selectedIds.has(scenario.id))
       resolvedScenarioSet = null
     } else {
       const scenarioSets = await loadScenarioSets(process.cwd())
@@ -1103,7 +937,7 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
         )
       }
 
-      selectedScenarios = selectedScenarioIds.map((scenarioId) => {
+      allSelectedScenarios = selectedScenarioIds.map((scenarioId) => {
         const matchedScenario = scenarios.find((scenario) => scenario.id === scenarioId)
         if (!matchedScenario) {
           throw new Error(
@@ -1116,9 +950,11 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
       resolvedScenarioSet = selectedSetName
     }
 
-    if (selectedScenarios.length === 0) {
+    if (allSelectedScenarios.length === 0) {
       throw new Error(`No scenarios matched filter: ${scenarioFilter ?? scenarioSet ?? "default"}`)
     }
+
+    let selectedScenarios = allSelectedScenarios
     const totalScenarioExecutions = selectedScenarios.length * repetitions
 
     const needsFixtureBindings = selectedScenarios.some((scenario) => {
@@ -1162,10 +998,20 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
 
         const seedSourceRepo = process.env.BENCH_FIXTURE_REPO ?? "aryeko/ghx-bench-fixtures"
 
+        const requiredResources = new Set<string>()
+        for (const scenario of selectedScenarios) {
+          if (scenario.fixture?.requires) {
+            for (const r of scenario.fixture.requires) {
+              requiredResources.add(r)
+            }
+          }
+        }
+
         await seedFixtureManifest({
           repo: seedSourceRepo,
           outFile: fixtureManifestPath,
           seedId: process.env.BENCH_FIXTURE_SEED_ID ?? "default",
+          ...(requiredResources.size > 0 ? { requires: [...requiredResources] } : {}),
         })
       }
 
@@ -1174,12 +1020,8 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
 
     if (fixtureManifest) {
       selectedScenarios = selectedScenarios.map((scenario) =>
-        resolveScenarioFixtureBindings(scenario, fixtureManifest as FixtureManifest),
+        resolveWorkflowFixtureBindings(scenario, fixtureManifest as FixtureManifest),
       )
-    }
-
-    if (mode === "ghx") {
-      assertGhxRouterPreflight(selectedScenarios)
     }
 
     const outFile =
@@ -1199,6 +1041,36 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
       `[benchmark] context: opencode_port=${process.env.BENCH_OPENCODE_PORT ?? "3000"} git_repo=${suiteConfig.gitRepo ?? "<null>"} git_commit=${suiteConfig.gitCommit ?? "<null>"} out_file=${outFile}`,
     )
 
+    if (!skipWarmup && selectedScenarios.length > 0) {
+      const warmupScenario = selectedScenarios[0]
+      if (warmupScenario) {
+        console.log(`[benchmark] warm-up canary: running ${warmupScenario.id}`)
+        try {
+          const warmupResult = await withIsolatedBenchmarkClient(mode, providerId, modelId, (ctx) =>
+            runWorkflowScenario(
+              ctx,
+              warmupScenario,
+              mode,
+              0,
+              null,
+              { providerId, modelId },
+              suiteConfig,
+            ),
+          )
+          console.log(
+            `[benchmark] warm-up canary: ${warmupResult.success ? "success" : "failed"} (${warmupResult.latency_ms_wall}ms)`,
+          )
+        } catch (error) {
+          console.log(
+            `[benchmark] warm-up canary: error (${error instanceof Error ? error.message : String(error)})`,
+          )
+        }
+      }
+    }
+
+    const needsReseed = selectedScenarios.some((s) => s.fixture?.reseed_per_iteration)
+    const reseedReviewerToken = needsReseed ? await mintFixtureAppToken() : null
+
     let completedExecutions = 0
     let successExecutions = 0
     emitProgressEvent("suite_started", {
@@ -1210,9 +1082,21 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
     })
 
     for (const scenario of selectedScenarios) {
-      validateFixture(scenario)
-
       for (let iteration = 1; iteration <= repetitions; iteration += 1) {
+        if (
+          iteration > 1 &&
+          scenario.fixture?.reseed_per_iteration &&
+          fixtureManifest &&
+          reseedReviewerToken
+        ) {
+          const prWithReviews = fixtureManifest.resources.pr_with_reviews as
+            | { number?: unknown }
+            | undefined
+          const prNumber = typeof prWithReviews?.number === "number" ? prWithReviews.number : null
+          if (prNumber !== null) {
+            resetPrReviewThreads(fixtureManifest.repo.full_name, prNumber, reseedReviewerToken)
+          }
+        }
         emitProgressEvent("scenario_started", {
           scenario_id: scenario.id,
           iteration,
@@ -1223,17 +1107,14 @@ export async function runSuite(options: RunSuiteOptions): Promise<void> {
         let latestResult: BenchmarkRow | null = null
 
         for (let attempt = 0; attempt <= scenario.allowed_retries; attempt += 1) {
-          const result = await withIsolatedBenchmarkClient(mode, providerId, modelId, (client) =>
-            runScenario(
-              client,
+          const result = await withIsolatedBenchmarkClient(mode, providerId, modelId, (ctx) =>
+            runWorkflowScenario(
+              ctx,
               scenario,
               mode,
               iteration,
               resolvedScenarioSet,
-              {
-                providerId,
-                modelId,
-              },
+              { providerId, modelId },
               suiteConfig,
             ),
           )

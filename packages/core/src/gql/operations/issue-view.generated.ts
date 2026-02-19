@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "../generated/common-types.js"
+import { IssueCoreFieldsFragmentDoc } from "./fragments/issue-core-fields.generated.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type IssueViewQueryVariables = Types.Exact<{
@@ -14,11 +15,16 @@ export type IssueViewQuery = {
     __typename?: "Repository"
     issue?: {
       __typename?: "Issue"
+      body: string
       id: string
       number: number
       title: string
       state: Types.IssueState
       url: any
+      labels?: {
+        __typename?: "LabelConnection"
+        nodes?: Array<{ __typename?: "Label"; name: string } | null> | null
+      } | null
     } | null
   } | null
 }
@@ -27,15 +33,17 @@ export const IssueViewDocument = `
     query IssueView($owner: String!, $name: String!, $issueNumber: Int!) {
   repository(owner: $owner, name: $name) {
     issue(number: $issueNumber) {
-      id
-      number
-      title
-      state
-      url
+      ...IssueCoreFields
+      body
+      labels(first: 20) {
+        nodes {
+          name
+        }
+      }
     }
   }
 }
-    `
+    ${IssueCoreFieldsFragmentDoc}`
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

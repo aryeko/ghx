@@ -156,7 +156,7 @@ describe("executeTask repo.view", () => {
 
     expect(result.ok).toBe(false)
     expect(result.error?.code).toBe("VALIDATION")
-    expect(result.meta.route_used).toBe("cli")
+    expect(result.meta.route_used).toBe("graphql")
     expect(result.meta.reason).toBe("INPUT_VALIDATION")
   })
 
@@ -184,7 +184,7 @@ describe("executeTask repo.view", () => {
     expect(result.error?.message).toContain("Unsupported task")
   })
 
-  it("returns auth error when graphql token is missing", async () => {
+  it("returns auth error when graphql token is missing and no cli fallback", async () => {
     const githubClient = createGithubClient({
       async execute<TData>(): Promise<TData> {
         return {} as TData
@@ -204,8 +204,7 @@ describe("executeTask repo.view", () => {
     })
 
     expect(result.ok).toBe(false)
-    expect(result.error?.code).toBe("AUTH")
-    expect(result.error?.message).toContain("token")
+    expect(result.error?.code).toBe("ADAPTER_UNSUPPORTED")
   })
 
   it("falls back from cli to graphql when cli execution fails", async () => {

@@ -17,6 +17,8 @@ describe("executeTask pr.view", () => {
                 title: "Add benchmark improvements",
                 state: "OPEN",
                 url: "https://github.com/go-modkit/modkit/pull/232",
+                body: "Improves benchmark throughput and reporting.",
+                labels: { nodes: [{ name: "enhancement" }, { name: "benchmark" }] },
               },
             },
           } as TData
@@ -44,6 +46,8 @@ describe("executeTask pr.view", () => {
       expect.objectContaining({
         number: 232,
         title: "Add benchmark improvements",
+        body: "Improves benchmark throughput and reporting.",
+        labels: ["enhancement", "benchmark"],
       }),
     )
   })
@@ -70,6 +74,6 @@ describe("executeTask pr.view", () => {
     expect(result.ok).toBe(false)
     expect(result.error?.code).toBe("VALIDATION")
     expect(result.meta.reason).toBe("INPUT_VALIDATION")
-    expect(result.meta.route_used).toBe("cli")
+    expect(result.meta.route_used).toBe("graphql")
   })
 })

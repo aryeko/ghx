@@ -31,6 +31,7 @@ type ExecutionDeps = {
     | "fetchPrCommentsList"
     | "fetchPrReviewsList"
     | "fetchPrDiffListFiles"
+    | "fetchPrMergeStatus"
     | "replyToReviewThread"
     | "resolveReviewThread"
     | "unresolveReviewThread"

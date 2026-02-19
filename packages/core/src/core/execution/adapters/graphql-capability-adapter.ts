@@ -5,6 +5,7 @@ import type {
   IssueCommentCreateInput,
   IssueCommentsListInput,
   IssueCreateInput,
+  IssueLabelsAddInput,
   IssueLabelsUpdateInput,
   IssueLinkedPrsListInput,
   IssueListInput,
@@ -18,6 +19,7 @@ import type {
   PrCommentsListInput,
   PrDiffListFilesInput,
   PrListInput,
+  PrMergeStatusInput,
   PrReviewsListInput,
   PrViewInput,
   RepoViewInput,
@@ -38,6 +40,7 @@ export type GraphqlCapabilityId =
   | "issue.close"
   | "issue.reopen"
   | "issue.delete"
+  | "issue.labels.add"
   | "issue.labels.update"
   | "issue.assignees.update"
   | "issue.milestone.set"
@@ -50,12 +53,13 @@ export type GraphqlCapabilityId =
   | "issue.blocked_by.remove"
   | "pr.view"
   | "pr.list"
-  | "pr.comments.list"
-  | "pr.reviews.list"
-  | "pr.diff.list_files"
-  | "pr.comment.reply"
-  | "pr.comment.resolve"
-  | "pr.comment.unresolve"
+  | "pr.thread.list"
+  | "pr.review.list"
+  | "pr.diff.files"
+  | "pr.thread.reply"
+  | "pr.merge.status"
+  | "pr.thread.resolve"
+  | "pr.thread.unresolve"
 
 const DEFAULT_LIST_FIRST = 30
 
@@ -107,6 +111,7 @@ export async function runGraphqlCapability(
     | "fetchPrCommentsList"
     | "fetchPrReviewsList"
     | "fetchPrDiffListFiles"
+    | "fetchPrMergeStatus"
     | "replyToReviewThread"
     | "resolveReviewThread"
     | "unresolveReviewThread"
@@ -119,6 +124,7 @@ export async function runGraphqlCapability(
         | "closeIssue"
         | "reopenIssue"
         | "deleteIssue"
+        | "addIssueLabels"
         | "updateIssueLabels"
         | "updateIssueAssignees"
         | "setIssueMilestone"
@@ -192,6 +198,14 @@ export async function runGraphqlCapability(
         return unsupportedGraphqlCapability(capabilityId)
       }
       const data = await client.deleteIssue(params as IssueMutationInput)
+      return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
+    }
+
+    if (capabilityId === "issue.labels.add") {
+      if (!client.addIssueLabels) {
+        return unsupportedGraphqlCapability(capabilityId)
+      }
+      const data = await client.addIssueLabels(params as IssueLabelsAddInput)
       return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
     }
 
@@ -285,37 +299,42 @@ export async function runGraphqlCapability(
       return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
     }
 
-    if (capabilityId === "pr.comments.list") {
+    if (capabilityId === "pr.thread.list") {
       const data = await client.fetchPrCommentsList(withDefaultFirst(params) as PrCommentsListInput)
       return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
     }
 
-    if (capabilityId === "pr.reviews.list") {
+    if (capabilityId === "pr.review.list") {
       const data = await client.fetchPrReviewsList(withDefaultFirst(params) as PrReviewsListInput)
       return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
     }
 
-    if (capabilityId === "pr.diff.list_files") {
+    if (capabilityId === "pr.merge.status") {
+      const data = await client.fetchPrMergeStatus(params as PrMergeStatusInput)
+      return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
+    }
+
+    if (capabilityId === "pr.diff.files") {
       const data = await client.fetchPrDiffListFiles(
         withDefaultFirst(params) as PrDiffListFilesInput,
       )
       return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
     }
 
-    if (capabilityId === "pr.comment.reply") {
+    if (capabilityId === "pr.thread.reply") {
       const threadId = requireNonEmptyString(params, "threadId", capabilityId)
       const body = requireNonEmptyString(params, "body", capabilityId)
       const data = await client.replyToReviewThread({ threadId, body })
       return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
     }
 
-    if (capabilityId === "pr.comment.resolve") {
+    if (capabilityId === "pr.thread.resolve") {
       const threadId = requireNonEmptyString(params, "threadId", capabilityId)
       const data = await client.resolveReviewThread({ threadId })
       return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
     }
 
-    if (capabilityId === "pr.comment.unresolve") {
+    if (capabilityId === "pr.thread.unresolve") {
       const threadId = requireNonEmptyString(params, "threadId", capabilityId)
       const data = await client.unresolveReviewThread({ threadId })
       return normalizeResult(data, "graphql", { capabilityId, reason: "CARD_PREFERRED" })

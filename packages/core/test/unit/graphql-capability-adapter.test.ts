@@ -23,6 +23,7 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
@@ -56,6 +57,7 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
@@ -96,6 +98,7 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
@@ -134,7 +137,7 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(async () => ({
         items: [],
         pageInfo: { hasNextPage: false, endCursor: null },
-        filterApplied: { unresolvedOnly: false, includeOutdated: true },
+        filterApplied: { unresolvedOnly: true, includeOutdated: true },
         scan: { pagesScanned: 1, sourceItemsScanned: 0, scanTruncated: false },
       })),
       fetchPrReviewsList: vi.fn(async () => ({
@@ -145,6 +148,7 @@ describe("runGraphqlCapability", () => {
         items: [],
         pageInfo: { hasNextPage: false, endCursor: null },
       })),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
@@ -168,7 +172,7 @@ describe("runGraphqlCapability", () => {
     )
   })
 
-  it("routes pr.comments.list through the GraphQL client", async () => {
+  it("routes pr.thread.list through the GraphQL client", async () => {
     const client = {
       fetchRepoView: vi.fn(),
       fetchIssueView: vi.fn(),
@@ -178,6 +182,7 @@ describe("runGraphqlCapability", () => {
       fetchPrList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       fetchPrCommentsList: vi.fn(async () => ({
         items: [
           {
@@ -215,7 +220,7 @@ describe("runGraphqlCapability", () => {
       unresolveReviewThread: vi.fn(),
     }
 
-    const result = await runGraphqlCapability(client, "pr.comments.list", {
+    const result = await runGraphqlCapability(client, "pr.thread.list", {
       owner: "acme",
       name: "modkit",
       prNumber: 1,
@@ -236,7 +241,7 @@ describe("runGraphqlCapability", () => {
     )
   })
 
-  it("routes pr.reviews.list through the GraphQL client", async () => {
+  it("routes pr.review.list through the GraphQL client", async () => {
     const client = {
       fetchRepoView: vi.fn(),
       fetchIssueView: vi.fn(),
@@ -263,12 +268,13 @@ describe("runGraphqlCapability", () => {
         },
       })),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
     }
 
-    const result = await runGraphqlCapability(client, "pr.reviews.list", {
+    const result = await runGraphqlCapability(client, "pr.review.list", {
       owner: "acme",
       name: "modkit",
       prNumber: 1,
@@ -284,7 +290,7 @@ describe("runGraphqlCapability", () => {
     )
   })
 
-  it("routes pr.diff.list_files through the GraphQL client", async () => {
+  it("routes pr.diff.files through the GraphQL client", async () => {
     const client = {
       fetchRepoView: vi.fn(),
       fetchIssueView: vi.fn(),
@@ -307,12 +313,13 @@ describe("runGraphqlCapability", () => {
           endCursor: null,
         },
       })),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
     }
 
-    const result = await runGraphqlCapability(client, "pr.diff.list_files", {
+    const result = await runGraphqlCapability(client, "pr.diff.files", {
       owner: "acme",
       name: "modkit",
       prNumber: 1,
@@ -328,7 +335,7 @@ describe("runGraphqlCapability", () => {
     )
   })
 
-  it("routes pr.comment.reply through the GraphQL client", async () => {
+  it("routes pr.merge.status through the GraphQL client", async () => {
     const client = {
       fetchRepoView: vi.fn(),
       fetchIssueView: vi.fn(),
@@ -339,12 +346,53 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(async () => ({
+        mergeable: "MERGEABLE",
+        mergeStateStatus: "CLEAN",
+        reviewDecision: "APPROVED",
+        isDraft: false,
+        state: "OPEN",
+      })),
+      replyToReviewThread: vi.fn(),
+      resolveReviewThread: vi.fn(),
+      unresolveReviewThread: vi.fn(),
+    }
+
+    const result = await runGraphqlCapability(client, "pr.merge.status", {
+      owner: "acme",
+      name: "modkit",
+      prNumber: 1,
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.meta.route_used).toBe("graphql")
+    expect(result.data).toEqual({
+      mergeable: "MERGEABLE",
+      mergeStateStatus: "CLEAN",
+      reviewDecision: "APPROVED",
+      isDraft: false,
+      state: "OPEN",
+    })
+  })
+
+  it("routes pr.thread.reply through the GraphQL client", async () => {
+    const client = {
+      fetchRepoView: vi.fn(),
+      fetchIssueView: vi.fn(),
+      fetchIssueList: vi.fn(),
+      fetchIssueCommentsList: vi.fn(),
+      fetchPrView: vi.fn(),
+      fetchPrList: vi.fn(),
+      fetchPrCommentsList: vi.fn(),
+      fetchPrReviewsList: vi.fn(),
+      fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(async () => ({ id: "thread-1", isResolved: false })),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
     }
 
-    const result = await runGraphqlCapability(client, "pr.comment.reply", {
+    const result = await runGraphqlCapability(client, "pr.thread.reply", {
       threadId: "thread-1",
       body: "Thanks, addressed",
     })
@@ -353,7 +401,7 @@ describe("runGraphqlCapability", () => {
     expect(result.data).toEqual({ id: "thread-1", isResolved: false })
   })
 
-  it("routes pr.comment.resolve and pr.comment.unresolve through the GraphQL client", async () => {
+  it("routes pr.thread.resolve and pr.thread.unresolve through the GraphQL client", async () => {
     const client = {
       fetchRepoView: vi.fn(),
       fetchIssueView: vi.fn(),
@@ -364,15 +412,16 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(async () => ({ id: "thread-1", isResolved: true })),
       unresolveReviewThread: vi.fn(async () => ({ id: "thread-1", isResolved: false })),
     }
 
-    const resolveResult = await runGraphqlCapability(client, "pr.comment.resolve", {
+    const resolveResult = await runGraphqlCapability(client, "pr.thread.resolve", {
       threadId: "thread-1",
     })
-    const unresolveResult = await runGraphqlCapability(client, "pr.comment.unresolve", {
+    const unresolveResult = await runGraphqlCapability(client, "pr.thread.unresolve", {
       threadId: "thread-1",
     })
 
@@ -393,17 +442,18 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
     }
 
-    const replyResult = await runGraphqlCapability(client, "pr.comment.reply", {
+    const replyResult = await runGraphqlCapability(client, "pr.thread.reply", {
       threadId: "",
       body: "ok",
     })
 
-    const resolveResult = await runGraphqlCapability(client, "pr.comment.resolve", {
+    const resolveResult = await runGraphqlCapability(client, "pr.thread.resolve", {
       threadId: "",
     })
 
@@ -446,6 +496,7 @@ describe("runGraphqlCapability", () => {
         reopened: true,
       })),
       deleteIssue: vi.fn(async () => ({ id: "issue-1", number: 501, deleted: true })),
+      addIssueLabels: vi.fn(async () => ({ id: "issue-1", labels: ["bug", "batch-b"] })),
       updateIssueLabels: vi.fn(async () => ({ id: "issue-1", labels: ["bug", "batch-b"] })),
       updateIssueAssignees: vi.fn(async () => ({ id: "issue-1", assignees: ["octocat"] })),
       setIssueMilestone: vi.fn(async () => ({ id: "issue-1", milestoneNumber: 3 })),
@@ -487,6 +538,7 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
@@ -504,6 +556,10 @@ describe("runGraphqlCapability", () => {
     const closeResult = await runGraphqlCapability(client, "issue.close", { issueId: "issue-1" })
     const reopenResult = await runGraphqlCapability(client, "issue.reopen", { issueId: "issue-1" })
     const deleteResult = await runGraphqlCapability(client, "issue.delete", { issueId: "issue-1" })
+    const labelsAddResult = await runGraphqlCapability(client, "issue.labels.add", {
+      issueId: "issue-1",
+      labels: ["bug", "batch-b"],
+    })
     const labelsResult = await runGraphqlCapability(client, "issue.labels.update", {
       issueId: "issue-1",
       labels: ["bug", "batch-b"],
@@ -551,6 +607,7 @@ describe("runGraphqlCapability", () => {
     expect(closeResult.ok).toBe(true)
     expect(reopenResult.ok).toBe(true)
     expect(deleteResult.ok).toBe(true)
+    expect(labelsAddResult.ok).toBe(true)
     expect(labelsResult.ok).toBe(true)
     expect(assigneesResult.ok).toBe(true)
     expect(milestoneResult.ok).toBe(true)
@@ -580,6 +637,7 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
@@ -607,6 +665,7 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
@@ -633,6 +692,7 @@ describe("runGraphqlCapability", () => {
       fetchPrCommentsList: vi.fn(),
       fetchPrReviewsList: vi.fn(),
       fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
@@ -683,5 +743,210 @@ describe("runGraphqlCapability", () => {
       expect(result.error?.code).toBe("ADAPTER_UNSUPPORTED")
       expect(result.meta.reason).toBe("CAPABILITY_LIMIT")
     }
+  })
+
+  it("handles label not found error in issue.labels.add", async () => {
+    const client = {
+      fetchRepoView: vi.fn(),
+      fetchIssueView: vi.fn(),
+      fetchIssueList: vi.fn(),
+      fetchIssueCommentsList: vi.fn(),
+      addIssueLabels: vi.fn(async () => {
+        throw new Error("Label not found: nonexistent-label")
+      }),
+      fetchPrView: vi.fn(),
+      fetchPrList: vi.fn(),
+      fetchPrCommentsList: vi.fn(),
+      fetchPrReviewsList: vi.fn(),
+      fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
+      replyToReviewThread: vi.fn(),
+      resolveReviewThread: vi.fn(),
+      unresolveReviewThread: vi.fn(),
+    }
+
+    const result = await runGraphqlCapability(client, "issue.labels.add", {
+      issueId: "issue-1",
+      labels: ["nonexistent-label"],
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("NOT_FOUND")
+    expect(result.error?.message).toContain("Label not found")
+  })
+
+  it("handles empty array for labels in issue.labels.add response", async () => {
+    const client = {
+      fetchRepoView: vi.fn(),
+      fetchIssueView: vi.fn(),
+      fetchIssueList: vi.fn(),
+      fetchIssueCommentsList: vi.fn(),
+      addIssueLabels: vi.fn(async () => ({
+        id: "issue-1",
+        labels: [],
+      })),
+      fetchPrView: vi.fn(),
+      fetchPrList: vi.fn(),
+      fetchPrCommentsList: vi.fn(),
+      fetchPrReviewsList: vi.fn(),
+      fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
+      replyToReviewThread: vi.fn(),
+      resolveReviewThread: vi.fn(),
+      unresolveReviewThread: vi.fn(),
+    }
+
+    const result = await runGraphqlCapability(client, "issue.labels.add", {
+      issueId: "issue-1",
+      labels: ["bug"],
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.data).toEqual({ id: "issue-1", labels: [] })
+  })
+
+  it("handles PR not found error in pr.merge.status", async () => {
+    const client = {
+      fetchRepoView: vi.fn(),
+      fetchIssueView: vi.fn(),
+      fetchIssueList: vi.fn(),
+      fetchIssueCommentsList: vi.fn(),
+      fetchPrView: vi.fn(),
+      fetchPrList: vi.fn(),
+      fetchPrCommentsList: vi.fn(),
+      fetchPrReviewsList: vi.fn(),
+      fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(async () => {
+        throw new Error("Pull request not found")
+      }),
+      replyToReviewThread: vi.fn(),
+      resolveReviewThread: vi.fn(),
+      unresolveReviewThread: vi.fn(),
+    }
+
+    const result = await runGraphqlCapability(client, "pr.merge.status", {
+      owner: "acme",
+      name: "modkit",
+      prNumber: 9999,
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("NOT_FOUND")
+    expect(result.error?.message).toContain("Pull request not found")
+  })
+
+  it("handles null field defaults in pr.merge.status", async () => {
+    const client = {
+      fetchRepoView: vi.fn(),
+      fetchIssueView: vi.fn(),
+      fetchIssueList: vi.fn(),
+      fetchIssueCommentsList: vi.fn(),
+      fetchPrView: vi.fn(),
+      fetchPrList: vi.fn(),
+      fetchPrCommentsList: vi.fn(),
+      fetchPrReviewsList: vi.fn(),
+      fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(async () => ({
+        mergeable: null,
+        mergeStateStatus: null,
+        reviewDecision: null,
+        isDraft: false,
+        state: "OPEN",
+      })),
+      replyToReviewThread: vi.fn(),
+      resolveReviewThread: vi.fn(),
+      unresolveReviewThread: vi.fn(),
+    }
+
+    const result = await runGraphqlCapability(client, "pr.merge.status", {
+      owner: "acme",
+      name: "modkit",
+      prNumber: 1,
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.data).toEqual({
+      mergeable: null,
+      mergeStateStatus: null,
+      reviewDecision: null,
+      isDraft: false,
+      state: "OPEN",
+    })
+  })
+
+  it("rejects invalid thread mutation inputs - missing threadId", async () => {
+    const client = {
+      fetchRepoView: vi.fn(),
+      fetchIssueView: vi.fn(),
+      fetchIssueList: vi.fn(),
+      fetchIssueCommentsList: vi.fn(),
+      fetchPrView: vi.fn(),
+      fetchPrList: vi.fn(),
+      fetchPrCommentsList: vi.fn(),
+      fetchPrReviewsList: vi.fn(),
+      fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
+      replyToReviewThread: vi.fn(),
+      resolveReviewThread: vi.fn(),
+      unresolveReviewThread: vi.fn(),
+    }
+
+    const result = await runGraphqlCapability(client, "pr.thread.reply", {
+      threadId: undefined,
+      body: "comment",
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("VALIDATION")
+  })
+
+  it("rejects invalid thread mutation inputs - empty body", async () => {
+    const client = {
+      fetchRepoView: vi.fn(),
+      fetchIssueView: vi.fn(),
+      fetchIssueList: vi.fn(),
+      fetchIssueCommentsList: vi.fn(),
+      fetchPrView: vi.fn(),
+      fetchPrList: vi.fn(),
+      fetchPrCommentsList: vi.fn(),
+      fetchPrReviewsList: vi.fn(),
+      fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
+      replyToReviewThread: vi.fn(),
+      resolveReviewThread: vi.fn(),
+      unresolveReviewThread: vi.fn(),
+    }
+
+    const result = await runGraphqlCapability(client, "pr.thread.reply", {
+      threadId: "thread-1",
+      body: "   ",
+    })
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("VALIDATION")
+  })
+
+  it("handles truly unknown capability id", async () => {
+    const client = {
+      fetchRepoView: vi.fn(),
+      fetchIssueView: vi.fn(),
+      fetchIssueList: vi.fn(),
+      fetchIssueCommentsList: vi.fn(),
+      fetchPrView: vi.fn(),
+      fetchPrList: vi.fn(),
+      fetchPrCommentsList: vi.fn(),
+      fetchPrReviewsList: vi.fn(),
+      fetchPrDiffListFiles: vi.fn(),
+      fetchPrMergeStatus: vi.fn(),
+      replyToReviewThread: vi.fn(),
+      resolveReviewThread: vi.fn(),
+      unresolveReviewThread: vi.fn(),
+    }
+
+    const result = await runGraphqlCapability(client, "completely.unknown.capability" as never, {})
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.code).toBe("ADAPTER_UNSUPPORTED")
+    expect(result.meta.reason).toBe("CAPABILITY_LIMIT")
   })
 })

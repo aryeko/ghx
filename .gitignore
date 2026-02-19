@@ -10,6 +10,10 @@ packages/benchmark/results/*.jsonl
 packages/benchmark/reports/*.json
 packages/benchmark/reports/*.md
 
+# Benchmark fixture repos and seeded outputs
+ghx-bench-fixtures/
+packages/benchmark/fixtures/*.json
+
 # Local git worktrees
 .worktrees/
 

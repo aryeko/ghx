@@ -11,8 +11,8 @@ orchestrating workflows and tracking projects.
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#F5A623', 'primaryTextColor': '#fff', 'primaryBorderColor': '#D4891A', 'lineColor': '#666'}}}%%
 graph TB
-    Issues["Issues<br/>(18 capabilities)"]
-    PRs["Pull Requests<br/>(21 capabilities)"]
+    Issues["Issues<br/>(19 capabilities)"]
+    PRs["Pull Requests<br/>(22 capabilities)"]
     Releases["Releases<br/>(5 capabilities)"]
     Workflows["Workflows<br/>(12 capabilities)"]
     Repos["Repositories<br/>(3 capabilities)"]
@@ -32,7 +32,7 @@ graph TB
 
 | Capability ID | Description | Routes |
 |---|---|---|
-| **Issues (18)** |
+| **Issues (19)** |
 | `issue.create` | Create a new issue. | graphql (preferred) |
 | `issue.view` | Fetch one issue by number. | cli (preferred), graphql (fallback) |
 | `issue.list` | List repository issues. | cli (preferred), graphql (fallback) |
@@ -43,6 +43,7 @@ graph TB
 | `issue.comments.create` | Create an issue comment. | graphql (preferred) |
 | `issue.comments.list` | List comments for one issue. | graphql (preferred), cli (fallback) |
 | `issue.labels.update` | Replace issue labels. | graphql (preferred) |
+| `issue.labels.add` | Add labels to an issue without removing existing labels. | graphql (preferred) |
 | `issue.assignees.update` | Replace issue assignees. | graphql (preferred) |
 | `issue.milestone.set` | Set issue milestone number or clear with null. | graphql (preferred) |
 | `issue.parent.set` | Set an issue parent relation. | graphql (preferred) |
@@ -51,7 +52,7 @@ graph TB
 | `issue.blocked_by.remove` | Remove a blocked-by relation for an issue. | graphql (preferred) |
 | `issue.linked_prs.list` | List pull requests linked to an issue. | graphql (preferred) |
 | `issue.relations.get` | Get issue parent/children/blocking relations. | graphql (preferred) |
-| **Pull Requests (21)** |
+| **Pull Requests (22)** |
 | `pr.view` | Fetch one pull request by number. | cli (preferred), graphql (fallback) |
 | `pr.list` | List repository pull requests. | cli (preferred), graphql (fallback) |
 | `pr.merge.execute` | Execute a pull request merge. | cli (preferred) |
@@ -70,6 +71,7 @@ graph TB
 | `pr.checks.rerun_all` | Rerun all PR workflow checks for a selected run. | cli (preferred) |
 | `pr.checks.rerun_failed` | Rerun failed PR workflow checks for a selected run. | cli (preferred) |
 | `pr.diff.list_files` | List changed files in a pull request diff. | graphql (preferred) |
+| `pr.diff.view` | View the unified diff for a pull request. | cli (preferred) |
 | `pr.mergeability.view` | View PR mergeability and readiness signals. | cli (preferred) |
 | `pr.ready_for_review.set` | Mark pull request as ready for review or draft. | cli (preferred) |
 | `pr.status.checks` | List PR check statuses with summary counts. | cli (preferred) |
@@ -82,16 +84,15 @@ graph TB
 | **Workflows (12)** |
 | `workflow.list` | List repository workflows. | cli (preferred) |
 | `workflow.get` | Get one repository workflow. | cli (preferred) |
-| `workflow_dispatch.run` | Trigger a workflow dispatch event. | cli (preferred) |
-| `workflow_runs.list` | List workflow runs for a repository. | cli (preferred) |
-| `workflow_run.get` | Get a workflow run. | cli (preferred) |
-| `workflow_run.jobs.list` | List jobs in a workflow run. | cli (preferred) |
-| `workflow_run.cancel` | Cancel a workflow run. | cli (preferred) |
-| `workflow_run.rerun_all` | Rerun all jobs in a workflow run. | cli (preferred) |
-| `workflow_run.rerun_failed` | Rerun failed jobs for a workflow run. | cli (preferred) |
-| `workflow_run.artifacts.list` | List artifacts for a workflow run. | cli (preferred) |
-| `workflow_job.logs.get` | Fetch logs for a workflow job. | cli (preferred) |
-| `workflow_job.logs.analyze` | Fetch and analyze workflow job logs. | cli (preferred) |
+| `workflow.dispatch.run` | Trigger a workflow dispatch event. | cli (preferred) |
+| `workflow.runs.list` | List workflow runs for a repository. | cli (preferred) |
+| `workflow.run.view` | View a workflow run with its jobs. | cli (preferred) |
+| `workflow.run.cancel` | Cancel a workflow run. | cli (preferred) |
+| `workflow.run.rerun_all` | Rerun all jobs in a workflow run. | cli (preferred) |
+| `workflow.run.rerun_failed` | Rerun failed jobs for a workflow run. | cli (preferred) |
+| `workflow.run.artifacts.list` | List artifacts for a workflow run. | cli (preferred) |
+| `workflow.job.logs.raw` | Fetch raw (unprocessed) logs for a workflow job. | cli (preferred) |
+| `workflow.job.logs.get` | Fetch and analyze workflow job logs. | cli (preferred) |
 | **Repositories (3)** |
 | `repo.view` | Fetch repository metadata. | cli (preferred), graphql (fallback) |
 | `repo.labels.list` | List repository labels. | cli (preferred) |

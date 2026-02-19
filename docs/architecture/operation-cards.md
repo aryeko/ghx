@@ -87,9 +87,9 @@ Each operation card includes:
 
 `release.get`, `release.list`, `release.create_draft`, `release.publish_draft`, `release.update`
 
-### Workflow Capabilities (12)
+### Workflow Capabilities (11)
 
-`workflow.get`, `workflow.list`, `workflow_dispatch.run`, `workflow_run.get`, `workflow_runs.list`, `workflow_run.jobs.list`, `workflow_run.cancel`, `workflow_run.rerun_all`, `workflow_run.rerun_failed`, `workflow_run.artifacts.list`, `workflow_job.logs.get`, `workflow_job.logs.analyze`
+`workflow.get`, `workflow.list`, `workflow_dispatch.run`, `workflow_run.view`, `workflow_runs.list`, `workflow_run.cancel`, `workflow_run.rerun_all`, `workflow_run.rerun_failed`, `workflow_run.artifacts.list`, `workflow_job.logs.get`, `workflow_job.logs.analyze`
 
 ### Repository Capabilities (1)
 

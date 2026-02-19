@@ -162,11 +162,11 @@ const result = await tool.execute("repo.view", { owner: "aryeko", name: "ghx" })
 
 **Pull Requests (execute)** -- `pr.comment.reply`, `pr.comment.resolve`, `pr.comment.unresolve`, `pr.ready_for_review.set`, `pr.review.submit_approve`, `pr.review.submit_request_changes`, `pr.review.submit_comment`, `pr.merge.execute`, `pr.checks.rerun_failed`, `pr.checks.rerun_all`, `pr.reviewers.request`, `pr.assignees.update`, `pr.branch.update`
 
-**CI Diagnostics** -- `check_run.annotations.list`, `workflow_runs.list`, `workflow_run.jobs.list`, `workflow_job.logs.get`, `workflow_job.logs.analyze`
+**CI Diagnostics** -- `check_run.annotations.list`, `workflow_runs.list`, `workflow_job.logs.get`, `workflow_job.logs.analyze`
 
 **Releases** -- `release.list`, `release.get`, `release.create_draft`, `release.update`, `release.publish_draft`
 
-**Workflow Controls** -- `workflow.list`, `workflow.get`, `workflow_dispatch.run`, `workflow_run.get`, `workflow_run.rerun_failed`, `workflow_run.rerun_all`, `workflow_run.cancel`, `workflow_run.artifacts.list`
+**Workflow Controls** -- `workflow.list`, `workflow.get`, `workflow_dispatch.run`, `workflow_run.view`, `workflow_run.rerun_failed`, `workflow_run.rerun_all`, `workflow_run.cancel`, `workflow_run.artifacts.list`
 
 **Projects v2** -- `project_v2.org.get`, `project_v2.user.get`, `project_v2.fields.list`, `project_v2.items.list`, `project_v2.item.add_issue`, `project_v2.item.field.update`
 

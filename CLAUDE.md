@@ -61,6 +61,25 @@ pnpm --filter @ghx-dev/benchmark run report
 pnpm --filter @ghx-dev/benchmark run report:gate
 ```
 
+**Benchmark CLI flags:**
+
+- `--skip-warmup` — skip warm-up canary run (useful for rapid iteration; default: run warmup)
+- `--scenario-set <name>` — run named scenario set from `scenario-sets.json`
+- `--scenario <id> ...` — run specific scenario(s) by ID (can be used multiple times)
+- `--fixture-manifest <path>` — use fixture manifest for seeded scenario execution
+- `--seed-if-missing` — auto-seed fixtures if manifest not found (requires GitHub auth)
+- `--provider <id>` — override provider (e.g., `openai`)
+- `--model <id>` — override model (e.g., `gpt-5.3-codex`)
+- `--output-jsonl <path>` — write raw results to specified JSONL file
+
+**Fixture CLI flags** (`pnpm --filter @ghx-dev/benchmark run fixtures --`):
+
+- `seed` / `status` / `cleanup` — fixture lifecycle commands
+- `--repo <owner/name>` — target repo (default: `aryeko/ghx-bench-fixtures`, env: `BENCH_FIXTURE_REPO`)
+- `--out <path>` — manifest file path (default: `fixtures/latest.json`, env: `BENCH_FIXTURE_MANIFEST`)
+- `--seed-id <id>` — seed identifier for labeling (default: `default`, env: `BENCH_FIXTURE_SEED_ID`)
+- `--all` — (cleanup only) skip manifest, discover and remove all `bench-fixture`-labeled resources from the repo
+
 ## Architecture
 
 ### Core Execution Flow

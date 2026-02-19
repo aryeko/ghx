@@ -33,8 +33,7 @@ query PrCommentsList($owner: String!, $name: String!, $prNumber: Int!, $first: I
           }
         }
         pageInfo {
-          endCursor
-          hasNextPage
+          ...PageInfoFields
         }
       }
     }

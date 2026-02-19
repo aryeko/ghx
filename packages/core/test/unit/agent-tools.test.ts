@@ -27,7 +27,7 @@ describe("agent interface tools", () => {
     expect(explained).toEqual(
       expect.objectContaining({
         capability_id: "issue.view",
-        preferred_route: "cli",
+        preferred_route: "graphql",
       }),
     )
     expect(explained.required_inputs).toContain("issueNumber")

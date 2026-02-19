@@ -1,14 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
-
-vi.mock("node:child_process", () => ({
-  spawnSync: vi.fn(),
-}))
-
-import { spawnSync } from "node:child_process"
-import { extractEnvelopeFromParts } from "../../src/runner/envelope-recovery.js"
-import { validateFixture } from "../../src/runner/preflight/fixture-preflight.js"
-import { ghOk } from "../../src/runner/preflight/ghx-router-preflight.js"
-import { renderPrompt } from "../../src/runner/prompt/prompt-renderer.js"
+import { describe, expect, it, vi } from "vitest"
+import type { RunnerConfig } from "../../src/runner/config.js"
 import {
   hasAssistantMetadata,
   hasAssistantSignalParts,
@@ -16,29 +7,22 @@ import {
 } from "../../src/runner/session-polling.js"
 import {
   asNumber,
-  assertGhxRouterPreflight,
   coercePromptResponse,
+  evaluateCheckpoint,
   extractPromptResponseFromPromptResult,
   extractSnapshotFromParts,
   extractTimingBreakdown,
   fetchSessionMessages,
   getSessionApi,
-  runScenario,
+  resolveCheckpointData,
   shouldRequestContinuation,
   unwrapData,
   waitForAssistantFromMessages,
   withTimeout,
 } from "../../src/runner/suite-runner.js"
 import { isObject } from "../../src/utils/guards.js"
-import { makeScenario } from "../helpers/scenario-factory.js"
-
-const spawnSyncMock = vi.mocked(spawnSync)
 
 describe("suite-runner helpers", () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it("handles object and wrapped data helpers", () => {
     expect(isObject({ a: 1 })).toBe(true)
     expect(isObject(null)).toBe(false)
@@ -210,7 +194,6 @@ describe("suite-runner helpers", () => {
     expect(shouldRequestContinuation(parts)).toBe(false)
     expect(shouldRequestContinuation([{ type: "step-finish", reason: "tool-calls" }])).toBe(true)
     expect(shouldRequestContinuation([{ type: "text", text: "partial" }])).toBe(false)
-    expect(extractEnvelopeFromParts(parts).envelope).toBeTruthy()
     expect(() => coercePromptResponse({})).toThrow("Unsupported prompt response shape")
   })
 
@@ -276,66 +259,6 @@ describe("suite-runner helpers", () => {
     const extracted = extractPromptResponseFromPromptResult({ data: "not-an-object" })
 
     expect(extracted).toBeNull()
-  })
-
-  it("extracts envelope from tool output when text parts do not contain JSON", () => {
-    const extracted = extractEnvelopeFromParts([
-      { type: "text", text: "not json" },
-      {
-        type: "tool",
-        state: {
-          output: 'prefix {"ok":true,"data":{"id":"repo"},"error":null,"meta":{}} suffix',
-        },
-      },
-    ])
-
-    expect(extracted.envelope).toEqual({
-      ok: true,
-      data: { id: "repo" },
-      error: null,
-      meta: {},
-    })
-  })
-
-  it("extracts top-level JSON arrays from assistant text", () => {
-    const extracted = extractEnvelopeFromParts([
-      { type: "text", text: 'noise [{"id":"n1"},{"id":"n2"}] trailing' },
-    ])
-
-    expect(extracted.envelope).toEqual([{ id: "n1" }, { id: "n2" }])
-  })
-
-  it("extracts primitive arrays when no object appears before first bracket", () => {
-    const extracted = extractEnvelopeFromParts([{ type: "text", text: "prefix [1,2,3] suffix" }])
-
-    expect(extracted.envelope).toEqual([1, 2, 3])
-  })
-
-  it("falls back from malformed array to object extraction", () => {
-    const extracted = extractEnvelopeFromParts([
-      { type: "text", text: 'prefix [not-json] then {"ok":true,"data":{},"error":null,"meta":{}}' },
-    ])
-
-    expect(extracted.envelope).toEqual({ ok: true, data: {}, error: null, meta: {} })
-  })
-
-  it("falls back to object extraction when array payload is never closed", () => {
-    const extracted = extractEnvelopeFromParts([{ type: "text", text: 'prefix [{"id":1}' }])
-
-    expect(extracted.envelope).toEqual({ id: 1 })
-  })
-
-  it("ignores tool outputs that do not contain parseable JSON", () => {
-    const extracted = extractEnvelopeFromParts([
-      {
-        type: "tool",
-        state: {
-          output: "plain text only",
-        },
-      },
-    ])
-
-    expect(extracted.envelope).toBeNull()
   })
 
   it("coerces response with missing metadata using step-finish snapshot", () => {
@@ -443,6 +366,7 @@ describe("suite-runner helpers", () => {
             },
             parts: [
               { type: "text", text: '{"ok":true,"data":{"items":[]},"error":null,"meta":{}}' },
+              { type: "step-finish", reason: "done" },
             ],
           },
         ],
@@ -668,1073 +592,654 @@ describe("suite-runner helpers", () => {
     )
   })
 
-  it("validates fixtures and renders prompts", () => {
-    spawnSyncMock.mockReturnValue({ status: 0 } as never)
-    expect(ghOk(["repo", "view"])).toBe(true)
-
-    validateFixture(
-      makeScenario({
-        id: "s",
-        name: "n",
-        task: "issue.view",
-        input: { issueNumber: 1 },
-        prompt_template: "{{task}} {{scenario_id}} {{input_json}} {{fixture_repo}}",
-        fixture: { repo: "owner/repo" },
-      }),
-    )
-
-    const prompt = renderPrompt(
-      makeScenario({
-        id: "s",
-        name: "n",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template:
-          "task={{task}} id={{scenario_id}} input={{input_json}} repo={{fixture_repo}}",
-        fixture: { repo: "a/b" },
-        assertions: { must_succeed: true, required_data_fields: ["id"] },
-      }),
-      "ghx",
-    )
-    expect(prompt).not.toContain("You are running a benchmark in ghx mode")
-    expect(prompt).toContain("id")
-    expect(prompt).toContain("If the ghx command fails")
-  })
-
-  it("validates ghx preflight capabilities for selected scenarios", () => {
-    spawnSyncMock
-      .mockReturnValueOnce({
-        status: 0,
-        stdout: "",
-        stderr: "",
-      } as never)
-      .mockReturnValueOnce({
-        status: 0,
-        stdout: JSON.stringify([
-          { capability_id: "repo.view", description: "Repo view" },
-          { capability_id: "pr.view", description: "PR view" },
-        ]),
-        stderr: "",
-      } as never)
-
-    expect(() =>
-      assertGhxRouterPreflight([
-        makeScenario({
-          id: "repo-view-001",
-          name: "Repo view",
-          task: "repo.view",
-          input: {},
-          prompt_template: "x",
-        }),
-      ]),
-    ).not.toThrow()
-
-    expect(spawnSyncMock).toHaveBeenNthCalledWith(1, "gh", ["auth", "status"], { encoding: "utf8" })
-    expect(spawnSyncMock).toHaveBeenNthCalledWith(
-      2,
-      expect.stringContaining("/packages/benchmark/bin/ghx"),
-      ["capabilities", "list", "--json"],
-      { encoding: "utf8" },
-    )
-  })
-
-  it("fails ghx preflight when gh auth status fails", () => {
-    spawnSyncMock.mockReturnValue({
-      status: 1,
-      stdout: "",
-      stderr: "not logged in",
-    } as never)
-
-    expect(() =>
-      assertGhxRouterPreflight([
-        makeScenario({
-          id: "repo-view-001",
-          name: "Repo view",
-          task: "repo.view",
-          input: {},
-          prompt_template: "x",
-        }),
-      ]),
-    ).toThrow("ghx_preflight_failed: not logged in")
-  })
-
-  it("fails ghx preflight when required capability is unavailable", () => {
-    spawnSyncMock
-      .mockReturnValueOnce({
-        status: 0,
-        stdout: "",
-        stderr: "",
-      } as never)
-      .mockReturnValueOnce({
-        status: 0,
-        stdout: JSON.stringify([{ capability_id: "repo.view", description: "Repo view" }]),
-        stderr: "",
-      } as never)
-
-    expect(() =>
-      assertGhxRouterPreflight([
-        makeScenario({
-          id: "pr-view-001",
-          name: "PR view",
-          task: "pr.view",
-          input: {},
-          prompt_template: "x",
-        }),
-      ]),
-    ).toThrow("ghx_preflight_failed")
-  })
-
-  it("returns false when gh command invocation fails", () => {
-    spawnSyncMock.mockReturnValue({ status: 1 } as never)
-
-    expect(ghOk(["auth", "status"])).toBe(false)
-  })
-
-  it("omits route_used assertions outside ghx mode", () => {
-    const prompt = renderPrompt(
-      makeScenario({
-        id: "s",
-        name: "n",
-        task: "repo.view",
-        input: { owner: "a", name: "b" },
-        prompt_template: "task={{task}}",
-        assertions: {
-          must_succeed: true,
-          expected_route_used: "graphql",
-          required_meta_fields: ["route_used"],
-        },
-      }),
-      "mcp",
-    )
-
-    expect(prompt).not.toContain("meta.route_used MUST be exactly")
-    expect(prompt).toContain("The JSON meta object can include optional diagnostic fields.")
-  })
-
-  it("drops graphql route expectation in ghx mode when GitHub tokens are missing", () => {
-    const previousGithubToken = process.env.GITHUB_TOKEN
-    const previousGhToken = process.env.GH_TOKEN
-    delete process.env.GITHUB_TOKEN
-    delete process.env.GH_TOKEN
-
-    try {
-      const prompt = renderPrompt(
-        makeScenario({
-          id: "s",
-          name: "n",
-          task: "repo.view",
-          input: { owner: "a", name: "b" },
-          prompt_template: "task={{task}}",
-          assertions: {
-            must_succeed: true,
-            expected_route_used: "graphql",
-            required_meta_fields: ["route_used"],
-          },
-        }),
-        "ghx",
-      )
-
-      expect(prompt).not.toContain("meta.route_used MUST be exactly")
-      expect(prompt).toContain("The JSON meta object MUST include: route_used.")
-    } finally {
-      if (previousGithubToken === undefined) {
-        delete process.env.GITHUB_TOKEN
-      } else {
-        process.env.GITHUB_TOKEN = previousGithubToken
-      }
-
-      if (previousGhToken === undefined) {
-        delete process.env.GH_TOKEN
-      } else {
-        process.env.GH_TOKEN = previousGhToken
-      }
-    }
-  })
-
-  it("fails fixture validation when repo or identifiers are invalid", () => {
-    spawnSyncMock.mockReturnValue({ status: 1 } as never)
-
-    expect(() =>
-      validateFixture(
-        makeScenario({
-          id: "s",
-          name: "n",
-          task: "repo.view",
-          input: {},
-          prompt_template: "x",
-          fixture: { repo: "owner/repo" },
-        }),
-      ),
-    ).toThrow("repo not found or inaccessible")
-
-    spawnSyncMock.mockReturnValue({ status: 0 } as never)
-    expect(() =>
-      validateFixture(
-        makeScenario({
-          id: "s",
-          name: "n",
-          task: "issue.view",
-          input: {},
-          prompt_template: "x",
-          fixture: { repo: "owner/repo" },
-        }),
-      ),
-    ).toThrow("issue.view requires numeric")
-
-    expect(() =>
-      validateFixture(
-        makeScenario({
-          id: "s",
-          name: "n",
-          task: "pr.view",
-          input: {},
-          prompt_template: "x",
-          fixture: { repo: "owner/repo" },
-        }),
-      ),
-    ).toThrow("pr.view requires numeric")
-  })
-
-  it("fails fixture validation when pr is missing", () => {
-    spawnSyncMock
-      .mockReturnValueOnce({ status: 0 } as never)
-      .mockReturnValueOnce({ status: 1 } as never)
-
-    expect(() =>
-      validateFixture(
-        makeScenario({
-          id: "s",
-          name: "n",
-          task: "pr.view",
-          input: { prNumber: 9 },
-          prompt_template: "x",
-          fixture: { repo: "owner/repo" },
-        }),
-      ),
-    ).toThrow("pr #9 not found")
-  })
-
-  it("fails fixture validation when issue is missing", () => {
-    spawnSyncMock
-      .mockReturnValueOnce({ status: 0 } as never)
-      .mockReturnValueOnce({ status: 1 } as never)
-
-    expect(() =>
-      validateFixture(
-        makeScenario({
-          id: "s",
-          name: "n",
-          task: "issue.view",
-          input: { issueNumber: 7 },
-          prompt_template: "x",
-          fixture: { repo: "owner/repo" },
-        }),
-      ),
-    ).toThrow("issue #7 not found")
-  })
-
-  it("runs a scenario and returns normalized row", async () => {
-    const session = {
-      create: vi.fn(async () => ({ data: { id: "s1" } })),
-      promptAsync: vi.fn(async () => ({ data: {} })),
+  it("respects config timeouts when calculating budgets", async () => {
+    const sessionApi = {
+      create: vi.fn(),
+      promptAsync: vi.fn(),
       messages: vi.fn(async () => ({
         data: [
           {
             info: {
-              id: "m1",
-              sessionID: "s1",
-              role: "assistant",
-              time: { created: 1, completed: 10 },
-              tokens: { input: 1, output: 2, reasoning: 3, cache: { read: 0, write: 0 } },
-              cost: 0,
-            },
-            parts: [
-              {
-                type: "text",
-                text: '{"ok":true,"data":{"id":"repo"},"error":null,"meta":{"route_used":"graphql","attempts":[{"route":"graphql","status":"success"}]}}',
-              },
-              { type: "tool", tool: "api-client" },
-              {
-                type: "step-finish",
-                reason: "done",
-                tokens: { input: 1, output: 2, reasoning: 3, cache: { read: 0, write: 0 } },
-                cost: 0,
-                time: { end: 10 },
-              },
-            ],
-          },
-        ],
-      })),
-      abort: vi.fn(async () => ({ data: {} })),
-    }
-
-    const result = await runScenario(
-      { session },
-      makeScenario({
-        id: "repo-view-001",
-        name: "Repo view",
-        assertions: {
-          must_succeed: true,
-          expect_valid_output: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-          require_tool_calls: true,
-          min_tool_calls: 1,
-          require_attempt_trace: true,
-        },
-      }),
-      "ghx",
-      1,
-    )
-
-    expect(result.success).toBe(true)
-    expect(result.output_valid).toBe(true)
-    expect(result.tool_calls).toBeGreaterThan(0)
-  })
-
-  it("uses assistant structured_output when no JSON envelope parts are present", async () => {
-    const session = {
-      create: vi.fn(async () => ({ data: { id: "s-structured" } })),
-      promptAsync: vi.fn(async () => ({
-        data: {
-          assistant: {
-            id: "m-structured",
-            sessionID: "s-structured",
-            role: "assistant",
-            time: { created: 1, completed: 2 },
-            tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
-            cost: 0,
-            structured_output: { ok: true, data: { id: "repo" }, error: null, meta: {} },
-          },
-          parts: [{ type: "step-finish", reason: "done" }],
-        },
-      })),
-      messages: vi.fn(async () => ({
-        data: [
-          {
-            info: {
-              id: "m-structured",
-              sessionID: "s-structured",
+              id: "m-config",
               role: "assistant",
               time: { created: 1, completed: 2 },
               tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
               cost: 0,
             },
-            parts: [{ type: "step-finish", reason: "done" }],
+            parts: [{ type: "text", text: "ok" }],
           },
         ],
       })),
-      abort: vi.fn(async () => ({ data: {} })),
+      abort: vi.fn(),
     }
 
-    const result = await runScenario(
-      { session },
-      makeScenario({
-        id: "repo-view-structured",
-        name: "Repo view structured",
-        prompt_template: "do {{task}}",
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-          require_tool_calls: false,
-        },
-      }),
-      "ghx",
-      1,
+    const response = await waitForAssistantFromMessages(
+      sessionApi,
+      "s1",
+      5000,
+      "sc-config",
+      undefined,
+      {
+        openCodeMode: null,
+        gitRepo: null,
+        gitCommit: null,
+        firstAssistantTimeoutMs: 1000,
+        sessionStallTimeoutMs: 2000,
+        maxRunnerRetries: 1,
+        runnerRetryBackoffMs: 750,
+      } satisfies RunnerConfig,
     )
-
-    expect(result.success).toBe(true)
-    expect(result.output_valid).toBe(true)
+    expect(response.info?.id).toBe("m-config")
   })
 
-  it("requests continuation until a JSON envelope is returned", async () => {
-    const session = {
-      create: vi.fn(async () => ({ data: { id: "s-cont" } })),
-      promptAsync: vi
-        .fn()
-        .mockResolvedValueOnce({ data: {} })
-        .mockResolvedValueOnce({
-          data: {
-            assistant: {
-              id: "m2",
-              sessionID: "s-cont",
-              role: "assistant",
-              time: { created: 3, completed: 4 },
-              tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
-              cost: 0,
-            },
-            parts: [
-              { type: "text", text: '{"ok":true,"data":{"id":"repo"},"error":null,"meta":{}}' },
-            ],
+  it("handles timing breakdown with incomplete metadata gracefully", () => {
+    const breakdown = extractTimingBreakdown([
+      {
+        info: {
+          role: "assistant",
+          time: { created: 100 },
+        },
+        parts: [
+          { type: "reasoning", time: {} },
+          {
+            type: "tool",
+            tool: "bash",
+            state: { time: {} },
           },
-        }),
+        ],
+      },
+    ] as unknown as Parameters<typeof extractTimingBreakdown>[0])
+
+    expect(breakdown.assistant_total_ms).toBe(0)
+    expect(breakdown.assistant_reasoning_ms).toBe(0)
+    expect(breakdown.tool_total_ms).toBe(0)
+  })
+
+  it("extracts timing breakdown with negative durations clamped to zero", () => {
+    const breakdown = extractTimingBreakdown([
+      {
+        info: {
+          role: "assistant",
+          time: { created: 1000, completed: 500 },
+        },
+        parts: [
+          { type: "reasoning", time: { start: 400, end: 200 } },
+          {
+            type: "tool",
+            tool: "bash",
+            state: { time: { start: 600, end: 100 } },
+          },
+        ],
+      },
+    ] as unknown as Parameters<typeof extractTimingBreakdown>[0])
+
+    expect(breakdown.assistant_total_ms).toBe(0)
+    expect(breakdown.assistant_reasoning_ms).toBe(0)
+    expect(breakdown.tool_total_ms).toBe(0)
+  })
+
+  it("handles extractSnapshotFromParts with missing object structures", () => {
+    const snapshot = extractSnapshotFromParts([
+      {
+        type: "step-finish",
+        tokens: "not-object",
+        cost: "not-number",
+        time: null,
+      },
+    ] as unknown as Parameters<typeof extractSnapshotFromParts>[0])
+
+    expect(snapshot.input).toBe(0)
+    expect(snapshot.output).toBe(0)
+    expect(snapshot.cost).toBe(0)
+    expect(snapshot.completed).toBeNull()
+  })
+
+  it("handles coercePromptResponse with structured output from info.structured_output", () => {
+    const coerced = coercePromptResponse({
+      info: {
+        id: "m-structured-output",
+        sessionID: "s1",
+        role: "assistant",
+        time: { created: 1, completed: 2 },
+        tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
+        cost: 0,
+        structured_output: { value: "structured" },
+      } as never,
+      parts: [{ type: "step-finish", reason: "done" }],
+    })
+
+    expect(coerced.assistant.structured_output).toEqual({ value: "structured" })
+  })
+
+  it("correctly identifies assistant by metadata when role is missing", async () => {
+    const sessionApi = {
+      create: vi.fn(),
+      promptAsync: vi.fn(),
       messages: vi.fn(async () => ({
         data: [
           {
             info: {
-              id: "m1",
-              sessionID: "s-cont",
-              role: "assistant",
+              id: "m-metadata-only",
               time: { created: 1, completed: 2 },
               tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
               cost: 0,
             },
             parts: [
-              { type: "text", text: "partial response without json" },
+              { type: "text", text: "result" },
               { type: "step-finish", reason: "done" },
             ],
           },
         ],
       })),
-      abort: vi.fn(async () => ({ data: {} })),
+      abort: vi.fn(),
     }
 
-    const result = await runScenario(
-      { session },
-      makeScenario({
-        id: "repo-view-continuation",
-        name: "Repo view continuation",
-        prompt_template: "do {{task}}",
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-          require_tool_calls: false,
-        },
-      }),
-      "ghx",
-      1,
-    )
-
-    expect(result.success).toBe(true)
-    expect(session.promptAsync).toHaveBeenCalledTimes(2)
+    const response = await waitForAssistantFromMessages(sessionApi, "s1", 200, "sc-metadata-id")
+    expect(response.info?.id).toBe("m-metadata-only")
   })
 
-  it("recovers best valid envelope from session messages when latest envelope is invalid", async () => {
-    const session = {
-      create: vi.fn(async () => ({ data: { id: "s-recover" } })),
-      promptAsync: vi.fn(async () => ({ data: {} })),
+  it("detects step-finish with non-completion reason when deciding isCompletedAssistant", async () => {
+    const sessionApi = {
+      create: vi.fn(),
+      promptAsync: vi.fn(),
       messages: vi.fn(async () => ({
         data: [
           {
             info: {
-              id: "m-valid",
-              sessionID: "s-recover",
+              id: "m1",
               role: "assistant",
               time: { created: 1, completed: 2 },
               tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
               cost: 0,
             },
             parts: [
-              { type: "text", text: '{"ok":true,"data":{"id":"repo"},"error":null,"meta":{}}' },
+              { type: "step-finish", reason: "error" },
+              { type: "text", text: "error occurred" },
             ],
           },
+        ],
+      })),
+      abort: vi.fn(),
+    }
+
+    const response = await waitForAssistantFromMessages(sessionApi, "s1", 200, "sc-error-finish")
+    expect(response.info?.id).toBe("m1")
+  })
+
+  it("accepts assistant response with step-finish as completion without completed time", async () => {
+    const sessionApi = {
+      create: vi.fn(),
+      promptAsync: vi.fn(),
+      messages: vi.fn(async () => ({
+        data: [
           {
             info: {
-              id: "m-invalid",
-              sessionID: "s-recover",
+              id: "m-step-finish-only",
               role: "assistant",
-              time: { created: 3, completed: 4 },
+              time: { created: 1 },
               tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
               cost: 0,
             },
-            parts: [{ type: "text", text: '{"ok":true,"data":{},"error":null,"meta":{}}' }],
-          },
-        ],
-      })),
-      abort: vi.fn(async () => ({ data: {} })),
-    }
-
-    const result = await runScenario(
-      { session },
-      makeScenario({
-        id: "repo-view-recover",
-        name: "Repo view recover",
-        prompt_template: "do {{task}}",
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-          require_tool_calls: false,
-        },
-      }),
-      "ghx",
-      1,
-    )
-
-    expect(result.success).toBe(true)
-    expect(result.output_valid).toBe(true)
-  })
-
-  it("marks scenario failed when tool-call requirements are not met", async () => {
-    const session = {
-      create: vi.fn(async () => ({ data: { id: "s1" } })),
-      promptAsync: vi.fn(async () => ({ data: {} })),
-      messages: vi.fn(async () => ({
-        data: [
-          {
-            info: {
-              id: "m1",
-              sessionID: "s1",
-              role: "assistant",
-              time: { created: 1, completed: 10 },
-              tokens: { input: 1, output: 2, reasoning: 3, cache: { read: 0, write: 0 } },
-              cost: 0,
-            },
             parts: [
-              {
-                type: "text",
-                text: '{"ok":true,"data":{"id":"repo"},"error":null,"meta":{"route_used":"graphql"}}',
-              },
+              { type: "text", text: "response" },
+              { type: "step-finish", reason: "stop" },
             ],
           },
         ],
       })),
-      abort: vi.fn(async () => ({ data: {} })),
+      abort: vi.fn(),
     }
 
-    const result = await runScenario(
-      { session },
-      makeScenario({
-        id: "repo-view-001",
-        name: "Repo view",
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-          require_tool_calls: true,
-          min_tool_calls: 2,
-        },
-      }),
-      "ghx",
-      1,
+    const response = await waitForAssistantFromMessages(
+      sessionApi,
+      "s1",
+      200,
+      "sc-step-finish-only",
     )
+    expect(response.info?.id).toBe("m-step-finish-only")
+  })
+})
 
-    expect(result.success).toBe(false)
-    expect(result.error?.message).toContain("Expected at least 2 tool call")
+describe("checkpoint evaluation", () => {
+  describe("resolveCheckpointData", () => {
+    it("extracts items array from object with items property", () => {
+      const data = { items: [1, 2, 3], other: "field" }
+      expect(resolveCheckpointData(data)).toEqual([1, 2, 3])
+    })
+
+    it("returns data as-is when items is not an array", () => {
+      const data = { items: "not-an-array" }
+      expect(resolveCheckpointData(data)).toBe(data)
+    })
+
+    it("returns data as-is when no items property", () => {
+      const data = { key: "value" }
+      expect(resolveCheckpointData(data)).toBe(data)
+    })
+
+    it("returns non-object data as-is", () => {
+      expect(resolveCheckpointData([1, 2, 3])).toEqual([1, 2, 3])
+      expect(resolveCheckpointData("string")).toBe("string")
+      expect(resolveCheckpointData(null)).toBe(null)
+      expect(resolveCheckpointData(42)).toBe(42)
+    })
+
+    it("returns empty items array when items is empty", () => {
+      const data = { items: [] }
+      expect(resolveCheckpointData(data)).toEqual([])
+    })
   })
 
-  it("continues incomplete assistant response and forces one tool call when required", async () => {
-    let messageCall = 0
-    const session = {
-      create: vi.fn(async () => ({ data: { id: "s1" } })),
-      promptAsync: vi.fn(async () => ({ data: {} })),
-      messages: vi.fn(async () => {
-        messageCall += 1
-
-        if (messageCall === 1) {
-          return {
-            data: [
-              {
-                info: {
-                  id: "m1",
-                  sessionID: "s1",
-                  role: "assistant",
-                },
-                parts: [{ type: "step-finish", reason: "tool-calls" }],
-              },
-            ],
-          }
+  describe("evaluateCheckpoint", () => {
+    describe("empty condition", () => {
+      it("passes when array is empty", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "empty" as const,
         }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: [] })).toBe(true)
+      })
 
-        if (messageCall <= 3) {
-          return {
-            data: [
-              {
-                info: {
-                  id: "m1",
-                  sessionID: "s1",
-                  role: "assistant",
-                  time: { created: 1, completed: 2 },
-                  tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
-                  cost: 0,
-                },
-                parts: [
-                  { type: "text", text: '{"ok":true,"data":{"id":"repo"},"error":null,"meta":{}}' },
-                  { type: "step-finish", reason: "done" },
-                ],
-              },
-            ],
-          }
+      it("passes when data is null", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "empty" as const,
         }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: null })).toBe(true)
+      })
 
-        return {
-          data: [
-            {
-              info: {
-                id: "m2",
-                sessionID: "s1",
-                role: "assistant",
-                time: { created: 3, completed: 4 },
-                tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
-                cost: 0,
-              },
-              parts: [
-                { type: "text", text: '{"ok":true,"data":{"id":"repo"},"error":null,"meta":{}}' },
-                { type: "tool", tool: "api-client" },
-                { type: "step-finish", reason: "done" },
-              ],
-            },
-          ],
+      it("passes when data is undefined", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "empty" as const,
         }
-      }),
-      abort: vi.fn(async () => ({ data: {} })),
-    }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: undefined })).toBe(true)
+      })
 
-    const result = await runScenario(
-      { session },
-      makeScenario({
-        id: "repo-view-001",
-        name: "Repo view",
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-          require_tool_calls: true,
-          min_tool_calls: 1,
-        },
-      }),
-      "ghx",
-      1,
-    )
-
-    expect(result.success).toBe(true)
-    expect(session.promptAsync.mock.calls.length).toBeGreaterThanOrEqual(2)
-  })
-
-  it("marks scenario failed when max_tool_calls is exceeded", async () => {
-    const session = {
-      create: vi.fn(async () => ({ data: { id: "s1" } })),
-      promptAsync: vi.fn(async () => ({ data: {} })),
-      messages: vi.fn(async () => ({
-        data: [
-          {
-            info: {
-              id: "m1",
-              sessionID: "s1",
-              role: "assistant",
-              time: { created: 1, completed: 10 },
-              tokens: { input: 1, output: 2, reasoning: 3, cache: { read: 0, write: 0 } },
-              cost: 0,
-            },
-            parts: [
-              {
-                type: "text",
-                text: '{"ok":true,"data":{"id":"repo"},"error":null,"meta":{"route_used":"graphql"}}',
-              },
-              { type: "tool", tool: "api-client" },
-            ],
-          },
-        ],
-      })),
-      abort: vi.fn(async () => ({ data: {} })),
-    }
-
-    const result = await runScenario(
-      { session },
-      makeScenario({
-        id: "repo-view-001",
-        name: "Repo view",
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-          max_tool_calls: 0,
-        },
-      }),
-      "ghx",
-      1,
-    )
-
-    expect(result.success).toBe(false)
-    expect(result.error?.message).toContain("Expected at most 0 tool call")
-  })
-
-  it("marks scenario failed when attempt trace is required but missing", async () => {
-    const session = {
-      create: vi.fn(async () => ({ data: { id: "s1" } })),
-      promptAsync: vi.fn(async () => ({ data: {} })),
-      messages: vi.fn(async () => ({
-        data: [
-          {
-            info: {
-              id: "m1",
-              sessionID: "s1",
-              role: "assistant",
-              time: { created: 1, completed: 10 },
-              tokens: { input: 1, output: 2, reasoning: 3, cache: { read: 0, write: 0 } },
-              cost: 0,
-            },
-            parts: [
-              {
-                type: "text",
-                text: '{"ok":true,"data":{"id":"repo"},"error":null,"meta":{"route_used":"graphql"}}',
-              },
-            ],
-          },
-        ],
-      })),
-      abort: vi.fn(async () => ({ data: {} })),
-    }
-
-    const result = await runScenario(
-      { session },
-      makeScenario({
-        id: "repo-view-001",
-        name: "Repo view",
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-          require_tool_calls: false,
-          require_attempt_trace: true,
-        },
-      }),
-      "ghx",
-      1,
-    )
-
-    expect(result.success).toBe(false)
-    expect(result.error?.message).toContain("Expected attempt trace metadata")
-  })
-
-  it("supports inverted output expectation", async () => {
-    const session = {
-      create: vi.fn(async () => ({ data: { id: "s1" } })),
-      promptAsync: vi.fn(async () => ({ data: {} })),
-      messages: vi.fn(async () => ({
-        data: [
-          {
-            info: {
-              id: "m1",
-              sessionID: "s1",
-              role: "assistant",
-              time: { created: 1, completed: 10 },
-              tokens: { input: 1, output: 2, reasoning: 3, cache: { read: 0, write: 0 } },
-              cost: 0,
-            },
-            parts: [
-              { type: "text", text: '{"ok":false,"data":[],"error":{"code":"X"},"meta":{}}' },
-            ],
-          },
-        ],
-      })),
-      abort: vi.fn(async () => ({ data: {} })),
-    }
-
-    const result = await runScenario(
-      { session },
-      makeScenario({
-        id: "repo-view-001",
-        name: "Repo view",
-        assertions: {
-          must_succeed: false,
-          expect_valid_output: false,
-          require_tool_calls: false,
-          data_type: "object",
-        },
-      }),
-      "ghx",
-      1,
-    )
-
-    expect(result.success).toBe(true)
-  })
-
-  it("handles non-object envelopes without throwing", async () => {
-    const session = {
-      create: vi.fn(async () => ({ data: { id: "s1" } })),
-      promptAsync: vi.fn(async () => ({ data: {} })),
-      messages: vi.fn(async () => ({
-        data: [
-          {
-            info: {
-              id: "m1",
-              sessionID: "s1",
-              role: "assistant",
-              time: { created: 1, completed: 10 },
-              tokens: { input: 1, output: 2, reasoning: 3, cache: { read: 0, write: 0 } },
-              cost: 0,
-            },
-            parts: [{ type: "text", text: "null" }],
-          },
-        ],
-      })),
-      abort: vi.fn(async () => ({ data: {} })),
-    }
-
-    const result = await runScenario(
-      { session },
-      makeScenario({
-        id: "repo-view-001",
-        name: "Repo view",
-        assertions: {
-          must_succeed: true,
-          expect_valid_output: true,
-          require_tool_calls: false,
-          data_type: "object",
-        },
-      }),
-      "ghx",
-      1,
-    )
-
-    expect(result.success).toBe(false)
-    expect(result.output_valid).toBe(false)
-  })
-
-  it("wraps raw data object into a valid envelope for ghx mode", async () => {
-    const session = {
-      create: vi.fn(async () => ({ data: { id: "s1" } })),
-      promptAsync: vi.fn(async () => ({ data: {} })),
-      messages: vi.fn(async () => ({
-        data: [
-          {
-            info: {
-              id: "m1",
-              sessionID: "s1",
-              role: "assistant",
-              time: { created: 1, completed: 2 },
-              tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
-              cost: 0,
-            },
-            parts: [{ type: "text", text: '{"id":"repo"}' }],
-          },
-        ],
-      })),
-      abort: vi.fn(async () => ({ data: {} })),
-    }
-
-    const result = await runScenario(
-      { session },
-      makeScenario({
-        id: "repo-view-raw",
-        name: "Repo view raw",
-        prompt_template: "do {{task}}",
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-          require_tool_calls: false,
-        },
-      }),
-      "ghx",
-      1,
-    )
-
-    expect(result.success).toBe(true)
-    expect(result.output_valid).toBe(true)
-  })
-
-  it.each([
-    {
-      id: "issues",
-      payload:
-        '{"data":{"repository":{"issues":{"nodes":[],"pageInfo":{"hasNextPage":true,"endCursor":"c1"}}}}}',
-    },
-    {
-      id: "pull-requests",
-      payload:
-        '{"data":{"repository":{"pullRequests":{"nodes":[],"pageInfo":{"hasNextPage":false,"endCursor":null}}}}}',
-    },
-    {
-      id: "issue-comments",
-      payload:
-        '{"data":{"repository":{"issue":{"comments":{"nodes":[],"pageInfo":{"hasNextPage":true,"endCursor":"c2"}}}}}}',
-    },
-  ])("normalizes %s graphql-style payloads into list envelope", async ({ id, payload }) => {
-    const session = {
-      create: vi.fn(async () => ({ data: { id: "s1" } })),
-      promptAsync: vi.fn(async () => ({ data: {} })),
-      messages: vi.fn(async () => ({
-        data: [
-          {
-            info: {
-              id: "m1",
-              sessionID: "s1",
-              role: "assistant",
-              time: { created: 1, completed: 2 },
-              tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
-              cost: 0,
-            },
-            parts: [{ type: "text", text: payload }],
-          },
-        ],
-      })),
-      abort: vi.fn(async () => ({ data: {} })),
-    }
-
-    const result = await runScenario(
-      { session },
-      makeScenario({
-        id: `repo-${id}`,
-        name: `Repo ${id}`,
-        prompt_template: "do {{task}}",
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["items", "pageInfo"],
-          require_tool_calls: false,
-        },
-      }),
-      "ghx",
-      1,
-    )
-
-    expect(result.success).toBe(true)
-    expect(result.output_valid).toBe(true)
-  })
-
-  it("fills missing error field when envelope already has ok/data/meta", async () => {
-    const session = {
-      create: vi.fn(async () => ({ data: { id: "s1" } })),
-      promptAsync: vi.fn(async () => ({ data: {} })),
-      messages: vi.fn(async () => ({
-        data: [
-          {
-            info: {
-              id: "m1",
-              sessionID: "s1",
-              role: "assistant",
-              time: { created: 1, completed: 2 },
-              tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
-              cost: 0,
-            },
-            parts: [{ type: "text", text: '{"ok":true,"data":{"id":"repo"},"meta":{}}' }],
-          },
-        ],
-      })),
-      abort: vi.fn(async () => ({ data: {} })),
-    }
-
-    const result = await runScenario(
-      { session },
-      makeScenario({
-        id: "repo-view-ok-meta",
-        name: "Repo view ok meta",
-        prompt_template: "do {{task}}",
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-          require_tool_calls: false,
-        },
-      }),
-      "ghx",
-      1,
-    )
-
-    expect(result.success).toBe(true)
-    expect(result.output_valid).toBe(true)
-  })
-
-  it("returns runner_error row and aborts session on failures", async () => {
-    const abort = vi.fn(async () => ({ data: {} }))
-    const session = {
-      create: vi.fn(async () => ({ data: { id: "s1" } })),
-      promptAsync: vi.fn(async () => {
-        throw new Error("prompt failed")
-      }),
-      messages: vi.fn(async () => ({ data: [] })),
-      abort,
-    }
-
-    const result = await runScenario(
-      { session },
-      makeScenario({
-        id: "repo-view-001",
-        name: "Repo view",
-        prompt_template: "do {{task}}",
-      }),
-      "ghx",
-      1,
-    )
-
-    expect(result.success).toBe(false)
-    expect(result.error?.type).toBe("runner_error")
-    expect(result.external_retry_count).toBe(0)
-    expect(abort).toHaveBeenCalled()
-  })
-
-  it("retries once for retryable session-message timeouts", async () => {
-    const session = {
-      create: vi
-        .fn()
-        .mockResolvedValueOnce({ data: { id: "s1" } })
-        .mockResolvedValueOnce({ data: { id: "s2" } }),
-      promptAsync: vi.fn(async () => ({ data: {} })),
-      messages: vi.fn().mockImplementation(async (options: { path?: { id?: string } }) => {
-        if (options.path?.id === "s1") {
-          return { data: [] }
+      it("fails when array is non-empty", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "empty" as const,
         }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: [1] })).toBe(false)
+      })
 
-        return {
-          data: [
-            {
-              info: {
-                id: "assistant-1",
-                role: "assistant",
-                time: { created: 1, completed: 2 },
-                tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
-                cost: 0,
-              },
-              parts: [
-                { type: "text", text: '{"ok":true,"data":{"id":"repo"},"error":null,"meta":{}}' },
-              ],
-            },
-          ],
+      it("fails when data is non-null object", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "empty" as const,
         }
-      }),
-      abort: vi.fn(async () => ({ data: {} })),
-    }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: { key: "value" } })).toBe(false)
+      })
 
-    const result = await runScenario(
-      { session },
-      makeScenario({
-        id: "repo-view-timeout-retry",
-        name: "Repo view timeout retry",
-        prompt_template: "do {{task}}",
-        timeout_ms: 10,
-        assertions: {
-          must_succeed: true,
-          required_fields: ["ok", "data", "error", "meta"],
-          required_data_fields: ["id"],
-          require_tool_calls: false,
-        },
-      }),
-      "agent_direct",
-      1,
-    )
+      it("fails when result is not ok", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "empty" as const,
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: false, data: [] })).toBe(false)
+      })
+    })
 
-    expect(result.success).toBe(true)
-    expect(result.external_retry_count).toBe(1)
-    expect(session.abort).toHaveBeenCalledTimes(1)
-  })
+    describe("non_empty condition", () => {
+      it("passes when array has elements", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "non_empty" as const,
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: [1, 2] })).toBe(true)
+      })
 
-  it("returns runner_error for non-Error failures", async () => {
-    const session = {
-      create: vi.fn(async () => ({ data: { id: "s1" } })),
-      promptAsync: vi.fn(async () => {
-        throw "boom"
-      }),
-      messages: vi.fn(async () => ({ data: [] })),
-      abort: vi.fn(async () => ({ data: {} })),
-    }
+      it("passes when data is non-null object", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "non_empty" as const,
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: { key: "value" } })).toBe(true)
+      })
 
-    const result = await runScenario(
-      { session },
-      makeScenario({
-        id: "repo-view-001",
-        name: "Repo view",
-        prompt_template: "do {{task}}",
-      }),
-      "ghx",
-      1,
-    )
+      it("fails when array is empty", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "non_empty" as const,
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: [] })).toBe(false)
+      })
 
-    expect(result.success).toBe(false)
-    expect(result.error?.message).toBe("boom")
-    expect(result.external_retry_count).toBe(0)
+      it("fails when data is null", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "non_empty" as const,
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: null })).toBe(false)
+      })
+
+      it("fails when data is undefined", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "non_empty" as const,
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: undefined })).toBe(false)
+      })
+
+      it("fails when result is not ok", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "non_empty" as const,
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: false, data: [1] })).toBe(false)
+      })
+    })
+
+    describe("count_gte condition", () => {
+      it("passes when array length is greater than expected", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "count_gte" as const,
+          expected_value: 2,
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: [1, 2, 3] })).toBe(true)
+      })
+
+      it("passes when array length equals expected", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "count_gte" as const,
+          expected_value: 3,
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: [1, 2, 3] })).toBe(true)
+      })
+
+      it("fails when array length is less than expected", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "count_gte" as const,
+          expected_value: 5,
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: [1, 2, 3] })).toBe(false)
+      })
+
+      it("fails when data is not an array", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "count_gte" as const,
+          expected_value: 1,
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: { key: "value" } })).toBe(false)
+      })
+
+      it("fails when result is not ok", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "count_gte" as const,
+          expected_value: 1,
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: false, data: [1, 2] })).toBe(false)
+      })
+
+      it("handles string expected value by converting to number", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "count_gte" as const,
+          expected_value: "2",
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: [1, 2, 3] })).toBe(true)
+      })
+    })
+
+    describe("count_eq condition", () => {
+      it("passes when array length exactly matches expected", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "count_eq" as const,
+          expected_value: 3,
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: [1, 2, 3] })).toBe(true)
+      })
+
+      it("fails when array length is greater than expected", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "count_eq" as const,
+          expected_value: 2,
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: [1, 2, 3] })).toBe(false)
+      })
+
+      it("fails when array length is less than expected", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "count_eq" as const,
+          expected_value: 5,
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: [1, 2, 3] })).toBe(false)
+      })
+
+      it("fails when data is not an array", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "count_eq" as const,
+          expected_value: 1,
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: "string" })).toBe(false)
+      })
+
+      it("fails when result is not ok", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "count_eq" as const,
+          expected_value: 3,
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: false, data: [1, 2, 3] })).toBe(false)
+      })
+
+      it("passes with zero count", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "count_eq" as const,
+          expected_value: 0,
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: [] })).toBe(true)
+      })
+    })
+
+    describe("field_equals condition", () => {
+      it("passes when single field matches exactly", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "field_equals" as const,
+          expected_value: { status: "success" },
+        }
+        expect(
+          evaluateCheckpoint(checkpoint, { ok: true, data: { status: "success", other: "field" } }),
+        ).toBe(true)
+      })
+
+      it("passes when multiple fields all match", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "field_equals" as const,
+          expected_value: { status: "success", count: 5 },
+        }
+        expect(
+          evaluateCheckpoint(checkpoint, {
+            ok: true,
+            data: { status: "success", count: 5, other: "field" },
+          }),
+        ).toBe(true)
+      })
+
+      it("fails when field value does not match", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "field_equals" as const,
+          expected_value: { status: "failed" },
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: { status: "success" } })).toBe(
+          false,
+        )
+      })
+
+      it("fails when expected field is missing in data", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "field_equals" as const,
+          expected_value: { missing: "field" },
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: { status: "success" } })).toBe(
+          false,
+        )
+      })
+
+      it("fails when data is not an object", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "field_equals" as const,
+          expected_value: { key: "value" },
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: [1, 2, 3] })).toBe(false)
+      })
+
+      it("fails when expected_value is not an object", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "field_equals" as const,
+          expected_value: "string",
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: { key: "value" } })).toBe(false)
+      })
+
+      it("compares nested objects using JSON stringification", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "field_equals" as const,
+          expected_value: { nested: { key: "value" } },
+        }
+        expect(
+          evaluateCheckpoint(checkpoint, { ok: true, data: { nested: { key: "value" } } }),
+        ).toBe(true)
+      })
+
+      it("handles numeric field comparison", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "field_equals" as const,
+          expected_value: { count: 42 },
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: true, data: { count: 42 } })).toBe(true)
+      })
+
+      it("fails when result is not ok", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "field_equals" as const,
+          expected_value: { status: "success" },
+        }
+        expect(evaluateCheckpoint(checkpoint, { ok: false, data: { status: "success" } })).toBe(
+          false,
+        )
+      })
+    })
+
+    it("returns false for unknown condition types", () => {
+      const checkpoint = {
+        name: "check",
+        verification_task: "test",
+        verification_input: {},
+        condition: "unknown" as never,
+      }
+      expect(evaluateCheckpoint(checkpoint, { ok: true, data: [1, 2] })).toBe(false)
+    })
+
+    describe("integration with resolveCheckpointData", () => {
+      it("evaluates checkpoint on resolved items array", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "count_eq" as const,
+          expected_value: 2,
+        }
+        const result = { ok: true, data: { items: [1, 2] } }
+        expect(evaluateCheckpoint(checkpoint, result)).toBe(true)
+      })
+
+      it("evaluates non_empty checkpoint on items from wrapped response", () => {
+        const checkpoint = {
+          name: "check",
+          verification_task: "test",
+          verification_input: {},
+          condition: "non_empty" as const,
+        }
+        const result = { ok: true, data: { items: [{ id: 1 }] } }
+        expect(evaluateCheckpoint(checkpoint, result)).toBe(true)
+      })
+    })
   })
 })

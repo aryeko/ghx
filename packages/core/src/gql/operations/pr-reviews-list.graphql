@@ -16,8 +16,7 @@ query PrReviewsList($owner: String!, $name: String!, $prNumber: Int!, $first: In
           }
         }
         pageInfo {
-          hasNextPage
-          endCursor
+          ...PageInfoFields
         }
       }
     }

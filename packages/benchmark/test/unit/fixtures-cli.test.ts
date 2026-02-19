@@ -6,14 +6,18 @@ const {
   rmMock,
   loadFixtureManifestMock,
   cleanupSeededFixturesMock,
+  cleanupAllFixturesMock,
   applyFixtureAppAuthIfConfiguredMock,
+  mintFixtureAppTokenMock,
   seedFixtureManifestMock,
 } = vi.hoisted(() => ({
   accessMock: vi.fn(),
   rmMock: vi.fn(),
   loadFixtureManifestMock: vi.fn(),
   cleanupSeededFixturesMock: vi.fn(),
+  cleanupAllFixturesMock: vi.fn(),
   applyFixtureAppAuthIfConfiguredMock: vi.fn(),
+  mintFixtureAppTokenMock: vi.fn(),
   seedFixtureManifestMock: vi.fn(),
 }))
 
@@ -32,10 +36,12 @@ vi.mock("../../src/fixture/manifest.js", () => ({
 
 vi.mock("../../src/fixture/cleanup.js", () => ({
   cleanupSeededFixtures: cleanupSeededFixturesMock,
+  cleanupAllFixtures: cleanupAllFixturesMock,
 }))
 
 vi.mock("../../src/fixture/app-auth.js", () => ({
   applyFixtureAppAuthIfConfigured: applyFixtureAppAuthIfConfiguredMock,
+  mintFixtureAppToken: mintFixtureAppTokenMock,
 }))
 
 vi.mock("../../src/fixture/seed.js", () => ({
@@ -60,7 +66,15 @@ describe("fixtures CLI", () => {
       resources: {},
     })
     cleanupSeededFixturesMock.mockResolvedValue({ closedIssues: 3 })
+    cleanupAllFixturesMock.mockResolvedValue({
+      closedIssues: 5,
+      closedPrs: 2,
+      deletedBranches: 3,
+      deletedLabels: 1,
+      deletedProjects: 0,
+    })
     applyFixtureAppAuthIfConfiguredMock.mockResolvedValue(() => undefined)
+    mintFixtureAppTokenMock.mockResolvedValue("ghs_fake_reviewer_token")
     seedFixtureManifestMock.mockResolvedValue({
       version: 1,
       repo: {
@@ -97,6 +111,7 @@ describe("fixtures CLI", () => {
       repo: "aryeko/ghx-bench-fixtures",
       outFile: "fixtures/latest.json",
       seedId: "nightly",
+      all: false,
     })
   })
 
@@ -123,6 +138,7 @@ describe("fixtures CLI", () => {
       repo: "org/repo",
       outFile: "fixtures/env.json",
       seedId: "seed-from-env",
+      all: false,
     })
   })
 
@@ -168,11 +184,14 @@ describe("fixtures CLI", () => {
       main(["seed", "--repo", "aryeko/ghx-bench-fixtures", "--out", "fixtures/latest.json"]),
     ).resolves.toBeUndefined()
 
-    expect(seedFixtureManifestMock).toHaveBeenCalledWith({
-      repo: "aryeko/ghx-bench-fixtures",
-      outFile: "fixtures/latest.json",
-      seedId: "default",
-    })
+    expect(seedFixtureManifestMock).toHaveBeenCalledWith(
+      {
+        repo: "aryeko/ghx-bench-fixtures",
+        outFile: "fixtures/latest.json",
+        seedId: "default",
+      },
+      "ghs_fake_reviewer_token",
+    )
     expect(logSpy).toHaveBeenCalledWith(
       "Seeded fixtures for aryeko/ghx-bench-fixtures -> fixtures/latest.json",
     )
@@ -207,13 +226,49 @@ describe("fixtures CLI", () => {
     expect(restoreAuth).toHaveBeenCalledOnce()
   })
 
-  it("restores fixture auth when seed command throws", async () => {
-    const restoreAuth = vi.fn()
-    applyFixtureAppAuthIfConfiguredMock.mockResolvedValue(restoreAuth)
+  it("propagates error when seed command throws", async () => {
     seedFixtureManifestMock.mockRejectedValue(new Error("seed failed"))
 
     const { main } = await import("../../src/cli/fixtures.js")
     await expect(main(["seed"])).rejects.toThrow("seed failed")
+  })
+
+  it("parses --all flag with cleanup command", async () => {
+    const { parseArgs } = await import("../../src/cli/fixtures.js")
+    const parsed = parseArgs(["cleanup", "--all", "--repo", "aryeko/ghx-bench-fixtures"])
+
+    expect(parsed.command).toBe("cleanup")
+    expect(parsed.all).toBe(true)
+  })
+
+  it("rejects --all flag with non-cleanup commands", async () => {
+    const { parseArgs } = await import("../../src/cli/fixtures.js")
+
+    expect(() => parseArgs(["seed", "--all"])).toThrow(
+      "--all flag is only valid with the cleanup command",
+    )
+    expect(() => parseArgs(["status", "--all"])).toThrow(
+      "--all flag is only valid with the cleanup command",
+    )
+  })
+
+  it("runs cleanup --all calling cleanupAllFixtures instead of manifest-based cleanup", async () => {
+    const restoreAuth = vi.fn()
+    applyFixtureAppAuthIfConfiguredMock.mockResolvedValue(restoreAuth)
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined)
+
+    const { main } = await import("../../src/cli/fixtures.js")
+    await expect(
+      main(["cleanup", "--all", "--repo", "aryeko/ghx-bench-fixtures"]),
+    ).resolves.toBeUndefined()
+
+    expect(cleanupAllFixturesMock).toHaveBeenCalledWith("aryeko/ghx-bench-fixtures")
+    expect(cleanupSeededFixturesMock).not.toHaveBeenCalled()
+    expect(loadFixtureManifestMock).not.toHaveBeenCalled()
+    expect(rmMock).not.toHaveBeenCalled()
+    expect(logSpy).toHaveBeenCalledWith(
+      "Cleaned all benchmark fixtures from aryeko/ghx-bench-fixtures: 5 issues, 2 PRs, 3 branches, 1 labels, 0 projects",
+    )
     expect(restoreAuth).toHaveBeenCalledOnce()
   })
 

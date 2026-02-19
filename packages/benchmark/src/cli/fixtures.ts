@@ -1,7 +1,8 @@
 import { access, rm } from "node:fs/promises"
+import { resolve } from "node:path"
 import { z } from "zod"
-import { applyFixtureAppAuthIfConfigured } from "../fixture/app-auth.js"
-import { cleanupSeededFixtures } from "../fixture/cleanup.js"
+import { applyFixtureAppAuthIfConfigured, mintFixtureAppToken } from "../fixture/app-auth.js"
+import { cleanupAllFixtures, cleanupSeededFixtures } from "../fixture/cleanup.js"
 import { loadFixtureManifest } from "../fixture/manifest.js"
 import { seedFixtureManifest } from "../fixture/seed.js"
 import { runIfDirectEntry } from "./entry.js"
@@ -14,6 +15,7 @@ type ParsedFixtureArgs = {
   repo: string
   outFile: string
   seedId: string
+  all: boolean
 }
 
 const fixtureCommandSchema = z.enum(["seed", "status", "cleanup"])
@@ -73,28 +75,45 @@ export function parseArgs(argv: string[]): ParsedFixtureArgs {
     parseFlagValue(normalized, "--seed-id") ?? process.env.BENCH_FIXTURE_SEED_ID ?? "default"
   const seedId = parseCliValue(fixtureSeedIdSchema, seedIdRaw, "--seed-id")
 
+  const all = normalized.includes("--all")
+  if (all && command !== "cleanup") {
+    throw new Error("--all flag is only valid with the cleanup command")
+  }
+
   return {
     command,
     repo,
     outFile,
     seedId,
+    all,
+  }
+}
+
+function loadEnvLocal(): void {
+  try {
+    process.loadEnvFile(resolve(import.meta.dirname ?? ".", "../../.env.local"))
+  } catch {
+    // .env.local is optional
   }
 }
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
+  loadEnvLocal()
   const parsed = parseArgs(argv)
   const restoreFixtureAuth =
-    parsed.command === "seed" || parsed.command === "cleanup"
-      ? await applyFixtureAppAuthIfConfigured()
-      : () => undefined
+    parsed.command === "cleanup" ? await applyFixtureAppAuthIfConfigured() : () => undefined
 
   try {
     if (parsed.command === "seed") {
-      const manifest = await seedFixtureManifest({
-        repo: parsed.repo,
-        outFile: parsed.outFile,
-        seedId: parsed.seedId,
-      })
+      const reviewerToken = await mintFixtureAppToken()
+      const manifest = await seedFixtureManifest(
+        {
+          repo: parsed.repo,
+          outFile: parsed.outFile,
+          seedId: parsed.seedId,
+        },
+        reviewerToken,
+      )
       console.log(`Seeded fixtures for ${manifest.repo.full_name} -> ${parsed.outFile}`)
       return
     }
@@ -104,6 +123,14 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
       const manifest = await loadFixtureManifest(parsed.outFile)
       console.log(
         `Fixture manifest OK: repo=${manifest.repo.full_name} version=${manifest.version} path=${parsed.outFile}`,
+      )
+      return
+    }
+
+    if (parsed.all) {
+      const result = await cleanupAllFixtures(parsed.repo)
+      console.log(
+        `Cleaned all benchmark fixtures from ${parsed.repo}: ${result.closedIssues} issues, ${result.closedPrs} PRs, ${result.deletedBranches} branches, ${result.deletedLabels} labels, ${result.deletedProjects} projects`,
       )
       return
     }
