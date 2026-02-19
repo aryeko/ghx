@@ -16,6 +16,16 @@ export type PullRequestState = string
 export type DiffSide = string
 export type PullRequestReviewThreadSubjectType = string
 export type PullRequestReviewState = string
+export type PullRequestReviewEvent = string
 export type MergeableState = string
 export type MergeStateStatus = string
 export type PullRequestReviewDecision = string
+
+export type DraftPullRequestReviewThread = {
+  body: Scalars["String"]["input"]
+  line?: InputMaybe<Scalars["Int"]["input"]>
+  path?: InputMaybe<Scalars["String"]["input"]>
+  side?: InputMaybe<DiffSide>
+  startLine?: InputMaybe<Scalars["Int"]["input"]>
+  startSide?: InputMaybe<DiffSide>
+}

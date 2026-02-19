@@ -1,107 +1,28 @@
+import { IssueAssigneesUpdateDocument } from "./operations/issue-assignees-update.generated.js"
+import { IssueCommentCreateDocument } from "./operations/issue-comment-create.generated.js"
+import { IssueLabelsUpdateDocument } from "./operations/issue-labels-update.generated.js"
+import { IssueMilestoneSetDocument } from "./operations/issue-milestone-set.generated.js"
+import { IssueUpdateDocument } from "./operations/issue-update.generated.js"
+import { PrCommentReplyDocument } from "./operations/pr-comment-reply.generated.js"
+import { PrCommentResolveDocument } from "./operations/pr-comment-resolve.generated.js"
+import { PrCommentUnresolveDocument } from "./operations/pr-comment-unresolve.generated.js"
 import type { GraphqlVariables } from "./transport.js"
 
-export const PR_COMMENT_REPLY_MUTATION = `
-  mutation PrCommentReply($threadId: ID!, $body: String!) {
-    addPullRequestReviewThreadReply(input: { pullRequestReviewThreadId: $threadId, body: $body }) {
-      comment {
-        id
-      }
-    }
-  }
-`
+export const PR_COMMENT_REPLY_MUTATION = PrCommentReplyDocument
 
-export const PR_COMMENT_RESOLVE_MUTATION = `
-  mutation PrCommentResolve($threadId: ID!) {
-    resolveReviewThread(input: { threadId: $threadId }) {
-      thread {
-        id
-        isResolved
-      }
-    }
-  }
-`
+export const PR_COMMENT_RESOLVE_MUTATION = PrCommentResolveDocument
 
-export const PR_COMMENT_UNRESOLVE_MUTATION = `
-  mutation PrCommentUnresolve($threadId: ID!) {
-    unresolveReviewThread(input: { threadId: $threadId }) {
-      thread {
-        id
-        isResolved
-      }
-    }
-  }
-`
+export const PR_COMMENT_UNRESOLVE_MUTATION = PrCommentUnresolveDocument
 
-const ISSUE_UPDATE_MUTATION = `
-  mutation IssueUpdate($issueId: ID!, $title: String, $body: String) {
-    updateIssue(input: { id: $issueId, title: $title, body: $body }) {
-      issue {
-        id
-        number
-        title
-        state
-        url
-      }
-    }
-  }
-`
+const ISSUE_UPDATE_MUTATION = IssueUpdateDocument
 
-const ISSUE_LABELS_UPDATE_BY_ID_MUTATION = `
-  mutation IssueLabelsUpdateById($issueId: ID!, $labelIds: [ID!]!) {
-    updateIssue(input: { id: $issueId, labelIds: $labelIds }) {
-      issue {
-        id
-        labels(first: 50) {
-          nodes {
-            name
-          }
-        }
-      }
-    }
-  }
-`
+const ISSUE_LABELS_UPDATE_BY_ID_MUTATION = IssueLabelsUpdateDocument
 
-const ISSUE_ASSIGNEES_UPDATE_BY_ID_MUTATION = `
-  mutation IssueAssigneesUpdateById($issueId: ID!, $assigneeIds: [ID!]!) {
-    updateIssue(input: { id: $issueId, assigneeIds: $assigneeIds }) {
-      issue {
-        id
-        assignees(first: 50) {
-          nodes {
-            login
-          }
-        }
-      }
-    }
-  }
-`
+const ISSUE_ASSIGNEES_UPDATE_BY_ID_MUTATION = IssueAssigneesUpdateDocument
 
-const ISSUE_MILESTONE_SET_BY_ID_MUTATION = `
-  mutation IssueMilestoneSetById($issueId: ID!, $milestoneId: ID) {
-    updateIssue(input: { id: $issueId, milestoneId: $milestoneId }) {
-      issue {
-        id
-        milestone {
-          number
-        }
-      }
-    }
-  }
-`
+const ISSUE_MILESTONE_SET_BY_ID_MUTATION = IssueMilestoneSetDocument
 
-const ISSUE_COMMENT_CREATE_MUTATION = `
-  mutation IssueCommentCreate($issueId: ID!, $body: String!) {
-    addComment(input: { subjectId: $issueId, body: $body }) {
-      commentEdge {
-        node {
-          id
-          body
-          url
-        }
-      }
-    }
-  }
-`
+const ISSUE_COMMENT_CREATE_MUTATION = IssueCommentCreateDocument
 
 export type BuiltOperation = {
   mutation: string

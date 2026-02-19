@@ -8,6 +8,11 @@ import { getSdk as getPrCommentReplySdk } from "../operations/pr-comment-reply.g
 import { getSdk as getPrCommentResolveSdk } from "../operations/pr-comment-resolve.generated.js"
 import { getSdk as getPrCommentUnresolveSdk } from "../operations/pr-comment-unresolve.generated.js"
 import { getSdk as getPrCommentsListSdk } from "../operations/pr-comments-list.generated.js"
+import { getSdk as getPrNodeIdSdk } from "../operations/pr-node-id.generated.js"
+import {
+  getSdk as getPrReviewSubmitSdk,
+  type PrReviewSubmitMutationVariables,
+} from "../operations/pr-review-submit.generated.js"
 import { getSdk as getReviewThreadStateSdk } from "../operations/review-thread-state.generated.js"
 import type { GraphqlTransport } from "../transport.js"
 import { createGraphqlRequestClient } from "../transport.js"
@@ -279,17 +284,11 @@ export async function runSubmitPrReview(
   assertPrReviewSubmitInput(input)
 
   const client = createGraphqlRequestClient(transport)
-  const prIdResult = await client.request<
-    { repository?: { pullRequest?: { id: string } | null } | null },
-    { owner: string; name: string; prNumber: number }
-  >(
-    `query PrNodeId($owner: String!, $name: String!, $prNumber: Int!) {
-      repository(owner: $owner, name: $name) {
-        pullRequest(number: $prNumber) { id }
-      }
-    }`,
-    { owner: input.owner, name: input.name, prNumber: input.prNumber },
-  )
+  const prIdResult = await getPrNodeIdSdk(client).PrNodeId({
+    owner: input.owner,
+    name: input.name,
+    prNumber: input.prNumber,
+  })
 
   const pullRequestId = prIdResult.repository?.pullRequest?.id
   if (!pullRequestId) {
@@ -305,48 +304,12 @@ export async function runSubmitPrReview(
       }))
     : []
 
-  const result = await client.request<
-    {
-      addPullRequestReview?: {
-        pullRequestReview?: { id?: string; state?: string; url?: string; body?: string | null }
-      }
-    },
-    {
-      pullRequestId: string
-      event: string
-      body?: string
-      threads?: Array<{ path: string; body: string; line: number; side?: "LEFT" | "RIGHT" }>
-    }
-  >(
-    `mutation PrReviewSubmit(
-      $pullRequestId: ID!
-      $event: PullRequestReviewEvent!
-      $body: String
-      $threads: [DraftPullRequestReviewThread!]
-    ) {
-      addPullRequestReview(
-        input: {
-          pullRequestId: $pullRequestId
-          event: $event
-          body: $body
-          threads: $threads
-        }
-      ) {
-        pullRequestReview {
-          id
-          state
-          url
-          body
-        }
-      }
-    }`,
-    {
-      pullRequestId,
-      event: input.event,
-      ...(input.body === undefined ? {} : { body: input.body }),
-      ...(threads.length === 0 ? {} : { threads }),
-    },
-  )
+  const result = await getPrReviewSubmitSdk(client).PrReviewSubmit({
+    pullRequestId,
+    event: input.event as PrReviewSubmitMutationVariables["event"],
+    ...(input.body === undefined ? {} : { body: input.body }),
+    ...(threads.length === 0 ? {} : { threads }),
+  })
 
   const review = asRecord(asRecord(result.addPullRequestReview)?.pullRequestReview)
   if (!review || typeof review.id !== "string") {

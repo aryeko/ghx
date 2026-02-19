@@ -31,7 +31,7 @@ describe("runSubmitPrReview", () => {
         owner: "owner",
         name: "repo",
         prNumber: 1,
-        event: "",
+        event: "" as never,
       }),
     ).rejects.toThrow("Review event is required")
   })
