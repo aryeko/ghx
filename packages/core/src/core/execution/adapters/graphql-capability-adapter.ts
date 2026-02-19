@@ -1,10 +1,10 @@
-import { getGraphqlHandler } from "../../../gql/capability-registry.js"
-import type { GithubClient } from "../../../gql/github-client.js"
-import type { ResultEnvelope } from "../../contracts/envelope.js"
-import { errorCodes } from "../../errors/codes.js"
-import { mapErrorToCode } from "../../errors/map-error.js"
-import { isRetryableErrorCode } from "../../errors/retryability.js"
-import { normalizeError, normalizeResult } from "../normalizer.js"
+import type { ResultEnvelope } from "@core/core/contracts/envelope.js"
+import { errorCodes } from "@core/core/errors/codes.js"
+import { mapErrorToCode } from "@core/core/errors/map-error.js"
+import { isRetryableErrorCode } from "@core/core/errors/retryability.js"
+import { normalizeError, normalizeResult } from "@core/core/execution/normalizer.js"
+import { getGraphqlHandler } from "@core/gql/capability-registry.js"
+import type { GithubClient } from "@core/gql/github-client.js"
 
 export async function runGraphqlCapability(
   client: GithubClient,

@@ -10,12 +10,22 @@ export type Scalars = {
   URI: { input: unknown; output: unknown }
 }
 
-// Keep enums lightweight for operation result typing.
+// Keep enum-like GraphQL values lightweight for operation result typing.
 export type IssueState = string
 export type PullRequestState = string
 export type DiffSide = string
 export type PullRequestReviewThreadSubjectType = string
 export type PullRequestReviewState = string
+export type PullRequestReviewEvent = string
 export type MergeableState = string
 export type MergeStateStatus = string
 export type PullRequestReviewDecision = string
+
+export type DraftPullRequestReviewThread = {
+  body: Scalars["String"]["input"]
+  line?: InputMaybe<Scalars["Int"]["input"]>
+  path?: InputMaybe<Scalars["String"]["input"]>
+  side?: InputMaybe<DiffSide>
+  startLine?: InputMaybe<Scalars["Int"]["input"]>
+  startSide?: InputMaybe<DiffSide>
+}

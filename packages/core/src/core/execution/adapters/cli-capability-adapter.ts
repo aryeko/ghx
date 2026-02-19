@@ -21,7 +21,6 @@ export type CliCapabilityId =
   | "pr.checks.list"
   | "pr.checks.failed"
   | "pr.merge.status"
-  | "pr.review.submit"
   | "pr.merge"
   | "pr.checks.rerun_failed"
   | "pr.checks.rerun_all"

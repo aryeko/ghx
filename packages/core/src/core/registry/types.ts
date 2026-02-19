@@ -8,6 +8,19 @@ export interface SuitabilityRule {
   reason: string
 }
 
+export interface CompositeStep {
+  capability_id: string
+  foreach?: string
+  actions?: string[]
+  requires_any_of?: string[]
+  params_map: Record<string, string>
+}
+
+export interface CompositeConfig {
+  steps: CompositeStep[]
+  output_strategy: "merge" | "array" | "last"
+}
+
 export interface OperationCard<Input = Record<string, unknown>> {
   capability_id: string
   version: string
@@ -34,6 +47,10 @@ export interface OperationCard<Input = Record<string, unknown>> {
   }
   rest?: {
     endpoints: Array<{ method: string; path: string }>
+  }
+  composite?: {
+    steps: CompositeStep[]
+    output_strategy: "merge" | "array" | "last"
   }
   examples?: Array<{
     title: string

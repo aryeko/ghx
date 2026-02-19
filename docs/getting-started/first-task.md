@@ -333,15 +333,15 @@ npx ghx capabilities list
 See what you can do with PRs:
 
 ```bash
-npx ghx capabilities explain pr.merge.execute
-npx ghx capabilities explain pr.review.submit_approve
+npx ghx capabilities explain pr.merge
+npx ghx capabilities explain pr.review.submit
 ```
 
 Or workflows:
 
 ```bash
-npx ghx capabilities explain workflow_dispatch.run
-npx ghx capabilities explain workflow_run.logs.get
+npx ghx capabilities explain workflow.dispatch.run
+npx ghx capabilities explain workflow.job.logs.get
 ```
 
 ### Build a Real Workflow
@@ -415,7 +415,7 @@ You're ready to:
 1. Build more complex workflows
 2. Integrate ghx into automation scripts
 3. Set up ghx for coding agents
-4. Explore the full 66-capability API
+4. Explore the full 69-capability API
 
 ## Next Resources
 

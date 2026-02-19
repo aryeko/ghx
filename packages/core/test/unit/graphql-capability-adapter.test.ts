@@ -27,6 +27,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     const result = await runGraphqlCapability(client as unknown as GithubClient, "repo.view", {
@@ -61,6 +62,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     const result = await runGraphqlCapability(client as unknown as GithubClient, "repo.view", {
@@ -102,6 +104,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     const result = await runGraphqlCapability(
@@ -156,6 +159,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     await runGraphqlCapability(client as unknown as GithubClient, "issue.list", {
@@ -222,6 +226,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     const result = await runGraphqlCapability(client as unknown as GithubClient, "pr.thread.list", {
@@ -276,6 +281,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     const result = await runGraphqlCapability(client as unknown as GithubClient, "pr.review.list", {
@@ -321,6 +327,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     const result = await runGraphqlCapability(client as unknown as GithubClient, "pr.diff.files", {
@@ -360,6 +367,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     const result = await runGraphqlCapability(
@@ -398,6 +406,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(async () => ({ id: "thread-1", isResolved: false })),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     const result = await runGraphqlCapability(
@@ -428,6 +437,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(async () => ({ id: "thread-1", isResolved: true })),
       unresolveReviewThread: vi.fn(async () => ({ id: "thread-1", isResolved: false })),
+      submitPrReview: vi.fn(),
     }
 
     const resolveResult = await runGraphqlCapability(
@@ -466,6 +476,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     const replyResult = await runGraphqlCapability(
@@ -570,6 +581,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     const createResult = await runGraphqlCapability(
@@ -733,6 +745,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     const result = await runGraphqlCapability(
@@ -761,6 +774,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     const result = await runGraphqlCapability(client as unknown as GithubClient, "issue.create", {
@@ -788,6 +802,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     const unsupportedCalls = await Promise.all([
@@ -872,6 +887,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     const result = await runGraphqlCapability(
@@ -907,6 +923,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     const result = await runGraphqlCapability(
@@ -939,6 +956,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     const result = await runGraphqlCapability(
@@ -977,6 +995,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     const result = await runGraphqlCapability(
@@ -1014,6 +1033,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     const result = await runGraphqlCapability(
@@ -1044,6 +1064,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     const result = await runGraphqlCapability(
@@ -1074,6 +1095,7 @@ describe("runGraphqlCapability", () => {
       replyToReviewThread: vi.fn(),
       resolveReviewThread: vi.fn(),
       unresolveReviewThread: vi.fn(),
+      submitPrReview: vi.fn(),
     }
 
     const result = await runGraphqlCapability(
