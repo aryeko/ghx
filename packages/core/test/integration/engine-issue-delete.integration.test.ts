@@ -1,6 +1,6 @@
 import type { TaskRequest } from "@core/core/contracts/task.js"
 import { executeTask } from "@core/core/routing/engine.js"
-import { createGithubClient } from "@core/gql/client.js"
+import { createGithubClient } from "@core/gql/github-client.js"
 import { describe, expect, it, vi } from "vitest"
 
 describe("executeTask issue.delete", () => {

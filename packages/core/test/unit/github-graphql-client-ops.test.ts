@@ -1,4 +1,4 @@
-import { createGithubClient } from "@core/gql/client.js"
+import { createGithubClient } from "@core/gql/github-client.js"
 import { parse } from "graphql"
 import { describe, expect, it, vi } from "vitest"
 
