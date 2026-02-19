@@ -4,11 +4,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const executeMock = vi.fn()
 const getOperationCardMock = vi.fn()
 
-vi.mock("../../src/core/execute/execute.js", () => ({
+vi.mock("@core/core/execute/execute.js", () => ({
   execute: (...args: unknown[]) => executeMock(...args),
 }))
 
-vi.mock("../../src/core/registry/index.js", () => ({
+vi.mock("@core/core/registry/index.js", () => ({
   getOperationCard: (...args: unknown[]) => getOperationCardMock(...args),
 }))
 

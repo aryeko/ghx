@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-vi.mock("../../src/runner/suite-runner.js", () => ({
+vi.mock("@bench/runner/suite-runner.js", () => ({
   runSuite: vi.fn(async () => undefined),
 }))
 
-vi.mock("../../src/scenario/loader.js", () => ({
+vi.mock("@bench/scenario/loader.js", () => ({
   loadScenarios: vi.fn(),
   loadScenarioSets: vi.fn(),
 }))

@@ -5,7 +5,7 @@ const { loadScenariosMock, loadScenarioSetsMock } = vi.hoisted(() => ({
   loadScenarioSetsMock: vi.fn(),
 }))
 
-vi.mock("../../src/scenario/loader.js", () => ({
+vi.mock("@bench/scenario/loader.js", () => ({
   loadScenarios: loadScenariosMock,
   loadScenarioSets: loadScenarioSetsMock,
 }))

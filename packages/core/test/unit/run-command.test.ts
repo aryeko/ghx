@@ -4,11 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 const createGithubClientMock = vi.fn()
 const executeTaskMock = vi.fn()
 
-vi.mock("../../src/gql/client.js", () => ({
+vi.mock("@core/gql/client.js", () => ({
   createGithubClient: (...args: unknown[]) => createGithubClientMock(...args),
 }))
 
-vi.mock("../../src/core/routing/engine.js", () => ({
+vi.mock("@core/core/routing/engine.js", () => ({
   executeTask: (...args: unknown[]) => executeTaskMock(...args),
 }))
 

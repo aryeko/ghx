@@ -4,7 +4,7 @@ const { getOperationCardMock } = vi.hoisted(() => ({
   getOperationCardMock: vi.fn(),
 }))
 
-vi.mock("../../src/core/registry/index.js", () => ({
+vi.mock("@core/core/registry/index.js", () => ({
   getOperationCard: getOperationCardMock,
 }))
 
