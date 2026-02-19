@@ -1,5 +1,8 @@
 export type {
   AttemptMeta,
+  ChainResultEnvelope,
+  ChainStatus,
+  ChainStepResult,
   ResultEnvelope,
   ResultError,
   ResultMeta,
@@ -19,7 +22,7 @@ export {
   listCapabilities,
 } from "./core/registry/list-capabilities.js"
 export type { OperationCard } from "./core/registry/types.js"
-export { executeTask } from "./core/routing/engine.js"
+export { executeTask, executeTasks } from "./core/routing/engine.js"
 export type { RouteReasonCode } from "./core/routing/reason-codes.js"
 export type { GithubClient } from "./gql/github-client.js"
 export {
