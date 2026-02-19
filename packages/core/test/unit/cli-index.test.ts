@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const runCommandMock = vi.fn()
 const setupCommandMock = vi.fn()
+const chainCommandMock = vi.fn()
 const capabilitiesListCommandMock = vi.fn()
 const capabilitiesExplainCommandMock = vi.fn()
 
@@ -11,6 +12,10 @@ vi.mock("@core/cli/commands/run.js", () => ({
 
 vi.mock("@core/cli/commands/setup.js", () => ({
   setupCommand: (...args: unknown[]) => setupCommandMock(...args),
+}))
+
+vi.mock("@core/cli/commands/chain.js", () => ({
+  chainCommand: (...args: unknown[]) => chainCommandMock(...args),
 }))
 
 vi.mock("@core/cli/commands/capabilities-list.js", () => ({
@@ -28,6 +33,7 @@ describe("cli index main", () => {
     vi.clearAllMocks()
     runCommandMock.mockResolvedValue(0)
     setupCommandMock.mockResolvedValue(0)
+    chainCommandMock.mockResolvedValue(0)
     capabilitiesListCommandMock.mockResolvedValue(0)
     capabilitiesExplainCommandMock.mockResolvedValue(0)
   })
@@ -43,7 +49,7 @@ describe("cli index main", () => {
 
     expect(code).toBe(0)
     expect(stdout).toHaveBeenCalledWith(
-      "Usage:\n  ghx run <task> --input '<json>' | --input - [--check-gh-preflight]\n  ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]\n  ghx capabilities list\n  ghx capabilities explain <capability_id>\n",
+      "Usage:\n  ghx run <task> --input '<json>' | --input - [--check-gh-preflight]\n  ghx chain --steps '<json-array>' | --steps - [--check-gh-preflight]\n  ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]\n  ghx capabilities list\n  ghx capabilities explain <capability_id>\n",
     )
   })
 
@@ -54,7 +60,7 @@ describe("cli index main", () => {
 
     expect(code).toBe(0)
     expect(stdout).toHaveBeenCalledWith(
-      "Usage:\n  ghx run <task> --input '<json>' | --input - [--check-gh-preflight]\n  ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]\n  ghx capabilities list\n  ghx capabilities explain <capability_id>\n",
+      "Usage:\n  ghx run <task> --input '<json>' | --input - [--check-gh-preflight]\n  ghx chain --steps '<json-array>' | --steps - [--check-gh-preflight]\n  ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]\n  ghx capabilities list\n  ghx capabilities explain <capability_id>\n",
     )
   })
 
@@ -101,7 +107,7 @@ describe("cli index main", () => {
 
     expect(code).toBe(1)
     expect(stderr).toHaveBeenCalledWith(
-      "Unknown capabilities subcommand: nope\nUsage:\n  ghx run <task> --input '<json>' | --input - [--check-gh-preflight]\n  ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]\n  ghx capabilities list\n  ghx capabilities explain <capability_id>\n",
+      "Unknown capabilities subcommand: nope\nUsage:\n  ghx run <task> --input '<json>' | --input - [--check-gh-preflight]\n  ghx chain --steps '<json-array>' | --steps - [--check-gh-preflight]\n  ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]\n  ghx capabilities list\n  ghx capabilities explain <capability_id>\n",
     )
   })
 
@@ -112,7 +118,7 @@ describe("cli index main", () => {
 
     expect(code).toBe(1)
     expect(stderr).toHaveBeenCalledWith(
-      "Missing capabilities subcommand.\nUsage:\n  ghx run <task> --input '<json>' | --input - [--check-gh-preflight]\n  ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]\n  ghx capabilities list\n  ghx capabilities explain <capability_id>\n",
+      "Missing capabilities subcommand.\nUsage:\n  ghx run <task> --input '<json>' | --input - [--check-gh-preflight]\n  ghx chain --steps '<json-array>' | --steps - [--check-gh-preflight]\n  ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]\n  ghx capabilities list\n  ghx capabilities explain <capability_id>\n",
     )
   })
 
@@ -123,7 +129,7 @@ describe("cli index main", () => {
 
     expect(code).toBe(1)
     expect(stderr).toHaveBeenCalledWith(
-      "Unknown command: nope\nUsage:\n  ghx run <task> --input '<json>' | --input - [--check-gh-preflight]\n  ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]\n  ghx capabilities list\n  ghx capabilities explain <capability_id>\n",
+      "Unknown command: nope\nUsage:\n  ghx run <task> --input '<json>' | --input - [--check-gh-preflight]\n  ghx chain --steps '<json-array>' | --steps - [--check-gh-preflight]\n  ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]\n  ghx capabilities list\n  ghx capabilities explain <capability_id>\n",
     )
   })
 })

@@ -25,29 +25,6 @@ const baseCard: OperationCard = {
   },
 }
 
-const compositeCard: OperationCard = {
-  capability_id: "pr.threads.composite",
-  version: "1.0.0",
-  description: "Composite review thread operations",
-  input_schema: { type: "object" },
-  output_schema: { type: "object" },
-  routing: {
-    preferred: "graphql",
-    fallbacks: [],
-  },
-  composite: {
-    steps: [
-      {
-        capability_id: "pr.thread.reply",
-        foreach: "threads",
-        actions: ["reply"],
-        params_map: { threadId: "threadId", body: "body" },
-      },
-    ],
-    output_strategy: "array",
-  },
-}
-
 function createGithubClient(overrides?: Partial<GithubClient>): GithubClient {
   return {
     fetchRepoView: vi.fn(),
@@ -150,27 +127,6 @@ describe("executeTask engine wiring", () => {
     expect(result).toEqual({ ok: true })
   })
 
-  it("uses execute() pipeline for composite cards", async () => {
-    getOperationCardMock.mockReturnValue(compositeCard)
-    executeMock.mockResolvedValue({ ok: true })
-
-    const { executeTask } = await import("@core/core/routing/engine.js")
-
-    const result = await executeTask(
-      {
-        task: "pr.threads.composite",
-        input: { threads: [{ threadId: "T", action: "reply", body: "x" }] },
-      },
-      {
-        githubClient: createGithubClient(),
-        skipGhPreflight: true,
-      },
-    )
-
-    expect(executeMock).toHaveBeenCalledTimes(1)
-    expect(result).toEqual({ ok: true })
-  })
-
   it("detects missing CLI and returns cli preflight failure", async () => {
     const cliRunner = {
       run: vi.fn(async () => ({
@@ -238,154 +194,6 @@ describe("executeTask engine wiring", () => {
     )
   })
 
-  it("aggregates composite graphql result using merge strategy", async () => {
-    getOperationCardMock.mockReturnValue({
-      ...compositeCard,
-      composite: {
-        ...compositeCard.composite,
-        output_strategy: "merge",
-      },
-    })
-
-    executeMock.mockImplementation(
-      async (options: { routes: { graphql: () => Promise<unknown> } }) => options.routes.graphql(),
-    )
-
-    const { executeTask } = await import("@core/core/routing/engine.js")
-    const result = await executeTask(
-      {
-        task: "pr.threads.composite",
-        input: { threads: [{ threadId: "T", action: "reply", body: "x" }] },
-      },
-      {
-        githubClient: createGithubClient({
-          query: vi.fn().mockResolvedValue({
-            pr_thread_reply_0: { comment: { id: "c1" } },
-          }),
-        }),
-        githubToken: "token",
-        skipGhPreflight: true,
-      },
-    )
-
-    expect(result.ok).toBe(true)
-    expect(result.data).toEqual({ id: "c1" })
-  })
-
-  it("aggregates composite graphql result using last strategy", async () => {
-    getOperationCardMock.mockReturnValue({
-      ...compositeCard,
-      composite: {
-        ...compositeCard.composite,
-        output_strategy: "last",
-      },
-    })
-
-    executeMock.mockImplementation(
-      async (options: { routes: { graphql: () => Promise<unknown> } }) => options.routes.graphql(),
-    )
-
-    const { executeTask } = await import("@core/core/routing/engine.js")
-    const result = await executeTask(
-      {
-        task: "pr.threads.composite",
-        input: { threads: [{ threadId: "T", action: "reply", body: "x" }] },
-      },
-      {
-        githubClient: createGithubClient({
-          query: vi.fn().mockResolvedValue({
-            pr_thread_reply_0: { comment: { id: "c1" } },
-          }),
-        }),
-        githubToken: "token",
-        skipGhPreflight: true,
-      },
-    )
-
-    expect(result.ok).toBe(true)
-    expect(result.data).toEqual({ id: "c1" })
-  })
-
-  it("normalizes composite graphql mapping failures", async () => {
-    getOperationCardMock.mockReturnValue(compositeCard)
-
-    executeMock.mockImplementation(
-      async (options: { routes: { graphql: () => Promise<unknown> } }) => options.routes.graphql(),
-    )
-
-    const { executeTask } = await import("@core/core/routing/engine.js")
-    const result = await executeTask(
-      {
-        task: "pr.threads.composite",
-        input: { threads: [{ threadId: "T", action: "reply", body: "x" }] },
-      },
-      {
-        githubClient: createGithubClient({
-          query: vi.fn().mockResolvedValue({
-            pr_thread_reply_0: {},
-          }),
-        }),
-        githubToken: "token",
-        skipGhPreflight: true,
-      },
-    )
-
-    expect(result.ok).toBe(false)
-    expect(result.error?.message).toContain("Review thread mutation failed")
-    expect(result.meta.route_used).toBe("graphql")
-  })
-
-  it("returns explicit validation error when an operation alias is missing from batch response", async () => {
-    getOperationCardMock.mockReturnValue(compositeCard)
-
-    executeMock.mockImplementation(
-      async (options: { routes: { graphql: () => Promise<unknown> } }) => options.routes.graphql(),
-    )
-
-    const { executeTask } = await import("@core/core/routing/engine.js")
-    const result = await executeTask(
-      {
-        task: "pr.threads.composite",
-        input: { threads: [{ threadId: "T", action: "reply", body: "x" }] },
-      },
-      {
-        githubClient: createGithubClient({
-          query: vi.fn().mockResolvedValue({}),
-        }),
-        githubToken: "token",
-        skipGhPreflight: true,
-      },
-    )
-
-    expect(result.ok).toBe(false)
-    expect(result.error?.message).toContain('Missing result for alias "pr_thread_reply_0"')
-  })
-
-  it("returns validation error when composite receives unknown action", async () => {
-    getOperationCardMock.mockReturnValue(compositeCard)
-    executeMock.mockImplementation(
-      async (options: { routes: { graphql: () => Promise<unknown> } }) => options.routes.graphql(),
-    )
-
-    const { executeTask } = await import("@core/core/routing/engine.js")
-    const result = await executeTask(
-      {
-        task: "pr.threads.composite",
-        input: { threads: [{ threadId: "T", action: "invalid_action", body: "x" }] },
-      },
-      {
-        githubClient: createGithubClient({
-          query: vi.fn(),
-        }),
-        githubToken: "token",
-        skipGhPreflight: true,
-      },
-    )
-
-    expect(result.ok).toBe(false)
-    expect(result.error?.message).toContain('Invalid action "invalid_action"')
-  })
-
   it("handles cached CLI probe post-processing errors by clearing in-flight entry", async () => {
     const cliRunner = {
       run: vi
@@ -435,36 +243,195 @@ describe("executeTask engine wiring", () => {
 
     nowSpy.mockRestore()
   })
+})
 
-  it("defensively handles cards that lose composite config after routing check", async () => {
-    const proxyCard = {
-      ...compositeCard,
-      get composite() {
-        this.__reads = (this.__reads ?? 0) + 1
-        return this.__reads === 1 ? compositeCard.composite : undefined
-      },
-      __reads: 0,
-    } as OperationCard & { __reads: number }
-    getOperationCardMock.mockReturnValue(proxyCard)
+describe("executeTasks chaining", () => {
+  beforeEach(() => {
+    executeMock.mockReset()
+    getOperationCardMock.mockReset()
+  })
 
-    executeMock.mockImplementation(
-      async (options: { routes: { graphql: () => Promise<unknown> } }) => options.routes.graphql(),
-    )
+  it("1-item chain delegates to executeTask path", async () => {
+    getOperationCardMock.mockReturnValue(baseCard)
+    executeMock.mockResolvedValue({ ok: true, data: { id: "test" } })
 
-    const { executeTask } = await import("@core/core/routing/engine.js")
-    const result = await executeTask(
-      {
-        task: "pr.threads.composite",
-        input: { threads: [{ threadId: "T", action: "reply", body: "x" }] },
-      },
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTasks(
+      [{ task: "repo.view", input: { owner: "acme", name: "modkit" } }],
       {
         githubClient: createGithubClient(),
-        githubToken: "token",
-        skipGhPreflight: true,
       },
     )
 
-    expect(result.ok).toBe(false)
-    expect(result.error?.message).toContain("Card does not have composite config")
+    expect(executeMock).toHaveBeenCalledTimes(1)
+    expect(result.status).toBe("success")
+    expect(result.results).toHaveLength(1)
+    expect(result.results[0]).toMatchObject({ task: "repo.view", ok: true, data: { id: "test" } })
+  })
+
+  it("pre-flight rejects whole chain if card not found", async () => {
+    getOperationCardMock.mockReturnValue(null)
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTasks(
+      [
+        { task: "unknown.task", input: {} },
+        { task: "repo.view", input: {} },
+      ],
+      {
+        githubClient: createGithubClient(),
+      },
+    )
+
+    expect(result.status).toBe("failed")
+    expect(result.results).toHaveLength(2)
+    const firstResult = result.results[0]
+    expect(firstResult).toBeDefined()
+    expect(firstResult?.ok).toBe(false)
+    expect(firstResult?.error?.code).toBe("VALIDATION")
+  })
+
+  it("pre-flight rejects whole chain if card has no graphql config", async () => {
+    const cardWithoutGql = {
+      ...baseCard,
+      routing: { preferred: "cli", fallbacks: [] },
+      graphql: undefined,
+    }
+    getOperationCardMock.mockReturnValue(cardWithoutGql)
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTasks(
+      [
+        { task: "repo.view", input: { owner: "acme", name: "modkit" } },
+        { task: "repo.view", input: { owner: "acme", name: "modkit" } },
+      ],
+      {
+        githubClient: createGithubClient(),
+      },
+    )
+
+    expect(result.status).toBe("failed")
+    expect(result.results.every((r) => !r.ok)).toBe(true)
+  })
+
+  it("2-item pure-mutation chain returns success after batch mutation", async () => {
+    const cardWithGql = {
+      ...baseCard,
+      graphql: {
+        operationName: "IssueCreate",
+        documentPath: "src/gql/operations/issue-create.graphql",
+      },
+    }
+    getOperationCardMock.mockReturnValue(cardWithGql)
+
+    const getLookupDocumentMock = vi.fn()
+    const getMutationDocumentMock = vi.fn()
+    const buildBatchMutationMock = vi.fn()
+    const applyInjectMock = vi.fn()
+
+    vi.doMock("@core/gql/document-registry.js", () => ({
+      getLookupDocument: getLookupDocumentMock,
+      getMutationDocument: getMutationDocumentMock,
+    }))
+
+    vi.doMock("@core/gql/batch.js", () => ({
+      buildBatchMutation: buildBatchMutationMock,
+    }))
+
+    vi.doMock("@core/gql/resolve.js", () => ({
+      applyInject: applyInjectMock,
+    }))
+
+    getMutationDocumentMock.mockReturnValue(
+      `mutation IssueCreate($repositoryId: ID!, $title: String!) { createIssue(input: {repositoryId: $repositoryId, title: $title}) { issue { id } } }`,
+    )
+
+    buildBatchMutationMock.mockReturnValue({
+      document: `mutation BatchComposite(...) { step0: createIssue(...) { issue { id } } step1: createIssue(...) { issue { id } } }`,
+      variables: {
+        step0_repositoryId: "R1",
+        step0_title: "Issue 1",
+        step1_repositoryId: "R2",
+        step1_title: "Issue 2",
+      },
+    })
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTasks(
+      [
+        { task: "issue.create", input: { repositoryId: "R1", title: "Issue 1" } },
+        { task: "issue.create", input: { repositoryId: "R2", title: "Issue 2" } },
+      ],
+      {
+        githubClient: createGithubClient({
+          query: vi
+            .fn()
+            .mockResolvedValue({ step0: { issue: { id: "I1" } }, step1: { issue: { id: "I2" } } }),
+        }),
+      },
+    )
+
+    expect(result.status).toBe("success")
+    expect(result.results).toHaveLength(2)
+    expect(result.results[0]).toMatchObject({ task: "issue.create", ok: true })
+    expect(result.results[1]).toMatchObject({ task: "issue.create", ok: true })
+  })
+
+  it("status is partial when one step fails", async () => {
+    const cardWithGql = {
+      ...baseCard,
+      graphql: {
+        operationName: "IssueCreate",
+        documentPath: "src/gql/operations/issue-create.graphql",
+      },
+    }
+    getOperationCardMock.mockReturnValue(cardWithGql)
+
+    const getMutationDocumentMock = vi.fn()
+    const buildBatchMutationMock = vi.fn()
+
+    vi.doMock("@core/gql/document-registry.js", () => ({
+      getMutationDocument: getMutationDocumentMock,
+    }))
+
+    vi.doMock("@core/gql/batch.js", () => ({
+      buildBatchMutation: buildBatchMutationMock,
+    }))
+
+    getMutationDocumentMock.mockReturnValue(
+      `mutation IssueCreate($repositoryId: ID!, $title: String!) { createIssue(input: {repositoryId: $repositoryId, title: $title}) { issue { id } } }`,
+    )
+
+    buildBatchMutationMock.mockReturnValue({
+      document: `mutation BatchComposite(...) { step0: createIssue(...) { issue { id } } step1: createIssue(...) { issue { id } } }`,
+      variables: {
+        step0_repositoryId: "R1",
+        step0_title: "Issue 1",
+        step1_repositoryId: "R2",
+        step1_title: "Issue 2",
+      },
+    })
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTasks(
+      [
+        { task: "issue.create", input: { repositoryId: "R1", title: "Issue 1" } },
+        { task: "issue.create", input: { repositoryId: "R2", title: "Issue 2" } },
+      ],
+      {
+        githubClient: createGithubClient({
+          query: vi.fn().mockRejectedValueOnce(new Error("second mutation failed")),
+        }),
+      },
+    )
+
+    expect(result.status).toBe("failed")
+    expect(result.results[0]?.ok).toBe(false)
+    expect(result.results[1]?.ok).toBe(false)
   })
 })

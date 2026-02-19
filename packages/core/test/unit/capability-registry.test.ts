@@ -1,4 +1,3 @@
-import { getOperationCard, listOperationCards } from "@core/core/registry/index.js"
 import { capabilityRegistry } from "@core/core/routing/capability-registry.js"
 import { describe, expect, it } from "vitest"
 
@@ -18,16 +17,6 @@ describe("capabilityRegistry", () => {
       {
         task: "repo.issue_types.list",
         defaultRoute: "cli",
-        fallbackRoutes: [],
-      },
-      {
-        task: "issue.triage.composite",
-        defaultRoute: "graphql",
-        fallbackRoutes: [],
-      },
-      {
-        task: "issue.update.composite",
-        defaultRoute: "graphql",
         fallbackRoutes: [],
       },
       {
@@ -122,11 +111,6 @@ describe("capabilityRegistry", () => {
       },
       {
         task: "issue.blocked_by.remove",
-        defaultRoute: "graphql",
-        fallbackRoutes: [],
-      },
-      {
-        task: "pr.threads.composite",
         defaultRoute: "graphql",
         fallbackRoutes: [],
       },
@@ -352,41 +336,5 @@ describe("capabilityRegistry", () => {
         fallbackRoutes: [],
       },
     ])
-  })
-})
-
-describe("composite capability cards", () => {
-  it("loads issue composite cards with composite config", () => {
-    const triageCard = getOperationCard("issue.triage.composite")
-    const updateCard = getOperationCard("issue.update.composite")
-
-    expect(triageCard).toBeDefined()
-    expect(updateCard).toBeDefined()
-    expect(triageCard?.composite).toBeDefined()
-    expect(updateCard?.composite).toBeDefined()
-    expect(triageCard?.routing.preferred).toBe("graphql")
-    expect(updateCard?.routing.preferred).toBe("graphql")
-  })
-
-  it("loads pr.threads.composite card with composite config", () => {
-    const card = getOperationCard("pr.threads.composite")
-    expect(card).toBeDefined()
-    if (!card) return
-    expect(card.composite).toBeDefined()
-    expect(card.routing.preferred).toBe("graphql")
-    if (!card.composite) return
-    expect(card.composite.output_strategy).toBe("array")
-    expect(card.composite.steps.length).toBeGreaterThan(0)
-  })
-
-  it("lists pr.threads.composite before pr.view", () => {
-    const cards = listOperationCards()
-    const triageIdx = cards.findIndex((c) => c.capability_id === "issue.triage.composite")
-    const issueViewIdx = cards.findIndex((c) => c.capability_id === "issue.view")
-    const compositeIdx = cards.findIndex((c) => c.capability_id === "pr.threads.composite")
-    const viewIdx = cards.findIndex((c) => c.capability_id === "pr.view")
-
-    expect(triageIdx).toBeLessThan(issueViewIdx)
-    expect(compositeIdx).toBeLessThan(viewIdx)
   })
 })

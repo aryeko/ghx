@@ -1,8 +1,13 @@
-import type { ResultEnvelope, RouteSource } from "@core/core/contracts/envelope.js"
+import type {
+  ChainResultEnvelope,
+  ChainStatus,
+  ChainStepResult,
+  ResultEnvelope,
+  RouteSource,
+} from "@core/core/contracts/envelope.js"
 import type { TaskRequest } from "@core/core/contracts/task.js"
 import { errorCodes } from "@core/core/errors/codes.js"
 import { mapErrorToCode } from "@core/core/errors/map-error.js"
-import { expandCompositeSteps } from "@core/core/execute/composite.js"
 import { execute } from "@core/core/execute/execute.js"
 import {
   type CliCapabilityId,
@@ -14,12 +19,15 @@ import { createSafeCliCommandRunner } from "@core/core/execution/cli/safe-runner
 import { normalizeError } from "@core/core/execution/normalizer.js"
 import { preflightCheck } from "@core/core/execution/preflight.js"
 import { getOperationCard } from "@core/core/registry/index.js"
+import { validateInput } from "@core/core/registry/schema-validator.js"
 import { routePreferenceOrder } from "@core/core/routing/policy.js"
 import type { RouteReasonCode } from "@core/core/routing/reason-codes.js"
-import { buildBatchMutation } from "@core/gql/batch.js"
+import { buildBatchMutation, buildBatchQuery } from "@core/gql/batch.js"
+import { getLookupDocument, getMutationDocument } from "@core/gql/document-registry.js"
 import type { GithubClient } from "@core/gql/github-client.js"
+import { applyInject, buildMutationVars } from "@core/gql/resolve.js"
 
-type ExecutionDeps = {
+export type ExecutionDeps = {
   githubClient: GithubClient
   githubToken?: string | null
   cliRunner?: CliCommandRunner
@@ -95,92 +103,6 @@ async function detectCliEnvironmentCached(runner: CliCommandRunner): Promise<Cli
 
   cliEnvironmentInFlight.set(runner, probePromise)
   return probePromise
-}
-
-async function executeComposite(
-  card: NonNullable<ReturnType<typeof getOperationCard>>,
-  input: Record<string, unknown>,
-  deps: ExecutionDeps,
-  reason: RouteReasonCode,
-): Promise<ResultEnvelope> {
-  if (!card.composite) {
-    return normalizeError(
-      {
-        code: errorCodes.Validation,
-        message: "Card does not have composite config",
-        retryable: false,
-      },
-      "graphql",
-      { capabilityId: card.capability_id, reason },
-    )
-  }
-
-  try {
-    const expandedOperations = expandCompositeSteps(card.composite, input)
-
-    if (expandedOperations.length === 0) {
-      return normalizeError(
-        {
-          code: errorCodes.Validation,
-          message: "No operations to execute",
-          retryable: false,
-        },
-        "graphql",
-        { capabilityId: card.capability_id, reason },
-      )
-    }
-
-    const batchInput = expandedOperations.map((op) => ({
-      alias: op.alias,
-      mutation: op.mutation,
-      variables: op.variables,
-    }))
-    const { document, variables } = buildBatchMutation(batchInput)
-    const batchResult = await deps.githubClient.query(document, variables)
-
-    const results: unknown[] = []
-    const resultsByAlias = batchResult as Record<string, unknown>
-    for (const op of expandedOperations) {
-      const aliasedResult = resultsByAlias[op.alias]
-      if (aliasedResult === undefined) {
-        throw new Error(`Missing result for alias "${op.alias}" in batch response`)
-      }
-      const mapped = op.mapResponse(aliasedResult)
-      results.push(mapped)
-    }
-
-    let aggregatedData: unknown
-    if (card.composite.output_strategy === "array") {
-      aggregatedData = { results }
-    } else if (card.composite.output_strategy === "merge") {
-      aggregatedData = Object.assign({}, ...results)
-    } else {
-      aggregatedData = results[results.length - 1]
-    }
-
-    return {
-      ok: true,
-      data: aggregatedData,
-      meta: {
-        capability_id: card.capability_id,
-        route_used: "graphql",
-        reason,
-      },
-    }
-  } catch (error) {
-    const code = mapErrorToCode(error)
-    const message = error instanceof Error ? error.message : String(error) || "Unknown error"
-
-    return normalizeError(
-      {
-        code,
-        message,
-        retryable: code !== errorCodes.Validation,
-      },
-      "graphql",
-      { capabilityId: card.capability_id, reason },
-    )
-  }
 }
 
 export async function executeTask(
@@ -259,10 +181,6 @@ export async function executeTask(
     },
     routes: {
       graphql: async () => {
-        if (card.composite) {
-          return executeComposite(card, request.input as Record<string, unknown>, deps, reason)
-        }
-
         return runGraphqlCapability(
           deps.githubClient,
           request.task,
@@ -290,4 +208,267 @@ export async function executeTask(
         ),
     },
   })
+}
+
+export async function executeTasks(
+  requests: Array<{ task: string; input: Record<string, unknown> }>,
+  deps: ExecutionDeps,
+): Promise<ChainResultEnvelope> {
+  // 1-item: delegate to existing routing engine
+  if (requests.length === 1) {
+    const [req] = requests
+    if (req === undefined) {
+      // This should never happen, but TypeScript needs it
+      return {
+        status: "failed",
+        results: [],
+        meta: { route_used: "graphql", total: 0, succeeded: 0, failed: 0 },
+      }
+    }
+
+    const result = await executeTask({ task: req.task, input: req.input }, deps)
+    const step: ChainStepResult = result.ok
+      ? { task: req.task, ok: true, data: result.data }
+      : {
+          task: req.task,
+          ok: false,
+          error: result.error || {
+            code: errorCodes.Unknown,
+            message: "Unknown error",
+            retryable: false,
+          },
+        }
+    return {
+      status: result.ok ? "success" : "failed",
+      results: [step],
+      meta: {
+        route_used: "graphql",
+        total: 1,
+        succeeded: result.ok ? 1 : 0,
+        failed: result.ok ? 0 : 1,
+      },
+    }
+  }
+
+  // Pre-flight: validate all steps
+  const preflightErrors: ChainStepResult[] = []
+  const cards: NonNullable<ReturnType<typeof getOperationCard>>[] = []
+  for (const req of requests) {
+    try {
+      const card = getOperationCard(req.task)
+      if (!card) {
+        throw new Error(`Invalid task: ${req.task}`)
+      }
+
+      const inputValidation = validateInput(card.input_schema, req.input)
+      if (!inputValidation.ok) {
+        const details = inputValidation.errors
+          .map((e) => `${e.instancePath || "root"}: ${e.message}`)
+          .join("; ")
+        throw new Error(`Input validation failed: ${details}`)
+      }
+
+      if (!card.graphql) {
+        throw new Error(`capability '${req.task}' has no GraphQL route and cannot be chained`)
+      }
+
+      cards.push(card)
+    } catch (err) {
+      preflightErrors.push({
+        task: req.task,
+        ok: false,
+        error: {
+          code: mapErrorToCode(err),
+          message: err instanceof Error ? err.message : String(err),
+          retryable: false,
+        },
+      })
+    }
+  }
+
+  if (preflightErrors.length > 0) {
+    return {
+      status: "failed",
+      results: requests.map(
+        (req) =>
+          preflightErrors.find((e) => e.task === req.task) ?? {
+            task: req.task,
+            ok: false,
+            error: { code: errorCodes.Unknown, message: "pre-flight failed", retryable: false },
+          },
+      ),
+      meta: {
+        route_used: "graphql",
+        total: requests.length,
+        succeeded: 0,
+        failed: requests.length,
+      },
+    }
+  }
+
+  // Phase 1: batch resolution queries (steps with card.graphql.resolution)
+  const lookupInputs: Array<{
+    alias: string
+    query: string
+    variables: Record<string, unknown>
+    stepIndex: number
+  }> = []
+  for (let i = 0; i < requests.length; i += 1) {
+    const card = cards[i]
+    const req = requests[i]
+    if (card === undefined || req === undefined) continue
+    if (!card.graphql?.resolution) continue
+
+    const { lookup } = card.graphql.resolution
+    const lookupVars: Record<string, unknown> = {}
+    for (const [lookupVar, inputField] of Object.entries(lookup.vars)) {
+      lookupVars[lookupVar] = req.input[inputField]
+    }
+    lookupInputs.push({
+      alias: `step${i}`,
+      query: getLookupDocument(lookup.operationName),
+      variables: lookupVars,
+      stepIndex: i,
+    })
+  }
+
+  const lookupResults: Record<number, unknown> = {}
+  if (lookupInputs.length > 0) {
+    try {
+      const { document, variables } = buildBatchQuery(
+        lookupInputs.map(({ alias, query, variables }) => ({ alias, query, variables })),
+      )
+      const rawResult = await deps.githubClient.query(document, variables)
+      // Un-alias results: BatchChain result has keys like "step0", "step2", etc.
+      for (const { alias, stepIndex } of lookupInputs) {
+        lookupResults[stepIndex] = (rawResult as Record<string, unknown>)[alias]
+      }
+    } catch (err) {
+      // Phase 1 failure: mark all steps as failed
+      const errorMsg = err instanceof Error ? err.message : String(err)
+      return {
+        status: "failed",
+        results: requests.map((req) => ({
+          task: req.task,
+          ok: false,
+          error: {
+            code: mapErrorToCode(err),
+            message: `Phase 1 (resolution) failed: ${errorMsg}`,
+            retryable: true,
+          },
+        })),
+        meta: {
+          route_used: "graphql",
+          total: requests.length,
+          succeeded: 0,
+          failed: requests.length,
+        },
+      }
+    }
+  }
+
+  // Phase 2: batch mutations
+  const mutationInputs: Array<{
+    alias: string
+    mutation: string
+    variables: Record<string, unknown>
+    stepIndex: number
+  }> = []
+  const stepPreResults: Record<number, ChainStepResult> = {}
+
+  for (let i = 0; i < requests.length; i += 1) {
+    const card = cards[i]
+    const req = requests[i]
+    if (card === undefined || req === undefined) continue
+
+    try {
+      const resolved: Record<string, unknown> = {}
+      if (card.graphql?.resolution && lookupResults[i] !== undefined) {
+        for (const spec of card.graphql.resolution.inject) {
+          Object.assign(resolved, applyInject(spec, lookupResults[i], req.input))
+        }
+      }
+
+      if (card.graphql === undefined) {
+        throw new Error("card.graphql is unexpectedly undefined")
+      }
+
+      const mutDoc = getMutationDocument(card.graphql.operationName)
+      const mutVars = buildMutationVars(mutDoc, req.input, resolved)
+      mutationInputs.push({
+        alias: `step${i}`,
+        mutation: mutDoc,
+        variables: mutVars,
+        stepIndex: i,
+      })
+    } catch (err) {
+      stepPreResults[i] = {
+        task: req.task,
+        ok: false,
+        error: {
+          code: mapErrorToCode(err),
+          message: err instanceof Error ? err.message : String(err),
+          retryable: false,
+        },
+      }
+    }
+  }
+
+  let rawMutResult: Record<string, unknown> = {}
+  if (mutationInputs.length > 0) {
+    try {
+      const { document, variables } = buildBatchMutation(
+        mutationInputs.map(({ alias, mutation, variables }) => ({ alias, mutation, variables })),
+      )
+      rawMutResult = (await deps.githubClient.query(document, variables)) as Record<string, unknown>
+    } catch (err) {
+      // Whole batch mutation failed — mark all pending steps as failed
+      for (const { stepIndex } of mutationInputs) {
+        const reqAtIndex = requests[stepIndex]
+        if (reqAtIndex !== undefined) {
+          stepPreResults[stepIndex] = {
+            task: reqAtIndex.task,
+            ok: false,
+            error: {
+              code: mapErrorToCode(err),
+              message: err instanceof Error ? err.message : String(err),
+              retryable: true,
+            },
+          }
+        }
+      }
+    }
+  }
+
+  // Assemble results
+  const results: ChainStepResult[] = requests.map((req, stepIndex) => {
+    const preResult = stepPreResults[stepIndex]
+    if (preResult !== undefined) return preResult
+
+    const mutInput = mutationInputs.find((m) => m.stepIndex === stepIndex)
+    if (mutInput === undefined) {
+      return {
+        task: req.task,
+        ok: false,
+        error: { code: errorCodes.Unknown, message: "step skipped", retryable: false },
+      }
+    }
+    const data = rawMutResult[mutInput.alias]
+    return { task: req.task, ok: true, data }
+  })
+
+  const succeeded = results.filter((r) => r.ok).length
+  const status: ChainStatus =
+    succeeded === results.length ? "success" : succeeded === 0 ? "failed" : "partial"
+
+  return {
+    status,
+    results,
+    meta: {
+      route_used: "graphql",
+      total: results.length,
+      succeeded,
+      failed: results.length - succeeded,
+    },
+  }
 }
