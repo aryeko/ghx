@@ -1269,6 +1269,20 @@ describe("pr domain handlers – additional coverage", () => {
       expect(result.ok).toBe(false)
       expect(result.error?.code).toBeDefined()
     })
+
+    it("returns error when runner throws", async () => {
+      const runner = {
+        run: vi.fn().mockRejectedValue(new Error("timeout")),
+      } as unknown as CliCommandRunner
+
+      const result = await h("pr.assignees.add")(
+        runner,
+        { owner: "o", name: "r", prNumber: 1, assignees: ["alice"] },
+        undefined,
+      )
+      expect(result.ok).toBe(false)
+      expect(result.error?.message).toContain("timeout")
+    })
   })
 
   describe("pr.assignees.remove", () => {
@@ -1310,6 +1324,20 @@ describe("pr domain handlers – additional coverage", () => {
       )
       expect(result.ok).toBe(false)
       expect(result.error?.code).toBeDefined()
+    })
+
+    it("returns error when runner throws", async () => {
+      const runner = {
+        run: vi.fn().mockRejectedValue(new Error("timeout")),
+      } as unknown as CliCommandRunner
+
+      const result = await h("pr.assignees.remove")(
+        runner,
+        { owner: "o", name: "r", prNumber: 1, assignees: ["alice"] },
+        undefined,
+      )
+      expect(result.ok).toBe(false)
+      expect(result.error?.message).toContain("timeout")
     })
   })
 

@@ -52,6 +52,16 @@ describe("pr.threads.reply builder", () => {
     const result = replyBuilder.mapResponse(raw)
     expect(result).toEqual({ id: "c1", commentId: "c1", commentUrl: "" })
   })
+
+  it("mapResponse() includes commentUrl when comment.url is a string", () => {
+    const raw = { comment: { id: "c2", url: "https://github.com/owner/repo/pull/1#comment-42" } }
+    const result = replyBuilder.mapResponse(raw)
+    expect(result).toEqual({
+      id: "c2",
+      commentId: "c2",
+      commentUrl: "https://github.com/owner/repo/pull/1#comment-42",
+    })
+  })
 })
 
 describe("pr.threads.resolve builder", () => {

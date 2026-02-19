@@ -934,5 +934,92 @@ describe("project-v2 domain handlers", () => {
       expect(items).toHaveLength(2)
       expect(items[0]).toMatchObject({ id: null, contentType: null })
     })
+
+    describe("project_v2.items.issue.remove", () => {
+      it("returns success with itemId and removed: true", async () => {
+        const result = await h("project_v2.items.issue.remove")(
+          mockRunner(0, "{}"),
+          { projectId: "PVT_1", itemId: "PVT_I_abc" },
+          undefined,
+        )
+        expect(result.ok).toBe(true)
+        expect(result.data).toMatchObject({ itemId: "PVT_I_abc", removed: true })
+        expect(result.meta.capability_id).toBe("project_v2.items.issue.remove")
+        expect(result.meta.route_used).toBe("cli")
+      })
+
+      it("verifies correct gh args are used", async () => {
+        const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "{}", stderr: "" })
+        const runner = {
+          run: runSpy,
+        } as unknown as import("@core/core/execution/adapters/cli-adapter.js").CliCommandRunner
+
+        await h("project_v2.items.issue.remove")(
+          runner,
+          { projectId: "PVT_1", itemId: "PVT_I_abc" },
+          undefined,
+        )
+
+        expect(runSpy).toHaveBeenCalledWith(
+          "gh",
+          expect.arrayContaining([
+            "project",
+            "item-delete",
+            "--project-id",
+            "PVT_1",
+            "--id",
+            "PVT_I_abc",
+            "--format",
+            "json",
+          ]),
+          expect.any(Number),
+        )
+      })
+
+      it("returns error for missing projectId", async () => {
+        const result = await h("project_v2.items.issue.remove")(
+          mockRunner(0, "{}"),
+          { projectId: "", itemId: "PVT_I_abc" },
+          undefined,
+        )
+        expect(result.ok).toBe(false)
+        expect(result.error?.message).toContain("projectId")
+      })
+
+      it("returns error for missing itemId", async () => {
+        const result = await h("project_v2.items.issue.remove")(
+          mockRunner(0, "{}"),
+          { projectId: "PVT_1", itemId: "" },
+          undefined,
+        )
+        expect(result.ok).toBe(false)
+        expect(result.error?.message).toContain("itemId")
+      })
+
+      it("returns error on non-zero exit code", async () => {
+        const result = await h("project_v2.items.issue.remove")(
+          mockRunner(1, "", "item not found"),
+          { projectId: "PVT_1", itemId: "PVT_I_abc" },
+          undefined,
+        )
+        expect(result.ok).toBe(false)
+        expect(result.error?.code).toBeDefined()
+        expect(result.meta.capability_id).toBe("project_v2.items.issue.remove")
+      })
+
+      it("returns error when runner throws", async () => {
+        const runner = {
+          run: vi.fn().mockRejectedValue(new Error("runner failure")),
+        } as unknown as import("@core/core/execution/adapters/cli-adapter.js").CliCommandRunner
+
+        const result = await h("project_v2.items.issue.remove")(
+          runner,
+          { projectId: "PVT_1", itemId: "PVT_I_abc" },
+          undefined,
+        )
+        expect(result.ok).toBe(false)
+        expect(result.error?.message).toContain("runner failure")
+      })
+    })
   })
 })
