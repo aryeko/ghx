@@ -180,6 +180,18 @@ const status: ChainStatus =
 
 Delete `composite-capabilities-gql-integration.md`. Create new `minor` changeset — `executeTasks` is additive; composite removal is not breaking since composites were never published (current released version: `0.1.2`).
 
-## Design Invariant
+## Validation
 
-Every operation card must have a `graphql` config. Cards without one cannot participate in chains and will be caught at runtime. This should be enforced at card authoring time (lint/schema check) going forward.
+### Runtime (this PR)
+
+`executeTasks` checks `card.graphql` exists for each step before issuing any HTTP call. If a step has no graphql config, the entire chain is rejected pre-flight with a per-step error:
+
+```
+"capability 'pr.checks.rerun_failed' has no GraphQL route and cannot be chained"
+```
+
+Single-step `executeTask` is unaffected — CLI-routed caps continue to work via the full routing engine.
+
+### Schema enforcement (follow-up PR)
+
+39 of ~60 current cards lack a `graphql` config. Adding graphql support to all caps and making `graphql` required in `operation-card-schema.ts` is scoped to a follow-up PR. At that point, every cap becomes chainable and the runtime pre-flight becomes a pure safety net.
