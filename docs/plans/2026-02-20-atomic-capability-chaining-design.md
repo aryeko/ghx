@@ -10,20 +10,69 @@ The current execution model supports one capability per tool call. Agents that n
 
 ## Goal
 
-Allow callers to specify an arbitrary list of `[capabilityId, input]` pairs in a single tool call. Steps execute concurrently (via `Promise.all`) using the existing GraphQL handler registry, reducing agent round-trips without requiring single-document batching.
+Allow callers to specify an arbitrary list of `[capabilityId, input]` pairs in a single tool call. Steps execute in a two-phase batch — resolution queries batched together (≤ 1 HTTP call), then mutations batched together (≤ 1 HTTP call) — reducing agent round-trips to at most 2 HTTP calls for any chain, regardless of length.
 
 ## Decisions
 
 | Question | Decision |
 |---|---|
-| Dynamic or card-based? | Dynamic runtime API — no card needed |
+| Dynamic or card-based? | Dynamic runtime API — no card needed at call site |
 | Input data flow | All inputs specified upfront; no inter-step data flow |
-| Error model | Partial results — per-step ok/error; chain continues regardless |
+| Error model | Pre-flight: whole chain rejected on any validation failure. Runtime: partial results — per-step ok/error |
 | Routes supported | GraphQL only — CLI doesn't support chaining |
 | Composite cards | Deleted — never published (0.1.2 is last release) |
 | API surface | `executeTasks` (primary) + `executeTask` as 1-item wrapper |
-| Execution model | Concurrent `Promise.all` via existing `getGraphqlHandler` — no single-document batching |
+| Resolution config | Declared in YAML operation cards via `graphql.resolution` — no separate TypeScript registry |
+| Execution model | Two-phase batch: Phase 1 = batch resolution queries (≤ 1 call), Phase 2 = batch mutations (≤ 1 call) |
+| Single-step behaviour | 1-item `executeTasks` → falls through to existing routing engine; existing handlers unchanged |
 | CLI interface | `ghx chain --steps '<json>' \| --steps -` |
+
+## Card-Defined Resolution
+
+Multi-step capabilities (those that currently do an internal ID lookup before their mutation) declare their resolution requirements in `card.graphql.resolution`. This schema is added to existing cards; capabilities that don't need resolution have no `resolution` field.
+
+### Resolution schema (YAML)
+
+```yaml
+graphql:
+  operationName: IssueLabelsUpdate
+  documentPath: src/gql/operations/issue-labels-update.graphql
+  resolution:
+    lookup:
+      operationName: IssueLabelsLookup
+      documentPath: src/gql/operations/issue-labels-lookup.graphql
+      vars:
+        issueId: issueId            # lookupVar: inputField (same-name mapping)
+    inject:
+      - target: labelIds            # mutation variable to populate
+        source: map_array
+        from_input: labels          # input field — array of human-readable names
+        nodes_path: node.repository.labels.nodes   # dot-path into lookup result
+        match_field: name           # field in each node matched against input value
+        extract_field: id           # field in each node extracted as ID
+```
+
+### Two inject sources
+
+| source | description | required fields |
+|---|---|---|
+| `scalar` | Single value extracted from lookup result | `path` (dot-notation into result) |
+| `map_array` | Array of names mapped to IDs via a lookup table | `from_input`, `nodes_path`, `match_field`, `extract_field` |
+
+### Cards requiring resolution
+
+| Card | Lookup operation | Inject source | Target var |
+|---|---|---|---|
+| `issue.labels.update` | `IssueLabelsLookup(issueId)` | `map_array` | `labelIds` |
+| `issue.labels.add` | `IssueLabelsLookup(issueId)` | `map_array` | `labelIds` |
+| `issue.assignees.update` | `IssueAssigneesLookup(issueId)` | `map_array` | `assigneeIds` |
+| `issue.milestone.set` | `IssueMilestoneLookup(issueId, milestoneNumber)` | `scalar` | `milestoneId` |
+| `issue.parent.remove` | `IssueParentLookup(issueId)` | `scalar` | `parentIssueId` |
+| `issue.create` | `IssueCreateRepositoryId(owner, name)` | `scalar` | `repositoryId` |
+
+### Variable pass-through
+
+Mutation variables not covered by `inject` entries are populated by matching the input field with the same name (e.g., mutation var `issueId` ← `input.issueId`). Input fields that don't correspond to a mutation variable are silently ignored (they may have been consumed by `resolution.lookup.vars`).
 
 ## API Contract
 
@@ -51,6 +100,36 @@ interface ChainResultEnvelope {
 }
 ```
 
+### Resolution types (TypeScript, internal)
+
+```ts
+interface ScalarInject {
+  target: string
+  source: "scalar"
+  path: string           // dot-notation into lookup result
+}
+
+interface MapArrayInject {
+  target: string
+  source: "map_array"
+  from_input: string
+  nodes_path: string
+  match_field: string
+  extract_field: string
+}
+
+type InjectSpec = ScalarInject | MapArrayInject
+
+interface ResolutionConfig {
+  lookup: {
+    operationName: string
+    documentPath: string
+    vars: Record<string, string>   // lookupVar: inputField
+  }
+  inject: InjectSpec[]
+}
+```
+
 ### `executeTasks` — new primary function
 
 ```ts
@@ -61,7 +140,7 @@ executeTasks(
 ```
 
 - **1 item:** full routing engine with CLI fallback (identical to current `executeTask` behaviour)
-- **2+ items:** GraphQL-only; pre-flight rejects if any step has no `card.graphql`
+- **2+ items:** GraphQL-only two-phase batch; pre-flight rejects whole chain if any step has no `card.graphql`
 
 ### `executeTask` — thin wrapper (unchanged signature)
 
@@ -101,40 +180,43 @@ ghx chain --steps -           # read from stdin
 
 ## Execution Engine
 
-### Step 1 — Card resolution & input validation
+### Pre-flight (2+ items only)
 
 For each `{ task, input }`:
 1. `getOperationCard(task)` — reject whole chain if not found
 2. Validate `input` against `card.input_schema` (AJV)
 3. Assert `card.graphql` exists — all chainable caps must have a GQL route
 
-Pre-flight failures (missing card, schema error, no graphql config) reject the **whole chain** before any HTTP call — no partial execution for caller errors.
+Pre-flight failures reject the entire chain before any HTTP call.
 
-### Step 2 — Concurrent dispatch via handler registry
+### Phase 1 — Resolution batch query (≤ 1 HTTP call)
 
-Each step dispatches through the existing `getGraphqlHandler` registry (in `gql/capability-registry.ts`), which maps capability ID → typed `GraphqlHandler` function:
+Collect all steps that have `card.graphql.resolution`. For each:
+1. Build lookup variables by mapping `resolution.lookup.vars` (`{ lookupVar: inputField }`) against `step.input`
+2. Load the lookup document string from `LOOKUP_DOCUMENTS[resolution.lookup.operationName]` (a thin TypeScript registry mapping operation name → pre-imported document string)
+3. Accumulate into `buildBatchQuery` call
 
-```ts
-const stepPromises = requests.map(async ({ task, input }, i) => {
-  const handler = getGraphqlHandler(task)
-  try {
-    const data = await handler(input, deps.githubClient)
-    return { task, ok: true, data } satisfies ChainStepResult
-  } catch (err) {
-    return { task, ok: false, error: mapError(err) } satisfies ChainStepResult
-  }
-})
+Execute the combined batch query once. Parse aliased results back per step.
 
-const results = await Promise.all(stepPromises)
-```
+Also batch any pure-query steps (capabilities where the GQL operation is a `query`, not a `mutation`) into this same Phase 1 call. Pure-query steps complete in Phase 1.
 
-This approach:
-- Naturally handles capabilities that do multi-step internal HTTP calls (label lookup → update, repo ID lookup → create, etc.)
-- Requires no single-document GQL batching or variable mapping from cards
-- Executes all steps concurrently, independent of whether individual steps are queries or mutations
-- Reuses the same execution path as `runGraphqlCapability`
+**HTTP calls in Phase 1:** 0 (no resolution or query steps) or 1.
 
-### Step 3 — Result assembly
+### Phase 2 — Mutation batch (≤ 1 HTTP call)
+
+For each mutation step:
+1. Start with input fields that match mutation variable names (pass-through)
+2. Apply `inject` specs from `card.graphql.resolution` using Phase 1 results:
+   - `scalar`: extract value at dot-path from aliased lookup result
+   - `map_array`: build name→ID map from lookup nodes; resolve `input[from_input]` array to IDs
+3. Load mutation document string from `MUTATION_DOCUMENTS[card.graphql.operationName]`
+4. Accumulate into `buildBatchMutation` call
+
+Execute combined batch mutation once. Map aliased results back per step.
+
+**HTTP calls in Phase 2:** 0 (no mutation steps) or 1.
+
+### Result assembly
 
 ```ts
 const succeeded = results.filter(r => r.ok).length
@@ -149,13 +231,25 @@ return {
 }
 ```
 
+### HTTP call summary
+
+| Chain composition | Phase 1 | Phase 2 | Total |
+|---|---|---|---|
+| Pure queries only | 1 | 0 | 1 |
+| Mutations, no resolution | 0 | 1 | 1 |
+| Mutations with resolution | 1 | 1 | 2 |
+| Mixed queries + mutations | 1 | 1 | 2 |
+
+### `buildBatchQuery` — new function in `gql/batch.ts`
+
+Mirrors `buildBatchMutation` but emits `query BatchChain(...)` instead of `mutation BatchComposite(...)`. `parseMutation` is generalised to `parseOperation` to handle both keywords.
+
 ## Migration
 
 ### Deletions
 
 | What | Location |
 |---|---|
-| `OPERATION_BUILDERS` registry + all builder functions | `gql/builders.ts` → delete file |
 | `expandCompositeSteps` | `core/execute/composite.ts` → delete file |
 | `executeComposite` | `core/routing/engine.ts` |
 | `CompositeConfig`, `CompositeStep` types | `core/registry/types.ts` |
@@ -170,6 +264,11 @@ return {
 
 | What | Location |
 |---|---|
+| `graphql.resolution` field on `OperationCard` | `core/registry/types.ts` |
+| `resolution` property in card JSON schema | `core/registry/operation-card-schema.ts` |
+| `resolution:` blocks in 6 capability cards | `core/registry/cards/*.yaml` |
+| `buildBatchQuery`, `parseOperation` | `gql/batch.ts` |
+| `LOOKUP_DOCUMENTS`, `MUTATION_DOCUMENTS` registries | `gql/document-registry.ts` (new file) |
 | `executeTasks` | `core/routing/engine.ts` |
 | `ChainResultEnvelope`, `ChainStepResult`, `ChainStatus` | `core/contracts/envelope.ts` |
 | `ghx chain` subcommand | `cli/commands/chain.ts` |
@@ -184,14 +283,12 @@ Delete `composite-capabilities-gql-integration.md`. Create new `minor` changeset
 
 ### Runtime (this PR)
 
-`executeTasks` checks `card.graphql` exists for each step before issuing any HTTP call. If a step has no graphql config, the entire chain is rejected pre-flight with a per-step error:
+Pre-flight rejects any step without `card.graphql` before issuing any HTTP call:
 
 ```
 "capability 'pr.checks.rerun_failed' has no GraphQL route and cannot be chained"
 ```
 
-Single-step `executeTask` is unaffected — CLI-routed caps continue to work via the full routing engine.
-
 ### Schema enforcement (follow-up PR)
 
-39 of ~60 current cards lack a `graphql` config. Adding graphql support to all caps and making `graphql` required in `operation-card-schema.ts` is scoped to a follow-up PR. At that point, every cap becomes chainable and the runtime pre-flight becomes a pure safety net.
+39 of ~60 current cards lack a `graphql` config. Adding graphql support to all caps and making `graphql` required in `operation-card-schema.ts` is scoped to a follow-up PR.
