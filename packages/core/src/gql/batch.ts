@@ -30,9 +30,17 @@ export function buildBatchMutation(operations: BatchOperationInput[]): BatchMuta
   const allVarDeclarations: string[] = []
   const allSelections: string[] = []
   const mergedVariables: GraphqlVariables = {}
+  const allFragments = new Map<string, string>()
 
   for (const op of operations) {
     const parsed = parseOperation(op.mutation)
+
+    // Collect unique fragment definitions
+    for (const [name, text] of parsed.fragments) {
+      if (!allFragments.has(name)) {
+        allFragments.set(name, text)
+      }
+    }
 
     // Prefix variable declarations
     for (const varDecl of parsed.variableDeclarations) {
@@ -61,13 +69,18 @@ export function buildBatchMutation(operations: BatchOperationInput[]): BatchMuta
     }
   }
 
-  const document = `mutation BatchComposite(${allVarDeclarations.join(", ")}) {\n${allSelections.join("\n")}\n}`
+  const fragmentBlock = allFragments.size > 0 ? "\n" + [...allFragments.values()].join("\n") : ""
+  const document = `mutation BatchComposite(${allVarDeclarations.join(", ")}) {\n${allSelections.join("\n")}\n}${fragmentBlock}`
 
   return { document, variables: mergedVariables }
 }
 
 type VariableDeclaration = { name: string; type: string }
-type ParsedOperation = { variableDeclarations: VariableDeclaration[]; body: string }
+type ParsedOperation = {
+  variableDeclarations: VariableDeclaration[]
+  body: string
+  fragments: Map<string, string>
+}
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -120,7 +133,19 @@ function parseOperation(document: string): ParsedOperation {
   }
 
   const body = document.slice(bodyStart, bodyEnd).trim()
-  return { variableDeclarations, body }
+
+  // Extract fragment definitions that appear after the operation's closing brace
+  const fragments = new Map<string, string>()
+  const remainder = document.slice(bodyEnd + 1)
+  const fragMatches = remainder.matchAll(/fragment\s+(\w+)\s+on\s+\w+\s*\{[^}]*\}/g)
+  for (const match of fragMatches) {
+    const fragName = match[1]
+    if (fragName && !fragments.has(fragName)) {
+      fragments.set(fragName, match[0].trim())
+    }
+  }
+
+  return { variableDeclarations, body, fragments }
 }
 
 export function buildBatchQuery(operations: BatchQueryInput[]): BatchQueryResult {

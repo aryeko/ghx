@@ -33,6 +33,9 @@ graphql:
       vars:
         issueId: issueId
     inject:
+      - target: labelableId
+        source: input
+        from_input: issueId
       - target: labelIds
         source: map_array
         from_input: labels

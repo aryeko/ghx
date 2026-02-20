@@ -23,7 +23,13 @@ export interface MapArrayInject {
   extract_field: string
 }
 
-export type InjectSpec = ScalarInject | MapArrayInject
+export interface InputPassthroughInject {
+  target: string
+  source: "input"
+  from_input: string
+}
+
+export type InjectSpec = ScalarInject | MapArrayInject | InputPassthroughInject
 
 export interface ResolutionConfig {
   lookup: {

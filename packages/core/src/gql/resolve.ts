@@ -24,7 +24,20 @@ export function applyInject(
     return { [spec.target]: value }
   }
 
+  if (spec.source === "input") {
+    const value = input[spec.from_input]
+    if (value === undefined || value === null) {
+      throw new Error(
+        `Resolution failed for '${spec.target}': no value at input field '${spec.from_input}'`,
+      )
+    }
+    return { [spec.target]: value }
+  }
+
   // map_array
+  if (spec.source !== "map_array") {
+    throw new Error(`Unknown inject source: '${(spec as InjectSpec).source}'`)
+  }
   const nodes = getAtPath(lookupResult, spec.nodes_path)
   if (!Array.isArray(nodes)) {
     throw new Error(

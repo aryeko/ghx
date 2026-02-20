@@ -47,6 +47,25 @@ describe("applyInject", () => {
     expect(applyInject(spec, lookupResult, input)).toEqual({ labelIds: ["L_2", "L_1"] })
   })
 
+  it("input: passes value from input field directly", () => {
+    const spec: InjectSpec = {
+      target: "labelableId",
+      source: "input",
+      from_input: "issueId",
+    }
+    const input = { issueId: "I_123" }
+    expect(applyInject(spec, {}, input)).toEqual({ labelableId: "I_123" })
+  })
+
+  it("input: throws when input field is missing", () => {
+    const spec: InjectSpec = {
+      target: "labelableId",
+      source: "input",
+      from_input: "issueId",
+    }
+    expect(() => applyInject(spec, {}, {})).toThrow("labelableId")
+  })
+
   it("map_array: throws when name not found", () => {
     const lookupResult = { node: { repository: { labels: { nodes: [] } } } }
     const spec: InjectSpec = {

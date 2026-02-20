@@ -70,6 +70,44 @@ describe("buildBatchMutation", () => {
     })
   })
 
+  it("preserves fragment definitions appended to mutation document", () => {
+    const mutWithFragment = `mutation CreateIssue($repositoryId: ID!, $title: String!) {
+  createIssue(input: {repositoryId: $repositoryId, title: $title}) {
+    issue {
+      ...IssueCoreFields
+    }
+  }
+}
+fragment IssueCoreFields on Issue {
+  id
+  number
+  title
+}`
+    const result = buildBatchMutation([
+      { alias: "step0", mutation: mutWithFragment, variables: { repositoryId: "R_1", title: "T" } },
+    ])
+    expect(result.document).toContain("...IssueCoreFields")
+    expect(result.document).toContain("fragment IssueCoreFields on Issue")
+  })
+
+  it("deduplicates shared fragment definitions across operations", () => {
+    const mutWithFragment = `mutation CreateIssue($repositoryId: ID!, $title: String!) {
+  createIssue(input: {repositoryId: $repositoryId, title: $title}) {
+    issue { ...IssueCoreFields }
+  }
+}
+fragment IssueCoreFields on Issue {
+  id
+  number
+}`
+    const result = buildBatchMutation([
+      { alias: "a", mutation: mutWithFragment, variables: { repositoryId: "R_1", title: "A" } },
+      { alias: "b", mutation: mutWithFragment, variables: { repositoryId: "R_2", title: "B" } },
+    ])
+    const count = (result.document.match(/fragment IssueCoreFields/g) ?? []).length
+    expect(count).toBe(1)
+  })
+
   it("throws on empty array", () => {
     expect(() => buildBatchMutation([])).toThrow()
   })
