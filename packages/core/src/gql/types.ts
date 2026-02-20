@@ -61,7 +61,7 @@ export type IssueAssigneesUpdateInput = {
 
 export type IssueMilestoneSetInput = {
   issueId: string
-  milestoneNumber: number | null
+  milestoneNumber: number
 }
 
 export type IssueCommentCreateInput = {
