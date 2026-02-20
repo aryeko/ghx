@@ -621,6 +621,7 @@ describe("executeTasks — mixed resolution chain", () => {
 
     expect(buildBatchQueryMock).toHaveBeenCalled()
     expect(buildBatchMutationMock).toHaveBeenCalled()
+    expect(queryMock).toHaveBeenCalledTimes(2)
     expect(result.status).toBe("success")
     expect(result.results[0]).toMatchObject({ task: "issue.close", ok: true })
     expect(result.results[1]).toMatchObject({ task: "issue.labels.set", ok: true })

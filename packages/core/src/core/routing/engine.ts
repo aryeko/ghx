@@ -105,6 +105,10 @@ async function detectCliEnvironmentCached(runner: CliCommandRunner): Promise<Cli
   return probePromise
 }
 
+function isRetryableCode(code: string): boolean {
+  return code === errorCodes.RateLimit || code === errorCodes.Network || code === errorCodes.Server
+}
+
 export async function executeTask(
   request: TaskRequest,
   deps: ExecutionDeps,
@@ -360,15 +364,16 @@ export async function executeTasks(
     } catch (err) {
       // Phase 1 failure: mark all steps as failed
       const errorMsg = err instanceof Error ? err.message : String(err)
+      const code = mapErrorToCode(err)
       return {
         status: "failed",
         results: requests.map((req) => ({
           task: req.task,
           ok: false,
           error: {
-            code: mapErrorToCode(err),
+            code,
             message: `Phase 1 (resolution) failed: ${errorMsg}`,
-            retryable: true,
+            retryable: isRetryableCode(code),
           },
         })),
         meta: {
@@ -437,6 +442,7 @@ export async function executeTasks(
       rawMutResult = (await deps.githubClient.query(document, variables)) as Record<string, unknown>
     } catch (err) {
       // Whole batch mutation failed — mark all pending steps as failed
+      const code = mapErrorToCode(err)
       for (const { stepIndex } of mutationInputs) {
         const reqAtIndex = requests[stepIndex]
         if (reqAtIndex !== undefined) {
@@ -444,9 +450,9 @@ export async function executeTasks(
             task: reqAtIndex.task,
             ok: false,
             error: {
-              code: mapErrorToCode(err),
+              code,
               message: err instanceof Error ? err.message : String(err),
-              retryable: true,
+              retryable: isRetryableCode(code),
             },
           }
         }
@@ -465,6 +471,17 @@ export async function executeTasks(
         task: req.task,
         ok: false,
         error: { code: errorCodes.Unknown, message: "step skipped", retryable: false },
+      }
+    }
+    if (!(mutInput.alias in rawMutResult)) {
+      return {
+        task: req.task,
+        ok: false,
+        error: {
+          code: errorCodes.Unknown,
+          message: `missing mutation result for alias ${mutInput.alias}`,
+          retryable: false,
+        },
       }
     }
     const data = rawMutResult[mutInput.alias]
