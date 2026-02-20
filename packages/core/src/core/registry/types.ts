@@ -8,12 +8,42 @@ export interface SuitabilityRule {
   reason: string
 }
 
+/**
+ * Extracts a single value from a Phase 1 lookup result using a dot-notation path.
+ *
+ * Use when the mutation needs one node ID that can be resolved via a lookup query.
+ *
+ * @example
+ * ```yaml
+ * inject:
+ *   - target: pullRequestId
+ *     source: scalar
+ *     path: repository.pullRequest.id
+ * ```
+ */
 export interface ScalarInject {
   target: string
   source: "scalar"
   path: string
 }
 
+/**
+ * Resolves a list of human-readable names to node IDs using a Phase 1 lookup result.
+ *
+ * Matching is case-insensitive. Use when the mutation needs an array of IDs
+ * (e.g. label IDs, assignee IDs) that must be looked up by name.
+ *
+ * @example
+ * ```yaml
+ * inject:
+ *   - target: labelIds
+ *     source: map_array
+ *     from_input: labels           # input field containing list of names
+ *     nodes_path: repository.labels.nodes
+ *     match_field: name            # field on each node to match against input names
+ *     extract_field: id            # field on each node to extract as the resolved value
+ * ```
+ */
 export interface MapArrayInject {
   target: string
   source: "map_array"
@@ -23,6 +53,20 @@ export interface MapArrayInject {
   extract_field: string
 }
 
+/**
+ * Passes a value directly from the step's `input` into a mutation variable.
+ *
+ * No Phase 1 lookup is required. Use when the caller already has the required node ID
+ * (e.g. the agent passes `issueId` directly), avoiding an unnecessary resolution round-trip.
+ *
+ * @example
+ * ```yaml
+ * inject:
+ *   - target: labelableId
+ *     source: input
+ *     from_input: issueId          # the input field whose value is passed through
+ * ```
+ */
 export interface InputPassthroughInject {
   target: string
   source: "input"

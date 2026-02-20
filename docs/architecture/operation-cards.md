@@ -136,10 +136,45 @@ graphql:
 
 ### Inject Source Variants
 
-| `source` | Description | Required fields |
-|----------|-------------|-----------------|
-| `scalar` | Extracts a single value from the lookup result at `path` | `path`, `target` |
-| `map_array` | Maps an array of names to IDs using the lookup result | `from_input`, `nodes_path`, `match_field`, `extract_field`, `target` |
+Three `source` types control how Phase 1 lookup results (or step inputs) map into Phase 2 mutation variables:
+
+**`scalar`** — Extract a single value from the Phase 1 result at a dot-notation path.
+
+```yaml
+inject:
+  - target: pullRequestId     # mutation variable name
+    source: scalar
+    path: repository.pullRequest.id   # dot-path into Phase 1 response
+```
+
+**`map_array`** — Resolve a list of human-readable names to node IDs. Matching is case-insensitive.
+
+```yaml
+inject:
+  - target: labelIds          # mutation variable name
+    source: map_array
+    from_input: labels        # input field containing the list of names
+    nodes_path: repository.labels.nodes   # path to array in Phase 1 response
+    match_field: name         # field on each node to match against input names
+    extract_field: id         # field on each node to extract as the resolved ID
+```
+
+**`input`** — Pass a value directly from the step's `input` into the mutation variable, with no Phase 1 lookup. Use this when the caller already has the required node ID.
+
+```yaml
+inject:
+  - target: labelableId       # mutation variable name
+    source: input
+    from_input: issueId       # the input field whose value is passed through
+```
+
+> **Tip:** Prefer `source: input` when the agent already has the required ID — it skips the Phase 1 resolution query entirely.
+
+| `source` | Phase 1 required | Description |
+|----------|-----------------|-------------|
+| `scalar` | Yes | Extracts a single value at `path` from the lookup result |
+| `map_array` | Yes | Maps an array of names to IDs using the lookup result |
+| `input` | No | Passes a value directly from step input (no lookup needed) |
 
 **Example — `issue.assignees.update.yaml`** (uses `map_array`):
 
