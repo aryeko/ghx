@@ -20,6 +20,8 @@ import { IssueUpdateDocument } from "./operations/issue-update.generated.js"
 import { PrCommentReplyDocument } from "./operations/pr-comment-reply.generated.js"
 import { PrCommentResolveDocument } from "./operations/pr-comment-resolve.generated.js"
 import { PrCommentUnresolveDocument } from "./operations/pr-comment-unresolve.generated.js"
+import { PrNodeIdDocument } from "./operations/pr-node-id.generated.js"
+import { PrReviewSubmitDocument } from "./operations/pr-review-submit.generated.js"
 
 // Resolution lookup queries (Phase 1)
 const LOOKUP_DOCUMENTS: Record<string, string> = {
@@ -28,6 +30,7 @@ const LOOKUP_DOCUMENTS: Record<string, string> = {
   IssueMilestoneLookup: IssueMilestoneLookupDocument,
   IssueParentLookup: IssueParentLookupDocument,
   IssueCreateRepositoryId: IssueCreateRepositoryIdDocument,
+  PrNodeId: PrNodeIdDocument,
 }
 
 // Mutation documents for chaining (Phase 2)
@@ -49,6 +52,7 @@ const MUTATION_DOCUMENTS: Record<string, string> = {
   PrCommentReply: PrCommentReplyDocument,
   PrCommentResolve: PrCommentResolveDocument,
   PrCommentUnresolve: PrCommentUnresolveDocument,
+  PrReviewSubmit: PrReviewSubmitDocument,
 }
 
 export function getLookupDocument(operationName: string): string {

@@ -39,3 +39,15 @@ routing:
 graphql:
   operationName: PrReviewSubmit
   documentPath: src/gql/operations/pr-review-submit.graphql
+  resolution:
+    lookup:
+      operationName: PrNodeId
+      documentPath: src/gql/operations/pr-node-id.graphql
+      vars:
+        owner: owner
+        name: name
+        prNumber: prNumber
+    inject:
+      - target: pullRequestId
+        source: scalar
+        path: repository.pullRequest.id
