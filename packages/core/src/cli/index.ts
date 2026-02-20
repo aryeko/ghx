@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url"
 
 import { capabilitiesExplainCommand } from "./commands/capabilities-explain.js"
 import { capabilitiesListCommand } from "./commands/capabilities-list.js"
+import { chainCommand } from "./commands/chain.js"
 import { runCommand } from "./commands/run.js"
 import { setupCommand } from "./commands/setup.js"
 
@@ -12,6 +13,7 @@ function usage(): string {
   return [
     "Usage:",
     "  ghx run <task> --input '<json>' | --input - [--check-gh-preflight]",
+    "  ghx chain --steps '<json-array>' | --steps - [--check-gh-preflight]",
     "  ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]",
     "  ghx capabilities list",
     "  ghx capabilities explain <capability_id>",
@@ -28,6 +30,10 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
 
   if (command === "run") {
     return runCommand(rest)
+  }
+
+  if (command === "chain") {
+    return chainCommand(rest)
   }
 
   if (command === "setup") {

@@ -32,7 +32,7 @@ npx @ghx-dev/core <command>
 ghx capabilities list
 ```
 
-Returns a JSON array of all 69 capabilities with descriptions:
+Returns a JSON array of all 66 capabilities with descriptions:
 
 ```json
 [
@@ -175,9 +175,50 @@ if ! echo "$RESULT" | jq '.ok' | grep -q true; then
 fi
 ```
 
-### Batch operations
+### Atomic chains
+
+For mutations that must share a single HTTP round-trip, use `ghx chain`. All steps are
+validated before any HTTP call is made, and the entire chain executes in at most 2 network
+round-trips regardless of chain length.
+
+**Inline JSON:**
 
 ```bash
+ghx chain --steps '[
+  {"task":"issue.labels.set","input":{"issueId":"I_kwDOOx...","labels":["bug"]}},
+  {"task":"issue.assignees.set","input":{"issueId":"I_kwDOOx...","assignees":["octocat"]}}
+]'
+```
+
+**Stdin variant:**
+
+```bash
+echo '[
+  {"task":"issue.labels.set","input":{"issueId":"I_kwDOOx...","labels":["bug"]}},
+  {"task":"issue.assignees.set","input":{"issueId":"I_kwDOOx...","assignees":["octocat"]}}
+]' | ghx chain --steps -
+```
+
+Output:
+
+```json
+{
+  "status": "success",
+  "results": [
+    {"task": "issue.labels.set", "ok": true, "data": {"id": "I_kwDOOx...", "labels": ["bug"]}},
+    {"task": "issue.assignees.set", "ok": true, "data": {"id": "I_kwDOOx...", "assignees": ["octocat"]}}
+  ],
+  "meta": {"route_used": "graphql", "total": 2, "succeeded": 2, "failed": 0}
+}
+```
+
+Exit code is `0` when `status` is `"success"` or `"partial"`, `1` when `"failed"`.
+
+> **Note:** For independent read-only operations (queries), the shell `for` loop or
+> `Promise.all()` pattern is still appropriate — atomicity is only needed for mutations.
+
+```bash
+# Parallel read-only queries (no atomicity needed)
 for owner_repo in "aryeko/ghx" "owner2/repo2"; do
   owner=$(echo $owner_repo | cut -d/ -f1)
   repo=$(echo $owner_repo | cut -d/ -f2)

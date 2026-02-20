@@ -16,6 +16,7 @@ npm install @ghx-dev/core
 import {
   createGithubClientFromToken,
   executeTask,
+  executeTasks,
 } from "@ghx-dev/core"
 
 const token = process.env.GITHUB_TOKEN!
@@ -186,7 +187,40 @@ See [Custom GraphQL Transport](custom-graphql-transport.md) for more examples.
 
 ## Common Patterns
 
-### Execute Multiple Tasks
+### Atomic chain (mutations)
+
+For mutations that must share a single HTTP round-trip — e.g., updating labels and assignees
+on the same issue — use `executeTasks()`. All steps are pre-flight validated before any HTTP
+call is made, and the chain executes in at most 2 network round-trips.
+
+> **For mutations that must share a single HTTP round-trip, use `executeTasks`.**
+
+```ts
+import { executeTasks } from "@ghx-dev/core"
+
+const chain = await executeTasks(
+  [
+    { task: "issue.labels.set", input: { issueId: "I_kwDOOx...", labels: ["bug"] } },
+    { task: "issue.assignees.set", input: { issueId: "I_kwDOOx...", assignees: ["octocat"] } },
+  ],
+  { githubClient, githubToken: token },
+)
+
+if (chain.status === "success") {
+  console.log(`All ${chain.meta.succeeded} steps succeeded`)
+} else if (chain.status === "partial") {
+  console.log(`${chain.meta.succeeded}/${chain.meta.total} steps succeeded`)
+  chain.results.filter((r) => !r.ok).forEach((r) => {
+    console.error(`Step ${r.task} failed: ${r.error?.message}`)
+  })
+} else {
+  console.error("Chain failed:", chain.results[0]?.error?.message)
+}
+```
+
+### Parallel queries
+
+For independent read-only operations (queries) that don't need atomicity, use `Promise.all`:
 
 ```ts
 const tasks = [
@@ -295,7 +329,8 @@ if (!result.ok) {
 
 ### Root Exports (`@ghx-dev/core`)
 
-- `executeTask(request, deps)` — Execute a capability
+- `executeTask(request, deps)` — Execute a single capability
+- `executeTasks(requests, deps)` — Execute a chain of capabilities atomically (≤2 HTTP round-trips)
 - `createGithubClientFromToken(token)` — Create a client from a token
 - `createGithubClient(transport)` — Create a client from a custom transport
 - `listOperationCards()` — Get all capability cards
@@ -305,7 +340,10 @@ if (!result.ok) {
 **Types:**
 
 - `TaskRequest` — Capability request shape
-- `ResultEnvelope<TData>` — Response shape
+- `ResultEnvelope<TData>` — Response shape for a single capability
+- `ChainResultEnvelope` — Response shape for `executeTasks()`
+- `ChainStepResult` — Per-step result in a chain
+- `ChainStatus` — `"success"` | `"partial"` | `"failed"`
 - `ResultError` — Error shape
 - `ResultMeta` — Metadata shape
 - `RouteSource` — Route type: "cli" | "graphql" | "rest"

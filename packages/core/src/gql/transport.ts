@@ -80,7 +80,7 @@ export function createGraphqlRequestClient(transport: GraphqlTransport): GraphQL
 
 const DEFAULT_GRAPHQL_URL = "https://api.github.com/graphql"
 
-function resolveGraphqlUrl(): string {
+export function resolveGraphqlUrl(): string {
   if (process.env.GITHUB_GRAPHQL_URL) {
     return process.env.GITHUB_GRAPHQL_URL
   }

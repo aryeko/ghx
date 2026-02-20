@@ -9,10 +9,8 @@ Three adapters handle different GitHub interaction modes:
 | Adapter | Coverage | Route Name | Status | Purpose |
 |---------|----------|-----------|--------|---------|
 | **CLI Adapter** | 66 atomic | `cli` | Active | Execute via `gh` command-line tool |
-| **GraphQL Adapter** | ~28 atomic + 3 composite | `graphql` | Active | Execute via GitHub GraphQL API |
+| **GraphQL Adapter** | ~28 atomic | `graphql` | Active | Execute via GitHub GraphQL API |
 | **REST Adapter** | None | `rest` | Stub | Planned for future expansion |
-
-> **Composite capabilities** (`issue.triage.composite`, `issue.update.composite`, `pr.threads.composite`) use a dedicated batch GraphQL path and do not have CLI routes.
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#9C27B0', 'primaryTextColor': '#fff', 'primaryBorderColor': '#7B1FA2', 'lineColor': '#666', 'secondaryColor': '#CE93D8', 'tertiaryColor': '#E1BEE7'}}}%%
@@ -70,7 +68,7 @@ The CLI adapter executes capabilities through the GitHub command-line tool (`gh`
 
 ### Features
 
-- **Full atomic coverage**: All 66 atomic capabilities have CLI routes defined (composite capabilities use GraphQL only)
+- **Full atomic coverage**: All 66 capabilities have CLI routes defined where applicable
 - **Safe spawning**: Uses `spawn()` with `shell: false` — no shell interpretation
 - **Timeout enforcement**: Per-command timeout (default 30s)
 - **Output limits**: Bounded stdout/stderr size (default 10 MB)
@@ -120,7 +118,7 @@ The GraphQL adapter executes capabilities through GitHub's GraphQL API.
 ### Features
 
 - **Typed queries**: Generated operation SDKs with type safety
-- **Selective coverage**: ~28 atomic + 3 composite capabilities support GraphQL routes (typically read-heavy or batch operations)
+- **Selective coverage**: ~28 capabilities support GraphQL routes (typically read-heavy or mutation operations requiring typed queries)
 - **Authentication**: Requires `GITHUB_TOKEN` environment variable
 - **Error classification**: Maps GraphQL errors (auth, rate limit, not found, etc.) to normalized error codes
 - **Field mapping**: Adapts GitHub's response shape to capability output schema

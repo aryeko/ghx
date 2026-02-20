@@ -29,7 +29,7 @@ ghx provides three tools for agents:
 
 ### 1. `listCapabilities()`
 
-Discover all 69 capabilities available.
+Discover all 66 capabilities available.
 
 **Usage:**
 
@@ -77,7 +77,14 @@ const explanation = explainCapability("repo.view")
 > "Before executing a capability, call `explainCapability(capability_id)` to see
 > required inputs and output fields. This prevents errors and reduces token waste."
 
-### 3. `createExecuteTool(deps)`
+### 3. `executeTasks(requests, deps)`
+
+Execute a chain of mutations atomically. For multi-step mutations that must share a single
+HTTP round-trip (e.g., update labels and assignees together), use `executeTasks` instead of
+multiple `executeTask` calls. See [Chaining Capabilities](chaining-capabilities.md) for full
+details and examples.
+
+### 4. `createExecuteTool(deps)`
 
 Create a tool that executes capabilities with proper error handling and result
 envelope parsing.
@@ -89,6 +96,7 @@ import {
   createExecuteTool,
   createGithubClientFromToken,
   executeTask,
+  executeTasks,
 } from "@ghx-dev/core"
 
 const token = process.env.GITHUB_TOKEN!
@@ -161,8 +169,7 @@ console.log(`Executed via ${route} (reason: ${reason})`)
 
 ### Agent Tool Registration
 
-In your agent framework (Claude Code, custom LLM, etc.), register the three
-tools:
+In your agent framework (Claude Code, custom LLM, etc.), register the tools:
 
 ```ts
 const tools = {

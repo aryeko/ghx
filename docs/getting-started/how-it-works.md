@@ -254,6 +254,42 @@ sequenceDiagram
 This flow ensures **consistency**: The envelope shape is stable because ghx enforces it,
 regardless of what the underlying API returns.
 
+## Chaining Flow (Multiple Mutations)
+
+When you need to execute multiple mutations atomically, `executeTasks()` uses a two-phase
+approach that stays within ≤2 HTTP round-trips:
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#4A90D9', 'primaryTextColor': '#fff', 'primaryBorderColor': '#2E6BA4', 'lineColor': '#666', 'fontSize': '13px'}}}%%
+sequenceDiagram
+  participant Caller
+  participant executeTasks
+  participant GitHub as GitHub GraphQL API
+
+  Caller->>executeTasks: [{task, input}, ...]
+  Note over executeTasks: Pre-flight: validate all steps<br/>(whole chain rejected if any step is invalid)
+  executeTasks->>GitHub: query BatchChain(...) { step0: ..., step1: ... }
+  Note right of GitHub: Phase 1 — resolve names to IDs<br/>(labels, assignees, milestones)
+  GitHub-->>executeTasks: Phase 1 results (IDs resolved)
+  executeTasks->>GitHub: mutation BatchComposite(...) { step0: ..., step1: ... }
+  Note right of GitHub: Phase 2 — execute all mutations
+  GitHub-->>executeTasks: Phase 2 results
+  executeTasks-->>Caller: ChainResultEnvelope { status, results[], meta }
+```
+
+**Key properties:**
+
+- **Pre-flight validation** — All steps are validated before any HTTP call; invalid input
+  rejects the entire chain immediately
+- **Phase 1 (optional)** — A single batch GraphQL query resolves human-readable names (e.g.,
+  label names → label IDs) for all steps that need it
+- **Phase 2** — A single batch GraphQL mutation executes all steps
+- **`ChainStatus`** — `"success"` (all steps OK), `"partial"` (some failed), or `"failed"`
+  (none succeeded)
+
+See [Chaining Capabilities](../guides/chaining-capabilities.md) for supported capabilities,
+error handling, and full examples.
+
 ## Why Three Routes?
 
 ghx supports three execution routes because each is optimal for different scenarios:

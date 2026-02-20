@@ -2,18 +2,6 @@ import { validateOperationCard } from "@core/core/registry/index.js"
 import { describe, expect, it } from "vitest"
 
 describe("validateOperationCard", () => {
-  const validBaseCard = {
-    capability_id: "test.card",
-    version: "1.0.0",
-    description: "Test",
-    input_schema: { type: "object" },
-    output_schema: { type: "object" },
-    routing: {
-      preferred: "graphql" as const,
-      fallbacks: [] as readonly string[],
-    },
-  }
-
   it("rejects malformed operation cards", () => {
     expect(validateOperationCard(null).ok).toBe(false)
     expect(
@@ -53,28 +41,25 @@ describe("validateOperationCard", () => {
 
     expect(result.ok).toBe(true)
   })
+})
 
-  it("rejects card with invalid output_strategy", () => {
-    const card = {
-      ...validBaseCard,
-      composite: {
-        steps: [{ capability_id: "pr.threads.reply", params_map: {} }],
-        output_strategy: "invalid",
-      },
-    }
-    const result = validateOperationCard(card)
-    expect(result.ok).toBe(false)
+describe("card resolution blocks", () => {
+  it("issue.labels.set has resolution config", async () => {
+    const { getOperationCard } = await import("@core/core/registry/index.js")
+    const card = getOperationCard("issue.labels.set")
+    expect(card).toBeDefined()
+    if (!card) return
+    expect(card.graphql?.resolution).toBeDefined()
+    expect(card.graphql?.resolution?.lookup.operationName).toBe("IssueLabelsLookup")
+    expect(card.graphql?.resolution?.inject[0]?.source).toBe("map_array")
   })
 
-  it("rejects composite with empty steps array", () => {
-    const card = {
-      ...validBaseCard,
-      composite: {
-        steps: [],
-        output_strategy: "array",
-      },
-    }
-    const result = validateOperationCard(card)
-    expect(result.ok).toBe(false)
+  it("issue.milestone.set has scalar resolution", async () => {
+    const { getOperationCard } = await import("@core/core/registry/index.js")
+    const card = getOperationCard("issue.milestone.set")
+    expect(card).toBeDefined()
+    if (!card) return
+    expect(card.graphql?.resolution).toBeDefined()
+    expect(card.graphql?.resolution?.inject[0]?.source).toBe("scalar")
   })
 })
