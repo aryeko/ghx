@@ -251,9 +251,11 @@ export async function executeTasks(
   }
 
   // Pre-flight: validate all steps
-  const preflightErrors: ChainStepResult[] = []
+  const preflightErrorByIndex = new Map<number, ChainStepResult>()
   const cards: NonNullable<ReturnType<typeof getOperationCard>>[] = []
-  for (const req of requests) {
+  for (let i = 0; i < requests.length; i += 1) {
+    const req = requests[i]
+    if (req === undefined) continue
     try {
       const card = getOperationCard(req.task)
       if (!card) {
@@ -272,9 +274,21 @@ export async function executeTasks(
         throw new Error(`capability '${req.task}' has no GraphQL route and cannot be chained`)
       }
 
+      // Validate that all resolution lookup vars are present in input
+      if (card.graphql.resolution) {
+        const { lookup } = card.graphql.resolution
+        for (const [, inputField] of Object.entries(lookup.vars)) {
+          if (req.input[inputField] === undefined) {
+            throw new Error(
+              `Resolution pre-flight failed for '${req.task}': lookup var '${inputField}' is missing from input`,
+            )
+          }
+        }
+      }
+
       cards.push(card)
     } catch (err) {
-      preflightErrors.push({
+      preflightErrorByIndex.set(i, {
         task: req.task,
         ok: false,
         error: {
@@ -286,12 +300,12 @@ export async function executeTasks(
     }
   }
 
-  if (preflightErrors.length > 0) {
+  if (preflightErrorByIndex.size > 0) {
     return {
       status: "failed",
       results: requests.map(
-        (req) =>
-          preflightErrors.find((e) => e.task === req.task) ?? {
+        (req, i) =>
+          preflightErrorByIndex.get(i) ?? {
             task: req.task,
             ok: false,
             error: { code: errorCodes.Unknown, message: "pre-flight failed", retryable: false },

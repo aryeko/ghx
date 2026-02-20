@@ -317,6 +317,75 @@ describe("executeTasks chaining", () => {
     expect(result.results.every((r) => !r.ok)).toBe(true)
   })
 
+  it("pre-flight correctly attributes errors when same capability appears twice and only one fails", async () => {
+    // step 0: card not found (preflight fails); step 1: valid card
+    getOperationCardMock.mockReturnValueOnce(undefined).mockReturnValueOnce({
+      ...baseCard,
+      graphql: { operationName: "IssueClose", documentPath: "x" },
+    })
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTasks(
+      [
+        { task: "issue.close", input: { issueId: "I1" } },
+        { task: "issue.close", input: { issueId: "I2" } },
+      ],
+      { githubClient: createGithubClient() },
+    )
+
+    expect(result.status).toBe("failed")
+    const r0 = result.results[0]
+    const r1 = result.results[1]
+    // step 0 gets the real "Invalid task" error
+    expect(r0?.ok).toBe(false)
+    expect(r0?.error?.message).toContain("Invalid task")
+    // step 1 should NOT inherit the same error — it gets the generic "pre-flight failed" fallback
+    expect(r1?.ok).toBe(false)
+    expect(r1?.error?.message).not.toContain("Invalid task")
+  })
+
+  it("pre-flight rejects step when resolution lookup var is missing from input", async () => {
+    const cardNoResolution = {
+      ...baseCard,
+      graphql: { operationName: "IssueClose", documentPath: "x" },
+    }
+    const cardWithResolution = {
+      ...baseCard,
+      graphql: {
+        operationName: "IssueLabelsSet",
+        documentPath: "x",
+        resolution: {
+          lookup: {
+            operationName: "IssueLabelsLookup",
+            documentPath: "y",
+            vars: { owner: "owner", name: "name" },
+          },
+          inject: [],
+        },
+      },
+    }
+    getOperationCardMock
+      .mockReturnValueOnce(cardNoResolution)
+      .mockReturnValueOnce(cardWithResolution)
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTasks(
+      // step 1 is missing "name" from input
+      [
+        { task: "issue.close", input: { issueId: "I1" } },
+        { task: "issue.labels.set", input: { owner: "acme" } },
+      ],
+      { githubClient: createGithubClient() },
+    )
+
+    expect(result.status).toBe("failed")
+    const r1 = result.results[1]
+    expect(r1?.ok).toBe(false)
+    expect(r1?.error?.message).toMatch(/name/)
+  })
+
   it("2-item pure-mutation chain returns success after batch mutation", async () => {
     const cardWithGql = {
       ...baseCard,
