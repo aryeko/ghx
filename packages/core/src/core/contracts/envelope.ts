@@ -57,7 +57,7 @@ export interface ChainResultEnvelope {
   status: ChainStatus
   results: ChainStepResult[]
   meta: {
-    route_used: "graphql"
+    route_used: RouteSource
     total: number
     succeeded: number
     failed: number

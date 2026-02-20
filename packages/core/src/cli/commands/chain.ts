@@ -1,8 +1,9 @@
 import { executeTasks } from "@core/core/routing/engine.js"
 import { createGithubClient } from "@core/gql/github-client.js"
+import { resolveGraphqlUrl } from "@core/gql/transport.js"
 import { readStdin } from "./run.js"
 
-const GITHUB_GRAPHQL_ENDPOINT = "https://api.github.com/graphql"
+const GITHUB_GRAPHQL_ENDPOINT = resolveGraphqlUrl()
 
 interface ParsedChainFlags {
   stepsSource: "stdin" | { raw: string }

@@ -165,11 +165,10 @@ The actual YAML card files are `issue.labels.set.yaml` and `issue.assignees.set.
 **Step 1: Mass replace (run from worktree root)**
 
 ```bash
-# Replace in all docs except plans/
+# Replace in all docs except plans/ (cross-platform: perl works on macOS and Linux)
 find docs/ -name "*.md" ! -path "docs/plans/*" \
-  -exec sed -i '' \
-    -e 's/issue\.labels\.update/issue.labels.set/g' \
-    -e 's/issue\.assignees\.update/issue.assignees.set/g' \
+  -exec perl -pi -e \
+    's/issue\.labels\.update/issue.labels.set/g; s/issue\.assignees\.update/issue.assignees.set/g' \
     {} +
 ```
 

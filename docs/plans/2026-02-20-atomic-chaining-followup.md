@@ -128,7 +128,9 @@ chains against the same repo in rapid succession.
 request. This is about cross-call caching, not intra-chain batching.
 
 **Scope:** small addition to `engine.ts` or a dedicated `resolution-cache.ts`
-module. Use same WeakMap + TTL pattern as the existing CLI environment cache.
+module. Use a `Map<string, { value: unknown; expiresAt: number }>` keyed by
+`${operationName}:${stableStringify(variables)}` with explicit TTL eviction.
+(Note: `WeakMap` cannot be used here — its keys must be objects, not strings.)
 
 ---
 

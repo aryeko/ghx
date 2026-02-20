@@ -246,7 +246,7 @@ export async function executeTasks(
       status: result.ok ? "success" : "failed",
       results: [step],
       meta: {
-        route_used: "graphql",
+        route_used: result.meta?.route_used ?? "graphql",
         total: 1,
         succeeded: result.ok ? 1 : 0,
         failed: result.ok ? 0 : 1,
@@ -471,6 +471,17 @@ export async function executeTasks(
         task: req.task,
         ok: false,
         error: { code: errorCodes.Unknown, message: "step skipped", retryable: false },
+      }
+    }
+    if (rawMutResult == null || typeof rawMutResult !== "object") {
+      return {
+        task: req.task,
+        ok: false,
+        error: {
+          code: errorCodes.Unknown,
+          message: `unexpected mutation response shape for alias ${mutInput.alias}`,
+          retryable: false,
+        },
       }
     }
     if (!(mutInput.alias in rawMutResult)) {
