@@ -87,6 +87,7 @@ export type IssueAssigneesLookupQuery = {
           __typename?: "Repository"
           assignableUsers: {
             __typename?: "UserConnection"
+            pageInfo: { __typename?: "PageInfo"; hasNextPage: boolean }
             nodes?: Array<{ __typename?: "User"; id: string; login: string } | null> | null
           }
         }
@@ -287,6 +288,9 @@ export const IssueAssigneesLookupDocument = `
     ... on Issue {
       repository {
         assignableUsers(first: 100) {
+          pageInfo {
+            hasNextPage
+          }
           nodes {
             id
             login

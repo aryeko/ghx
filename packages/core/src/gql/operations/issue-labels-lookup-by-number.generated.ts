@@ -15,6 +15,7 @@ export type IssueLabelsLookupByNumberQuery = {
     issue?: { __typename?: "Issue"; id: string } | null
     labels?: {
       __typename?: "LabelConnection"
+      pageInfo: { __typename?: "PageInfo"; hasNextPage: boolean }
       nodes?: Array<{ __typename?: "Label"; id: string; name: string } | null> | null
     } | null
   } | null
@@ -27,6 +28,9 @@ export const IssueLabelsLookupByNumberDocument = `
       id
     }
     labels(first: 100) {
+      pageInfo {
+        hasNextPage
+      }
       nodes {
         id
         name
