@@ -97,10 +97,10 @@ Several useful mutations were CLI-only and could not be chained. Status:
 
 | Capability | Status | Notes |
 |---|---|---|
-| `issue.labels.remove` | ⬜ Pending | Needs resolution lookup for label IDs |
+| `issue.labels.remove` | ⬜ Pending | Mutation file and codegen exist; GraphQL handler not registered in engine (CLI-only route active). Remaining: register GraphQL handler in card routing or engine. |
 | `issue.assignees.add` | ✅ Done (PR #60) | Full GraphQL handler registered |
 | `issue.assignees.remove` | ✅ Done (PR #60) | Full GraphQL handler registered |
-| `issue.milestone.clear` | ⬜ Pending | Needs resolution lookup for milestone ID |
+| `issue.milestone.clear` | ⬜ Pending | Needs: GraphQL mutation file, codegen, card YAML update, and handler registration. null_literal inject type now supports the variable injection. |
 
 **Remaining work:** `issue.labels.remove` and `issue.milestone.clear` still need
 GraphQL mutation files, codegen, card YAML updates, and handler registration.

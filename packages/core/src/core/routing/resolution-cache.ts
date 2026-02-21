@@ -35,11 +35,11 @@ export function createResolutionCache(opts?: ResolutionCacheOptions): Resolution
       if (!store.has(key) && store.size >= maxEntries) {
         // Sweep expired entries before falling back to FIFO eviction
         const now = Date.now()
+        const expired: string[] = []
         for (const [k, entry] of store) {
-          if (now > entry.expiresAt) {
-            store.delete(k)
-          }
+          if (now > entry.expiresAt) expired.push(k)
         }
+        for (const k of expired) store.delete(k)
         // FIFO eviction if still at capacity after sweep
         if (store.size >= maxEntries) {
           const oldest = store.keys().next()

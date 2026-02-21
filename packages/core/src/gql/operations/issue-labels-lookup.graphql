@@ -3,6 +3,7 @@ query IssueLabelsLookup($issueId: ID!) {
     ... on Issue {
       repository {
         labels(first: 100) {
+          pageInfo { hasNextPage }
           nodes {
             id
             name

@@ -3,6 +3,7 @@ query IssueAssigneesLookup($issueId: ID!) {
     ... on Issue {
       repository {
         assignableUsers(first: 100) {
+          pageInfo { hasNextPage }
           nodes {
             id
             login

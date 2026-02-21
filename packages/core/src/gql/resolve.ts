@@ -49,6 +49,14 @@ export function applyInject(
     )
   }
 
+  // Guard: if the lookup connection reported more pages, our 100-item cap may truncate results
+  const pageInfoPath = spec.nodes_path.replace(/\.nodes$/, ".pageInfo.hasNextPage")
+  if (getAtPath(lookupResult, pageInfoPath) === true) {
+    throw new Error(
+      `Resolution failed for '${spec.target}': lookup returned 100 items but more exist — request may be truncated. Narrow the scope or use a repository with fewer items.`,
+    )
+  }
+
   const idByName = new Map<string, unknown>()
   for (const node of nodes) {
     if (node && typeof node === "object") {

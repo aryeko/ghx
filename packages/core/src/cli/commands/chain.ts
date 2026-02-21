@@ -1,4 +1,5 @@
 import { executeTasks } from "@core/core/routing/engine.js"
+import { createResolutionCache } from "@core/core/routing/resolution-cache.js"
 import { createGithubClient } from "@core/gql/github-client.js"
 import type { GraphqlError, GraphqlRawResult } from "@core/gql/transport.js"
 import { resolveGraphqlUrl } from "@core/gql/transport.js"
@@ -168,10 +169,12 @@ export async function chainCommand(argv: string[] = []): Promise<number> {
       },
     })
 
+    const resolutionCache = createResolutionCache()
     const result = await executeTasks(steps, {
       githubClient,
       githubToken,
       skipGhPreflight,
+      resolutionCache,
     })
 
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)

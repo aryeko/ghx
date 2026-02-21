@@ -4,6 +4,7 @@ query IssueAssigneesLookupByNumber($owner: String!, $name: String!, $issueNumber
       id
     }
     assignableUsers(first: 100) {
+      pageInfo { hasNextPage }
       nodes {
         id
         login

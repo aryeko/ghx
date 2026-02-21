@@ -4,6 +4,7 @@ query IssueLabelsLookupByNumber($owner: String!, $name: String!, $issueNumber: I
       id
     }
     labels(first: 100) {
+      pageInfo { hasNextPage }
       nodes {
         id
         name

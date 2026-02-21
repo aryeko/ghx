@@ -859,6 +859,65 @@ describe("executeTasks — partial error handling", () => {
     expect(result.results[1]?.error?.message).toBe("Internal server error")
   })
 
+  it("Phase 2 numeric path[0]: non-string path element → all steps failed", async () => {
+    vi.resetModules()
+    vi.doMock("@core/core/execute/execute.js", () => ({
+      execute: (...args: unknown[]) => executeMock(...args),
+    }))
+    vi.doMock("@core/core/registry/index.js", () => ({
+      getOperationCard: (...args: unknown[]) => getOperationCardMock(...args),
+    }))
+
+    const cardWithGql = {
+      ...baseCard,
+      graphql: {
+        operationName: "IssueCreate",
+        documentPath: "src/gql/operations/issue-create.graphql",
+      },
+    }
+    getOperationCardMock.mockReturnValue(cardWithGql)
+
+    vi.doMock("@core/gql/document-registry.js", () => ({
+      getLookupDocument: vi.fn(),
+      getMutationDocument: vi
+        .fn()
+        .mockReturnValue(
+          `mutation IssueCreate($repositoryId: ID!, $title: String!) { createIssue(input: {repositoryId: $repositoryId, title: $title}) { issue { id } } }`,
+        ),
+    }))
+    vi.doMock("@core/gql/batch.js", () => ({
+      buildBatchMutation: vi.fn().mockReturnValue({
+        document: `mutation Batch { step0: createIssue { issue { id } } step1: createIssue { issue { id } } }`,
+        variables: {},
+      }),
+      buildBatchQuery: vi.fn(),
+    }))
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTasks(
+      [
+        { task: "issue.create", input: { repositoryId: "R1", title: "Issue 1" } },
+        { task: "issue.create", input: { repositoryId: "R2", title: "Issue 2" } },
+      ],
+      {
+        githubClient: createGithubClient({
+          queryRaw: vi.fn().mockResolvedValue({
+            data: {},
+            errors: [{ message: "Some error", path: [0, "createIssue"] }],
+          }),
+        }),
+      },
+    )
+
+    // path[0] is a number, not a string alias, so attribution fails → all steps failed
+    expect(result.status).toBe("failed")
+    expect(result.results[0]?.ok).toBe(false)
+    expect(result.results[0]?.error?.message).toBe("Some error")
+    expect(result.results[1]?.ok).toBe(false)
+    expect(result.results[1]?.error?.message).toBe("Some error")
+  })
+
   it("Phase 2 missing alias: step result absent from response → error for that step", async () => {
     vi.resetModules()
     vi.doMock("@core/core/execute/execute.js", () => ({
