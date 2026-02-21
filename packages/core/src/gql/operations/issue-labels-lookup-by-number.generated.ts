@@ -15,7 +15,7 @@ export type IssueLabelsLookupByNumberQuery = {
     issue?: { __typename?: "Issue"; id: string } | null
     labels?: {
       __typename?: "LabelConnection"
-      pageInfo: { __typename?: "PageInfo"; hasNextPage: boolean }
+      pageInfo: { __typename?: "PageInfo"; hasNextPage: boolean; endCursor?: string | null }
       nodes?: Array<{ __typename?: "Label"; id: string; name: string } | null> | null
     } | null
   } | null
@@ -30,6 +30,7 @@ export const IssueLabelsLookupByNumberDocument = `
     labels(first: 100) {
       pageInfo {
         hasNextPage
+        endCursor
       }
       nodes {
         id

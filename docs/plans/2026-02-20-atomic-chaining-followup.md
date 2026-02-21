@@ -102,8 +102,9 @@ Several useful mutations were CLI-only and could not be chained. Status:
 | `issue.assignees.remove` | ✅ Done (PR #60) | Full GraphQL handler registered |
 | `issue.milestone.clear` | ⬜ Pending | Needs: GraphQL mutation file, codegen, card YAML update, and handler registration. null_literal inject type now supports the variable injection. |
 
-**Remaining work:** `issue.labels.remove` and `issue.milestone.clear` still need
-GraphQL mutation files, codegen, card YAML updates, and handler registration.
+**Remaining work:** `issue.labels.remove` needs GraphQL handler registration and
+card YAML updates (mutation file and codegen already exist). `issue.milestone.clear`
+needs a GraphQL mutation file, codegen, card YAML updates, and handler registration.
 
 ---
 

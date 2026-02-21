@@ -2,6 +2,7 @@ export interface ResolutionCache {
   get(key: string): unknown | undefined
   set(key: string, value: unknown): void
   clear(): void
+  /** Current store size; may include expired entries due to lazy eviction. */
   readonly size: number
 }
 

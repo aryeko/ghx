@@ -3,8 +3,11 @@ query IssueAssigneesLookupByNumber($owner: String!, $name: String!, $issueNumber
     issue(number: $issueNumber) {
       id
     }
+    # Hard cap: GitHub enforces a max of 100 items per connection page.
+    # hasNextPage is checked by applyInject.map_array; it throws a descriptive
+    # error when the repo exceeds 100 assignable users. Pagination is not yet implemented.
     assignableUsers(first: 100) {
-      pageInfo { hasNextPage }
+      pageInfo { hasNextPage endCursor }
       nodes {
         id
         login

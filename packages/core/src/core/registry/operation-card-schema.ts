@@ -94,7 +94,7 @@ export const operationCardSchema = {
                       target: { type: "string", minLength: 1 },
                       source: { const: "map_array" },
                       from_input: { type: "string", minLength: 1 },
-                      nodes_path: { type: "string", minLength: 1 },
+                      nodes_path: { type: "string", minLength: 1, pattern: "\\.nodes$" },
                       match_field: { type: "string", minLength: 1 },
                       extract_field: { type: "string", minLength: 1 },
                     },

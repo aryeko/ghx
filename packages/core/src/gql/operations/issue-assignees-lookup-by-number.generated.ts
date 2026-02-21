@@ -15,7 +15,7 @@ export type IssueAssigneesLookupByNumberQuery = {
     issue?: { __typename?: "Issue"; id: string } | null
     assignableUsers: {
       __typename?: "UserConnection"
-      pageInfo: { __typename?: "PageInfo"; hasNextPage: boolean }
+      pageInfo: { __typename?: "PageInfo"; hasNextPage: boolean; endCursor?: string | null }
       nodes?: Array<{ __typename?: "User"; id: string; login: string } | null> | null
     }
   } | null
@@ -30,6 +30,7 @@ export const IssueAssigneesLookupByNumberDocument = `
     assignableUsers(first: 100) {
       pageInfo {
         hasNextPage
+        endCursor
       }
       nodes {
         id
