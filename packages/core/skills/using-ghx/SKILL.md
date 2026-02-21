@@ -35,7 +35,7 @@ Result: `{ ok, data, error, meta }`. Check `ok` first. If `ok=false` and `error.
 
 ## Chain
 
-Use `ghx chain` when two or more mutations must succeed together. A single chain call is one GraphQL round-trip — it avoids partial state from sequential `ghx run` calls.
+Use `ghx chain` when two or more mutations must succeed together. It batches steps into as few GraphQL round-trips as possible (typically one; capabilities that require a node-ID lookup add a single preflight query) — avoiding partial state from sequential `ghx run` calls.
 
 ```bash
 ghx chain --steps '[
