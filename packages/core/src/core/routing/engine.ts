@@ -387,8 +387,8 @@ export async function executeTasks(
         const result = (rawResult as Record<string, unknown>)[alias]
         lookupResults[stepIndex] = result
 
-        // Populate resolution cache
-        if (deps.resolutionCache) {
+        // Populate resolution cache (skip undefined to avoid polluting cache)
+        if (deps.resolutionCache && result !== undefined) {
           const card = cards[stepIndex]
           const req = requests[stepIndex]
           if (card?.graphql?.resolution && req) {

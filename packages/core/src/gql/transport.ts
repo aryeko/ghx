@@ -5,7 +5,7 @@ export type GraphqlVariables = Record<string, unknown>
 
 export type GraphqlError = {
   message: string
-  path?: string[]
+  path?: ReadonlyArray<string | number>
   extensions?: Record<string, unknown>
 }
 
@@ -72,11 +72,11 @@ export function createGraphqlClient(transport: GraphqlTransport): GraphqlClient 
     ): Promise<GraphqlRawResult<TData>> {
       const queryText = queryToString(query)
       assertQuery(queryText)
-      if (transport.executeRaw) {
-        return transport.executeRaw<TData>(queryText, variables)
-      }
-      // Fallback: wrap execute — cannot distinguish partial data from full failure
+      // Both paths normalize transport-level errors into settled results
       try {
+        if (transport.executeRaw) {
+          return await transport.executeRaw<TData>(queryText, variables)
+        }
         const data = await transport.execute<TData>(queryText, variables)
         return { data, errors: undefined }
       } catch (err) {
@@ -162,7 +162,11 @@ async function fetchGraphql<TData>(
     throw new Error(message)
   }
 
-  return (await response.json()) as JsonPayload<TData>
+  try {
+    return (await response.json()) as JsonPayload<TData>
+  } catch {
+    throw new Error(`GraphQL response is not valid JSON (${response.status})`)
+  }
 }
 
 export function createTokenTransport(token: string, graphqlUrl?: string): GraphqlTransport {
