@@ -19,7 +19,7 @@
     "expected_outcome": "success",
     "checkpoints": [
       {
-        "name": "issue_state_updated",
+        "name": "issue_view_non_empty",
         "verification_task": "issue.view",
         "verification_input": {},
         "condition": "non_empty"

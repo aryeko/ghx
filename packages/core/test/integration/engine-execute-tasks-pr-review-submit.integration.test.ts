@@ -15,8 +15,6 @@ import { describe, expect, it, vi } from "vitest"
 
 describe("executeTasks – pr.reviews.submit resolution (Phase 1 → Phase 2)", () => {
   it("resolves pullRequestId from PrNodeId lookup and injects into PrReviewSubmit mutation", async () => {
-    const capturedQueryRawVars: Record<string, unknown>[] = []
-
     // Phase 1: batch query returning PrNodeId lookup result aliased as step0
     const queryFn = vi.fn(async <TData>(_doc: unknown, _vars: unknown) => {
       return {
@@ -25,8 +23,7 @@ describe("executeTasks – pr.reviews.submit resolution (Phase 1 → Phase 2)", 
     })
 
     // Phase 2: capture variables to verify pullRequestId was resolved and injected
-    const queryRawFn = vi.fn(async <TData>(_doc: unknown, vars: unknown) => {
-      capturedQueryRawVars.push(vars as Record<string, unknown>)
+    const queryRawFn = vi.fn(async <TData>(_doc: unknown, _vars: unknown) => {
       return {
         data: {
           step0: {
@@ -102,7 +99,7 @@ describe("executeTasks – pr.reviews.submit resolution (Phase 1 → Phase 2)", 
 
     // Verify the resolved pullRequestId was injected into the batch mutation variables.
     // buildBatchMutation prefixes each step's variables with its alias (step0_*, step1_*, ...)
-    const mutVars = capturedQueryRawVars[0]
+    const mutVars = queryRawFn.mock.calls[0]?.[1] as Record<string, unknown>
     expect(mutVars).toBeDefined()
     expect(mutVars?.["step0_pullRequestId"]).toBe("PR_xyz789")
   })

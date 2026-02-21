@@ -12,14 +12,14 @@
 
 | # | Item | Status |
 |---|------|--------|
-| 1 | SKILL.md update | **Remaining** |
-| 2 | Benchmark chaining scenarios | **Remaining** |
+| 1 | SKILL.md update | ✅ Done (this PR) |
+| 2 | Benchmark chaining scenarios | ✅ Done (this PR) |
 | 3 | GQL partial error handling | ✅ Done (PR #60) |
 | 4 | Cross-step data passing | Deferred (design only) |
 | 5 | Expand chainable coverage | ✅ Done (PR #60) |
 | 6 | Resolution cache | ✅ Done (PR #60) |
-| 7 | Document registry test coverage | **Remaining** |
-| 8 | `pr.reviews.submit` resolution validation | **Remaining** |
+| 7 | Document registry test coverage | ✅ Done (this PR) |
+| 8 | `pr.reviews.submit` resolution validation | ✅ Done (this PR) |
 
 ---
 
@@ -332,7 +332,7 @@ async queryRaw<TData>(query: string): Promise<{ data?: TData; errors?: ... }> {
 
 ## Pre-PR Checklist
 
-- [ ] `pnpm run ci --outputStyle=static` passes
-- [ ] No GraphQL operation files changed (no codegen needed)
-- [ ] Coverage for touched files ≥90%
-- [ ] No public API changes (no changeset needed)
+- [x] `pnpm run ci --outputStyle=static` passes
+- [x] No GraphQL operation files changed (no codegen needed)
+- [x] Coverage for touched files ≥90%
+- [x] No public API changes (no changeset needed)

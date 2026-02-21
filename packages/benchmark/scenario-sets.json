@@ -26,6 +26,8 @@
     "pr-fix-review-comments-wf-001",
     "issue-triage-comment-wf-001",
     "pr-review-comment-wf-001",
-    "ci-diagnose-run-wf-001"
+    "ci-diagnose-run-wf-001",
+    "issue-triage-atomic-wf-001",
+    "pr-review-submit-atomic-wf-001"
   ]
 }

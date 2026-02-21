@@ -2,87 +2,87 @@ import { getLookupDocument, getMutationDocument } from "@core/gql/document-regis
 import { describe, expect, it } from "vitest"
 
 describe("document-registry – mutations", () => {
-  it("IssueAssigneesAdd", () => {
+  it("returns document for IssueAssigneesAdd", () => {
     expect(getMutationDocument("IssueAssigneesAdd")).toContain("mutation IssueAssigneesAdd")
   })
 
-  it("IssueAssigneesRemove", () => {
+  it("returns document for IssueAssigneesRemove", () => {
     expect(getMutationDocument("IssueAssigneesRemove")).toContain("mutation IssueAssigneesRemove")
   })
 
-  it("IssueAssigneesUpdate", () => {
+  it("returns document for IssueAssigneesUpdate", () => {
     expect(getMutationDocument("IssueAssigneesUpdate")).toContain("mutation IssueAssigneesUpdate")
   })
 
-  it("IssueBlockedByAdd", () => {
+  it("returns document for IssueBlockedByAdd", () => {
     expect(getMutationDocument("IssueBlockedByAdd")).toContain("mutation IssueBlockedByAdd")
   })
 
-  it("IssueBlockedByRemove", () => {
+  it("returns document for IssueBlockedByRemove", () => {
     expect(getMutationDocument("IssueBlockedByRemove")).toContain("mutation IssueBlockedByRemove")
   })
 
-  it("IssueClose", () => {
+  it("returns document for IssueClose", () => {
     expect(getMutationDocument("IssueClose")).toContain("mutation IssueClose")
   })
 
-  it("IssueCommentCreate", () => {
+  it("returns document for IssueCommentCreate", () => {
     expect(getMutationDocument("IssueCommentCreate")).toContain("mutation IssueCommentCreate")
   })
 
-  it("IssueCreate", () => {
+  it("returns document for IssueCreate", () => {
     expect(getMutationDocument("IssueCreate")).toContain("mutation IssueCreate")
   })
 
-  it("IssueDelete", () => {
+  it("returns document for IssueDelete", () => {
     expect(getMutationDocument("IssueDelete")).toContain("mutation IssueDelete")
   })
 
-  it("IssueLabelsAdd", () => {
+  it("returns document for IssueLabelsAdd", () => {
     expect(getMutationDocument("IssueLabelsAdd")).toContain("mutation IssueLabelsAdd")
   })
 
-  it("IssueLabelsRemove", () => {
+  it("returns document for IssueLabelsRemove", () => {
     expect(getMutationDocument("IssueLabelsRemove")).toContain("mutation IssueLabelsRemove")
   })
 
-  it("IssueLabelsUpdate", () => {
+  it("returns document for IssueLabelsUpdate", () => {
     expect(getMutationDocument("IssueLabelsUpdate")).toContain("mutation IssueLabelsUpdate")
   })
 
-  it("IssueMilestoneSet", () => {
+  it("returns document for IssueMilestoneSet", () => {
     expect(getMutationDocument("IssueMilestoneSet")).toContain("mutation IssueMilestoneSet")
   })
 
-  it("IssueParentRemove", () => {
+  it("returns document for IssueParentRemove", () => {
     expect(getMutationDocument("IssueParentRemove")).toContain("mutation IssueParentRemove")
   })
 
-  it("IssueParentSet", () => {
+  it("returns document for IssueParentSet", () => {
     expect(getMutationDocument("IssueParentSet")).toContain("mutation IssueParentSet")
   })
 
-  it("IssueReopen", () => {
+  it("returns document for IssueReopen", () => {
     expect(getMutationDocument("IssueReopen")).toContain("mutation IssueReopen")
   })
 
-  it("IssueUpdate", () => {
+  it("returns document for IssueUpdate", () => {
     expect(getMutationDocument("IssueUpdate")).toContain("mutation IssueUpdate")
   })
 
-  it("PrCommentReply", () => {
+  it("returns document for PrCommentReply", () => {
     expect(getMutationDocument("PrCommentReply")).toContain("mutation PrCommentReply")
   })
 
-  it("PrCommentResolve", () => {
+  it("returns document for PrCommentResolve", () => {
     expect(getMutationDocument("PrCommentResolve")).toContain("mutation PrCommentResolve")
   })
 
-  it("PrCommentUnresolve", () => {
+  it("returns document for PrCommentUnresolve", () => {
     expect(getMutationDocument("PrCommentUnresolve")).toContain("mutation PrCommentUnresolve")
   })
 
-  it("PrReviewSubmit", () => {
+  it("returns document for PrReviewSubmit", () => {
     expect(getMutationDocument("PrReviewSubmit")).toContain("mutation PrReviewSubmit")
   })
 
@@ -92,43 +92,43 @@ describe("document-registry – mutations", () => {
 })
 
 describe("document-registry – lookups", () => {
-  it("IssueAssigneesLookup", () => {
+  it("returns document for IssueAssigneesLookup", () => {
     expect(getLookupDocument("IssueAssigneesLookup")).toContain("query IssueAssigneesLookup")
   })
 
-  it("IssueAssigneesLookupByNumber", () => {
+  it("returns document for IssueAssigneesLookupByNumber", () => {
     expect(getLookupDocument("IssueAssigneesLookupByNumber")).toContain(
       "query IssueAssigneesLookupByNumber",
     )
   })
 
-  it("IssueCreateRepositoryId", () => {
+  it("returns document for IssueCreateRepositoryId", () => {
     expect(getLookupDocument("IssueCreateRepositoryId")).toContain("query IssueCreateRepositoryId")
   })
 
-  it("IssueLabelsLookup", () => {
+  it("returns document for IssueLabelsLookup", () => {
     expect(getLookupDocument("IssueLabelsLookup")).toContain("query IssueLabelsLookup")
   })
 
-  it("IssueLabelsLookupByNumber", () => {
+  it("returns document for IssueLabelsLookupByNumber", () => {
     expect(getLookupDocument("IssueLabelsLookupByNumber")).toContain(
       "query IssueLabelsLookupByNumber",
     )
   })
 
-  it("IssueMilestoneLookup", () => {
+  it("returns document for IssueMilestoneLookup", () => {
     expect(getLookupDocument("IssueMilestoneLookup")).toContain("query IssueMilestoneLookup")
   })
 
-  it("IssueNodeIdLookup", () => {
+  it("returns document for IssueNodeIdLookup", () => {
     expect(getLookupDocument("IssueNodeIdLookup")).toContain("query IssueNodeIdLookup")
   })
 
-  it("IssueParentLookup", () => {
+  it("returns document for IssueParentLookup", () => {
     expect(getLookupDocument("IssueParentLookup")).toContain("query IssueParentLookup")
   })
 
-  it("PrNodeId", () => {
+  it("returns document for PrNodeId", () => {
     expect(getLookupDocument("PrNodeId")).toContain("query PrNodeId")
   })
 

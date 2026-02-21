@@ -56,6 +56,8 @@ EOF
 
 **Chainable capabilities:** any capability with a `graphql:` route (i.e. those that accept node IDs or perform internal lookups — labels, assignees, milestones, relations, reviews, comments). Capabilities with only a `cli:` route cannot be chained.
 
+**Limitation:** Steps run independently — outputs from one step cannot be referenced as inputs to another step in the same chain.
+
 **Example — close an issue and leave a closing comment atomically:**
 
 ```bash
