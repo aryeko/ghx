@@ -252,8 +252,10 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   })
 }
 
-main(process.argv.slice(2)).catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error)
-  console.error(message)
-  process.exit(1)
-})
+if (!process.env.VITEST) {
+  main(process.argv.slice(2)).catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(message)
+    process.exit(1)
+  })
+}

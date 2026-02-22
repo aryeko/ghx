@@ -54,8 +54,6 @@ pnpm --filter @ghx-dev/core exec vitest run test/unit/run-command.test.ts -t "pa
 ```bash
 pnpm run ghx:gql:verify           # verify GraphQL operations (run if .graphql files change)
 pnpm run benchmark
-pnpm run benchmark:verify:pr
-pnpm run benchmark:verify:release
 pnpm --filter @ghx-dev/benchmark run check:scenarios
 pnpm --filter @ghx-dev/benchmark run report
 pnpm --filter @ghx-dev/benchmark run report:gate

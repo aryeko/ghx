@@ -7,7 +7,13 @@ import { z } from "zod"
 import type { FixtureManifest } from "../domain/types.js"
 import { runGh } from "./gh-client.js"
 import { findOrCreateIssue } from "./seed-issue.js"
-import { createPrWithReviews, createSeedPr, ensurePrThread, findSeededPr } from "./seed-pr.js"
+import {
+  createPrWithMixedThreads,
+  createPrWithReviews,
+  createSeedPr,
+  ensurePrThread,
+  findSeededPr,
+} from "./seed-pr.js"
 import { ensureProjectFixture } from "./seed-project.js"
 import { findLatestDraftRelease } from "./seed-release.js"
 import {
@@ -20,6 +26,7 @@ const VALID_REQUIRES = [
   "issue",
   "pr",
   "pr_with_reviews",
+  "pr_with_mixed_threads",
   "workflow_run",
   "release",
   "project",
@@ -96,6 +103,30 @@ async function buildManifest(
     }
   }
 
+  // PR with mixed threads: needed by "pr_with_mixed_threads"
+  type PrWithMixedThreads = {
+    id: string
+    number: number
+    resolved_count: number
+    unresolved_count: number
+  }
+  let prWithMixedThreads: PrWithMixedThreads | null = null
+  if (needs("pr_with_mixed_threads")) {
+    if (reviewerToken) {
+      try {
+        prWithMixedThreads = createPrWithMixedThreads(repo, seedId, seedLabel, reviewerToken)
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error)
+        console.warn(`warning: unable to seed pr_with_mixed_threads fixture (${message})`)
+      }
+    } else {
+      console.warn(
+        "warning: skipping pr_with_mixed_threads — no reviewer token available. " +
+          "Configure BENCH_FIXTURE_GH_APP_* env vars to enable.",
+      )
+    }
+  }
+
   // Workflow run: needed by "workflow_run"
   let workflowRun: WorkflowRunRef | null = null
   if (needs("workflow_run")) {
@@ -162,6 +193,12 @@ async function buildManifest(
         number: 0,
         thread_count: 0,
       },
+      pr_with_mixed_threads: prWithMixedThreads ?? {
+        id: "",
+        number: 0,
+        resolved_count: 0,
+        unresolved_count: 0,
+      },
       pr_thread: {
         id: prThreadId,
       },
@@ -190,6 +227,20 @@ async function buildManifest(
   return manifest
 }
 
+function validateManifest(manifest: FixtureManifest, requires: ReadonlySet<string>): void {
+  const r = manifest.resources as Record<string, Record<string, unknown>>
+  if (requires.has("pr_with_reviews") && !r.pr_with_reviews?.["number"])
+    throw new Error(
+      "pr_with_reviews fixture missing — ensure BENCH_FIXTURE_GH_APP_* env vars are set",
+    )
+  if (requires.has("pr_with_mixed_threads") && !r.pr_with_mixed_threads?.["number"])
+    throw new Error(
+      "pr_with_mixed_threads fixture missing — ensure BENCH_FIXTURE_GH_APP_* env vars are set",
+    )
+  if (requires.has("workflow_run") && r.workflow_run?.["id"] === 1)
+    throw new Error("workflow_run fixture is a placeholder — seeding failed")
+}
+
 export async function seedFixtureManifest(
   options: SeedOptions,
   reviewerToken?: string | null,
@@ -197,6 +248,7 @@ export async function seedFixtureManifest(
   const parsed = seedOptionsSchema.parse(options)
   const requires = new Set(parsed.requires ?? VALID_REQUIRES)
   const manifest = await buildManifest(parsed.repo, parsed.seedId, reviewerToken ?? null, requires)
+  validateManifest(manifest, requires)
   await mkdir(dirname(parsed.outFile), { recursive: true })
   await writeFile(parsed.outFile, `${JSON.stringify(manifest, null, 2)}\n`, "utf8")
   return manifest

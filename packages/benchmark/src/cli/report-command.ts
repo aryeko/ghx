@@ -168,7 +168,7 @@ async function appendToHistory(historyPath: string, entry: HistoryEntry): Promis
   await appendFile(historyPath, line, "utf8")
 }
 
-async function main(args: string[] = process.argv.slice(2)): Promise<void> {
+export async function main(args: string[] = process.argv.slice(2)): Promise<void> {
   const {
     gate,
     gateProfile,
@@ -280,8 +280,10 @@ async function main(args: string[] = process.argv.slice(2)): Promise<void> {
   }
 }
 
-main(process.argv.slice(2)).catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error)
-  console.error(message)
-  process.exit(1)
-})
+if (!process.env.VITEST) {
+  main(process.argv.slice(2)).catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(message)
+    process.exit(1)
+  })
+}
