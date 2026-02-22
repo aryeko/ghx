@@ -189,6 +189,22 @@ describe("buildSummary", () => {
     expect(summary.generatedAt).toBe("2026-01-01T00:00:00.000Z")
   })
 
+  it("handles partial timing_breakdown with undefined fields defaulting to 0", () => {
+    // Only tool_bash_ms defined — all other ?? 0 fallbacks are triggered
+    const rows = [
+      row({
+        mode: "agent_direct",
+        timing_breakdown: {
+          tool_bash_ms: 500,
+        } as unknown as import("@bench/domain/types.js").BenchmarkTimingBreakdown,
+      }),
+    ]
+    const summary = buildSummary(rows)
+    expect(summary.profiling.agent_direct?.medianToolBashMs).toBe(500)
+    expect(summary.profiling.agent_direct?.medianAssistantTotalMs).toBe(0)
+    expect(summary.profiling.agent_direct?.medianAssistantReasoningMs).toBe(0)
+  })
+
   it("computes median for even-length arrays", () => {
     const rows = [
       row({ mode: "agent_direct", latency_ms_wall: 100 }),

@@ -325,4 +325,120 @@ describe("runSuite", () => {
       expect.objectContaining({ manifest }),
     )
   })
+
+  it("warmup logs 'failed' when warmup result has success=false", async () => {
+    const { runScenarioIteration } = await import("@bench/runner/scenario-runner.js")
+    const { createSessionProvider } = await import("@bench/provider/factory.js")
+
+    vi.mocked(runScenarioIteration).mockResolvedValue({ ...mockBenchmarkRow, success: false })
+    vi.mocked(createSessionProvider).mockResolvedValue({
+      createSession: vi.fn(),
+      prompt: vi.fn(),
+      cleanup: vi.fn().mockResolvedValue(undefined),
+    } as unknown as import("@bench/provider/types.js").SessionProvider)
+
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+    const scenario = makeWorkflowScenario()
+
+    await runSuite({
+      modes: ["ghx"],
+      scenarios: [scenario],
+      repetitions: 1,
+      manifest: null,
+      outputJsonlPath: "/tmp/test.jsonl",
+      onProgress: () => {},
+      providerConfig: { type: "opencode", providerId: "test", modelId: "test" },
+      skipWarmup: false,
+    })
+
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("failed"))
+    consoleSpy.mockRestore()
+  })
+
+  it("warmup logs error when runScenarioIteration throws during warmup", async () => {
+    const { runScenarioIteration } = await import("@bench/runner/scenario-runner.js")
+    const { createSessionProvider } = await import("@bench/provider/factory.js")
+
+    vi.mocked(runScenarioIteration)
+      .mockRejectedValueOnce(new Error("warmup boom"))
+      .mockResolvedValue(mockBenchmarkRow)
+    vi.mocked(createSessionProvider).mockResolvedValue({
+      createSession: vi.fn(),
+      prompt: vi.fn(),
+      cleanup: vi.fn().mockResolvedValue(undefined),
+    } as unknown as import("@bench/provider/types.js").SessionProvider)
+
+    const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {})
+    const scenario = makeWorkflowScenario()
+
+    await runSuite({
+      modes: ["ghx"],
+      scenarios: [scenario],
+      repetitions: 1,
+      manifest: null,
+      outputJsonlPath: "/tmp/test.jsonl",
+      onProgress: () => {},
+      providerConfig: { type: "opencode", providerId: "test", modelId: "test" },
+      skipWarmup: false,
+    })
+
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("warmup boom"))
+    consoleSpy.mockRestore()
+  })
+
+  it("warmup uses 'ghx' fallback mode when modes array is empty", async () => {
+    const { runScenarioIteration } = await import("@bench/runner/scenario-runner.js")
+    const { createSessionProvider } = await import("@bench/provider/factory.js")
+
+    vi.mocked(runScenarioIteration).mockResolvedValue(mockBenchmarkRow)
+    vi.mocked(createSessionProvider).mockResolvedValue({
+      createSession: vi.fn(),
+      prompt: vi.fn(),
+      cleanup: vi.fn().mockResolvedValue(undefined),
+    } as unknown as import("@bench/provider/types.js").SessionProvider)
+
+    const scenario = makeWorkflowScenario()
+
+    const result = await runSuite({
+      modes: [] as import("@bench/domain/types.js").BenchmarkMode[],
+      scenarios: [scenario],
+      repetitions: 1,
+      manifest: null,
+      outputJsonlPath: "/tmp/test.jsonl",
+      onProgress: () => {},
+      providerConfig: { type: "opencode", providerId: "test", modelId: "test" },
+      skipWarmup: false,
+    })
+
+    // Warmup runs once (mode falls back to "ghx"), no main iterations
+    expect(vi.mocked(runScenarioIteration)).toHaveBeenCalledTimes(1)
+    expect(result.rowCount).toBe(0)
+  })
+
+  it("emits suite_error with string message when non-Error is thrown", async () => {
+    const { mkdir } = await import("node:fs/promises")
+
+    vi.mocked(mkdir).mockRejectedValueOnce("mkdir-string-error")
+
+    const events: Array<{ type: string; message?: string }> = []
+    const onProgress = (event: unknown) => events.push(event as { type: string; message?: string })
+    const scenario = makeWorkflowScenario()
+
+    await expect(
+      runSuite({
+        modes: [] as import("@bench/domain/types.js").BenchmarkMode[],
+        scenarios: [scenario],
+        repetitions: 1,
+        manifest: null,
+        outputJsonlPath: "/tmp/test.jsonl",
+        onProgress,
+        providerConfig: { type: "opencode", providerId: "test", modelId: "test" },
+        skipWarmup: true,
+      }),
+    ).rejects.toBe("mkdir-string-error")
+
+    const errorEvent = events.find((e) => e.type === "suite_error")
+    expect(errorEvent).toBeDefined()
+    expect(errorEvent?.message).toBe("mkdir-string-error")
+  })
 })

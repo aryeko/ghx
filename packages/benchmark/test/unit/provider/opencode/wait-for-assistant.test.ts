@@ -117,6 +117,40 @@ describe("waitForAssistantFromMessages", () => {
     expect((result.info as { id?: string })?.id).toBe("same-id")
   })
 
+  it("skips entries without info and uses empty parts when parts field is missing", async () => {
+    const sessionApi = makeSessionApi()
+
+    let callCount = 0
+    fetchSessionMessagesMock.mockImplementation(() => {
+      callCount++
+      if (callCount === 1) {
+        return Promise.resolve([
+          // Entry with no info field → line 118 !entry.info true → return false
+          {
+            parts: [{ type: "step-finish", reason: "end_turn" }],
+          } as unknown as SessionMessageEntry,
+          // Entry with info but no parts field → line 123 entry.parts ?? [] fallback
+          {
+            info: {
+              id: "no-parts-id",
+              role: "assistant",
+              time: { created: 1000, completed: 2000 },
+              tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+              cost: 0,
+            },
+          } as unknown as SessionMessageEntry,
+        ])
+      }
+      return Promise.resolve([makeCompletedAssistantEntry()])
+    })
+
+    const promise = waitForAssistantFromMessages(sessionApi, "sess-1", 30000, "scenario-1")
+    await vi.advanceTimersByTimeAsync(600)
+    const result = await promise
+
+    expect(result.info).toBeDefined()
+  })
+
   it("logs 'waiting' to console after 5000ms elapsed", async () => {
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {})
     const sessionApi = makeSessionApi()

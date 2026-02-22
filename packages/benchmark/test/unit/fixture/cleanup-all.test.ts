@@ -324,4 +324,101 @@ describe("cleanupAllFixtures", () => {
 
     expect(result.deletedBranches).toBe(2)
   })
+
+  it("returns empty list when PR/issue list stdout is empty string", async () => {
+    // empty stdout → output.length === 0 → returns []
+    spawnSyncMock
+      .mockReturnValueOnce({ status: 0, stdout: "", stderr: "" }) // PR list: empty stdout
+      .mockReturnValueOnce({ status: 0, stdout: "", stderr: "" }) // issue list: empty stdout
+      .mockReturnValueOnce({ status: 1, stdout: "", stderr: "" }) // refs tryRunGhJson: null
+      .mockReturnValueOnce({ status: 1, stdout: "", stderr: "" }) // refs raw: null
+      .mockReturnValueOnce({ status: 1, stdout: "", stderr: "" }) // label list: null
+      .mockReturnValueOnce({ status: 0, stdout: JSON.stringify({ projects: [] }), stderr: "" })
+
+    const result = await cleanupAllFixtures("aryeko/ghx-bench-fixtures")
+
+    expect(result.closedPrs).toBe(0)
+    expect(result.closedIssues).toBe(0)
+  })
+
+  it("returns empty list when PR list JSON is a non-array object", async () => {
+    // non-array parsed → !Array.isArray(parsed) → returns []
+    spawnSyncMock
+      .mockReturnValueOnce({ status: 0, stdout: '{"count": 0}', stderr: "" }) // PR list: object
+      .mockReturnValueOnce({ status: 0, stdout: '{"count": 0}', stderr: "" }) // issue list: object
+      .mockReturnValueOnce({ status: 1, stdout: "", stderr: "" })
+      .mockReturnValueOnce({ status: 1, stdout: "", stderr: "" })
+      .mockReturnValueOnce({ status: 1, stdout: "", stderr: "" })
+      .mockReturnValueOnce({ status: 0, stdout: JSON.stringify({ projects: [] }), stderr: "" })
+
+    const result = await cleanupAllFixtures("aryeko/ghx-bench-fixtures")
+
+    expect(result.closedPrs).toBe(0)
+    expect(result.closedIssues).toBe(0)
+  })
+
+  it("filters non-object items and non-numeric number fields in list", async () => {
+    // primitive items → typeof item !== "object" → null
+    // {number: "five"} → typeof value !== "number" → null
+    spawnSyncMock
+      .mockReturnValueOnce({
+        status: 0,
+        stdout: JSON.stringify([1, "str", null, { number: "five" }, { number: 3 }]),
+        stderr: "",
+      }) // 1. PR list → only {number:3} is valid
+      .mockReturnValueOnce({ status: 0, stdout: "", stderr: "" }) // 2. PR close 3
+      .mockReturnValueOnce({ status: 0, stdout: "[]", stderr: "" }) // 3. issue list
+      .mockReturnValueOnce({ status: 1, stdout: "", stderr: "" }) // 4. tryRunGhJson: null
+      .mockReturnValueOnce({ status: 1, stdout: "", stderr: "" }) // 5. raw refs: null
+      .mockReturnValueOnce({ status: 1, stdout: "", stderr: "" }) // 6. label list: null
+      .mockReturnValueOnce({ status: 0, stdout: JSON.stringify({ projects: [] }), stderr: "" }) // 7. project list
+
+    const result = await cleanupAllFixtures("aryeko/ghx-bench-fixtures")
+
+    expect(result.closedPrs).toBe(1)
+  })
+
+  it("returns 0 deleted branches when tryRunGhJson returns a valid array", async () => {
+    // refs is valid array → condition false → return 0 immediately
+    spawnSyncMock
+      .mockReturnValueOnce({ status: 0, stdout: "[]", stderr: "" }) // PR list
+      .mockReturnValueOnce({ status: 0, stdout: "[]", stderr: "" }) // issue list
+      .mockReturnValueOnce({ status: 0, stdout: "[]", stderr: "" }) // tryRunGhJson returns []
+      .mockReturnValueOnce({ status: 1, stdout: "", stderr: "" }) // label list: null
+      .mockReturnValueOnce({ status: 0, stdout: JSON.stringify({ projects: [] }), stderr: "" })
+
+    const result = await cleanupAllFixtures("aryeko/ghx-bench-fixtures")
+
+    expect(result.deletedBranches).toBe(0)
+  })
+
+  it("returns 0 deleted branches when raw refs JSON is invalid", async () => {
+    // tryRunGhJson returns null, raw response has invalid JSON → catch → return 0
+    spawnSyncMock
+      .mockReturnValueOnce({ status: 0, stdout: "[]", stderr: "" }) // PR list
+      .mockReturnValueOnce({ status: 0, stdout: "[]", stderr: "" }) // issue list
+      .mockReturnValueOnce({ status: 1, stdout: "", stderr: "" }) // tryRunGhJson: null
+      .mockReturnValueOnce({ status: 0, stdout: "not-valid-json", stderr: "" }) // raw: invalid JSON
+      .mockReturnValueOnce({ status: 1, stdout: "", stderr: "" }) // label list: null
+      .mockReturnValueOnce({ status: 0, stdout: JSON.stringify({ projects: [] }), stderr: "" })
+
+    const result = await cleanupAllFixtures("aryeko/ghx-bench-fixtures")
+
+    expect(result.deletedBranches).toBe(0)
+  })
+
+  it("returns 0 deleted branches when raw refs parses to a non-array", async () => {
+    // tryRunGhJson returns null, raw response parses to non-array → !Array.isArray → return 0
+    spawnSyncMock
+      .mockReturnValueOnce({ status: 0, stdout: "[]", stderr: "" }) // PR list
+      .mockReturnValueOnce({ status: 0, stdout: "[]", stderr: "" }) // issue list
+      .mockReturnValueOnce({ status: 1, stdout: "", stderr: "" }) // tryRunGhJson: null
+      .mockReturnValueOnce({ status: 0, stdout: '{"refs": []}', stderr: "" }) // raw: object not array
+      .mockReturnValueOnce({ status: 1, stdout: "", stderr: "" }) // label list: null
+      .mockReturnValueOnce({ status: 0, stdout: JSON.stringify({ projects: [] }), stderr: "" })
+
+    const result = await cleanupAllFixtures("aryeko/ghx-bench-fixtures")
+
+    expect(result.deletedBranches).toBe(0)
+  })
 })
