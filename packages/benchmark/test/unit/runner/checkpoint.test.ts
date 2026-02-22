@@ -1,5 +1,83 @@
-import { evaluateCondition } from "@bench/runner/checkpoint.js"
-import { describe, expect, it } from "vitest"
+import type { WorkflowCheckpoint } from "@bench/domain/types.js"
+import { evaluateCheckpoints, evaluateCondition } from "@bench/runner/checkpoint.js"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+
+const executeTaskMock = vi.hoisted(() => vi.fn())
+const createGithubClientFromTokenMock = vi.hoisted(() => vi.fn(() => ({})))
+
+vi.mock("@ghx-dev/core", () => ({
+  executeTask: executeTaskMock,
+  createGithubClientFromToken: createGithubClientFromTokenMock,
+}))
+
+function makeCheckpoint(overrides: Partial<WorkflowCheckpoint> = {}): WorkflowCheckpoint {
+  return {
+    name: "test-checkpoint",
+    verification_task: "list-issues",
+    verification_input: { repo: "owner/repo" },
+    condition: "non_empty",
+    ...overrides,
+  }
+}
+
+describe("evaluateCheckpoints", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    createGithubClientFromTokenMock.mockReturnValue({})
+  })
+
+  it("returns {allPassed:true} when all checkpoints pass", async () => {
+    executeTaskMock.mockResolvedValue({ ok: true, data: [{ id: 1 }] })
+
+    const checkpoints = [makeCheckpoint({ condition: "non_empty" })]
+    const result = await evaluateCheckpoints(checkpoints, {}, "token-abc")
+
+    expect(result.allPassed).toBe(true)
+    expect(result.results).toHaveLength(1)
+    expect(result.results[0]?.passed).toBe(true)
+  })
+
+  it("returns {allPassed:false} when condition not met", async () => {
+    executeTaskMock.mockResolvedValue({ ok: true, data: [] })
+
+    const checkpoints = [makeCheckpoint({ condition: "non_empty" })]
+    const result = await evaluateCheckpoints(checkpoints, {}, "token-abc")
+
+    expect(result.allPassed).toBe(false)
+    expect(result.results[0]?.passed).toBe(false)
+  })
+
+  it("returns {allPassed:false} when executeTask returns ok:false", async () => {
+    executeTaskMock.mockResolvedValue({ ok: false, error: "not found" })
+
+    const checkpoints = [makeCheckpoint()]
+    const result = await evaluateCheckpoints(checkpoints, {}, "token-abc")
+
+    expect(result.allPassed).toBe(false)
+    expect(result.results[0]?.passed).toBe(false)
+  })
+
+  it("catches thrown errors and marks checkpoint as failed", async () => {
+    executeTaskMock.mockRejectedValue(new Error("network error"))
+
+    const checkpoints = [makeCheckpoint()]
+    const result = await evaluateCheckpoints(checkpoints, {}, "token-abc")
+
+    expect(result.allPassed).toBe(false)
+    expect(result.results[0]?.passed).toBe(false)
+    expect(result.results[0]?.data).toBeNull()
+  })
+
+  it("resolves {items:[...]} wrapper via resolveCheckpointData", async () => {
+    executeTaskMock.mockResolvedValue({ ok: true, data: { items: [{ id: 1 }, { id: 2 }] } })
+
+    const checkpoints = [makeCheckpoint({ condition: "count_gte", expected_value: 2 })]
+    const result = await evaluateCheckpoints(checkpoints, {}, "token-abc")
+
+    expect(result.allPassed).toBe(true)
+    expect(result.results[0]?.data).toEqual([{ id: 1 }, { id: 2 }])
+  })
+})
 
 describe("evaluateCondition", () => {
   describe("empty", () => {

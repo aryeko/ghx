@@ -41,7 +41,7 @@ function parseCliValue<T>(schema: z.ZodSchema<T>, value: string, label: string):
   throw new Error(`Invalid ${label} value${detail}`)
 }
 
-function parseArgs(argv: string[]): {
+export function parseArgs(argv: string[]): {
   command: FixtureCommand
   repo: string
   outFile: string
@@ -95,7 +95,7 @@ function loadEnvLocal(): void {
   }
 }
 
-async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
+export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
   loadEnvLocal()
   const parsed = parseArgs(argv)
   const restoreFixtureAuth =
@@ -143,8 +143,10 @@ async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
   }
 }
 
-main(process.argv.slice(2)).catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error)
-  console.error(message)
-  process.exit(1)
-})
+if (!process.env.VITEST) {
+  main(process.argv.slice(2)).catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(message)
+    process.exit(1)
+  })
+}

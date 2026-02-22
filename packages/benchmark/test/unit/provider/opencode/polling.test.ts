@@ -1,6 +1,8 @@
 import type { SessionMessageEntry, SessionMessagePart } from "@bench/domain/types.js"
 import {
   asNumber,
+  fetchSessionMessages,
+  getSessionApi,
   hasAssistantMetadata,
   hasAssistantSignal,
   hasAssistantSignalParts,
@@ -375,6 +377,73 @@ describe("polling guards and utilities", () => {
 
       expect(clearTimeoutSpy).toHaveBeenCalled()
       clearTimeoutSpy.mockRestore()
+    })
+  })
+
+  describe("getSessionApi", () => {
+    it("throws 'SDK client has no session API' when client.session is missing", () => {
+      expect(() => getSessionApi({})).toThrow("SDK client has no session API")
+      expect(() => getSessionApi({ session: null })).toThrow("SDK client has no session API")
+    })
+
+    it("throws 'SDK session API missing required methods' when any method is not a function", () => {
+      const client = {
+        session: {
+          create: vi.fn(),
+          promptAsync: vi.fn(),
+          messages: vi.fn(),
+          // abort is missing
+        },
+      }
+      expect(() => getSessionApi(client)).toThrow("SDK session API missing required methods")
+    })
+
+    it("returns session API when all methods are present", () => {
+      const client = {
+        session: {
+          create: vi.fn(),
+          promptAsync: vi.fn(),
+          messages: vi.fn(),
+          abort: vi.fn(),
+        },
+      }
+      const api = getSessionApi(client)
+      expect(typeof api.create).toBe("function")
+      expect(typeof api.messages).toBe("function")
+    })
+  })
+
+  describe("fetchSessionMessages", () => {
+    it("calls sessionApi.messages with correct url/path/query", async () => {
+      const messagesMock = vi.fn().mockResolvedValue([{ id: "msg-1" }])
+      const sessionApi = {
+        create: vi.fn(),
+        promptAsync: vi.fn(),
+        messages: messagesMock,
+        abort: vi.fn(),
+      }
+
+      await fetchSessionMessages(sessionApi, "sess-123", 50)
+
+      expect(messagesMock).toHaveBeenCalledWith({
+        url: "/session/{id}/message",
+        path: { id: "sess-123" },
+        query: { limit: 50 },
+      })
+    })
+
+    it("unwraps {data:[...]} response", async () => {
+      const entries = [{ info: { id: "msg-1" }, parts: [] }]
+      const messagesMock = vi.fn().mockResolvedValue({ data: entries })
+      const sessionApi = {
+        create: vi.fn(),
+        promptAsync: vi.fn(),
+        messages: messagesMock,
+        abort: vi.fn(),
+      }
+
+      const result = await fetchSessionMessages(sessionApi, "sess-123")
+      expect(result).toEqual(entries)
     })
   })
 
