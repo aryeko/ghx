@@ -21,8 +21,11 @@ vi.mock("@bench/provider/opencode/client-setup.js", () => ({
 vi.mock("@bench/provider/opencode/polling.js", () => ({
   getSessionApi: mocks.getSessionApiMock,
   withTimeout: mocks.withTimeoutMock,
-  waitForAssistantFromMessages: mocks.waitForAssistantFromMessagesMock,
   fetchSessionMessages: mocks.fetchSessionMessagesMock,
+}))
+
+vi.mock("@bench/provider/opencode/wait-for-assistant.js", () => ({
+  waitForAssistantFromMessages: mocks.waitForAssistantFromMessagesMock,
 }))
 
 vi.mock("@bench/provider/opencode/extraction.js", () => ({

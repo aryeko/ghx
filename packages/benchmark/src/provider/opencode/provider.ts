@@ -6,12 +6,8 @@ import {
   extractPromptResponseFromPromptResult,
   extractTimingBreakdown,
 } from "./extraction.js"
-import {
-  fetchSessionMessages,
-  getSessionApi,
-  waitForAssistantFromMessages,
-  withTimeout,
-} from "./polling.js"
+import { fetchSessionMessages, getSessionApi, withTimeout } from "./polling.js"
+import { waitForAssistantFromMessages } from "./wait-for-assistant.js"
 
 export type OpencodeProviderConfig = {
   type: "opencode"

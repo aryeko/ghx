@@ -120,7 +120,7 @@ export async function runSuite(config: {
     let totalSuccessful = 0
 
     for (const mode of modes) {
-      const modeStartCompleted = totalCompleted
+      const modeStartSuccessful = totalSuccessful
 
       onProgress({
         type: "suite_started",
@@ -188,7 +188,7 @@ export async function runSuite(config: {
         mode,
         total: totalScenarioExecutions,
         completed: totalCompleted,
-        successful: totalSuccessful - (totalSuccessful - (totalCompleted - modeStartCompleted)),
+        successful: totalSuccessful - modeStartSuccessful,
       })
     }
 

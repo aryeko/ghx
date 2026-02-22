@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto"
 import type { BenchmarkMode, BenchmarkRow, FixtureManifest, Scenario } from "@bench/domain/types.js"
 import { resolveWorkflowFixtureBindings } from "../fixture/manifest.js"
 import type { SessionProvider } from "../provider/types.js"
@@ -18,7 +17,7 @@ export async function runScenarioIteration(config: {
   manifest: FixtureManifest | null
   runId: string
 }): Promise<BenchmarkRow> {
-  const { provider, scenario, mode, iteration, scenarioSet, manifest } = config
+  const { provider, scenario, mode, iteration, scenarioSet, manifest, runId } = config
 
   const githubToken = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? ""
 
@@ -70,7 +69,7 @@ export async function runScenarioIteration(config: {
 
     const result: BenchmarkRow = {
       timestamp: new Date().toISOString(),
-      run_id: randomUUID(),
+      run_id: runId,
       mode,
       scenario_id: scenario.id,
       scenario_set: scenarioSet,
@@ -115,7 +114,7 @@ export async function runScenarioIteration(config: {
 
     return {
       timestamp: new Date().toISOString(),
-      run_id: randomUUID(),
+      run_id: runId,
       mode,
       scenario_id: scenario.id,
       scenario_set: scenarioSet,
