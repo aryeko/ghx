@@ -4,10 +4,6 @@ import type { SessionProvider } from "../provider/types.js"
 import { evaluateCheckpoints } from "./checkpoint.js"
 import { modeInstructions } from "./mode-instructions.js"
 
-function renderWorkflowPrompt(scenario: Scenario, _mode: BenchmarkMode): string {
-  return scenario.prompt
-}
-
 export async function runScenarioIteration(config: {
   provider: SessionProvider
   scenario: Scenario
@@ -46,7 +42,7 @@ export async function runScenarioIteration(config: {
     })
     sessionId = sessionHandle.sessionId
 
-    const promptText = renderWorkflowPrompt(resolvedScenario, mode)
+    const promptText = resolvedScenario.prompt
     const promptResult = await provider.prompt(sessionHandle, promptText)
 
     const { allPassed: checkpointsPassed, results: checkpointResults } = await evaluateCheckpoints(
@@ -89,7 +85,7 @@ export async function runScenarioIteration(config: {
       },
       cost: promptResult.cost,
       tool_calls: promptResult.toolCalls,
-      api_calls: 0,
+      api_calls: promptResult.apiCalls,
       internal_retry_count: 0,
       external_retry_count: 0,
       model: {
