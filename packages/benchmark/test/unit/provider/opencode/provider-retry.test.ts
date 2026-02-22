@@ -3,7 +3,7 @@ import type { SessionHandle } from "@bench/provider/types.js"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
-  withIsolatedBenchmarkClientMock: vi.fn(),
+  openBenchmarkClientMock: vi.fn(),
   getSessionApiMock: vi.fn(),
   withTimeoutMock: vi.fn(),
   waitForAssistantFromMessagesMock: vi.fn(),
@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock("@bench/provider/opencode/client-setup.js", () => ({
-  withIsolatedBenchmarkClient: mocks.withIsolatedBenchmarkClientMock,
+  openBenchmarkClient: mocks.openBenchmarkClientMock,
 }))
 
 vi.mock("@bench/provider/opencode/polling.js", () => ({
@@ -54,6 +54,8 @@ describe("OpencodeSessionProvider - prompt execution", () => {
     },
   }
 
+  const mockClose = vi.fn().mockResolvedValue(undefined)
+
   beforeEach(async () => {
     vi.clearAllMocks()
     vi.useFakeTimers()
@@ -72,7 +74,7 @@ describe("OpencodeSessionProvider - prompt execution", () => {
       parts: [{ type: "text", text: "response" }],
     })
     mocks.fetchSessionMessagesMock.mockResolvedValue([])
-    mocks.aggregateToolCountsMock.mockReturnValue({ toolCalls: 2 })
+    mocks.aggregateToolCountsMock.mockReturnValue({ toolCalls: 2, apiCalls: 0 })
     mocks.coercePromptResponseMock.mockReturnValue({
       assistant: mockAssistant,
       parts: [{ type: "text", text: "response" }],
@@ -80,11 +82,11 @@ describe("OpencodeSessionProvider - prompt execution", () => {
     mocks.extractPromptResponseFromPromptResultMock.mockReturnValue(null)
     mocks.extractTimingBreakdownMock.mockReturnValue(null)
 
-    mocks.withIsolatedBenchmarkClientMock.mockImplementation(
-      async (mode: string, pid: string, mid: string, run: (ctx: unknown) => unknown) => {
-        return run({ client: mockClient, systemInstruction: "test instruction" })
-      },
-    )
+    mocks.openBenchmarkClientMock.mockResolvedValue({
+      client: mockClient,
+      systemInstruction: "test instruction",
+      close: mockClose,
+    })
     mockClient.session.create.mockResolvedValue({ data: { id: "session-1" } })
 
     sessionHandle = await provider.createSession({
@@ -214,11 +216,19 @@ describe("OpencodeSessionProvider - prompt execution", () => {
   })
 
   it("returns toolCalls from aggregateToolCounts", async () => {
-    mocks.aggregateToolCountsMock.mockReturnValue({ toolCalls: 5 })
+    mocks.aggregateToolCountsMock.mockReturnValue({ toolCalls: 5, apiCalls: 1 })
 
     const result = await provider.prompt(sessionHandle, "test prompt")
 
     expect(result.toolCalls).toBe(5)
+  })
+
+  it("returns apiCalls from aggregateToolCounts", async () => {
+    mocks.aggregateToolCountsMock.mockReturnValue({ toolCalls: 5, apiCalls: 3 })
+
+    const result = await provider.prompt(sessionHandle, "test prompt")
+
+    expect(result.apiCalls).toBe(3)
   })
 
   it("returns outputValid as true", async () => {
@@ -281,6 +291,8 @@ describe("OpencodeSessionProvider - data unwrapping", () => {
     },
   }
 
+  const mockClose = vi.fn().mockResolvedValue(undefined)
+
   beforeEach(async () => {
     vi.clearAllMocks()
     vi.useFakeTimers()
@@ -294,11 +306,11 @@ describe("OpencodeSessionProvider - data unwrapping", () => {
 
     mocks.withTimeoutMock.mockImplementation((promise: Promise<unknown>) => promise)
     mocks.getSessionApiMock.mockReturnValue(mockClient.session)
-    mocks.withIsolatedBenchmarkClientMock.mockImplementation(
-      async (mode: string, pid: string, mid: string, run: (ctx: unknown) => unknown) => {
-        return run({ client: mockClient, systemInstruction: "test instruction" })
-      },
-    )
+    mocks.openBenchmarkClientMock.mockResolvedValue({
+      client: mockClient,
+      systemInstruction: "test instruction",
+      close: mockClose,
+    })
     mockClient.session.create.mockResolvedValue({ data: { id: "session-1" } })
 
     await provider.createSession({

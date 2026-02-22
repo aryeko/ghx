@@ -25,6 +25,7 @@ export type TokenBreakdown = {
 export type PromptResult = {
   tokens: TokenBreakdown
   toolCalls: number
+  apiCalls: number
   cost: number
   latencyMs: number
   sdkLatencyMs: number | null

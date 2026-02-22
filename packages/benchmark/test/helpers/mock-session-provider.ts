@@ -19,6 +19,7 @@ export function createMockSessionProvider(overrides?: {
       total: 160,
     },
     toolCalls: 2,
+    apiCalls: 0,
     cost: 0.01,
     latencyMs: 1000,
     sdkLatencyMs: 950,
