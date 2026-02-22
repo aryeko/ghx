@@ -13,7 +13,6 @@ describe("createSessionProvider", () => {
 
     const provider = await createSessionProvider({
       type: "opencode",
-      mode: "ghx",
       providerId: "openai",
       modelId: "gpt-4",
     })
@@ -31,7 +30,6 @@ describe("createSessionProvider", () => {
 
     await createSessionProvider({
       type: "opencode",
-      mode: "agent_direct",
       providerId: "anthropic",
       modelId: "claude-3",
     })
@@ -43,12 +41,11 @@ describe("createSessionProvider", () => {
     })
   })
 
-  it("excludes mode from provider config", async () => {
+  it("config does not include mode", async () => {
     OpencodeSessionProviderMock.mockReturnValue({})
 
     await createSessionProvider({
       type: "opencode",
-      mode: "mcp",
       providerId: "openai",
       modelId: "gpt-3.5",
     })

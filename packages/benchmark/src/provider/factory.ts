@@ -1,10 +1,8 @@
-import type { BenchmarkMode } from "@bench/domain/types.js"
 import { OpencodeSessionProvider } from "./opencode/provider.js"
 import type { SessionProvider } from "./types.js"
 
 export type ProviderConfig = {
   type: "opencode"
-  mode: BenchmarkMode
   providerId: string
   modelId: string
 }
