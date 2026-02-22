@@ -35,7 +35,7 @@ Result: `{ ok, data, error, meta }`. Check `ok` first. If `ok=false` and `error.
 
 ## Chain
 
-Use `ghx chain` when two or more mutations must succeed together. It batches steps into as few GraphQL round-trips as possible (typically one; capabilities that require a node-ID lookup add a single preflight query) — avoiding partial state from sequential `ghx run` calls.
+Use `ghx chain` when two or more mutations should be submitted together in a single batched call. It batches steps into as few GraphQL round-trips as possible (typically one; capabilities that require a node-ID lookup add a single preflight query) — reducing latency and avoiding mid-sequence failures that would result from sequential `ghx run` calls. Note: steps are not transactional; a `"partial"` result is possible if one step fails after another has already succeeded.
 
 ```bash
 ghx chain --steps '[
@@ -58,7 +58,7 @@ EOF
 
 **Limitation:** Steps run independently — outputs from one step cannot be referenced as inputs to another step in the same chain.
 
-**Example — close an issue and leave a closing comment atomically:**
+**Example — close an issue and leave a closing comment in a single batched call:**
 
 ```bash
 ghx chain --steps - <<'EOF'
