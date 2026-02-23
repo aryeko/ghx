@@ -9,6 +9,7 @@ import { runGh } from "./gh-client.js"
 import { parseRepo } from "./gh-utils.js"
 import { findOrCreateIssue } from "./seed-issue.js"
 import { createSeedPr, ensurePrThread, findSeededPr } from "./seed-pr-basic.js"
+import { createPrWithBugs } from "./seed-pr-bugs.js"
 import { createPrWithMixedThreads } from "./seed-pr-mixed-threads.js"
 import { createPrWithReviews } from "./seed-pr-reviews.js"
 import { ensureProjectFixture } from "./seed-project.js"
@@ -22,6 +23,7 @@ import {
 const VALID_REQUIRES = [
   "issue",
   "pr",
+  "pr_with_bugs",
   "pr_with_reviews",
   "pr_with_mixed_threads",
   "workflow_run",
@@ -74,19 +76,24 @@ async function buildManifest(
   type PrWithReviews = { id: string; number: number; thread_count: number }
   let prWithReviews: PrWithReviews | null = null
   if (needs("pr_with_reviews")) {
-    if (reviewerToken) {
-      try {
-        prWithReviews = createPrWithReviews(repo, seedId, seedLabel, reviewerToken)
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error)
-        console.warn(`warning: unable to seed pr_with_reviews fixture (${message})`)
-      }
-    } else {
-      console.warn(
-        "warning: skipping pr_with_reviews — no reviewer token available. " +
-          "Configure BENCH_FIXTURE_GH_APP_* env vars to enable.",
+    if (!reviewerToken) {
+      throw new Error(
+        "pr_with_reviews requires a reviewer token — configure BENCH_FIXTURE_GH_APP_* env vars",
       )
     }
+    prWithReviews = createPrWithReviews(repo, seedId, seedLabel, reviewerToken)
+  }
+
+  // PR with bugs: needed by "pr_with_bugs"
+  type PrWithBugs = { id: string; number: number }
+  let prWithBugs: PrWithBugs | null = null
+  if (needs("pr_with_bugs")) {
+    if (!reviewerToken) {
+      throw new Error(
+        "pr_with_bugs requires a reviewer token — configure BENCH_FIXTURE_GH_APP_* env vars",
+      )
+    }
+    prWithBugs = createPrWithBugs(repo, seedId, seedLabel, reviewerToken)
   }
 
   // PR with mixed threads: needed by "pr_with_mixed_threads"
@@ -98,19 +105,12 @@ async function buildManifest(
   }
   let prWithMixedThreads: PrWithMixedThreads | null = null
   if (needs("pr_with_mixed_threads")) {
-    if (reviewerToken) {
-      try {
-        prWithMixedThreads = createPrWithMixedThreads(repo, seedId, seedLabel, reviewerToken)
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error)
-        console.warn(`warning: unable to seed pr_with_mixed_threads fixture (${message})`)
-      }
-    } else {
-      console.warn(
-        "warning: skipping pr_with_mixed_threads — no reviewer token available. " +
-          "Configure BENCH_FIXTURE_GH_APP_* env vars to enable.",
+    if (!reviewerToken) {
+      throw new Error(
+        "pr_with_mixed_threads requires a reviewer token — configure BENCH_FIXTURE_GH_APP_* env vars",
       )
     }
+    prWithMixedThreads = createPrWithMixedThreads(repo, seedId, seedLabel, reviewerToken)
   }
 
   // Workflow run: needed by "workflow_run"
@@ -174,6 +174,10 @@ async function buildManifest(
       blocker_issue: blockerIssue,
       parent_issue: parentIssue,
       pr,
+      pr_with_bugs: prWithBugs ?? {
+        id: "",
+        number: 0,
+      },
       pr_with_reviews: prWithReviews ?? {
         id: "",
         number: 0,
@@ -215,6 +219,8 @@ async function buildManifest(
 
 function validateManifest(manifest: FixtureManifest, requires: ReadonlySet<string>): void {
   const r = manifest.resources as Record<string, Record<string, unknown>>
+  if (requires.has("pr_with_bugs") && !r.pr_with_bugs?.["number"])
+    throw new Error("pr_with_bugs fixture missing — seeding failed")
   if (requires.has("pr_with_reviews") && !r.pr_with_reviews?.["number"])
     throw new Error(
       "pr_with_reviews fixture missing — ensure BENCH_FIXTURE_GH_APP_* env vars are set",

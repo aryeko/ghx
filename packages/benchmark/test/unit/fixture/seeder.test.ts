@@ -23,6 +23,10 @@ vi.mock("@bench/fixture/seed-pr-reviews.js", () => ({
   createPrWithReviews: vi.fn().mockReturnValue({ id: "PR_2", number: 2, thread_count: 4 }),
 }))
 
+vi.mock("@bench/fixture/seed-pr-bugs.js", () => ({
+  createPrWithBugs: vi.fn().mockReturnValue({ id: "PR_B", number: 4 }),
+}))
+
 vi.mock("@bench/fixture/seed-pr-mixed-threads.js", () => ({
   createPrWithMixedThreads: vi.fn().mockReturnValue({
     id: "PR_3",
@@ -254,20 +258,7 @@ describe("pr_with_mixed_threads seeding", () => {
     expect((result.resources["pr_with_mixed_threads"] as { number: number }).number).toBe(99)
   })
 
-  it("warns when no reviewerToken for pr_with_mixed_threads", async () => {
-    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
-
-    const { createPrWithMixedThreads: createPrWithMixedThreadsMock } = await import(
-      "@bench/fixture/seed-pr-mixed-threads.js"
-    )
-
-    vi.mocked(createPrWithMixedThreadsMock).mockReturnValue({
-      id: "PR_3",
-      number: 0,
-      resolved_count: 0,
-      unresolved_count: 0,
-    })
-
+  it("throws when no reviewerToken for pr_with_mixed_threads", async () => {
     await expect(
       seedFixtureManifest({
         repo: "aryeko/ghx-bench-fixtures",
@@ -275,13 +266,7 @@ describe("pr_with_mixed_threads seeding", () => {
         seedId: "test",
         requires: ["pr_with_mixed_threads"],
       }),
-    ).rejects.toThrow("pr_with_mixed_threads fixture missing")
-
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining("skipping pr_with_mixed_threads"),
-    )
-
-    consoleSpy.mockRestore()
+    ).rejects.toThrow("pr_with_mixed_threads requires a reviewer token")
   })
 
   it("seeds pr_with_reviews when reviewerToken is provided", async () => {
@@ -309,19 +294,7 @@ describe("pr_with_mixed_threads seeding", () => {
     expect((result.resources["pr_with_reviews"] as { number: number }).number).toBe(50)
   })
 
-  it("warns when no reviewerToken for pr_with_reviews", async () => {
-    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
-
-    const { createPrWithReviews: createPrWithReviewsMock } = await import(
-      "@bench/fixture/seed-pr-reviews.js"
-    )
-
-    vi.mocked(createPrWithReviewsMock).mockReturnValue({
-      id: "PR_2",
-      number: 0,
-      thread_count: 0,
-    })
-
+  it("throws when no reviewerToken for pr_with_reviews", async () => {
     await expect(
       seedFixtureManifest({
         repo: "aryeko/ghx-bench-fixtures",
@@ -329,10 +302,43 @@ describe("pr_with_mixed_threads seeding", () => {
         seedId: "test",
         requires: ["pr_with_reviews"],
       }),
-    ).rejects.toThrow("pr_with_reviews fixture missing")
+    ).rejects.toThrow("pr_with_reviews requires a reviewer token")
+  })
 
-    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("skipping pr_with_reviews"))
+  it("seeds pr_with_bugs when reviewerToken is provided", async () => {
+    const { createPrWithBugs: createPrWithBugsMock } = await import(
+      "@bench/fixture/seed-pr-bugs.js"
+    )
 
-    consoleSpy.mockRestore()
+    vi.mocked(createPrWithBugsMock).mockReturnValue({ id: "PR_B", number: 42 })
+
+    const result = await seedFixtureManifest(
+      {
+        repo: "aryeko/ghx-bench-fixtures",
+        outFile: "/tmp/test.json",
+        seedId: "test",
+        requires: ["pr_with_bugs"],
+      },
+      "reviewer-token",
+    )
+
+    expect(vi.mocked(createPrWithBugsMock)).toHaveBeenCalledWith(
+      "aryeko/ghx-bench-fixtures",
+      "test",
+      expect.any(String),
+      "reviewer-token",
+    )
+    expect((result.resources["pr_with_bugs"] as { number: number }).number).toBe(42)
+  })
+
+  it("throws when no reviewerToken for pr_with_bugs", async () => {
+    await expect(
+      seedFixtureManifest({
+        repo: "aryeko/ghx-bench-fixtures",
+        outFile: "/tmp/test.json",
+        seedId: "test",
+        requires: ["pr_with_bugs"],
+      }),
+    ).rejects.toThrow("pr_with_bugs requires a reviewer token")
   })
 })

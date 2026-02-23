@@ -1,12 +1,19 @@
 import type { FixtureManifest, Scenario } from "../domain/types.js"
+import { resetPrBugs } from "./seed-pr-bugs.js"
 import { resetMixedPrThreads } from "./seed-pr-mixed-threads.js"
 import { resetPrReviewThreads } from "./seed-pr-reviews.js"
 
 type ResetFn = (repo: string, prNumber: number, token: string) => void
 
-const RESET_REGISTRY: Record<string, ResetFn> = {
-  pr_with_mixed_threads: resetMixedPrThreads,
-  pr_with_reviews: resetPrReviewThreads,
+type ResetEntry = {
+  fn: ResetFn
+  requiresToken: boolean
+}
+
+const RESET_REGISTRY: Record<string, ResetEntry> = {
+  pr_with_bugs: { fn: resetPrBugs, requiresToken: false },
+  pr_with_mixed_threads: { fn: resetMixedPrThreads, requiresToken: true },
+  pr_with_reviews: { fn: resetPrReviewThreads, requiresToken: true },
 }
 
 export function resetScenarioFixtures(
@@ -18,18 +25,18 @@ export function resetScenarioFixtures(
     return
   }
 
-  if (!reviewerToken) {
-    console.warn(
-      `[benchmark] warn: reseed_per_iteration=true for scenario '${scenario.id}' but no reviewer token — skipping reset`,
-    )
-    return
-  }
-
   const requires = scenario.fixture.requires ?? []
 
   for (const resource of requires) {
-    const resetFn = RESET_REGISTRY[resource]
-    if (!resetFn) {
+    const entry = RESET_REGISTRY[resource]
+    if (!entry) {
+      continue
+    }
+
+    if (entry.requiresToken && !reviewerToken) {
+      console.warn(
+        `[benchmark] warn: reseed_per_iteration=true for '${resource}' in scenario '${scenario.id}' but no reviewer token — skipping reset`,
+      )
       continue
     }
 
@@ -50,7 +57,7 @@ export function resetScenarioFixtures(
     }
 
     try {
-      resetFn(manifest.repo.full_name, prNumber, reviewerToken)
+      entry.fn(manifest.repo.full_name, prNumber, reviewerToken ?? "")
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       console.warn(

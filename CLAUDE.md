@@ -61,6 +61,9 @@ pnpm --filter @ghx-dev/benchmark run report:gate
 
 **Benchmark CLI flags:**
 
+**CRITICAL:** `mode` and `repetitions` are positional, not flags. Use: `pnpm run benchmark -- <mode> <repetitions> [flags]`
+Example: `pnpm run benchmark -- agent_direct 1 --scenario pr-fix-mixed-threads-wf-001 --skip-warmup --fixture-manifest fixtures/latest.json`
+
 - `--skip-warmup` — skip warm-up canary run (useful for rapid iteration; default: run warmup)
 - `--scenario-set <name>` — run named scenario set from `scenario-sets.json`
 - `--scenario <id> ...` — run specific scenario(s) by ID (can be used multiple times)
@@ -106,6 +109,8 @@ User/Agent → CLI (packages/core/src/cli/) → executeTask() [core/routing/engi
 ### Benchmark Flow
 
 `packages/benchmark/src/cli/index.ts` → scenario selection from `packages/benchmark/scenario-sets.json` → isolated OpenCode sessions → assertion validation → `results/*.jsonl` → `reports/latest-summary.{json,md}`.
+
+**Inspecting opencode sessions:** `sqlite3 ~/.local/share/opencode/opencode.db "SELECT data FROM part WHERE session_id='ses_...' ORDER BY time_created;"` — `data` is a JSON column; key `type` values: `tool` (`.state.input.command`), `step-finish` (`.tokens`, `.reason`), `reasoning`, `text`. Sum tokens across all `step-finish` parts for full session totals.
 
 ## Code Style
 

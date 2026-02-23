@@ -9,6 +9,7 @@ import { spawnSync } from "node:child_process"
 import {
   runGh,
   runGhJson,
+  runGhJsonWithToken,
   runGhWithToken,
   tryRunGh,
   tryRunGhJson,
@@ -205,6 +206,52 @@ describe("runGhWithToken", () => {
     } else {
       delete process.env.EXISTING_VAR
     }
+  })
+})
+
+describe("runGhJsonWithToken", () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it("parses JSON from stdout using token", () => {
+    vi.mocked(spawnSync).mockReturnValue({
+      status: 0,
+      stdout: '{"id":42}',
+      stderr: "",
+    } as SpawnSyncReturns<string>)
+    expect(runGhJsonWithToken(["api", "/repos"], "test-token")).toEqual({ id: 42 })
+  })
+
+  it("returns empty object when stdout is empty", () => {
+    vi.mocked(spawnSync).mockReturnValue({
+      status: 0,
+      stdout: "",
+      stderr: "",
+    } as SpawnSyncReturns<string>)
+    expect(runGhJsonWithToken(["api", "/repos"], "test-token")).toEqual({})
+  })
+
+  it("passes token as GH_TOKEN env var", () => {
+    vi.mocked(spawnSync).mockReturnValue({
+      status: 0,
+      stdout: "{}",
+      stderr: "",
+    } as SpawnSyncReturns<string>)
+    runGhJsonWithToken(["api", "/repos"], "my-token")
+    const call = vi.mocked(spawnSync).mock.calls.at(0)
+    expect(call?.[2]).toMatchObject({
+      env: expect.objectContaining({ GH_TOKEN: "my-token" }),
+    })
+  })
+
+  it("throws on non-zero exit", () => {
+    vi.mocked(spawnSync).mockReturnValue({
+      status: 1,
+      stdout: "",
+      stderr: "forbidden",
+    } as SpawnSyncReturns<string>)
+    expect(() => runGhJsonWithToken(["api", "/repos"], "test-token")).toThrow("forbidden")
   })
 })
 

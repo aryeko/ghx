@@ -8,6 +8,26 @@ function parseArgs(argv: string[]): { asJson: boolean; domain: string | undefine
   }
 }
 
+function renderOptionalInput(name: string, detail: Record<string, unknown>): string {
+  const prop = detail[name]
+  if (!prop || typeof prop !== "object") return `${name}?`
+  const propObj = prop as Record<string, unknown>
+  if (propObj.type !== "array") return `${name}?`
+  const items = propObj.items
+  if (!items || typeof items !== "object") return `${name}?`
+  const itemObj = items as Record<string, unknown>
+  const itemProps = itemObj.properties
+  if (!itemProps || typeof itemProps !== "object") return `${name}?`
+  const requiredSet = new Set<string>(
+    Array.isArray(itemObj.required) ? (itemObj.required as string[]) : [],
+  )
+  const fields: string[] = []
+  for (const fieldName of Object.keys(itemProps as Record<string, unknown>)) {
+    fields.push(requiredSet.has(fieldName) ? fieldName : `${fieldName}?`)
+  }
+  return `${name}?[${fields.join(", ")}]`
+}
+
 export async function capabilitiesListCommand(argv: string[] = []): Promise<number> {
   const { asJson, domain } = parseArgs(argv)
   const capabilities = listCapabilities(domain)
@@ -30,7 +50,11 @@ export async function capabilitiesListCommand(argv: string[] = []): Promise<numb
   const lines = capabilities.map((item) => {
     const id = item.capability_id.padEnd(maxIdLen)
     const desc = item.description.padEnd(maxDescLen)
-    const inputs = `[${item.required_inputs.join(", ")}]`
+    const required = item.required_inputs.join(", ")
+    const optional = item.optional_inputs
+      .map((n) => renderOptionalInput(n, item.optional_inputs_detail))
+      .join(", ")
+    const inputs = optional.length > 0 ? `[${required}, ${optional}]` : `[${required}]`
     return `${id} - ${desc} ${inputs}`
   })
   process.stdout.write(`${lines.join("\n")}\n`)
