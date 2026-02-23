@@ -77,6 +77,50 @@ describe("evaluateCheckpoints", () => {
     expect(result.allPassed).toBe(true)
     expect(result.results[0]?.data).toEqual([{ id: 1 }, { id: 2 }])
   })
+
+  it("extracts verification_field from result data before condition evaluation", async () => {
+    executeTaskMock.mockResolvedValue({
+      ok: true,
+      data: { labels: ["enhancement", "bug"], title: "Some issue" },
+    })
+
+    const checkpoints = [
+      makeCheckpoint({ condition: "count_eq", expected_value: 2, verification_field: "labels" }),
+    ]
+    const result = await evaluateCheckpoints(checkpoints, {}, "token-abc")
+
+    expect(result.allPassed).toBe(true)
+    expect(result.results[0]?.passed).toBe(true)
+    expect(result.results[0]?.data).toEqual(["enhancement", "bug"])
+  })
+
+  it("fails count_eq when extracted array has wrong length", async () => {
+    executeTaskMock.mockResolvedValue({
+      ok: true,
+      data: { labels: ["enhancement"], title: "Some issue" },
+    })
+
+    const checkpoints = [
+      makeCheckpoint({ condition: "count_eq", expected_value: 2, verification_field: "labels" }),
+    ]
+    const result = await evaluateCheckpoints(checkpoints, {}, "token-abc")
+
+    expect(result.allPassed).toBe(false)
+    expect(result.results[0]?.passed).toBe(false)
+  })
+
+  it("returns null when verification_field is absent from result data", async () => {
+    executeTaskMock.mockResolvedValue({
+      ok: true,
+      data: { title: "Some issue" },
+    })
+
+    const checkpoints = [makeCheckpoint({ condition: "non_empty", verification_field: "labels" })]
+    const result = await evaluateCheckpoints(checkpoints, {}, "token-abc")
+
+    expect(result.allPassed).toBe(false)
+    expect(result.results[0]?.data).toBeNull()
+  })
 })
 
 describe("evaluateCondition", () => {

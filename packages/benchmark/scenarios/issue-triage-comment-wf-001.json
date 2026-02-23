@@ -33,8 +33,9 @@
       },
       {
         "name": "labels_correct",
-        "verification_task": "issue.labels.list",
+        "verification_task": "issue.view",
         "verification_input": {},
+        "verification_field": "labels",
         "condition": "count_eq",
         "expected_value": 2
       }

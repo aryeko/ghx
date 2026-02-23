@@ -112,6 +112,7 @@ export type WorkflowCheckpoint = {
   verification_input: Record<string, unknown>
   condition: "empty" | "non_empty" | "count_gte" | "count_eq" | "field_equals"
   expected_value?: unknown
+  verification_field?: string
 }
 
 export type WorkflowAssertions = {
