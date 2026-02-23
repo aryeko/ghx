@@ -43,6 +43,7 @@ describe("runSuite", () => {
     success: true,
     output_valid: true,
     latency_ms_wall: 100,
+    latency_ms_agent: 70,
     sdk_latency_ms: 90,
     tokens: {
       input: 10,

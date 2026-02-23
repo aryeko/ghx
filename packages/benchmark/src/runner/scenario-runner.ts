@@ -43,10 +43,12 @@ export async function runScenarioIteration(config: {
 
     const promptText = resolvedScenario.prompt
     const maxAttempts = (scenario.allowed_retries ?? 0) + 1
+    const agentStartedAt = Date.now()
     const { result: promptResult, attempts } = await withRetry(
       () => provider.prompt(sessionHandle, promptText, scenario.timeout_ms),
       { maxAttempts, backoffMs: 2000 },
     )
+    const latencyMsAgent = Date.now() - agentStartedAt
 
     const githubToken = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? ""
     const { allPassed: checkpointsPassed, results: checkpointResults } = await evaluateCheckpoints(
@@ -77,6 +79,7 @@ export async function runScenarioIteration(config: {
       success,
       output_valid: checkpointsPassed,
       latency_ms_wall: Date.now() - scenarioStartedAt,
+      latency_ms_agent: latencyMsAgent,
       sdk_latency_ms: promptResult.sdkLatencyMs,
       tokens: {
         input: promptResult.tokens.input,
@@ -122,6 +125,7 @@ export async function runScenarioIteration(config: {
       success: false,
       output_valid: false,
       latency_ms_wall: Date.now() - scenarioStartedAt,
+      latency_ms_agent: 0,
       sdk_latency_ms: null,
       tokens: {
         input: 0,

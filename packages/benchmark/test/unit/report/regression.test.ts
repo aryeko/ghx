@@ -19,6 +19,7 @@ const createModeSummary = (overrides?: Partial<ModeSummary>): ModeSummary => ({
   timeoutStallRate: 0,
   retryRate: 2,
   medianLatencyMs: 1000,
+  medianLatencyMsWall: 1000,
   medianTokensTotal: 5000,
   medianTokensActive: 4000,
   medianToolCalls: 5,
@@ -186,6 +187,7 @@ describe("regression", () => {
           ghx: createModeSummary({
             mode: "ghx",
             medianLatencyMs: 800,
+            medianLatencyMsWall: 800,
           }),
           agent_direct: createModeSummary({ mode: "agent_direct" }),
         },
@@ -194,6 +196,7 @@ describe("regression", () => {
       const current = createSummary({
         ghx: {
           medianLatencyMs: 1500,
+          medianLatencyMsWall: 1500,
         },
       })
 

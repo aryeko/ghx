@@ -9,17 +9,17 @@ export function toMarkdown(summary: BenchmarkSummary): string {
   lines.push("## Mode Metrics")
   lines.push("")
   lines.push(
-    "| Mode | Model | Runs | Success % | Output Valid % | Runner Error % | Timeout/Stall % | Retry % | Median Latency (ms) | P90 Latency (ms) | P95 Latency (ms) | IQR Latency (ms) | CV Latency % | Median Tokens (Total) | Median Tokens (Active) | P90 Tokens (Active) | P95 Tokens (Active) | Median Cost (USD) | Median Tool Calls |",
+    "| Mode | Model | Runs | Success % | Output Valid % | Runner Error % | Timeout/Stall % | Retry % | Median Agent Time (ms) | Median Wall Time (ms) | P90 Agent Time (ms) | P95 Agent Time (ms) | IQR Agent Time (ms) | CV Agent Time % | Median Tokens (Total) | Median Tokens (Active) | P90 Tokens (Active) | P95 Tokens (Active) | Median Cost (USD) | Median Tool Calls |",
   )
   lines.push(
-    "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+    "|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
   )
 
   for (const mode of ["agent_direct", "mcp", "ghx"] as const) {
     const item = summary.modes[mode]
     if (!item) continue
     lines.push(
-      `| ${mode} | ${item.modelSignature} | ${item.runs} | ${item.successRate.toFixed(2)} | ${item.outputValidityRate.toFixed(2)} | ${item.runnerFailureRate.toFixed(2)} | ${item.timeoutStallRate.toFixed(2)} | ${item.retryRate.toFixed(2)} | ${item.medianLatencyMs.toFixed(0)} | ${item.p90LatencyMs.toFixed(0)} | ${item.p95LatencyMs.toFixed(0)} | ${item.iqrLatencyMs.toFixed(0)} | ${item.cvLatency.toFixed(2)} | ${item.medianTokensTotal.toFixed(0)} | ${item.medianTokensActive.toFixed(0)} | ${item.p90TokensActive.toFixed(0)} | ${item.p95TokensActive.toFixed(0)} | ${item.medianCostUsd.toFixed(4)} | ${item.medianToolCalls.toFixed(1)} |`,
+      `| ${mode} | ${item.modelSignature} | ${item.runs} | ${item.successRate.toFixed(2)} | ${item.outputValidityRate.toFixed(2)} | ${item.runnerFailureRate.toFixed(2)} | ${item.timeoutStallRate.toFixed(2)} | ${item.retryRate.toFixed(2)} | ${item.medianLatencyMs.toFixed(0)} | ${item.medianLatencyMsWall.toFixed(0)} | ${item.p90LatencyMs.toFixed(0)} | ${item.p95LatencyMs.toFixed(0)} | ${item.iqrLatencyMs.toFixed(0)} | ${item.cvLatency.toFixed(2)} | ${item.medianTokensTotal.toFixed(0)} | ${item.medianTokensActive.toFixed(0)} | ${item.p90TokensActive.toFixed(0)} | ${item.p95TokensActive.toFixed(0)} | ${item.medianCostUsd.toFixed(4)} | ${item.medianToolCalls.toFixed(1)} |`,
     )
   }
 

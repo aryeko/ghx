@@ -14,6 +14,7 @@ function row(overrides: Partial<BenchmarkRow> = {}): BenchmarkRow {
     success: true,
     output_valid: true,
     latency_ms_wall: 100,
+    latency_ms_agent: 70,
     sdk_latency_ms: 90,
     tokens: {
       input: 10,
@@ -46,6 +47,7 @@ function modeSummary(overrides: Partial<ModeSummary> = {}): ModeSummary {
     timeoutStallRate: 0,
     retryRate: 0,
     medianLatencyMs: 70,
+    medianLatencyMsWall: 70,
     medianTokensTotal: 80,
     medianTokensActive: 80,
     medianToolCalls: 3,
@@ -83,6 +85,7 @@ describe("evaluateGate - passing scenarios", () => {
         scenario_id: `s${i}`,
         tool_calls: 10,
         latency_ms_wall: 200,
+        latency_ms_agent: 140,
         tokens: { input: 50, output: 50, reasoning: 0, cache_read: 0, cache_write: 0, total: 100 },
       }),
     )
@@ -92,6 +95,7 @@ describe("evaluateGate - passing scenarios", () => {
         scenario_id: `s${i}`,
         tool_calls: 6,
         latency_ms_wall: 100,
+        latency_ms_agent: 70,
         tokens: { input: 20, output: 30, reasoning: 0, cache_read: 0, cache_write: 0, total: 50 },
       }),
     )

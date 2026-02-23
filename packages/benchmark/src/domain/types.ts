@@ -36,6 +36,7 @@ export type ModeSummary = {
   timeoutStallRate: number
   retryRate: number
   medianLatencyMs: number
+  medianLatencyMsWall: number
   medianTokensTotal: number
   medianTokensActive: number
   medianToolCalls: number
@@ -191,6 +192,7 @@ export type BenchmarkRow = {
   success: boolean
   output_valid: boolean
   latency_ms_wall: number
+  latency_ms_agent: number
   sdk_latency_ms: number | null
   timing_breakdown?: BenchmarkTimingBreakdown
   tokens: {

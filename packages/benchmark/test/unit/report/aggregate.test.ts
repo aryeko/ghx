@@ -15,6 +15,7 @@ function row(overrides: Partial<BenchmarkRow>): BenchmarkRow {
     success: true,
     output_valid: true,
     latency_ms_wall: 100,
+    latency_ms_agent: 70,
     sdk_latency_ms: 90,
     tokens: {
       input: 10,
@@ -49,6 +50,7 @@ describe("buildSummary", () => {
       row({
         mode: "agent_direct",
         latency_ms_wall: 100,
+        latency_ms_agent: 70,
         tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 100 },
         tool_calls: 10,
         cost: 0.1,
@@ -58,6 +60,7 @@ describe("buildSummary", () => {
       row({
         mode: "ghx",
         latency_ms_wall: 70,
+        latency_ms_agent: 49,
         tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 70 },
         tool_calls: 6,
         cost: 0.08,
@@ -81,6 +84,7 @@ describe("buildSummary", () => {
       row({
         mode: "agent_direct",
         latency_ms_wall: 100,
+        latency_ms_agent: 70,
         tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 100 },
         tool_calls: 10,
         success: true,
@@ -89,6 +93,7 @@ describe("buildSummary", () => {
       row({
         mode: "ghx",
         latency_ms_wall: 70,
+        latency_ms_agent: 49,
         tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 70 },
         tool_calls: 6,
         success: true,
@@ -100,6 +105,7 @@ describe("buildSummary", () => {
         success: false,
         output_valid: false,
         latency_ms_wall: 60000,
+        latency_ms_agent: 42000,
         error: {
           type: "runner_error",
           message: "Timed out waiting for assistant message in session.messages",
@@ -127,6 +133,7 @@ describe("buildSummary", () => {
           mode: "agent_direct",
           scenario_id: "s1",
           latency_ms_wall: 100,
+          latency_ms_agent: 70,
           tool_calls: 5,
           tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 100 },
         }),
@@ -134,6 +141,7 @@ describe("buildSummary", () => {
           mode: "ghx",
           scenario_id: "s1",
           latency_ms_wall: 70,
+          latency_ms_agent: 49,
           tool_calls: 3,
           tokens: { input: 0, output: 0, reasoning: 0, cache_read: 0, cache_write: 0, total: 70 },
         }),
@@ -207,10 +215,10 @@ describe("buildSummary", () => {
 
   it("computes median for even-length arrays", () => {
     const rows = [
-      row({ mode: "agent_direct", latency_ms_wall: 100 }),
-      row({ mode: "agent_direct", latency_ms_wall: 200 }),
-      row({ mode: "agent_direct", latency_ms_wall: 300 }),
-      row({ mode: "agent_direct", latency_ms_wall: 400 }),
+      row({ mode: "agent_direct", latency_ms_wall: 100, latency_ms_agent: 100 }),
+      row({ mode: "agent_direct", latency_ms_wall: 200, latency_ms_agent: 200 }),
+      row({ mode: "agent_direct", latency_ms_wall: 300, latency_ms_agent: 300 }),
+      row({ mode: "agent_direct", latency_ms_wall: 400, latency_ms_agent: 400 }),
     ]
     const summary = buildSummary(rows)
     expect(summary.modes.agent_direct?.medianLatencyMs).toBe(250)

@@ -62,7 +62,8 @@ function computeModeSummary(mode: BenchmarkMode, rows: BenchmarkRow[]): ModeSumm
     .sort()
     .join(",")
 
-  const latencies = rows.map((row) => row.latency_ms_wall)
+  const latencies = rows.map((row) => row.latency_ms_agent)
+  const wallLatencies = rows.map((row) => row.latency_ms_wall)
   const tokensActiveValues = rows.map((row) => activeTokens(row))
   const costs = rows.map((row) => row.cost)
 
@@ -76,6 +77,7 @@ function computeModeSummary(mode: BenchmarkMode, rows: BenchmarkRow[]): ModeSumm
     timeoutStallRate: pct(rows.filter((row) => isTimeoutStallError(row)).length, rows.length),
     retryRate: pct(rows.filter((row) => row.external_retry_count > 0).length, rows.length),
     medianLatencyMs: median(latencies),
+    medianLatencyMsWall: median(wallLatencies),
     medianTokensTotal: median(rows.map((row) => row.tokens.total)),
     medianTokensActive: median(tokensActiveValues),
     medianToolCalls: median(rows.map((row) => row.tool_calls)),
@@ -163,7 +165,7 @@ export function buildSummary(
       tokensActiveReductionCI: bootstrapCI(
         agentDirectRows.map((row) => activeTokens(row)).filter((v) => v > 0),
       ),
-      latencyReductionCI: bootstrapCI(agentDirectRows.map((row) => row.latency_ms_wall)),
+      latencyReductionCI: bootstrapCI(agentDirectRows.map((row) => row.latency_ms_agent)),
     }
   }
 
