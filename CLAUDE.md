@@ -71,7 +71,10 @@ Example: `pnpm run benchmark -- agent_direct 1 --scenario pr-fix-mixed-threads-w
 - `--seed-if-missing` — auto-seed fixtures if manifest not found (requires GitHub auth)
 - `--provider <id>` — override provider (e.g., `openai`)
 - `--model <id>` — override model (e.g., `gpt-5.3-codex`)
-- `--output-jsonl <path>` — write raw results to specified JSONL file
+- `--output-jsonl <path>` — write raw results to specified JSONL file (**must be absolute path** — pnpm shifts cwd, relative paths cause ENOENT)
+
+**Benchmark gotchas:**
+- Port conflict: OpenCode server defaults to port 3000; set `BENCH_OPENCODE_PORT=<port>` to use a different port if 3000 is in use
 
 **Fixture CLI flags** (`pnpm --filter @ghx-dev/benchmark run bench:fixture --`):
 

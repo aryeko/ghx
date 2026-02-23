@@ -88,6 +88,10 @@ export async function runSuite(config: {
       if (warmupScenario) {
         console.log(`[benchmark] warm-up canary: running ${warmupScenario.id}`)
         try {
+          if (manifest !== null) {
+            await resetScenarioFixtures(warmupScenario, manifest, reviewerToken)
+          }
+
           const provider = await createSessionProvider({
             type: "opencode",
             providerId: providerConfig.providerId,

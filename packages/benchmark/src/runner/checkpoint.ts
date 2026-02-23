@@ -1,3 +1,4 @@
+import type { GithubClient } from "@ghx-dev/core"
 import { executeTask } from "@ghx-dev/core"
 import type { WorkflowCheckpoint } from "../domain/types.js"
 import { isObject } from "../util/guards.js"
@@ -48,6 +49,37 @@ export function evaluateCondition(
   }
 }
 
+const POLL_MAX_ATTEMPTS = 6
+const POLL_INTERVAL_MS = 2000
+
+async function evaluateCheckpoint(
+  checkpoint: WorkflowCheckpoint,
+  githubClient: GithubClient,
+  githubToken: string,
+): Promise<CheckpointResult> {
+  const verificationResult = await executeTask(
+    {
+      task: checkpoint.verification_task,
+      input: checkpoint.verification_input,
+    },
+    {
+      githubClient,
+      githubToken,
+      skipGhPreflight: true,
+    },
+  )
+
+  const ok = verificationResult.ok === true
+  const data = ok
+    ? resolveCheckpointData(verificationResult.data, checkpoint.verification_field)
+    : null
+  const passed = ok
+    ? evaluateCondition(checkpoint.condition, data, checkpoint.expected_value)
+    : false
+
+  return { name: checkpoint.name, passed, data }
+}
+
 export async function evaluateCheckpoints(
   checkpoints: WorkflowCheckpoint[],
   resolvedBindings: Record<string, unknown>,
@@ -59,36 +91,23 @@ export async function evaluateCheckpoints(
   const results: CheckpointResult[] = []
 
   for (const checkpoint of checkpoints) {
-    try {
-      const verificationResult = await executeTask(
-        {
-          task: checkpoint.verification_task,
-          input: checkpoint.verification_input,
-        },
-        {
-          githubClient,
-          githubToken,
-          skipGhPreflight: true,
-        },
-      )
+    let last: CheckpointResult = { name: checkpoint.name, passed: false, data: null }
 
-      const ok = verificationResult.ok === true
-      const data = ok
-        ? resolveCheckpointData(verificationResult.data, checkpoint.verification_field)
-        : null
+    for (let attempt = 1; attempt <= POLL_MAX_ATTEMPTS; attempt += 1) {
+      try {
+        last = await evaluateCheckpoint(checkpoint, githubClient, githubToken)
+      } catch {
+        last = { name: checkpoint.name, passed: false, data: null }
+      }
 
-      const passed = ok
-        ? evaluateCondition(checkpoint.condition, data, checkpoint.expected_value)
-        : false
+      if (last.passed || attempt === POLL_MAX_ATTEMPTS) {
+        break
+      }
 
-      results.push({ name: checkpoint.name, passed, data })
-    } catch {
-      results.push({
-        name: checkpoint.name,
-        passed: false,
-        data: null,
-      })
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
     }
+
+    results.push(last)
   }
 
   const allPassed = results.every((c) => c.passed)
