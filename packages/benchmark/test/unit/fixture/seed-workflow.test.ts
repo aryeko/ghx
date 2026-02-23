@@ -16,6 +16,7 @@ describe("findDispatchedFailedRunId", () => {
   })
 
   it("returns run id when tagged run found", () => {
+    const runCreatedAtMs = Date.parse("2024-01-01T10:00:00Z")
     tryRunGhJsonMock.mockReturnValue([
       {
         databaseId: 100,
@@ -29,7 +30,11 @@ describe("findDispatchedFailedRunId", () => {
       },
     ])
 
-    const result = findDispatchedFailedRunId("aryeko/ghx-bench-fixtures", "seed-123", Date.now())
+    const result = findDispatchedFailedRunId(
+      "aryeko/ghx-bench-fixtures",
+      "seed-123",
+      runCreatedAtMs,
+    )
 
     expect(result).toBe(100)
   })

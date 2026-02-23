@@ -3,7 +3,11 @@
   "id": "ci-diagnose-run-wf-001",
   "name": "Diagnose a failed CI workflow run and rerun it",
   "prompt": "Workflow run {{runId}} in {{owner}}/{{name}} has failed. Get the run details to confirm its status and conclusion, identify which job failed, fetch that job's logs to surface the top error lines, then rerun the failed jobs.",
-  "expected_capabilities": ["workflow.run.view", "workflow.job.logs.view", "workflow.run.rerun.failed"],
+  "expected_capabilities": [
+    "workflow.run.view",
+    "workflow.job.logs.view",
+    "workflow.run.rerun.failed"
+  ],
   "timeout_ms": 180000,
   "allowed_retries": 1,
   "fixture": {
@@ -30,7 +34,7 @@
         "verification_task": "workflow.run.view",
         "verification_input": {},
         "condition": "field_equals",
-        "expected_value": { "runAttempt": 2 }
+        "expected_value": { "attempt": 2 }
       }
     ]
   },

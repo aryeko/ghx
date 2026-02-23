@@ -140,7 +140,7 @@ export async function runSuite(config: {
 
       for (const scenario of scenarios) {
         for (let iteration = 1; iteration <= repetitions; iteration += 1) {
-          if (manifest !== null) {
+          if (manifest !== null && iteration > 1) {
             resetScenarioFixtures(scenario, manifest, reviewerToken)
           }
 

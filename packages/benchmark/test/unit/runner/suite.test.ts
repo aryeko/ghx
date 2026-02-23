@@ -446,7 +446,7 @@ describe("runSuite", () => {
     expect(errorEvent?.message).toBe("mkdir-string-error")
   })
 
-  it("calls resetScenarioFixtures once per iteration when manifest is non-null", async () => {
+  it("calls resetScenarioFixtures for each iteration after the first when manifest is non-null", async () => {
     const { runScenarioIteration } = await import("@bench/runner/scenario-runner.js")
     const { createSessionProvider } = await import("@bench/provider/factory.js")
     const { resetScenarioFixtures } = await import("@bench/fixture/reset.js")
@@ -477,7 +477,7 @@ describe("runSuite", () => {
       reviewerToken: "tok-abc",
     })
 
-    expect(vi.mocked(resetScenarioFixtures)).toHaveBeenCalledTimes(3)
+    expect(vi.mocked(resetScenarioFixtures)).toHaveBeenCalledTimes(2)
     expect(vi.mocked(resetScenarioFixtures)).toHaveBeenCalledWith(scenario, manifest, "tok-abc")
   })
 
@@ -532,7 +532,7 @@ describe("runSuite", () => {
     await runSuite({
       modes: ["ghx"],
       scenarios: [scenario],
-      repetitions: 1,
+      repetitions: 2,
       manifest,
       outputJsonlPath: "/tmp/test.jsonl",
       onProgress: () => {},
@@ -570,7 +570,7 @@ describe("runSuite", () => {
     await runSuite({
       modes: ["ghx"],
       scenarios: [scenario],
-      repetitions: 1,
+      repetitions: 2,
       manifest,
       outputJsonlPath: "/tmp/test.jsonl",
       onProgress: () => {},
