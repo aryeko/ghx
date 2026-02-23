@@ -290,6 +290,14 @@ export function findLatestWorkflowRun(repo: string, prNumber: number): WorkflowR
   }
 }
 
+export async function reseedWorkflowRun(
+  repo: string,
+  seedId: string,
+): Promise<WorkflowRunRef | null> {
+  resetWorkflowRun(repo, 0, "")
+  return ensureFailedRerunWorkflowRun(repo, seedId)
+}
+
 export function resetWorkflowRun(repo: string, _resourceId: number, _token: string): void {
   const { owner, name } = parseRepoForReset(repo)
   const listResult = tryRunGhJson<unknown>([

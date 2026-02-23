@@ -3,7 +3,7 @@ import { resetIssueTriage } from "./seed-issue.js"
 import { resetPrBugs } from "./seed-pr-bugs.js"
 import { resetMixedPrThreads } from "./seed-pr-mixed-threads.js"
 import { resetPrReviewThreads } from "./seed-pr-reviews.js"
-import { resetWorkflowRun } from "./seed-workflow.js"
+import { reseedWorkflowRun, resetWorkflowRun } from "./seed-workflow.js"
 
 type ResetFn = (repo: string, resourceId: number, token: string) => void
 
@@ -20,11 +20,11 @@ const RESET_REGISTRY: Record<string, ResetEntry> = {
   issue_for_triage: { fn: resetIssueTriage, requiresToken: false },
 }
 
-export function resetScenarioFixtures(
+export async function resetScenarioFixtures(
   scenario: Scenario,
   manifest: FixtureManifest,
   reviewerToken: string | null,
-): void {
+): Promise<void> {
   if (scenario.fixture?.reseed_per_iteration !== true) {
     return
   }
@@ -69,6 +69,20 @@ export function resetScenarioFixtures(
       const message = error instanceof Error ? error.message : String(error)
       console.warn(
         `[benchmark] warn: reset of '${resource}' for scenario '${scenario.id}' failed: ${message} — continuing`,
+      )
+    }
+  }
+
+  if (requires.includes("workflow_run")) {
+    try {
+      const ref = await reseedWorkflowRun(manifest.repo.full_name, "default")
+      if (ref !== null) {
+        manifest.resources["workflow_run"] = { id: ref.id, number: ref.id }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.warn(
+        `[benchmark] warn: reseed of 'workflow_run' for scenario '${scenario.id}' failed: ${message} — continuing`,
       )
     }
   }

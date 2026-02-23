@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const resetMixedPrThreadsMock = vi.hoisted(() => vi.fn())
 const resetPrReviewThreadsMock = vi.hoisted(() => vi.fn())
 const resetWorkflowRunMock = vi.hoisted(() => vi.fn())
+const reseedWorkflowRunMock = vi.hoisted(() => vi.fn())
 const resetIssueTriageMock = vi.hoisted(() => vi.fn())
 
 vi.mock("@bench/fixture/seed-pr-mixed-threads.js", () => ({
@@ -14,6 +15,7 @@ vi.mock("@bench/fixture/seed-pr-reviews.js", () => ({
 }))
 vi.mock("@bench/fixture/seed-workflow.js", () => ({
   resetWorkflowRun: resetWorkflowRunMock,
+  reseedWorkflowRun: reseedWorkflowRunMock,
 }))
 vi.mock("@bench/fixture/seed-issue.js", () => ({
   resetIssueTriage: resetIssueTriageMock,
@@ -55,101 +57,99 @@ describe("resetScenarioFixtures", () => {
     vi.clearAllMocks()
   })
 
-  it("returns early when reseed_per_iteration is not set", () => {
+  it("returns early when reseed_per_iteration is not set", async () => {
     const scenario = makeScenario({})
     // Ensure reseed_per_iteration is absent
     delete scenario.fixture?.reseed_per_iteration
-    resetScenarioFixtures(scenario, baseManifest, "token123")
+    await resetScenarioFixtures(scenario, baseManifest, "token123")
     expect(resetMixedPrThreadsMock).not.toHaveBeenCalled()
     expect(resetPrReviewThreadsMock).not.toHaveBeenCalled()
   })
 
-  it("returns early when reseed_per_iteration is false", () => {
+  it("returns early when reseed_per_iteration is false", async () => {
     const scenario = makeScenario({ reseed_per_iteration: false })
-    resetScenarioFixtures(scenario, baseManifest, "token123")
+    await resetScenarioFixtures(scenario, baseManifest, "token123")
     expect(resetMixedPrThreadsMock).not.toHaveBeenCalled()
     expect(resetPrReviewThreadsMock).not.toHaveBeenCalled()
   })
 
-  it("warns and returns early when reviewerToken is null", () => {
+  it("warns and returns early when reviewerToken is null", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
     const scenario = makeScenario({ requires: ["pr_with_mixed_threads"] })
-    resetScenarioFixtures(scenario, baseManifest, null)
+    await resetScenarioFixtures(scenario, baseManifest, null)
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("no reviewer token"))
     expect(resetMixedPrThreadsMock).not.toHaveBeenCalled()
     warnSpy.mockRestore()
   })
 
-  it("warns and returns early when reviewerToken is empty string", () => {
+  it("warns and returns early when reviewerToken is empty string", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
     const scenario = makeScenario({ requires: ["pr_with_mixed_threads"] })
-    resetScenarioFixtures(scenario, baseManifest, "")
+    await resetScenarioFixtures(scenario, baseManifest, "")
     expect(warnSpy).toHaveBeenCalled()
     expect(resetMixedPrThreadsMock).not.toHaveBeenCalled()
     warnSpy.mockRestore()
   })
 
-  it("calls resetMixedPrThreads with correct args", () => {
+  it("calls resetMixedPrThreads with correct args", async () => {
     const scenario = makeScenario({ requires: ["pr_with_mixed_threads"] })
-    resetScenarioFixtures(scenario, baseManifest, "token123")
+    await resetScenarioFixtures(scenario, baseManifest, "token123")
     expect(resetMixedPrThreadsMock).toHaveBeenCalledWith("test-owner/test-repo", 42, "token123")
   })
 
-  it("calls resetPrReviewThreads with correct args", () => {
+  it("calls resetPrReviewThreads with correct args", async () => {
     const scenario = makeScenario({ requires: ["pr_with_reviews"] })
-    resetScenarioFixtures(scenario, baseManifest, "token456")
+    await resetScenarioFixtures(scenario, baseManifest, "token456")
     expect(resetPrReviewThreadsMock).toHaveBeenCalledWith("test-owner/test-repo", 7, "token456")
   })
 
-  it("skips resource not in registry without throwing", () => {
+  it("skips resource not in registry without throwing", async () => {
     const scenario = makeScenario({ requires: ["pr", "issue"] })
-    expect(() => {
-      resetScenarioFixtures(scenario, baseManifest, "token123")
-    }).not.toThrow()
+    await expect(resetScenarioFixtures(scenario, baseManifest, "token123")).resolves.toBeUndefined()
     expect(resetMixedPrThreadsMock).not.toHaveBeenCalled()
     expect(resetPrReviewThreadsMock).not.toHaveBeenCalled()
   })
 
-  it("warns and skips when manifest resource is missing", () => {
+  it("warns and skips when manifest resource is missing", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
     const scenario = makeScenario({ requires: ["pr_with_mixed_threads"] })
     const manifestWithoutResource: FixtureManifest = {
       ...baseManifest,
       resources: {},
     }
-    resetScenarioFixtures(scenario, manifestWithoutResource, "token123")
+    await resetScenarioFixtures(scenario, manifestWithoutResource, "token123")
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("missing from manifest"))
     expect(resetMixedPrThreadsMock).not.toHaveBeenCalled()
     warnSpy.mockRestore()
   })
 
-  it("warns and skips when manifest resource has number === 0", () => {
+  it("warns and skips when manifest resource has number === 0", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
     const scenario = makeScenario({ requires: ["pr_with_mixed_threads"] })
     const manifestWithZero: FixtureManifest = {
       ...baseManifest,
       resources: { pr_with_mixed_threads: { number: 0 } },
     }
-    resetScenarioFixtures(scenario, manifestWithZero, "token123")
+    await resetScenarioFixtures(scenario, manifestWithZero, "token123")
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("no valid id"))
     expect(resetMixedPrThreadsMock).not.toHaveBeenCalled()
     warnSpy.mockRestore()
   })
 
-  it("warns and skips when manifest resource has non-number in number field", () => {
+  it("warns and skips when manifest resource has non-number in number field", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
     const scenario = makeScenario({ requires: ["pr_with_mixed_threads"] })
     const manifestBadType: FixtureManifest = {
       ...baseManifest,
       resources: { pr_with_mixed_threads: { number: "not-a-number" } },
     }
-    resetScenarioFixtures(scenario, manifestBadType, "token123")
+    await resetScenarioFixtures(scenario, manifestBadType, "token123")
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("no valid id"))
     expect(resetMixedPrThreadsMock).not.toHaveBeenCalled()
     warnSpy.mockRestore()
   })
 
-  it("warns and continues when reset fn throws", () => {
+  it("warns and continues when reset fn throws", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
     resetMixedPrThreadsMock.mockImplementationOnce(() => {
       throw new Error("network error")
@@ -157,23 +157,21 @@ describe("resetScenarioFixtures", () => {
     const scenario = makeScenario({
       requires: ["pr_with_mixed_threads", "pr_with_reviews"],
     })
-    expect(() => {
-      resetScenarioFixtures(scenario, baseManifest, "token123")
-    }).not.toThrow()
+    await expect(resetScenarioFixtures(scenario, baseManifest, "token123")).resolves.toBeUndefined()
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("network error"))
     // Second resource should still be called
     expect(resetPrReviewThreadsMock).toHaveBeenCalled()
     warnSpy.mockRestore()
   })
 
-  it("does nothing when requires is empty", () => {
+  it("does nothing when requires is empty", async () => {
     const scenario = makeScenario({ requires: [] })
-    resetScenarioFixtures(scenario, baseManifest, "token123")
+    await resetScenarioFixtures(scenario, baseManifest, "token123")
     expect(resetMixedPrThreadsMock).not.toHaveBeenCalled()
     expect(resetPrReviewThreadsMock).not.toHaveBeenCalled()
   })
 
-  it("does nothing when fixture is undefined", () => {
+  it("does nothing when fixture is undefined", async () => {
     const scenario: Scenario = {
       type: "workflow",
       id: "no-fixture",
@@ -185,31 +183,31 @@ describe("resetScenarioFixtures", () => {
       assertions: { expected_outcome: "success", checkpoints: [] },
       tags: [],
     }
-    resetScenarioFixtures(scenario, baseManifest, "token123")
+    await resetScenarioFixtures(scenario, baseManifest, "token123")
     expect(resetMixedPrThreadsMock).not.toHaveBeenCalled()
   })
 
-  it("calls resetIssueTriage with correct args when no reviewer token", () => {
+  it("calls resetIssueTriage with correct args when no reviewer token", async () => {
     const manifest: FixtureManifest = {
       ...baseManifest,
       resources: { issue_for_triage: { number: 15, id: "I_15" } },
     }
     const scenario = makeScenario({ requires: ["issue_for_triage"] })
-    resetScenarioFixtures(scenario, manifest, null)
+    await resetScenarioFixtures(scenario, manifest, null)
     expect(resetIssueTriageMock).toHaveBeenCalledWith("test-owner/test-repo", 15, "")
   })
 
-  it("calls resetIssueTriage when reviewer token is provided", () => {
+  it("calls resetIssueTriage when reviewer token is provided", async () => {
     const manifest: FixtureManifest = {
       ...baseManifest,
       resources: { issue_for_triage: { number: 20, id: "I_20" } },
     }
     const scenario = makeScenario({ requires: ["issue_for_triage"] })
-    resetScenarioFixtures(scenario, manifest, "reviewer-token")
+    await resetScenarioFixtures(scenario, manifest, "reviewer-token")
     expect(resetIssueTriageMock).toHaveBeenCalledWith("test-owner/test-repo", 20, "reviewer-token")
   })
 
-  it("runs issue_for_triage reset even when token-required resources are skipped", () => {
+  it("runs issue_for_triage reset even when token-required resources are skipped", async () => {
     const manifest: FixtureManifest = {
       ...baseManifest,
       resources: {
@@ -221,9 +219,58 @@ describe("resetScenarioFixtures", () => {
     const scenario = makeScenario({
       requires: ["pr_with_mixed_threads", "issue_for_triage"],
     })
-    resetScenarioFixtures(scenario, manifest, null)
+    await resetScenarioFixtures(scenario, manifest, null)
     expect(resetMixedPrThreadsMock).not.toHaveBeenCalled()
     expect(resetIssueTriageMock).toHaveBeenCalledWith("test-owner/test-repo", 30, "")
     warnSpy.mockRestore()
+  })
+
+  it("calls reseedWorkflowRun and mutates manifest.resources when workflow_run is in requires", async () => {
+    const manifest: FixtureManifest = {
+      ...baseManifest,
+      resources: { workflow_run: { id: 99999, number: 99999 } },
+    }
+    reseedWorkflowRunMock.mockResolvedValueOnce({ id: 12345, job_id: 1, check_run_id: 2 })
+    const scenario = makeScenario({ requires: ["workflow_run"] })
+    await resetScenarioFixtures(scenario, manifest, null)
+    expect(reseedWorkflowRunMock).toHaveBeenCalledWith("test-owner/test-repo", "default")
+    expect(manifest.resources["workflow_run"]).toEqual({ id: 12345, number: 12345 })
+  })
+
+  it("does not mutate manifest when reseedWorkflowRun returns null", async () => {
+    const manifest: FixtureManifest = {
+      ...baseManifest,
+      resources: { workflow_run: { id: 99999, number: 99999 } },
+    }
+    reseedWorkflowRunMock.mockResolvedValueOnce(null)
+    const scenario = makeScenario({ requires: ["workflow_run"] })
+    await resetScenarioFixtures(scenario, manifest, null)
+    expect(reseedWorkflowRunMock).toHaveBeenCalled()
+    expect(manifest.resources["workflow_run"]).toEqual({ id: 99999, number: 99999 })
+  })
+
+  it("warns and continues when reseedWorkflowRun throws", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const manifest: FixtureManifest = {
+      ...baseManifest,
+      resources: { workflow_run: { id: 99999, number: 99999 } },
+    }
+    reseedWorkflowRunMock.mockRejectedValueOnce(new Error("dispatch failed"))
+    const scenario = makeScenario({ requires: ["workflow_run"] })
+    await expect(resetScenarioFixtures(scenario, manifest, null)).resolves.toBeUndefined()
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("dispatch failed"))
+    warnSpy.mockRestore()
+  })
+
+  it("runs reseedWorkflowRun even when reviewer token is null", async () => {
+    const manifest: FixtureManifest = {
+      ...baseManifest,
+      resources: { workflow_run: { id: 1, number: 1 } },
+    }
+    reseedWorkflowRunMock.mockResolvedValueOnce({ id: 555, job_id: null, check_run_id: null })
+    const scenario = makeScenario({ requires: ["workflow_run"] })
+    await resetScenarioFixtures(scenario, manifest, null)
+    expect(reseedWorkflowRunMock).toHaveBeenCalled()
+    expect(manifest.resources["workflow_run"]).toEqual({ id: 555, number: 555 })
   })
 })

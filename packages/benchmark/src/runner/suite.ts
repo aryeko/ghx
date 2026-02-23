@@ -148,6 +148,10 @@ export async function runSuite(config: {
             completed: totalCompleted,
           })
 
+          if (manifest !== null) {
+            await resetScenarioFixtures(scenario, manifest, reviewerToken)
+          }
+
           const result = await runScenarioIteration({
             provider,
             scenario,
@@ -159,10 +163,6 @@ export async function runSuite(config: {
           })
 
           await appendFile(outputJsonlPath, `${JSON.stringify(result)}\n`, "utf8")
-
-          if (manifest !== null) {
-            await resetScenarioFixtures(scenario, manifest, reviewerToken)
-          }
 
           totalCompleted += 1
           if (result.success) {

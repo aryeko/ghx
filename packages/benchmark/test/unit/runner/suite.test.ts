@@ -446,12 +446,19 @@ describe("runSuite", () => {
     expect(errorEvent?.message).toBe("mkdir-string-error")
   })
 
-  it("calls resetScenarioFixtures after every iteration when manifest is non-null", async () => {
+  it("calls resetScenarioFixtures before every iteration when manifest is non-null", async () => {
     const { runScenarioIteration } = await import("@bench/runner/scenario-runner.js")
     const { createSessionProvider } = await import("@bench/provider/factory.js")
     const { resetScenarioFixtures } = await import("@bench/fixture/reset.js")
 
-    vi.mocked(runScenarioIteration).mockResolvedValue(mockBenchmarkRow)
+    const callOrder: string[] = []
+    vi.mocked(runScenarioIteration).mockImplementation(async () => {
+      callOrder.push("runScenarioIteration")
+      return mockBenchmarkRow
+    })
+    vi.mocked(resetScenarioFixtures).mockImplementation(async () => {
+      callOrder.push("resetScenarioFixtures")
+    })
     vi.mocked(createSessionProvider).mockResolvedValue({
       createSession: vi.fn(),
       prompt: vi.fn(),
@@ -479,6 +486,16 @@ describe("runSuite", () => {
 
     expect(vi.mocked(resetScenarioFixtures)).toHaveBeenCalledTimes(3)
     expect(vi.mocked(resetScenarioFixtures)).toHaveBeenCalledWith(scenario, manifest, "tok-abc")
+
+    // Verify reset is called before run in each iteration
+    expect(callOrder).toEqual([
+      "resetScenarioFixtures",
+      "runScenarioIteration",
+      "resetScenarioFixtures",
+      "runScenarioIteration",
+      "resetScenarioFixtures",
+      "runScenarioIteration",
+    ])
   })
 
   it("does not call resetScenarioFixtures when manifest is null", async () => {
