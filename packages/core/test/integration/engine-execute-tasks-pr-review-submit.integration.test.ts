@@ -15,10 +15,12 @@ import { describe, expect, it, vi } from "vitest"
 
 describe("executeTasks – pr.reviews.submit resolution (Phase 1 → Phase 2)", () => {
   it("resolves pullRequestId from PrNodeId lookup and injects into PrReviewSubmit mutation", async () => {
-    // Phase 1: batch query returning PrNodeId lookup result aliased as step0
+    // Phase 1: batch query returning PrNodeId lookup result aliased as step0.
+    // Real GitHub returns the root field value directly under the alias key — no "repository" wrapper.
+    // The engine re-wraps it as { repository: <value> } before applyInject path traversal.
     const queryFn = vi.fn(async <TData>(_doc: unknown, _vars: unknown) => {
       return {
-        step0: { repository: { pullRequest: { id: "PR_xyz789" } } },
+        step0: { pullRequest: { id: "PR_xyz789" } },
       } as TData
     })
 
@@ -108,10 +110,11 @@ describe("executeTasks – pr.reviews.submit resolution (Phase 1 → Phase 2)", 
   })
 
   it("returns partial status when PrNodeId lookup returns null pullRequest (bad inject path)", async () => {
-    // Phase 1: returns null pullRequest → applyInject throws for pullRequestId
+    // Phase 1: returns null pullRequest → applyInject throws for pullRequestId.
+    // Real GitHub returns the root field value directly under the alias key (no "repository" wrapper).
     const queryFn = vi.fn(async <TData>() => {
       return {
-        step0: { repository: { pullRequest: null } },
+        step0: { pullRequest: null },
       } as TData
     })
 
