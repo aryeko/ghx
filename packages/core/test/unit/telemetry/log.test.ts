@@ -15,14 +15,14 @@ const mockAppendFile = vi.mocked(fs.appendFile)
 const mockMkdir = vi.mocked(fs.promises.mkdir)
 
 describe("buildLogFilePath", () => {
-  it("formats path with YYYY-MM-DD", () => {
-    const date = new Date("2026-02-23T10:00:00.000Z")
+  it("formats path with YYYY-MM-DD (UTC)", () => {
+    const date = new Date(Date.UTC(2026, 1, 23, 10, 0, 0))
     const result = buildLogFilePath("/tmp/logs", date)
     expect(result).toBe(path.join("/tmp/logs", "ghx-2026-02-23.jsonl"))
   })
 
   it("pads month and day with leading zeros", () => {
-    const date = new Date("2026-03-05T00:00:00.000Z")
+    const date = new Date(Date.UTC(2026, 2, 5, 0, 0, 0))
     const result = buildLogFilePath("/logs", date)
     expect(result).toMatch(/ghx-2026-03-05\.jsonl$/)
   })

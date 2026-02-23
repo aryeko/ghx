@@ -32,9 +32,9 @@ function resolveLevel(raw: string | undefined): LogLevel | "off" {
 }
 
 export function buildLogFilePath(dir: string, date: Date): string {
-  const yyyy = date.getFullYear()
-  const mm = String(date.getMonth() + 1).padStart(2, "0")
-  const dd = String(date.getDate()).padStart(2, "0")
+  const yyyy = date.getUTCFullYear()
+  const mm = String(date.getUTCMonth() + 1).padStart(2, "0")
+  const dd = String(date.getUTCDate()).padStart(2, "0")
   return path.join(dir, `ghx-${yyyy}-${mm}-${dd}.jsonl`)
 }
 
@@ -68,6 +68,8 @@ export function createLogger(config: LoggerConfig): Logger {
 
   function ensureDir(): Promise<void> {
     if (dirReady !== null) return dirReady
+    // Errors are swallowed intentionally: this is fire-and-forget telemetry;
+    // if the directory can't be created, subsequent writes will fail silently too.
     dirReady = fs.promises
       .mkdir(config.dir, { recursive: true })
       .then(() => undefined)

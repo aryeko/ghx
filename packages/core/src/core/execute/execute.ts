@@ -260,12 +260,13 @@ export async function execute(options: ExecuteOptions): Promise<ResultEnvelope> 
 
       lastError = result.error
       firstError ??= result.error
-      if (result.error?.retryable) {
+      if (!result.ok && result.error) {
         logger.debug("route.attempt_failed", {
           capability_id: options.card.capability_id,
           route,
           attempt,
           error_code: result.error.code,
+          retryable: result.error.retryable,
         })
       }
       if (!result.error?.retryable) {

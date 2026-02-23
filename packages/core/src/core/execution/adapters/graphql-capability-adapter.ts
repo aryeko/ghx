@@ -44,7 +44,7 @@ export async function runGraphqlCapability(
   } catch (error: unknown) {
     const code = mapErrorToCode(error)
     const reason = code === errorCodes.AdapterUnsupported ? "CAPABILITY_LIMIT" : "CARD_PREFERRED"
-    return normalizeError(
+    const result = normalizeError(
       {
         code,
         message: error instanceof Error ? error.message : String(error),
@@ -53,5 +53,7 @@ export async function runGraphqlCapability(
       "graphql",
       { capabilityId, reason },
     )
+    logger.debug("graphql.complete", { capability_id: capabilityId, ok: result.ok })
+    return result
   }
 }
