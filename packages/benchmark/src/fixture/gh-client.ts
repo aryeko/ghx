@@ -65,6 +65,12 @@ export function tryRunGhWithToken(args: string[], token: string): string | null 
   }
 }
 
+export function runGhJsonWithToken<T = unknown>(args: string[], token: string): T {
+  const output = runGhWithToken(args, token)
+  if (output.length === 0) return {} as T
+  return JSON.parse(output) as T
+}
+
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }

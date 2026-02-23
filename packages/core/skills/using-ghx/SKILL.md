@@ -25,9 +25,19 @@ ghx capabilities explain <capability_id>
 
 ## Execute
 
+**Always use heredoc — never inline `--input '...'`.** Inline form breaks with nested quotes and trailing commas in model-generated JSON.
+
 ```bash
 ghx run <capability_id> --input - <<'EOF'
 {...}
+EOF
+```
+
+Example (submitting a review with inline comments):
+
+```bash
+ghx run pr.reviews.submit --input - <<'EOF'
+{"owner": "acme", "name": "my-repo", "prNumber": 42, "event": "REQUEST_CHANGES", "body": "Please fix the issues.", "comments": [{"path": "src/index.ts", "line": 10, "body": "Off-by-one error here."}]}
 EOF
 ```
 

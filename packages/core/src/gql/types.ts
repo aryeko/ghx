@@ -383,6 +383,8 @@ export type DraftComment = {
   body: string
   line: number
   side?: "LEFT" | "RIGHT"
+  startLine?: number
+  startSide?: "LEFT" | "RIGHT"
 }
 
 export type PrReviewSubmitInput = {

@@ -1,4 +1,5 @@
 import type { FixtureManifest, Scenario } from "../domain/types.js"
+import { resetPrBugs } from "./seed-pr-bugs.js"
 import { resetMixedPrThreads } from "./seed-pr-mixed-threads.js"
 import { resetPrReviewThreads } from "./seed-pr-reviews.js"
 import { resetWorkflowRun } from "./seed-workflow.js"
@@ -11,6 +12,7 @@ type ResetEntry = {
 }
 
 const RESET_REGISTRY: Record<string, ResetEntry> = {
+  pr_with_bugs: { fn: resetPrBugs, requiresToken: false },
   pr_with_mixed_threads: { fn: resetMixedPrThreads, requiresToken: true },
   pr_with_reviews: { fn: resetPrReviewThreads, requiresToken: true },
   workflow_run: { fn: resetWorkflowRun, requiresToken: false },

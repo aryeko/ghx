@@ -53,6 +53,7 @@ describe("OpencodeSessionProvider - createSession", () => {
     vi.clearAllMocks()
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"))
+    delete process.env.BENCH_SESSION_WORKDIR
 
     provider = new OpencodeSessionProvider({
       type: "opencode",
@@ -160,6 +161,7 @@ describe("OpencodeSessionProvider - cleanup", () => {
     vi.clearAllMocks()
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2024-01-01T00:00:00Z"))
+    delete process.env.BENCH_SESSION_WORKDIR
 
     provider = new OpencodeSessionProvider({
       type: "opencode",
