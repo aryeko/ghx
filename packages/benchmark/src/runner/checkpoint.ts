@@ -8,11 +8,15 @@ export type CheckpointResult = {
   data: unknown
 }
 
-function resolveCheckpointData(data: unknown): unknown {
-  if (isObject(data) && "items" in data && Array.isArray((data as Record<string, unknown>).items)) {
-    return (data as Record<string, unknown>).items
+function resolveCheckpointData(data: unknown, field?: string): unknown {
+  const unwrapped =
+    isObject(data) && "items" in data && Array.isArray((data as Record<string, unknown>).items)
+      ? (data as Record<string, unknown>).items
+      : data
+  if (field && isObject(unwrapped)) {
+    return (unwrapped as Record<string, unknown>)[field] ?? null
   }
-  return data
+  return unwrapped
 }
 
 export function evaluateCondition(
@@ -69,7 +73,9 @@ export async function evaluateCheckpoints(
       )
 
       const ok = verificationResult.ok === true
-      const data = ok ? resolveCheckpointData(verificationResult.data) : null
+      const data = ok
+        ? resolveCheckpointData(verificationResult.data, checkpoint.verification_field)
+        : null
 
       const passed = ok
         ? evaluateCondition(checkpoint.condition, data, checkpoint.expected_value)
