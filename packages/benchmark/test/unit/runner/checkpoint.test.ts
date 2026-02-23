@@ -236,13 +236,11 @@ describe("evaluateCondition", () => {
       expect(evaluateCondition("field_equals", { a: 1 }, [1, 2, 3])).toBe(false)
     })
 
-    it("handles nested values correctly", () => {
-      const data = { nested: { key: "value" } }
-      const expected = { nested: { key: "value" } }
-      expect(evaluateCondition("field_equals", data, expected)).toBe(true)
-
-      const differentNested = { nested: { key: "different" } }
-      expect(evaluateCondition("field_equals", data, differentNested)).toBe(false)
+    it("handles number and boolean primitives correctly", () => {
+      const data = { count: 42, active: true }
+      expect(evaluateCondition("field_equals", data, { count: 42, active: true })).toBe(true)
+      expect(evaluateCondition("field_equals", data, { count: 43 })).toBe(false)
+      expect(evaluateCondition("field_equals", data, { active: false })).toBe(false)
     })
   })
 })

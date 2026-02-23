@@ -27,53 +27,56 @@ vi.mock("@bench/fixture/reset.js", () => ({
   resetScenarioFixtures: vi.fn((_scenario, manifest) => Promise.resolve(manifest)),
 }))
 
+let runScenarioIterationMock: ReturnType<typeof vi.fn>
+let createSessionProviderMock: ReturnType<typeof vi.fn>
+
+const mockBenchmarkRow = {
+  timestamp: "2026-01-01T00:00:00.000Z",
+  run_id: "r1",
+  mode: "ghx" as const,
+  scenario_id: "s1",
+  scenario_set: null,
+  iteration: 1,
+  session_id: "sess1",
+  success: true,
+  output_valid: true,
+  latency_ms_wall: 100,
+  latency_ms_agent: 70,
+  sdk_latency_ms: 90,
+  tokens: {
+    input: 10,
+    output: 10,
+    reasoning: 0,
+    cache_read: 0,
+    cache_write: 0,
+    total: 20,
+  },
+  cost: 0.01,
+  tool_calls: 2,
+  api_calls: 0,
+  internal_retry_count: 0,
+  external_retry_count: 0,
+  model: { provider_id: "openai", model_id: "gpt-4", mode: null },
+  git: { repo: null, commit: null },
+  error: null,
+}
+
 describe("runSuite", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
-  })
-
-  const mockBenchmarkRow = {
-    timestamp: "2026-01-01T00:00:00.000Z",
-    run_id: "r1",
-    mode: "ghx" as const,
-    scenario_id: "s1",
-    scenario_set: null,
-    iteration: 1,
-    session_id: "sess1",
-    success: true,
-    output_valid: true,
-    latency_ms_wall: 100,
-    latency_ms_agent: 70,
-    sdk_latency_ms: 90,
-    tokens: {
-      input: 10,
-      output: 10,
-      reasoning: 0,
-      cache_read: 0,
-      cache_write: 0,
-      total: 20,
-    },
-    cost: 0.01,
-    tool_calls: 2,
-    api_calls: 0,
-    internal_retry_count: 0,
-    external_retry_count: 0,
-    model: { provider_id: "openai", model_id: "gpt-4", mode: null },
-    git: { repo: null, commit: null },
-    error: null,
-  }
-
-  it("emits events in correct order: suite_started, scenario_started, scenario_finished, suite_finished", async () => {
     const { runScenarioIteration } = await import("@bench/runner/scenario-runner.js")
     const { createSessionProvider } = await import("@bench/provider/factory.js")
-
-    vi.mocked(runScenarioIteration).mockResolvedValue(mockBenchmarkRow)
-    vi.mocked(createSessionProvider).mockResolvedValue({
+    runScenarioIterationMock = vi.mocked(runScenarioIteration)
+    createSessionProviderMock = vi.mocked(createSessionProvider)
+    runScenarioIterationMock.mockResolvedValue(mockBenchmarkRow)
+    createSessionProviderMock.mockResolvedValue({
       createSession: vi.fn(),
       prompt: vi.fn(),
       cleanup: vi.fn().mockResolvedValue(undefined),
     } as unknown as import("@bench/provider/types.js").SessionProvider)
+  })
 
+  it("emits events in correct order: suite_started, scenario_started, scenario_finished, suite_finished", async () => {
     const events: Array<{ type: string }> = []
     const onProgress = (event: unknown) => events.push(event as { type: string })
 
@@ -107,16 +110,6 @@ describe("runSuite", () => {
   })
 
   it("skips warmup run when skipWarmup=true", async () => {
-    const { runScenarioIteration } = await import("@bench/runner/scenario-runner.js")
-    const { createSessionProvider } = await import("@bench/provider/factory.js")
-
-    vi.mocked(runScenarioIteration).mockResolvedValue(mockBenchmarkRow)
-    vi.mocked(createSessionProvider).mockResolvedValue({
-      createSession: vi.fn(),
-      prompt: vi.fn(),
-      cleanup: vi.fn().mockResolvedValue(undefined),
-    } as unknown as import("@bench/provider/types.js").SessionProvider)
-
     const scenario = makeWorkflowScenario()
 
     await runSuite({
@@ -131,16 +124,12 @@ describe("runSuite", () => {
     })
 
     // 1 scenario * 2 repetitions = 2 iterations (no warmup)
-    expect(vi.mocked(runScenarioIteration)).toHaveBeenCalledTimes(2)
+    expect(runScenarioIterationMock).toHaveBeenCalledTimes(2)
   })
 
   it("runs warmup when skipWarmup=false", async () => {
-    const { runScenarioIteration } = await import("@bench/runner/scenario-runner.js")
-    const { createSessionProvider } = await import("@bench/provider/factory.js")
-
-    vi.mocked(runScenarioIteration).mockResolvedValue(mockBenchmarkRow)
     const mockCleanup = vi.fn().mockResolvedValue(undefined)
-    vi.mocked(createSessionProvider).mockResolvedValue({
+    createSessionProviderMock.mockResolvedValue({
       createSession: vi.fn(),
       prompt: vi.fn(),
       cleanup: mockCleanup,
@@ -160,22 +149,13 @@ describe("runSuite", () => {
     })
 
     // 1 warmup + 1 scenario * 1 repetition = 2 iterations
-    expect(vi.mocked(runScenarioIteration)).toHaveBeenCalledTimes(2)
+    expect(runScenarioIterationMock).toHaveBeenCalledTimes(2)
     // One cleanup for warmup provider, one for main provider
     expect(mockCleanup).toHaveBeenCalledTimes(2)
   })
 
   it("appends JSONL to file for each scenario run", async () => {
-    const { runScenarioIteration } = await import("@bench/runner/scenario-runner.js")
-    const { createSessionProvider } = await import("@bench/provider/factory.js")
     const { appendFile } = await import("node:fs/promises")
-
-    vi.mocked(runScenarioIteration).mockResolvedValue(mockBenchmarkRow)
-    vi.mocked(createSessionProvider).mockResolvedValue({
-      createSession: vi.fn(),
-      prompt: vi.fn(),
-      cleanup: vi.fn().mockResolvedValue(undefined),
-    } as unknown as import("@bench/provider/types.js").SessionProvider)
 
     const scenario = makeWorkflowScenario()
 
@@ -200,16 +180,6 @@ describe("runSuite", () => {
   })
 
   it("returns rowCount and durationMs", async () => {
-    const { runScenarioIteration } = await import("@bench/runner/scenario-runner.js")
-    const { createSessionProvider } = await import("@bench/provider/factory.js")
-
-    vi.mocked(runScenarioIteration).mockResolvedValue(mockBenchmarkRow)
-    vi.mocked(createSessionProvider).mockResolvedValue({
-      createSession: vi.fn(),
-      prompt: vi.fn(),
-      cleanup: vi.fn().mockResolvedValue(undefined),
-    } as unknown as import("@bench/provider/types.js").SessionProvider)
-
     const scenario = makeWorkflowScenario()
 
     const result = await runSuite({
@@ -229,16 +199,8 @@ describe("runSuite", () => {
   })
 
   it("emits suite_error event and rethrows when runScenarioIteration throws", async () => {
-    const { runScenarioIteration } = await import("@bench/runner/scenario-runner.js")
-    const { createSessionProvider } = await import("@bench/provider/factory.js")
-
     const thrownError = new Error("Scenario failed")
-    vi.mocked(runScenarioIteration).mockRejectedValueOnce(thrownError)
-    vi.mocked(createSessionProvider).mockResolvedValue({
-      createSession: vi.fn(),
-      prompt: vi.fn(),
-      cleanup: vi.fn().mockResolvedValue(undefined),
-    } as unknown as import("@bench/provider/types.js").SessionProvider)
+    runScenarioIterationMock.mockRejectedValueOnce(thrownError)
 
     const events: Array<{ type: string; message?: string }> = []
     const onProgress = (event: unknown) => events.push(event as { type: string })
@@ -264,16 +226,6 @@ describe("runSuite", () => {
   })
 
   it("rowCount equals scenarios * repetitions * modes", async () => {
-    const { runScenarioIteration } = await import("@bench/runner/scenario-runner.js")
-    const { createSessionProvider } = await import("@bench/provider/factory.js")
-
-    vi.mocked(runScenarioIteration).mockResolvedValue(mockBenchmarkRow)
-    vi.mocked(createSessionProvider).mockResolvedValue({
-      createSession: vi.fn(),
-      prompt: vi.fn(),
-      cleanup: vi.fn().mockResolvedValue(undefined),
-    } as unknown as import("@bench/provider/types.js").SessionProvider)
-
     const scenario1 = makeWorkflowScenario({ id: "s1" })
     const scenario2 = makeWorkflowScenario({ id: "s2" })
 
@@ -293,16 +245,6 @@ describe("runSuite", () => {
   })
 
   it("passes manifest to runScenarioIteration when manifest is non-null", async () => {
-    const { runScenarioIteration } = await import("@bench/runner/scenario-runner.js")
-    const { createSessionProvider } = await import("@bench/provider/factory.js")
-
-    vi.mocked(runScenarioIteration).mockResolvedValue(mockBenchmarkRow)
-    vi.mocked(createSessionProvider).mockResolvedValue({
-      createSession: vi.fn(),
-      prompt: vi.fn(),
-      cleanup: vi.fn().mockResolvedValue(undefined),
-    } as unknown as import("@bench/provider/types.js").SessionProvider)
-
     const scenario = makeWorkflowScenario()
     const manifest = {
       version: 1 as const,
@@ -326,21 +268,11 @@ describe("runSuite", () => {
       skipWarmup: true,
     })
 
-    expect(vi.mocked(runScenarioIteration)).toHaveBeenCalledWith(
-      expect.objectContaining({ manifest }),
-    )
+    expect(runScenarioIterationMock).toHaveBeenCalledWith(expect.objectContaining({ manifest }))
   })
 
   it("warmup logs 'failed' when warmup result has success=false", async () => {
-    const { runScenarioIteration } = await import("@bench/runner/scenario-runner.js")
-    const { createSessionProvider } = await import("@bench/provider/factory.js")
-
-    vi.mocked(runScenarioIteration).mockResolvedValue({ ...mockBenchmarkRow, success: false })
-    vi.mocked(createSessionProvider).mockResolvedValue({
-      createSession: vi.fn(),
-      prompt: vi.fn(),
-      cleanup: vi.fn().mockResolvedValue(undefined),
-    } as unknown as import("@bench/provider/types.js").SessionProvider)
+    runScenarioIterationMock.mockResolvedValue({ ...mockBenchmarkRow, success: false })
 
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {})
     const scenario = makeWorkflowScenario()
@@ -361,17 +293,9 @@ describe("runSuite", () => {
   })
 
   it("warmup logs error when runScenarioIteration throws during warmup", async () => {
-    const { runScenarioIteration } = await import("@bench/runner/scenario-runner.js")
-    const { createSessionProvider } = await import("@bench/provider/factory.js")
-
-    vi.mocked(runScenarioIteration)
+    runScenarioIterationMock
       .mockRejectedValueOnce(new Error("warmup boom"))
       .mockResolvedValue(mockBenchmarkRow)
-    vi.mocked(createSessionProvider).mockResolvedValue({
-      createSession: vi.fn(),
-      prompt: vi.fn(),
-      cleanup: vi.fn().mockResolvedValue(undefined),
-    } as unknown as import("@bench/provider/types.js").SessionProvider)
 
     const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {})
     const scenario = makeWorkflowScenario()
@@ -392,16 +316,6 @@ describe("runSuite", () => {
   })
 
   it("warmup uses 'ghx' fallback mode when modes array is empty", async () => {
-    const { runScenarioIteration } = await import("@bench/runner/scenario-runner.js")
-    const { createSessionProvider } = await import("@bench/provider/factory.js")
-
-    vi.mocked(runScenarioIteration).mockResolvedValue(mockBenchmarkRow)
-    vi.mocked(createSessionProvider).mockResolvedValue({
-      createSession: vi.fn(),
-      prompt: vi.fn(),
-      cleanup: vi.fn().mockResolvedValue(undefined),
-    } as unknown as import("@bench/provider/types.js").SessionProvider)
-
     const scenario = makeWorkflowScenario()
 
     const result = await runSuite({
@@ -416,7 +330,7 @@ describe("runSuite", () => {
     })
 
     // Warmup runs once (mode falls back to "ghx"), no main iterations
-    expect(vi.mocked(runScenarioIteration)).toHaveBeenCalledTimes(1)
+    expect(runScenarioIterationMock).toHaveBeenCalledTimes(1)
     expect(result.rowCount).toBe(0)
   })
 
@@ -448,12 +362,10 @@ describe("runSuite", () => {
   })
 
   it("calls resetScenarioFixtures before every iteration when manifest is non-null", async () => {
-    const { runScenarioIteration } = await import("@bench/runner/scenario-runner.js")
-    const { createSessionProvider } = await import("@bench/provider/factory.js")
     const { resetScenarioFixtures } = await import("@bench/fixture/reset.js")
 
     const callOrder: string[] = []
-    vi.mocked(runScenarioIteration).mockImplementation(async () => {
+    runScenarioIterationMock.mockImplementation(async () => {
       callOrder.push("runScenarioIteration")
       return mockBenchmarkRow
     })
@@ -461,11 +373,6 @@ describe("runSuite", () => {
       callOrder.push("resetScenarioFixtures")
       return manifest
     })
-    vi.mocked(createSessionProvider).mockResolvedValue({
-      createSession: vi.fn(),
-      prompt: vi.fn(),
-      cleanup: vi.fn().mockResolvedValue(undefined),
-    } as unknown as import("@bench/provider/types.js").SessionProvider)
 
     const scenario = makeWorkflowScenario({ fixture: { reseed_per_iteration: true } })
     const manifest = {
@@ -501,16 +408,7 @@ describe("runSuite", () => {
   })
 
   it("does not call resetScenarioFixtures when manifest is null", async () => {
-    const { runScenarioIteration } = await import("@bench/runner/scenario-runner.js")
-    const { createSessionProvider } = await import("@bench/provider/factory.js")
     const { resetScenarioFixtures } = await import("@bench/fixture/reset.js")
-
-    vi.mocked(runScenarioIteration).mockResolvedValue(mockBenchmarkRow)
-    vi.mocked(createSessionProvider).mockResolvedValue({
-      createSession: vi.fn(),
-      prompt: vi.fn(),
-      cleanup: vi.fn().mockResolvedValue(undefined),
-    } as unknown as import("@bench/provider/types.js").SessionProvider)
 
     const scenario = makeWorkflowScenario({ fixture: { reseed_per_iteration: true } })
 
@@ -530,16 +428,7 @@ describe("runSuite", () => {
   })
 
   it("passes reviewerToken from config to resetScenarioFixtures", async () => {
-    const { runScenarioIteration } = await import("@bench/runner/scenario-runner.js")
-    const { createSessionProvider } = await import("@bench/provider/factory.js")
     const { resetScenarioFixtures } = await import("@bench/fixture/reset.js")
-
-    vi.mocked(runScenarioIteration).mockResolvedValue(mockBenchmarkRow)
-    vi.mocked(createSessionProvider).mockResolvedValue({
-      createSession: vi.fn(),
-      prompt: vi.fn(),
-      cleanup: vi.fn().mockResolvedValue(undefined),
-    } as unknown as import("@bench/provider/types.js").SessionProvider)
 
     const scenario = makeWorkflowScenario()
     const manifest = {
@@ -568,16 +457,7 @@ describe("runSuite", () => {
   })
 
   it("passes null reviewerToken when reviewerToken not provided in config", async () => {
-    const { runScenarioIteration } = await import("@bench/runner/scenario-runner.js")
-    const { createSessionProvider } = await import("@bench/provider/factory.js")
     const { resetScenarioFixtures } = await import("@bench/fixture/reset.js")
-
-    vi.mocked(runScenarioIteration).mockResolvedValue(mockBenchmarkRow)
-    vi.mocked(createSessionProvider).mockResolvedValue({
-      createSession: vi.fn(),
-      prompt: vi.fn(),
-      cleanup: vi.fn().mockResolvedValue(undefined),
-    } as unknown as import("@bench/provider/types.js").SessionProvider)
 
     const scenario = makeWorkflowScenario()
     const manifest = {

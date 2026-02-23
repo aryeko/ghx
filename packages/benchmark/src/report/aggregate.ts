@@ -116,6 +116,18 @@ function computeProfiling(rows: BenchmarkRow[]): ProfilingSummary | null {
   }
 }
 
+function pairRows(
+  adRows: BenchmarkRow[],
+  ghxRows: BenchmarkRow[],
+): Array<{ ad: BenchmarkRow; ghx: BenchmarkRow }> {
+  return adRows.flatMap((ad) => {
+    const ghx = ghxRows.find(
+      (r) => r.scenario_id === ad.scenario_id && r.iteration === ad.iteration,
+    )
+    return ghx ? [{ ad, ghx }] : []
+  })
+}
+
 export function buildSummary(
   rows: BenchmarkRow[],
   gateProfile: GateProfile = "verify_pr",
@@ -144,6 +156,8 @@ export function buildSummary(
   let delta: DeltaSummary | null = null
   if (agentDirect && ghxRouter) {
     const agentDirectRows = grouped.agent_direct ?? []
+    const ghxRows = grouped.ghx ?? []
+    const pairs = pairRows(agentDirectRows, ghxRows)
 
     delta = {
       tokensReductionPct: safeReductionPct(
@@ -163,9 +177,11 @@ export function buildSummary(
       outputValidityRatePct: ghxRouter.outputValidityRate,
       costReductionPct: safeReductionPct(agentDirect.medianCostUsd, ghxRouter.medianCostUsd),
       tokensActiveReductionCI: bootstrapCI(
-        agentDirectRows.map((row) => activeTokens(row)).filter((v) => v > 0),
+        pairs.map(({ ad, ghx }) => safeReductionPct(activeTokens(ad), activeTokens(ghx))),
       ),
-      latencyReductionCI: bootstrapCI(agentDirectRows.map((row) => row.latency_ms_agent)),
+      latencyReductionCI: bootstrapCI(
+        pairs.map(({ ad, ghx }) => safeReductionPct(ad.latency_ms_agent, ghx.latency_ms_agent)),
+      ),
     }
   }
 

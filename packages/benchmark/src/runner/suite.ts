@@ -64,6 +64,7 @@ export async function runSuite(config: {
     reviewerToken = null,
   } = config
   let manifest = initialManifest
+  const githubToken = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? ""
 
   const suiteStartedAt = Date.now()
   const suiteRunId = randomUUID()
@@ -107,6 +108,7 @@ export async function runSuite(config: {
             scenarioSet: null,
             manifest,
             runId: suiteRunId,
+            githubToken,
           })
 
           await provider.cleanup()
@@ -166,6 +168,7 @@ export async function runSuite(config: {
               scenarioSet,
               manifest,
               runId: suiteRunId,
+              githubToken,
             })
 
             await appendFile(outputJsonlPath, `${JSON.stringify(result)}\n`, "utf8")

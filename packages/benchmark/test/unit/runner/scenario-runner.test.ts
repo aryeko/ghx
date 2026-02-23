@@ -53,6 +53,7 @@ describe("runScenarioIteration", () => {
       scenarioSet: null,
       manifest: null,
       runId: "run-123",
+      githubToken: "token-abc",
     })
 
     expect(result.success).toBe(true)
@@ -103,6 +104,7 @@ describe("runScenarioIteration", () => {
       scenarioSet: null,
       manifest: null,
       runId: "run-123",
+      githubToken: "token-abc",
     })
 
     expect(result.success).toBe(false)
@@ -143,6 +145,7 @@ describe("runScenarioIteration", () => {
       scenarioSet: null,
       manifest: null,
       runId: "run-123",
+      githubToken: "token-abc",
     })
 
     expect(result.success).toBe(true)
@@ -168,6 +171,7 @@ describe("runScenarioIteration", () => {
       scenarioSet: null,
       manifest: null,
       runId: "run-123",
+      githubToken: "token-abc",
     })
 
     expect(result.success).toBe(false)
@@ -208,6 +212,7 @@ describe("runScenarioIteration", () => {
       scenarioSet: null,
       manifest,
       runId: "run-123",
+      githubToken: "token-abc",
     })
 
     expect(resolveWorkflowFixtureBindings).toHaveBeenCalledWith(scenario, manifest)
@@ -235,6 +240,7 @@ describe("runScenarioIteration", () => {
       scenarioSet: null,
       manifest: null,
       runId: "run-123",
+      githubToken: "token-abc",
     })
 
     expect(resolveWorkflowFixtureBindings).not.toHaveBeenCalled()
@@ -261,6 +267,7 @@ describe("runScenarioIteration", () => {
       scenarioSet: "test-set",
       manifest: null,
       runId: "run-456",
+      githubToken: "token-abc",
     })
 
     expect(result.mode).toBe("agent_direct")

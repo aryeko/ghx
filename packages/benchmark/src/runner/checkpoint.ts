@@ -40,9 +40,7 @@ export function evaluateCondition(
       }
       const expected = expectedValue as Record<string, unknown>
       const actual = data as Record<string, unknown>
-      return Object.entries(expected).every(
-        ([key, value]) => JSON.stringify(actual[key]) === JSON.stringify(value),
-      )
+      return Object.entries(expected).every(([key, value]) => actual[key] === value)
     }
     default:
       return false

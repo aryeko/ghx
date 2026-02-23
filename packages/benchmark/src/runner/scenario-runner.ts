@@ -13,8 +13,9 @@ export async function runScenarioIteration(config: {
   scenarioSet: string | null
   manifest: FixtureManifest | null
   runId: string
+  githubToken: string
 }): Promise<BenchmarkRow> {
-  const { provider, scenario, mode, iteration, scenarioSet, manifest, runId } = config
+  const { provider, scenario, mode, iteration, scenarioSet, manifest, runId, githubToken } = config
 
   const scenarioStartedAt = Date.now()
   let sessionId: string | null = null
@@ -50,7 +51,6 @@ export async function runScenarioIteration(config: {
     )
     const latencyMsAgent = Date.now() - agentStartedAt
 
-    const githubToken = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? ""
     const { allPassed: checkpointsPassed, results: checkpointResults } = await evaluateCheckpoints(
       resolvedScenario.assertions.checkpoints,
       githubToken,
