@@ -346,6 +346,11 @@ export async function executeTasks(
   }
 
   if (preflightErrorByIndex.size > 0) {
+    // Use "cli" only if every successfully-validated step would have gone through the CLI
+    // adapter (i.e. no GQL cards passed pre-flight). Fall back to "graphql" when all steps
+    // failed validation (cards is empty) because we cannot determine intent.
+    const anyGqlCard = cards.some((c) => !!c.graphql)
+    const preflightRouteUsed: RouteSource = !anyGqlCard && cards.length > 0 ? "cli" : "graphql"
     return {
       status: "failed",
       results: requests.map(
@@ -361,7 +366,7 @@ export async function executeTasks(
           },
       ),
       meta: {
-        route_used: "graphql",
+        route_used: preflightRouteUsed,
         total: requests.length,
         succeeded: 0,
         failed: requests.length,
@@ -369,7 +374,10 @@ export async function executeTasks(
     }
   }
 
-  // Kick off CLI-only steps concurrently alongside the GQL batch
+  // Kick off CLI-only steps concurrently alongside the GQL batch.
+  // A step with no graphql config cannot participate in the GQL batch phases below,
+  // so it is dispatched immediately via executeTask (CLI adapter path).
+  // Pre-flight above already confirmed card.cli is present for these steps.
   const cliStepPromises = new Map<number, Promise<ResultEnvelope>>()
   for (let i = 0; i < requests.length; i += 1) {
     const card = cards[i]
@@ -608,10 +616,31 @@ export async function executeTasks(
     }
   }
 
-  // Await CLI step results (they ran concurrently with the GQL batch)
+  // Await CLI step results concurrently. Promise.allSettled prevents any single
+  // rejection from propagating as an unhandled rejection — each failure is captured
+  // as an error envelope instead.
   const cliResultsByIndex = new Map<number, ResultEnvelope>()
-  for (const [i, promise] of cliStepPromises) {
-    cliResultsByIndex.set(i, await promise)
+  if (cliStepPromises.size > 0) {
+    const cliEntries = Array.from(cliStepPromises.entries())
+    const settled = await Promise.allSettled(cliEntries.map(([, p]) => p))
+    for (let j = 0; j < cliEntries.length; j += 1) {
+      const entry = cliEntries[j]
+      const outcome = settled[j]
+      if (entry === undefined || outcome === undefined) continue
+      const [i] = entry
+      if (outcome.status === "fulfilled") {
+        cliResultsByIndex.set(i, outcome.value)
+      } else {
+        const msg =
+          outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason)
+        const req = requests[i]
+        cliResultsByIndex.set(i, {
+          ok: false,
+          error: { code: errorCodes.Unknown, message: msg, retryable: false },
+          meta: { capability_id: req?.task ?? "unknown" },
+        })
+      }
+    }
   }
 
   // Assemble results
@@ -701,6 +730,8 @@ export async function executeTasks(
     duration_ms: Date.now() - batchStart,
   })
 
+  // "cli" only when every step was CLI-only. Mixed chains report "graphql" because
+  // GraphQL is the primary coordination mechanism even when some steps used the CLI adapter.
   const routeUsed: RouteSource = cliStepPromises.size === requests.length ? "cli" : "graphql"
 
   return {

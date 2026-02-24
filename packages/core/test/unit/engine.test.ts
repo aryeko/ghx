@@ -1283,6 +1283,7 @@ describe("executeTasks — CLI chain support", () => {
     const cliCard = {
       ...baseCard,
       routing: { preferred: "cli" as const, fallbacks: [] as const },
+      graphql: undefined,
       cli: { command: "gh issue list" },
     }
     getOperationCardMock.mockReturnValue(cliCard)
@@ -1309,6 +1310,7 @@ describe("executeTasks — CLI chain support", () => {
     const cliCard = {
       ...baseCard,
       routing: { preferred: "cli" as const, fallbacks: [] as const },
+      graphql: undefined,
       cli: { command: "gh issue list" },
     }
     getOperationCardMock.mockReturnValue(cliCard)
@@ -1345,6 +1347,7 @@ describe("executeTasks — CLI chain support", () => {
     const cliCard = {
       ...baseCard,
       routing: { preferred: "cli" as const, fallbacks: [] as const },
+      graphql: undefined,
       cli: { command: "gh issue list" },
     }
     const gqlCard = {
@@ -1402,5 +1405,108 @@ describe("executeTasks — CLI chain support", () => {
     expect(result.meta.route_used).toBe("graphql")
     expect(result.results[0]).toMatchObject({ ok: true, data: { id: "cli-result" } })
     expect(result.results[1]).toMatchObject({ ok: true })
+  })
+
+  it("reports partial status when CLI step fails and GQL step succeeds", async () => {
+    vi.resetModules()
+    vi.doMock("@core/core/execute/execute.js", () => ({
+      execute: (...args: unknown[]) => executeMock(...args),
+    }))
+    vi.doMock("@core/core/registry/index.js", () => ({
+      getOperationCard: (...args: unknown[]) => getOperationCardMock(...args),
+    }))
+
+    const cliCard = {
+      ...baseCard,
+      routing: { preferred: "cli" as const, fallbacks: [] as const },
+      graphql: undefined,
+      cli: { command: "gh issue list" },
+    }
+    const gqlCard = {
+      ...baseCard,
+      graphql: {
+        operationName: "IssueClose",
+        documentPath: "src/gql/operations/issue-close.graphql",
+      },
+    }
+
+    // pre-flight: step 0 → cliCard, step 1 → gqlCard; executeTask re-loads card for CLI step → cliCard
+    getOperationCardMock
+      .mockReturnValueOnce(cliCard)
+      .mockReturnValueOnce(gqlCard)
+      .mockReturnValue(cliCard)
+
+    // CLI step fails
+    executeMock.mockResolvedValue({
+      ok: false,
+      error: { code: "UNKNOWN", message: "cli failed", retryable: false },
+    })
+
+    vi.doMock("@core/gql/document-registry.js", () => ({
+      getLookupDocument: vi.fn(),
+      getMutationDocument: vi
+        .fn()
+        .mockReturnValue(
+          `mutation IssueClose($issueId: ID!) { closeIssue(input: {issueId: $issueId}) { issue { id } } }`,
+        ),
+    }))
+    vi.doMock("@core/gql/batch.js", () => ({
+      buildBatchMutation: vi.fn().mockReturnValue({
+        document: `mutation Batch { step1: closeIssue { issue { id } } }`,
+        variables: {},
+      }),
+      buildBatchQuery: vi.fn(),
+    }))
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTasks(
+      [
+        { task: "issue.list", input: { owner: "acme", name: "modkit" } },
+        { task: "issue.close", input: { issueId: "I1" } },
+      ],
+      {
+        githubClient: createGithubClient({
+          queryRaw: vi.fn().mockResolvedValue({
+            data: {
+              step1: { closeIssue: { issue: { id: "I1" } } },
+            },
+            errors: undefined,
+          }),
+        }),
+      },
+    )
+
+    expect(result.status).toBe("partial")
+    expect(result.meta.route_used).toBe("graphql")
+    expect(result.results[0]).toMatchObject({ ok: false, error: { message: "cli failed" } })
+    expect(result.results[1]).toMatchObject({ ok: true })
+  })
+
+  it("single-step all-CLI chain preserves route_used: cli from executeTask delegation", async () => {
+    const cliCard = {
+      ...baseCard,
+      routing: { preferred: "cli" as const, fallbacks: [] as const },
+      graphql: undefined,
+      cli: { command: "gh issue list" },
+    }
+    getOperationCardMock.mockReturnValue(cliCard)
+    executeMock.mockResolvedValue({
+      ok: true,
+      data: { id: "cli-single" },
+      meta: { route_used: "cli" as const },
+    })
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTasks(
+      [{ task: "issue.list", input: { owner: "acme", name: "modkit" } }],
+      { githubClient: createGithubClient() },
+    )
+
+    // Single-item path delegates to executeTask; route_used comes from that result's meta
+    expect(result.status).toBe("success")
+    expect(result.meta.route_used).toBe("cli")
+    expect(result.results[0]).toMatchObject({ ok: true, data: { id: "cli-single" } })
   })
 })
