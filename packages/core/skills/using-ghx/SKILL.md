@@ -11,11 +11,12 @@ description: Execute GitHub operations via ghx — deterministic routing, normal
 If you don't know the capability ID or required inputs, list by domain first:
 
 ```bash
-ghx capabilities list --domain pr
+ghx capabilities list --domain pr --compact
 ```
 
+Use `--compact` for token-efficient output (no descriptions, function-signature format).
+Plain output includes descriptions if you need them.
 Domains: `repo`, `issue`, `pr`, `release`, `workflow`, `project_v2`.
-Required inputs shown in brackets (e.g. `[owner, name, prNumber]`).
 
 Only if you need the full input/output schema for a specific capability:
 
