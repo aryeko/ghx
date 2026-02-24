@@ -14,8 +14,6 @@ If you don't know the capability ID or required inputs, list by domain first:
 ghx capabilities list --domain pr --compact
 ```
 
-Use `--compact` for token-efficient output (no descriptions, function-signature format).
-Plain output includes descriptions if you need them.
 Domains: `repo`, `issue`, `pr`, `release`, `workflow`, `project_v2`.
 
 Only if you need the full input/output schema for a specific capability:
