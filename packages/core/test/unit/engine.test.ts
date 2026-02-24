@@ -199,7 +199,11 @@ describe("executeTask engine wiring", () => {
     const cliRunner = {
       run: vi
         .fn()
-        .mockResolvedValueOnce({ exitCode: 0, stdout: "gh version 1", stderr: "" })
+        .mockResolvedValueOnce({
+          exitCode: 0,
+          stdout: "gh version 1",
+          stderr: "",
+        })
         .mockResolvedValueOnce({ exitCode: 0, stdout: "", stderr: "" }),
     }
     executeMock.mockImplementation(
@@ -268,7 +272,11 @@ describe("executeTasks chaining", () => {
     expect(executeMock).toHaveBeenCalledTimes(1)
     expect(result.status).toBe("success")
     expect(result.results).toHaveLength(1)
-    expect(result.results[0]).toMatchObject({ task: "repo.view", ok: true, data: { id: "test" } })
+    expect(result.results[0]).toMatchObject({
+      task: "repo.view",
+      ok: true,
+      data: { id: "test" },
+    })
   })
 
   it("pre-flight rejects whole chain if card not found", async () => {
@@ -294,13 +302,14 @@ describe("executeTasks chaining", () => {
     expect(firstResult?.error?.code).toBe("VALIDATION")
   })
 
-  it("pre-flight rejects whole chain if card has no graphql config", async () => {
-    const cardWithoutGql = {
+  it("pre-flight rejects whole chain if card has neither graphql nor cli config", async () => {
+    const cardWithoutAnyRoute = {
       ...baseCard,
       routing: { preferred: "cli", fallbacks: [] },
       graphql: undefined,
+      cli: undefined,
     }
-    getOperationCardMock.mockReturnValue(cardWithoutGql)
+    getOperationCardMock.mockReturnValue(cardWithoutAnyRoute)
 
     const { executeTasks } = await import("@core/core/routing/engine.js")
 
@@ -316,6 +325,7 @@ describe("executeTasks chaining", () => {
 
     expect(result.status).toBe("failed")
     expect(result.results.every((r) => !r.ok)).toBe(true)
+    expect(result.results[0]?.error?.message).toContain("no supported route")
   })
 
   it("pre-flight correctly attributes errors when same capability appears twice and only one fails", async () => {
@@ -435,13 +445,22 @@ describe("executeTasks chaining", () => {
 
     const result = await executeTasks(
       [
-        { task: "issue.create", input: { repositoryId: "R1", title: "Issue 1" } },
-        { task: "issue.create", input: { repositoryId: "R2", title: "Issue 2" } },
+        {
+          task: "issue.create",
+          input: { repositoryId: "R1", title: "Issue 1" },
+        },
+        {
+          task: "issue.create",
+          input: { repositoryId: "R2", title: "Issue 2" },
+        },
       ],
       {
         githubClient: createGithubClient({
           queryRaw: vi.fn().mockResolvedValue({
-            data: { step0: { issue: { id: "I1" } }, step1: { issue: { id: "I2" } } },
+            data: {
+              step0: { issue: { id: "I1" } },
+              step1: { issue: { id: "I2" } },
+            },
             errors: undefined,
           }),
         }),
@@ -495,8 +514,14 @@ describe("executeTasks chaining", () => {
 
     const result = await executeTasks(
       [
-        { task: "issue.create", input: { repositoryId: "R1", title: "Issue 1" } },
-        { task: "issue.create", input: { repositoryId: "R2", title: "Issue 2" } },
+        {
+          task: "issue.create",
+          input: { repositoryId: "R1", title: "Issue 1" },
+        },
+        {
+          task: "issue.create",
+          input: { repositoryId: "R2", title: "Issue 2" },
+        },
       ],
       {
         githubClient: createGithubClient({
@@ -619,10 +644,20 @@ describe("executeTasks — mixed resolution chain", () => {
         { task: "issue.close", input: { issueId: "I1" } },
         {
           task: "issue.labels.set",
-          input: { issueId: "I2", owner: "acme", name: "repo", labels: ["bug"] },
+          input: {
+            issueId: "I2",
+            owner: "acme",
+            name: "repo",
+            labels: ["bug"],
+          },
         },
       ],
-      { githubClient: createGithubClient({ query: queryMock, queryRaw: queryRawMock }) },
+      {
+        githubClient: createGithubClient({
+          query: queryMock,
+          queryRaw: queryRawMock,
+        }),
+      },
     )
 
     expect(buildBatchQueryMock).toHaveBeenCalled()
@@ -631,7 +666,10 @@ describe("executeTasks — mixed resolution chain", () => {
     expect(queryRawMock).toHaveBeenCalledTimes(1)
     expect(result.status).toBe("success")
     expect(result.results[0]).toMatchObject({ task: "issue.close", ok: true })
-    expect(result.results[1]).toMatchObject({ task: "issue.labels.set", ok: true })
+    expect(result.results[1]).toMatchObject({
+      task: "issue.labels.set",
+      ok: true,
+    })
   })
 })
 
@@ -712,7 +750,9 @@ describe("executeTasks — resolution cache", () => {
 
     // Pre-populate cache for both lookups
     const cache = createResolutionCache()
-    const cachedData = { repository: { labels: { nodes: [{ id: "L1", name: "bug" }] } } }
+    const cachedData = {
+      repository: { labels: { nodes: [{ id: "L1", name: "bug" }] } },
+    }
     cache.set(buildCacheKey("IssueLabelsLookup", { issueId: "I1" }), cachedData)
     cache.set(buildCacheKey("IssueLabelsLookup", { issueId: "I2" }), cachedData)
 
@@ -782,8 +822,14 @@ describe("executeTasks — partial error handling", () => {
 
     const result = await executeTasks(
       [
-        { task: "issue.create", input: { repositoryId: "R1", title: "Issue 1" } },
-        { task: "issue.create", input: { repositoryId: "R2", title: "Issue 2" } },
+        {
+          task: "issue.create",
+          input: { repositoryId: "R1", title: "Issue 1" },
+        },
+        {
+          task: "issue.create",
+          input: { repositoryId: "R2", title: "Issue 2" },
+        },
       ],
       {
         githubClient: createGithubClient({
@@ -792,7 +838,12 @@ describe("executeTasks — partial error handling", () => {
               step0: { createIssue: { issue: { id: "I1" } } },
               step1: null,
             },
-            errors: [{ message: "Could not resolve repository", path: ["step1", "createIssue"] }],
+            errors: [
+              {
+                message: "Could not resolve repository",
+                path: ["step1", "createIssue"],
+              },
+            ],
           }),
         }),
       },
@@ -800,7 +851,9 @@ describe("executeTasks — partial error handling", () => {
 
     expect(result.status).toBe("partial")
     expect(result.results[0]?.ok).toBe(true)
-    expect(result.results[0]?.data).toEqual({ createIssue: { issue: { id: "I1" } } })
+    expect(result.results[0]?.data).toEqual({
+      createIssue: { issue: { id: "I1" } },
+    })
     expect(result.results[1]?.ok).toBe(false)
     expect(result.results[1]?.error?.message).toContain("Could not resolve repository")
   })
@@ -843,8 +896,14 @@ describe("executeTasks — partial error handling", () => {
 
     const result = await executeTasks(
       [
-        { task: "issue.create", input: { repositoryId: "R1", title: "Issue 1" } },
-        { task: "issue.create", input: { repositoryId: "R2", title: "Issue 2" } },
+        {
+          task: "issue.create",
+          input: { repositoryId: "R1", title: "Issue 1" },
+        },
+        {
+          task: "issue.create",
+          input: { repositoryId: "R2", title: "Issue 2" },
+        },
       ],
       {
         githubClient: createGithubClient({
@@ -901,8 +960,14 @@ describe("executeTasks — partial error handling", () => {
 
     const result = await executeTasks(
       [
-        { task: "issue.create", input: { repositoryId: "R1", title: "Issue 1" } },
-        { task: "issue.create", input: { repositoryId: "R2", title: "Issue 2" } },
+        {
+          task: "issue.create",
+          input: { repositoryId: "R1", title: "Issue 1" },
+        },
+        {
+          task: "issue.create",
+          input: { repositoryId: "R2", title: "Issue 2" },
+        },
       ],
       {
         githubClient: createGithubClient({
@@ -1181,16 +1246,161 @@ describe("executeTasks — Phase 1 alias un-wrap regression", () => {
         { task: "issue.close", input: { issueId: "I_1" } },
         {
           task: "issue.labels.set",
-          input: { issueNumber: 42, owner: "acme", name: "repo", labelableId: "placeholder" },
+          input: {
+            issueNumber: 42,
+            owner: "acme",
+            name: "repo",
+            labelableId: "placeholder",
+          },
         },
       ],
-      { githubClient: createGithubClient({ query: queryMock, queryRaw: queryRawMock }) },
+      {
+        githubClient: createGithubClient({
+          query: queryMock,
+          queryRaw: queryRawMock,
+        }),
+      },
     )
 
     expect(queryMock).toHaveBeenCalledTimes(1)
     expect(queryRawMock).toHaveBeenCalledTimes(1)
     expect(result.status).toBe("success")
     expect(result.results[0]).toMatchObject({ task: "issue.close", ok: true })
-    expect(result.results[1]).toMatchObject({ task: "issue.labels.set", ok: true })
+    expect(result.results[1]).toMatchObject({
+      task: "issue.labels.set",
+      ok: true,
+    })
+  })
+})
+
+describe("executeTasks — CLI chain support", () => {
+  beforeEach(() => {
+    executeMock.mockReset()
+    getOperationCardMock.mockReset()
+  })
+
+  it("executes all steps via executeTask when all cards are CLI-only", async () => {
+    const cliCard = {
+      ...baseCard,
+      routing: { preferred: "cli" as const, fallbacks: [] as const },
+      cli: { command: "gh issue list" },
+    }
+    getOperationCardMock.mockReturnValue(cliCard)
+    executeMock.mockResolvedValue({ ok: true, data: { id: "cli-result" } })
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTasks(
+      [
+        { task: "issue.list", input: { owner: "acme", name: "modkit" } },
+        { task: "issue.list", input: { owner: "acme", name: "modkit" } },
+      ],
+      { githubClient: createGithubClient() },
+    )
+
+    expect(result.status).toBe("success")
+    expect(result.meta.route_used).toBe("cli")
+    expect(result.results).toHaveLength(2)
+    expect(result.results[0]).toMatchObject({ ok: true, data: { id: "cli-result" } })
+    expect(result.results[1]).toMatchObject({ ok: true, data: { id: "cli-result" } })
+  })
+
+  it("propagates CLI step failure into step result", async () => {
+    const cliCard = {
+      ...baseCard,
+      routing: { preferred: "cli" as const, fallbacks: [] as const },
+      cli: { command: "gh issue list" },
+    }
+    getOperationCardMock.mockReturnValue(cliCard)
+    executeMock.mockResolvedValue({
+      ok: false,
+      error: { code: "UNKNOWN", message: "cli failed", retryable: false },
+    })
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTasks(
+      [
+        { task: "issue.list", input: { owner: "acme", name: "modkit" } },
+        { task: "issue.list", input: { owner: "acme", name: "modkit" } },
+      ],
+      { githubClient: createGithubClient() },
+    )
+
+    expect(result.status).toBe("failed")
+    expect(result.results[0]).toMatchObject({ ok: false })
+    expect(result.results[0]?.error?.message).toBe("cli failed")
+    expect(result.results[1]).toMatchObject({ ok: false })
+  })
+
+  it("mixes CLI and GQL steps in the same chain with route_used: graphql", async () => {
+    vi.resetModules()
+    vi.doMock("@core/core/execute/execute.js", () => ({
+      execute: (...args: unknown[]) => executeMock(...args),
+    }))
+    vi.doMock("@core/core/registry/index.js", () => ({
+      getOperationCard: (...args: unknown[]) => getOperationCardMock(...args),
+    }))
+
+    const cliCard = {
+      ...baseCard,
+      routing: { preferred: "cli" as const, fallbacks: [] as const },
+      cli: { command: "gh issue list" },
+    }
+    const gqlCard = {
+      ...baseCard,
+      graphql: {
+        operationName: "IssueClose",
+        documentPath: "src/gql/operations/issue-close.graphql",
+      },
+    }
+
+    // pre-flight: step 0 → cliCard, step 1 → gqlCard; executeTask re-loads card for CLI step → cliCard
+    getOperationCardMock
+      .mockReturnValueOnce(cliCard)
+      .mockReturnValueOnce(gqlCard)
+      .mockReturnValue(cliCard)
+
+    executeMock.mockResolvedValue({ ok: true, data: { id: "cli-result" } })
+
+    vi.doMock("@core/gql/document-registry.js", () => ({
+      getLookupDocument: vi.fn(),
+      getMutationDocument: vi
+        .fn()
+        .mockReturnValue(
+          `mutation IssueClose($issueId: ID!) { closeIssue(input: {issueId: $issueId}) { issue { id } } }`,
+        ),
+    }))
+    vi.doMock("@core/gql/batch.js", () => ({
+      buildBatchMutation: vi.fn().mockReturnValue({
+        document: `mutation Batch { step1: closeIssue { issue { id } } }`,
+        variables: {},
+      }),
+      buildBatchQuery: vi.fn(),
+    }))
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTasks(
+      [
+        { task: "issue.list", input: { owner: "acme", name: "modkit" } },
+        { task: "issue.close", input: { issueId: "I1" } },
+      ],
+      {
+        githubClient: createGithubClient({
+          queryRaw: vi.fn().mockResolvedValue({
+            data: {
+              step1: { closeIssue: { issue: { id: "I1" } } },
+            },
+            errors: undefined,
+          }),
+        }),
+      },
+    )
+
+    expect(result.status).toBe("success")
+    expect(result.meta.route_used).toBe("graphql")
+    expect(result.results[0]).toMatchObject({ ok: true, data: { id: "cli-result" } })
+    expect(result.results[1]).toMatchObject({ ok: true })
   })
 })

@@ -313,12 +313,14 @@ export async function executeTasks(
         throw new Error(`Input validation failed: ${details}`)
       }
 
-      if (!card.graphql) {
-        throw new Error(`capability '${req.task}' has no GraphQL route and cannot be chained`)
+      if (!card.graphql && !card.cli) {
+        throw new Error(
+          `capability '${req.task}' has no supported route (graphql or cli) and cannot be chained`,
+        )
       }
 
-      // Validate that all resolution lookup vars are present in input
-      if (card.graphql.resolution) {
+      // Validate that all resolution lookup vars are present in input (GQL-only)
+      if (card.graphql?.resolution) {
         const { lookup } = card.graphql.resolution
         for (const [, inputField] of Object.entries(lookup.vars)) {
           if (req.input[inputField] === undefined) {
@@ -364,6 +366,17 @@ export async function executeTasks(
         succeeded: 0,
         failed: requests.length,
       },
+    }
+  }
+
+  // Kick off CLI-only steps concurrently alongside the GQL batch
+  const cliStepPromises = new Map<number, Promise<ResultEnvelope>>()
+  for (let i = 0; i < requests.length; i += 1) {
+    const card = cards[i]
+    const req = requests[i]
+    if (card === undefined || req === undefined) continue
+    if (!card.graphql) {
+      cliStepPromises.set(i, executeTask({ task: req.task, input: req.input }, deps))
     }
   }
 
@@ -506,18 +519,15 @@ export async function executeTasks(
     const card = cards[i]
     const req = requests[i]
     if (card === undefined || req === undefined) continue
+    if (!card.graphql) continue // CLI-only steps are handled separately
 
     try {
       logger.debug("resolution.inject", { step: i, capability_id: req.task })
       const resolved: Record<string, unknown> = {}
-      if (card.graphql?.resolution && lookupResults[i] !== undefined) {
+      if (card.graphql.resolution && lookupResults[i] !== undefined) {
         for (const spec of card.graphql.resolution.inject) {
           Object.assign(resolved, applyInject(spec, lookupResults[i], req.input))
         }
-      }
-
-      if (card.graphql === undefined) {
-        throw new Error("card.graphql is unexpectedly undefined")
       }
 
       const mutDoc = getMutationDocument(card.graphql.operationName)
@@ -598,10 +608,32 @@ export async function executeTasks(
     }
   }
 
+  // Await CLI step results (they ran concurrently with the GQL batch)
+  const cliResultsByIndex = new Map<number, ResultEnvelope>()
+  for (const [i, promise] of cliStepPromises) {
+    cliResultsByIndex.set(i, await promise)
+  }
+
   // Assemble results
   const results: ChainStepResult[] = requests.map((req, stepIndex) => {
     const preResult = stepPreResults[stepIndex]
     if (preResult !== undefined) return preResult
+
+    // CLI-only step
+    const cliResult = cliResultsByIndex.get(stepIndex)
+    if (cliResult !== undefined) {
+      return cliResult.ok
+        ? { task: req.task, ok: true, data: cliResult.data }
+        : {
+            task: req.task,
+            ok: false,
+            error: cliResult.error ?? {
+              code: errorCodes.Unknown,
+              message: "CLI step failed",
+              retryable: false,
+            },
+          }
+    }
 
     const mutInput = mutationInputs.find((m) => m.stepIndex === stepIndex)
     if (mutInput === undefined) {
@@ -669,11 +701,13 @@ export async function executeTasks(
     duration_ms: Date.now() - batchStart,
   })
 
+  const routeUsed: RouteSource = cliStepPromises.size === requests.length ? "cli" : "graphql"
+
   return {
     status,
     results,
     meta: {
-      route_used: "graphql",
+      route_used: routeUsed,
       total: results.length,
       succeeded,
       failed: results.length - succeeded,
