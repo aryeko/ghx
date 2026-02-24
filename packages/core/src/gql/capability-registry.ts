@@ -22,9 +22,17 @@ import type {
   PrDiffListFilesInput,
   PrListInput,
   PrMergeStatusInput,
+  ProjectV2FieldsListInput,
+  ProjectV2ItemsListInput,
+  ProjectV2OrgViewInput,
+  ProjectV2UserViewInput,
   PrReviewSubmitInput,
   PrReviewsListInput,
   PrViewInput,
+  ReleaseListInput,
+  ReleaseViewInput,
+  RepoIssueTypesListInput,
+  RepoLabelsListInput,
   RepoViewInput,
 } from "./types.js"
 
@@ -266,6 +274,23 @@ const handlers = new Map<string, GraphqlHandler>([
       }
       return c.submitPrReview(p as PrReviewSubmitInput)
     },
+  ],
+  ["repo.labels.list", (c, p) => c.fetchRepoLabelsList(withDefaultFirst(p) as RepoLabelsListInput)],
+  [
+    "repo.issue_types.list",
+    (c, p) => c.fetchRepoIssueTypesList(withDefaultFirst(p) as RepoIssueTypesListInput),
+  ],
+  ["release.view", (c, p) => c.fetchReleaseView(p as ReleaseViewInput)],
+  ["release.list", (c, p) => c.fetchReleaseList(withDefaultFirst(p) as ReleaseListInput)],
+  ["project_v2.org.view", (c, p) => c.fetchProjectV2OrgView(p as ProjectV2OrgViewInput)],
+  ["project_v2.user.view", (c, p) => c.fetchProjectV2UserView(p as ProjectV2UserViewInput)],
+  [
+    "project_v2.fields.list",
+    (c, p) => c.fetchProjectV2FieldsList(withDefaultFirst(p) as ProjectV2FieldsListInput),
+  ],
+  [
+    "project_v2.items.list",
+    (c, p) => c.fetchProjectV2ItemsList(withDefaultFirst(p) as ProjectV2ItemsListInput),
   ],
 ])
 

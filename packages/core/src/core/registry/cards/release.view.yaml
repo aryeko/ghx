@@ -24,7 +24,10 @@ output_schema:
     publishedAt: { type: [string, "null"] }
   additionalProperties: false
 routing:
-  preferred: cli
-  fallbacks: []
+  preferred: graphql
+  fallbacks: [cli]
+graphql:
+  operationName: ReleaseView
+  documentPath: src/gql/operations/release-view.graphql
 cli:
   command: api

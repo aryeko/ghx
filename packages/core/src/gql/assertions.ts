@@ -20,8 +20,11 @@ import type {
   PrCommentsListInput,
   PrDiffListFilesInput,
   PrListInput,
+  ProjectV2OrgViewInput,
+  ProjectV2UserViewInput,
   PrReviewsListInput,
   PrViewInput,
+  ReleaseViewInput,
   ReplyToReviewThreadInput,
   RepoViewInput,
   ReviewThreadMutationInput,
@@ -273,5 +276,50 @@ export function assertReplyToReviewThreadInput(input: ReplyToReviewThreadInput):
   assertReviewThreadInput(input)
   if (typeof input.body !== "string" || input.body.trim().length === 0) {
     throw new Error("Reply body is required")
+  }
+}
+
+export function assertRepoListInput(input: { owner: string; name: string; first: number }): void {
+  if (input.owner.trim().length === 0 || input.name.trim().length === 0) {
+    throw new Error("Repository owner and name are required")
+  }
+  if (!Number.isInteger(input.first) || input.first <= 0) {
+    throw new Error("List page size must be a positive integer")
+  }
+}
+
+export function assertReleaseViewInput(input: ReleaseViewInput): void {
+  if (input.owner.trim().length === 0 || input.name.trim().length === 0) {
+    throw new Error("Repository owner and name are required")
+  }
+  if (typeof input.tagName !== "string" || input.tagName.trim().length === 0) {
+    throw new Error("Release tag name is required")
+  }
+}
+
+export function assertProjectInput(input: { owner: string; projectNumber: number }): void {
+  if (input.owner.trim().length === 0) {
+    throw new Error("Project owner is required")
+  }
+  if (!Number.isInteger(input.projectNumber) || input.projectNumber <= 0) {
+    throw new Error("Project number must be a positive integer")
+  }
+}
+
+export function assertProjectOrgInput(input: ProjectV2OrgViewInput): void {
+  if (input.org.trim().length === 0) {
+    throw new Error("Organization name is required")
+  }
+  if (!Number.isInteger(input.projectNumber) || input.projectNumber <= 0) {
+    throw new Error("Project number must be a positive integer")
+  }
+}
+
+export function assertProjectUserInput(input: ProjectV2UserViewInput): void {
+  if (input.user.trim().length === 0) {
+    throw new Error("User login is required")
+  }
+  if (!Number.isInteger(input.projectNumber) || input.projectNumber <= 0) {
+    throw new Error("Project number must be a positive integer")
   }
 }

@@ -99,7 +99,7 @@ describe("operation cards registry", () => {
     expect(workflowRunRerunFailed?.routing.preferred).toBe("cli")
   })
 
-  it("marks Projects v2 and repo issue types as CLI-preferred with no fallbacks", () => {
+  it("marks Projects v2 query caps as graphql-preferred and mutation caps as CLI-preferred", () => {
     const projectOrg = getOperationCard("project_v2.org.view")
     const projectUser = getOperationCard("project_v2.user.view")
     const projectFields = getOperationCard("project_v2.fields.list")
@@ -108,21 +108,21 @@ describe("operation cards registry", () => {
     const projectItemFieldUpdate = getOperationCard("project_v2.items.field.update")
     const issueTypes = getOperationCard("repo.issue_types.list")
 
-    expect(projectOrg?.routing.preferred).toBe("cli")
-    expect(projectUser?.routing.preferred).toBe("cli")
-    expect(projectFields?.routing.preferred).toBe("cli")
-    expect(projectItems?.routing.preferred).toBe("cli")
+    expect(projectOrg?.routing.preferred).toBe("graphql")
+    expect(projectUser?.routing.preferred).toBe("graphql")
+    expect(projectFields?.routing.preferred).toBe("graphql")
+    expect(projectItems?.routing.preferred).toBe("graphql")
     expect(projectItemAddIssue?.routing.preferred).toBe("cli")
     expect(projectItemFieldUpdate?.routing.preferred).toBe("cli")
-    expect(issueTypes?.routing.preferred).toBe("cli")
+    expect(issueTypes?.routing.preferred).toBe("graphql")
 
-    expect(projectOrg?.routing.fallbacks).toEqual([])
-    expect(projectUser?.routing.fallbacks).toEqual([])
-    expect(projectFields?.routing.fallbacks).toEqual([])
-    expect(projectItems?.routing.fallbacks).toEqual([])
+    expect(projectOrg?.routing.fallbacks).toEqual(["cli"])
+    expect(projectUser?.routing.fallbacks).toEqual(["cli"])
+    expect(projectFields?.routing.fallbacks).toEqual(["cli"])
+    expect(projectItems?.routing.fallbacks).toEqual(["cli"])
     expect(projectItemAddIssue?.routing.fallbacks).toEqual([])
     expect(projectItemFieldUpdate?.routing.fallbacks).toEqual([])
-    expect(issueTypes?.routing.fallbacks).toEqual([])
+    expect(issueTypes?.routing.fallbacks).toEqual(["cli"])
   })
 
   it("resolves cards by capability id", () => {
