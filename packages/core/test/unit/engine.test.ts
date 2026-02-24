@@ -1279,6 +1279,22 @@ describe("executeTasks — CLI chain support", () => {
     getOperationCardMock.mockReset()
   })
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function setupMixedChainMocks(cliCard: any, gqlCard: any): void {
+    vi.resetModules()
+    vi.doMock("@core/core/execute/execute.js", () => ({
+      execute: (...args: unknown[]) => executeMock(...args),
+    }))
+    vi.doMock("@core/core/registry/index.js", () => ({
+      getOperationCard: (...args: unknown[]) => getOperationCardMock(...args),
+    }))
+    // pre-flight: step 0 → cliCard, step 1 → gqlCard; executeTask re-loads card for CLI step → cliCard
+    getOperationCardMock
+      .mockReturnValueOnce(cliCard)
+      .mockReturnValueOnce(gqlCard)
+      .mockReturnValue(cliCard)
+  }
+
   it("executes all steps via executeTask when all cards are CLI-only", async () => {
     const cliCard = {
       ...baseCard,
@@ -1336,14 +1352,6 @@ describe("executeTasks — CLI chain support", () => {
   })
 
   it("mixes CLI and GQL steps in the same chain with route_used: graphql", async () => {
-    vi.resetModules()
-    vi.doMock("@core/core/execute/execute.js", () => ({
-      execute: (...args: unknown[]) => executeMock(...args),
-    }))
-    vi.doMock("@core/core/registry/index.js", () => ({
-      getOperationCard: (...args: unknown[]) => getOperationCardMock(...args),
-    }))
-
     const cliCard = {
       ...baseCard,
       routing: { preferred: "cli" as const, fallbacks: [] as const },
@@ -1357,12 +1365,7 @@ describe("executeTasks — CLI chain support", () => {
         documentPath: "src/gql/operations/issue-close.graphql",
       },
     }
-
-    // pre-flight: step 0 → cliCard, step 1 → gqlCard; executeTask re-loads card for CLI step → cliCard
-    getOperationCardMock
-      .mockReturnValueOnce(cliCard)
-      .mockReturnValueOnce(gqlCard)
-      .mockReturnValue(cliCard)
+    setupMixedChainMocks(cliCard, gqlCard)
 
     executeMock.mockResolvedValue({ ok: true, data: { id: "cli-result" } })
 
@@ -1408,14 +1411,6 @@ describe("executeTasks — CLI chain support", () => {
   })
 
   it("reports partial status when CLI step fails and GQL step succeeds", async () => {
-    vi.resetModules()
-    vi.doMock("@core/core/execute/execute.js", () => ({
-      execute: (...args: unknown[]) => executeMock(...args),
-    }))
-    vi.doMock("@core/core/registry/index.js", () => ({
-      getOperationCard: (...args: unknown[]) => getOperationCardMock(...args),
-    }))
-
     const cliCard = {
       ...baseCard,
       routing: { preferred: "cli" as const, fallbacks: [] as const },
@@ -1429,12 +1424,7 @@ describe("executeTasks — CLI chain support", () => {
         documentPath: "src/gql/operations/issue-close.graphql",
       },
     }
-
-    // pre-flight: step 0 → cliCard, step 1 → gqlCard; executeTask re-loads card for CLI step → cliCard
-    getOperationCardMock
-      .mockReturnValueOnce(cliCard)
-      .mockReturnValueOnce(gqlCard)
-      .mockReturnValue(cliCard)
+    setupMixedChainMocks(cliCard, gqlCard)
 
     // CLI step fails
     executeMock.mockResolvedValue({
@@ -1511,14 +1501,6 @@ describe("executeTasks — CLI chain support", () => {
   })
 
   it("drains in-flight CLI promises when Phase 1 resolution lookup fails", async () => {
-    vi.resetModules()
-    vi.doMock("@core/core/execute/execute.js", () => ({
-      execute: (...args: unknown[]) => executeMock(...args),
-    }))
-    vi.doMock("@core/core/registry/index.js", () => ({
-      getOperationCard: (...args: unknown[]) => getOperationCardMock(...args),
-    }))
-
     const cliCard = {
       ...baseCard,
       routing: { preferred: "cli" as const, fallbacks: [] as const },
@@ -1540,8 +1522,71 @@ describe("executeTasks — CLI chain support", () => {
         },
       },
     }
+    setupMixedChainMocks(cliCard, gqlCard)
 
-    getOperationCardMock.mockReturnValueOnce(cliCard).mockReturnValueOnce(gqlCard)
+    // CLI step fails — both steps end up failing, so status remains "failed"
+    executeMock.mockResolvedValue({
+      ok: false,
+      error: { code: "UNKNOWN", message: "cli network timeout", retryable: false },
+    })
+
+    vi.doMock("@core/gql/document-registry.js", () => ({
+      getLookupDocument: vi.fn().mockReturnValue("query RepoLookup { repository { id } }"),
+      getMutationDocument: vi.fn(),
+    }))
+    vi.doMock("@core/gql/batch.js", () => ({
+      buildBatchQuery: vi
+        .fn()
+        .mockReturnValue({ document: "query Batch { step1: repository { id } }", variables: {} }),
+      buildBatchMutation: vi.fn(),
+    }))
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTasks(
+      [
+        { task: "issue.list", input: { owner: "acme", name: "modkit" } },
+        { task: "issue.view", input: { owner: "acme", name: "modkit" } },
+      ],
+      {
+        githubClient: createGithubClient({
+          query: vi.fn().mockRejectedValue(new Error("resolution batch network error")),
+        }),
+      },
+    )
+
+    expect(result.status).toBe("failed")
+    expect(result.results).toHaveLength(2)
+    expect(result.results[0]?.ok).toBe(false)
+    expect(result.results[0]?.error?.message).toBe("cli network timeout")
+    expect(result.results[1]?.ok).toBe(false)
+    expect(result.results[1]?.error?.message).toMatch("Phase 1 (resolution) failed")
+  })
+
+  it("returns partial when Phase 1 fails but CLI step succeeded", async () => {
+    const cliCard = {
+      ...baseCard,
+      routing: { preferred: "cli" as const, fallbacks: [] as const },
+      graphql: undefined,
+      cli: { command: "gh issue list" },
+    }
+    const gqlCard = {
+      ...baseCard,
+      graphql: {
+        operationName: "IssueView",
+        documentPath: "src/gql/operations/issue-view.graphql",
+        resolution: {
+          lookup: {
+            operationName: "RepoLookup",
+            documentPath: "src/gql/operations/repo-lookup.graphql",
+            vars: { owner: "owner", name: "name" },
+          },
+          inject: [],
+        },
+      },
+    }
+    setupMixedChainMocks(cliCard, gqlCard)
+
     executeMock.mockResolvedValue({
       ok: true,
       data: { id: "cli-ok" },
@@ -1573,9 +1618,9 @@ describe("executeTasks — CLI chain support", () => {
       },
     )
 
-    expect(result.status).toBe("failed")
-    expect(result.results).toHaveLength(2)
-    expect(result.results[0]?.error?.message).toMatch("Phase 1 (resolution) failed")
+    expect(result.status).toBe("partial")
+    expect(result.results[0]).toMatchObject({ ok: true, data: { id: "cli-ok" } })
+    expect(result.results[1]?.ok).toBe(false)
     expect(result.results[1]?.error?.message).toMatch("Phase 1 (resolution) failed")
   })
 

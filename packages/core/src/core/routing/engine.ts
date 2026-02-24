@@ -386,7 +386,9 @@ export async function executeTasks(
   for (let i = 0; i < requests.length; i += 1) {
     const card = cards[i]
     const req = requests[i]
-    if (card === undefined || req === undefined) continue
+    if (card === undefined || req === undefined) {
+      throw new Error(`invariant violated: missing card or request at index ${i}`)
+    }
     if (!card.graphql) {
       cliStepPromises.set(i, executeTask({ task: req.task, input: req.input }, deps))
     }
@@ -489,15 +491,35 @@ export async function executeTasks(
         }
       }
     } catch (err) {
-      // Phase 1 failure: mark all steps as failed.
-      // Drain any in-flight CLI promises before returning to prevent unhandled rejections.
+      // Phase 1 failure: GQL-dependent steps all fail. CLI steps that completed
+      // concurrently may have succeeded — preserve their results for partial status.
+      const cliPhase1Results = new Map<number, ResultEnvelope>()
       if (cliStepPromises.size > 0) {
-        const drained = await Promise.allSettled(Array.from(cliStepPromises.values()))
-        for (const outcome of drained) {
-          if (outcome.status === "rejected") {
+        const cliEntries = Array.from(cliStepPromises.entries())
+        const settled = await Promise.allSettled(cliEntries.map(([, p]) => p))
+        for (let j = 0; j < cliEntries.length; j += 1) {
+          const entry = cliEntries[j]
+          const outcome = settled[j]
+          if (entry === undefined || outcome === undefined) {
+            throw new Error(`invariant violated: missing entry or outcome at drain index ${j}`)
+          }
+          const [i] = entry
+          if (outcome.status === "fulfilled") {
+            cliPhase1Results.set(i, outcome.value)
+          } else {
             logger.warn("cli.step_drained_on_phase1_failure", {
               reason:
                 outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason),
+            })
+            const req = requests[i]
+            cliPhase1Results.set(i, {
+              ok: false,
+              error: {
+                code: errorCodes.Unknown,
+                message: String(outcome.reason),
+                retryable: false,
+              },
+              meta: { capability_id: req?.task ?? "unknown", route_used: "cli" },
             })
           }
         }
@@ -509,22 +531,46 @@ export async function executeTasks(
         error_code: code,
         message: errorMsg,
       })
+      const phase1Error = {
+        code,
+        message: `Phase 1 (resolution) failed: ${errorMsg}`,
+        retryable: isRetryableCode(code),
+      }
+      const phase1Results: ChainStepResult[] = requests.map((req, i) => {
+        const cliResult = cliPhase1Results.get(i)
+        if (cliResult !== undefined) {
+          return cliResult.ok
+            ? { task: req.task, ok: true, data: cliResult.data }
+            : {
+                task: req.task,
+                ok: false,
+                error:
+                  cliResult.error ??
+                  ({
+                    code: errorCodes.Unknown,
+                    message: "CLI step failed",
+                    retryable: false,
+                  } as const),
+              }
+        }
+        return { task: req.task, ok: false, error: phase1Error }
+      })
+      const phase1Succeeded = phase1Results.filter((r) => r.ok).length
+      const phase1Status: ChainStatus =
+        phase1Succeeded === phase1Results.length
+          ? "success"
+          : phase1Succeeded === 0
+            ? "failed"
+            : "partial"
       return {
-        status: "failed",
-        results: requests.map((req) => ({
-          task: req.task,
-          ok: false,
-          error: {
-            code,
-            message: `Phase 1 (resolution) failed: ${errorMsg}`,
-            retryable: isRetryableCode(code),
-          },
-        })),
+        status: phase1Status,
+        results: phase1Results,
         meta: {
+          // Phase 1 only runs when GQL resolution steps exist → always "graphql"
           route_used: "graphql",
           total: requests.length,
-          succeeded: 0,
-          failed: requests.length,
+          succeeded: phase1Succeeded,
+          failed: requests.length - phase1Succeeded,
         },
       }
     }
@@ -642,7 +688,9 @@ export async function executeTasks(
     for (let j = 0; j < cliEntries.length; j += 1) {
       const entry = cliEntries[j]
       const outcome = settled[j]
-      if (entry === undefined || outcome === undefined) continue
+      if (entry === undefined || outcome === undefined) {
+        throw new Error(`invariant violated: missing entry or outcome at CLI collect index ${j}`)
+      }
       const [i] = entry
       if (outcome.status === "fulfilled") {
         cliResultsByIndex.set(i, outcome.value)
