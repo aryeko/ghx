@@ -385,7 +385,7 @@ describe("createGithubClient", () => {
       prNumber: 232,
       first: 10,
       unresolvedOnly: false,
-      includeOutdated: false,
+      includeOutdated: true,
     })
 
     expect(list.items).toHaveLength(1)

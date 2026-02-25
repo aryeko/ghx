@@ -1,5 +1,10 @@
 import type { GraphQLClient } from "graphql-request"
-import { assertProjectInput, assertProjectOrgInput, assertProjectUserInput } from "../assertions.js"
+import {
+  assertNonEmptyString,
+  assertProjectInput,
+  assertProjectOrgInput,
+  assertProjectUserInput,
+} from "../assertions.js"
 import type * as Types from "../operations/base-types.js"
 import { getSdk as getProjectV2FieldsListOrgSdk } from "../operations/project-v2-fields-list-org.generated.js"
 import { getSdk as getProjectV2FieldsListUserSdk } from "../operations/project-v2-fields-list-user.generated.js"
@@ -167,10 +172,7 @@ export async function runProjectV2FieldsList(
   }
 
   if (!conn) {
-    return {
-      items: [],
-      pageInfo: { hasNextPage: false, endCursor: null },
-    }
+    throw new Error(`Project #${input.projectNumber} not found for owner "${input.owner}"`)
   }
 
   return {
@@ -224,10 +226,7 @@ export async function runProjectV2ItemsList(
   }
 
   if (!conn) {
-    return {
-      items: [],
-      pageInfo: { hasNextPage: false, endCursor: null },
-    }
+    throw new Error(`Project #${input.projectNumber} not found for owner "${input.owner}"`)
   }
 
   return {
@@ -307,15 +306,9 @@ export async function runProjectV2ItemFieldUpdate(
   transport: GraphqlTransport,
   input: ProjectV2ItemFieldUpdateInput,
 ): Promise<ProjectV2ItemFieldUpdateData> {
-  if (!input.projectId || input.projectId.trim().length === 0) {
-    throw new Error("projectId is required")
-  }
-  if (!input.itemId || input.itemId.trim().length === 0) {
-    throw new Error("itemId is required")
-  }
-  if (!input.fieldId || input.fieldId.trim().length === 0) {
-    throw new Error("fieldId is required")
-  }
+  assertNonEmptyString(input.projectId, "projectId")
+  assertNonEmptyString(input.itemId, "itemId")
+  assertNonEmptyString(input.fieldId, "fieldId")
 
   const client = createGraphqlRequestClient(transport)
   const value = buildFieldValue(input)

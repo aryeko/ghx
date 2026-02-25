@@ -45,7 +45,8 @@ routing:
   preferred: graphql
   fallbacks: [cli]
 graphql:
-  operationName: ProjectV2FieldsList
-  documentPath: src/gql/operations/project-v2-fields-list.graphql
+  # GQL limitation: user fallback handled in domain handler
+  operationName: ProjectV2FieldsListOrg
+  documentPath: src/gql/operations/project-v2-fields-list-org.graphql
 cli:
   command: project field-list

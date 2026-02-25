@@ -27,6 +27,7 @@ import type {
   PrMergeInput,
   ProjectV2OrgViewInput,
   ProjectV2UserViewInput,
+  PrReviewSubmitInput,
   PrReviewsListInput,
   PrReviewsRequestInput,
   PrUpdateInput,
@@ -398,4 +399,16 @@ export function assertPrAssigneesInput(input: PrAssigneesAddInput | PrAssigneesR
 export function assertPrReviewsRequestInput(input: PrReviewsRequestInput): void {
   assertPrInput({ owner: input.owner, name: input.name, prNumber: input.prNumber })
   assertStringArray(input.reviewers, "Reviewers")
+}
+
+export function assertPrReviewSubmitInput(input: PrReviewSubmitInput): void {
+  if (input.owner.trim().length === 0 || input.name.trim().length === 0) {
+    throw new Error("Repository owner and name are required")
+  }
+  if (!Number.isInteger(input.prNumber) || input.prNumber <= 0) {
+    throw new Error("PR number must be a positive integer")
+  }
+  if (!input.event || typeof input.event !== "string") {
+    throw new Error("Review event is required")
+  }
 }

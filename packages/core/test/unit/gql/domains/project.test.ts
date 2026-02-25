@@ -162,17 +162,19 @@ describe("runProjectV2FieldsList", () => {
   })
 
   it("returns items and pageInfo from user branch when org is null", async () => {
-    const execute = vi.fn().mockResolvedValue({
-      organization: null,
-      user: {
-        projectV2: {
-          fields: {
-            nodes: [{ id: "field-u1", name: "Assignee", dataType: "ASSIGNEES" }],
-            pageInfo: { hasNextPage: true, endCursor: "cursor-ghi" },
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({ organization: null })
+      .mockResolvedValueOnce({
+        user: {
+          projectV2: {
+            fields: {
+              nodes: [{ id: "field-u1", name: "Assignee", dataType: "ASSIGNEES" }],
+              pageInfo: { hasNextPage: true, endCursor: "cursor-ghi" },
+            },
           },
         },
-      },
-    })
+      })
     const transport: GraphqlTransport = { execute }
 
     const result = await runProjectV2FieldsList(transport, fieldsListInput)
@@ -206,18 +208,16 @@ describe("runProjectV2FieldsList", () => {
     expect(result.items[2]?.id).toBeNull()
   })
 
-  it("returns empty items and default pageInfo when no connection found", async () => {
-    const execute = vi.fn().mockResolvedValue({
-      organization: null,
-      user: null,
-    })
+  it("throws when no org or user connection is found", async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({ organization: null })
+      .mockResolvedValueOnce({ user: null })
     const transport: GraphqlTransport = { execute }
 
-    const result = await runProjectV2FieldsList(transport, fieldsListInput)
-
-    expect(result.items).toHaveLength(0)
-    expect(result.pageInfo.hasNextPage).toBe(false)
-    expect(result.pageInfo.endCursor).toBeNull()
+    await expect(runProjectV2FieldsList(transport, fieldsListInput)).rejects.toThrow(
+      `Project #${fieldsListInput.projectNumber} not found for owner "${fieldsListInput.owner}"`,
+    )
   })
 })
 
@@ -253,23 +253,25 @@ describe("runProjectV2ItemsList", () => {
   })
 
   it("returns items from user branch when org is null", async () => {
-    const execute = vi.fn().mockResolvedValue({
-      organization: null,
-      user: {
-        projectV2: {
-          items: {
-            nodes: [
-              {
-                id: "item-u1",
-                type: "PULL_REQUEST",
-                content: { __typename: "PullRequest", number: 5, title: "Add feature" },
-              },
-            ],
-            pageInfo: { hasNextPage: false, endCursor: null },
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({ organization: null })
+      .mockResolvedValueOnce({
+        user: {
+          projectV2: {
+            items: {
+              nodes: [
+                {
+                  id: "item-u1",
+                  type: "PULL_REQUEST",
+                  content: { __typename: "PullRequest", number: 5, title: "Add feature" },
+                },
+              ],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
           },
         },
-      },
-    })
+      })
     const transport: GraphqlTransport = { execute }
 
     const result = await runProjectV2ItemsList(transport, itemsListInput)
@@ -355,18 +357,16 @@ describe("runProjectV2ItemsList", () => {
     expect(result.items[0]?.contentTitle).toBe("My PR title")
   })
 
-  it("returns empty items and default pageInfo when no connection found", async () => {
-    const execute = vi.fn().mockResolvedValue({
-      organization: null,
-      user: null,
-    })
+  it("throws when no org or user connection is found", async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({ organization: null })
+      .mockResolvedValueOnce({ user: null })
     const transport: GraphqlTransport = { execute }
 
-    const result = await runProjectV2ItemsList(transport, itemsListInput)
-
-    expect(result.items).toHaveLength(0)
-    expect(result.pageInfo.hasNextPage).toBe(false)
-    expect(result.pageInfo.endCursor).toBeNull()
+    await expect(runProjectV2ItemsList(transport, itemsListInput)).rejects.toThrow(
+      `Project #${itemsListInput.projectNumber} not found for owner "${itemsListInput.owner}"`,
+    )
   })
 
   it("sets id and contentType to null when node is null", async () => {

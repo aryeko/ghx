@@ -13,7 +13,7 @@ output_schema:
   type: object
   required: [itemId, itemType]
   properties:
-    itemId: { type: [string, "null"] }
+    itemId: { type: string }
     itemType: { type: [string, "null"] }
   additionalProperties: false
 routing:

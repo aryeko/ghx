@@ -365,11 +365,11 @@ describe("runPrAssigneesAdd", () => {
     const transport: GraphqlTransport = { execute }
 
     await expect(runPrAssigneesAdd(transport, assigneesInput)).rejects.toThrow(
-      "Could not resolve users: bob",
+      "Could not resolve user: bob",
     )
   })
 
-  it("throws with 'Could not resolve users:' message when one login is unresolvable", async () => {
+  it("throws with 'Could not resolve user:' message when one login is unresolvable", async () => {
     const execute = vi
       .fn()
       .mockResolvedValueOnce({ repository: { pullRequest: { id: "PR_kwDOA123" } } })
@@ -378,7 +378,7 @@ describe("runPrAssigneesAdd", () => {
     const transport: GraphqlTransport = { execute }
 
     await expect(runPrAssigneesAdd(transport, assigneesInput)).rejects.toThrow(
-      "Could not resolve users:",
+      "Could not resolve user:",
     )
   })
 
@@ -474,7 +474,7 @@ describe("runPrAssigneesRemove", () => {
     const transport: GraphqlTransport = { execute }
 
     await expect(runPrAssigneesRemove(transport, assigneesInput)).rejects.toThrow(
-      "Could not resolve users: alice",
+      "Could not resolve user: alice",
     )
   })
 
@@ -499,7 +499,7 @@ describe("runPrAssigneesRemove", () => {
     const result = await runPrAssigneesRemove(transport, assigneesInput)
 
     expect(result.prNumber).toBe(42)
-    expect(result.removed).toEqual(["alice"])
+    expect(result.removed).toEqual(["bob"])
   })
 })
 
@@ -542,7 +542,7 @@ describe("runPrReviewsRequest", () => {
     const transport: GraphqlTransport = { execute }
 
     await expect(runPrReviewsRequest(transport, reviewsRequestInput)).rejects.toThrow(
-      "Could not resolve users: charlie",
+      "Could not resolve user: charlie",
     )
   })
 

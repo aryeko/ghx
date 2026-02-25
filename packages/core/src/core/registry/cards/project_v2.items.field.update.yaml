@@ -19,7 +19,7 @@ output_schema:
   type: object
   required: [itemId]
   properties:
-    itemId: { type: [string, "null"] }
+    itemId: { type: string }
   additionalProperties: false
 routing:
   preferred: graphql

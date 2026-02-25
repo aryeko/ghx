@@ -10,11 +10,37 @@ describe("executeTask pr.update", () => {
       updatePr: async () => ({
         number: 1,
         url: "https://github.com/owner/repo/pull/1",
-        title: "Updated PR",
+        title: "Updated title",
         state: "OPEN",
         draft: false,
       }),
     } as unknown as GithubClient
+
+    const request: TaskRequest = {
+      task: "pr.update",
+      input: {
+        owner: "owner",
+        name: "repo",
+        prNumber: 1,
+        title: "Updated title",
+      },
+    }
+
+    const result = await executeTask(request, {
+      githubClient,
+      githubToken: "test-token",
+    })
+
+    expect(result.ok).toBe(true)
+    expect(result.meta.route_used).toBe("graphql")
+  })
+
+  it("returns error envelope when no update fields are provided", async () => {
+    const githubClient = createGithubClient({
+      async execute<TData>(): Promise<TData> {
+        return {} as TData
+      },
+    })
 
     const request: TaskRequest = {
       task: "pr.update",
@@ -28,10 +54,12 @@ describe("executeTask pr.update", () => {
     const result = await executeTask(request, {
       githubClient,
       githubToken: "test-token",
+      ghCliAvailable: false,
+      ghAuthenticated: false,
     })
 
-    expect(result.ok).toBe(true)
-    expect(result.meta.route_used).toBe("graphql")
+    expect(result.ok).toBe(false)
+    expect(result.error?.message).toMatch(/title|body|draft/)
   })
 
   it("returns validation error envelope for invalid prNumber", async () => {

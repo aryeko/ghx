@@ -6,6 +6,7 @@ import {
   assertPrCommentsListInput,
   assertPrCreateInput,
   assertPrMergeInput,
+  assertPrReviewSubmitInput,
   assertPrReviewsRequestInput,
   assertPrUpdateInput,
   assertReplyToReviewThreadInput,
@@ -192,7 +193,7 @@ export async function runPrCommentsList(
         continue
       }
 
-      if (unresolvedOnly && !includeOutdated && normalized.isOutdated) {
+      if (!includeOutdated && normalized.isOutdated) {
         continue
       }
 
@@ -309,18 +310,6 @@ export async function runUnresolveReviewThread(
     threadId: input.threadId,
   })
   return parseReviewThreadMutationResult(result, "unresolveReviewThread")
-}
-
-function assertPrReviewSubmitInput(input: PrReviewSubmitInput): void {
-  if (input.owner.trim().length === 0 || input.name.trim().length === 0) {
-    throw new Error("Repository owner and name are required")
-  }
-  if (!Number.isInteger(input.prNumber) || input.prNumber <= 0) {
-    throw new Error("PR number must be a positive integer")
-  }
-  if (!input.event || typeof input.event !== "string") {
-    throw new Error("Review event is required")
-  }
 }
 
 export async function runSubmitPrReview(
@@ -518,11 +507,11 @@ async function resolveUserNodeIds(client: GraphQLClient, logins: string[]): Prom
   const results = await Promise.all(
     logins.map((login) => getUserNodeIdSdk(client).UserNodeId({ login })),
   )
-  const unresolved = logins.filter((_, i) => !results[i]?.user?.id)
-  if (unresolved.length > 0) {
-    throw new Error(`Could not resolve users: ${unresolved.join(", ")}`)
-  }
-  return results.flatMap((r) => (r.user?.id ? [r.user.id] : []))
+  return logins.map((login, i) => {
+    const id = results[i]?.user?.id
+    if (!id) throw new Error(`Could not resolve user: ${login}`)
+    return id
+  })
 }
 
 export async function runPrAssigneesAdd(
@@ -553,9 +542,13 @@ export async function runPrAssigneesAdd(
     throw new Error("Failed to add assignees to pull request")
   }
 
+  const confirmedLogins = (prAssignable.assignees.nodes ?? [])
+    .filter((node): node is { login: string } => node !== null)
+    .map((node) => node.login)
+
   return {
     prNumber: input.prNumber,
-    added: input.assignees,
+    added: confirmedLogins,
   }
 }
 
@@ -587,9 +580,13 @@ export async function runPrAssigneesRemove(
     throw new Error("Failed to remove assignees from pull request")
   }
 
+  const confirmedLogins = (prAssignable.assignees.nodes ?? [])
+    .filter((node): node is { login: string } => node !== null)
+    .map((node) => node.login)
+
   return {
     prNumber: input.prNumber,
-    removed: input.assignees,
+    removed: confirmedLogins,
   }
 }
 

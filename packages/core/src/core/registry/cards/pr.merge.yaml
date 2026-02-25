@@ -27,6 +27,7 @@ routing:
   preferred: graphql
   fallbacks: [cli]
 graphql:
+  # GQL limitation: deleteBranch: true unsupported, triggers CLI fallback
   operationName: PrMerge
   documentPath: src/gql/operations/pr-merge.graphql
 cli:

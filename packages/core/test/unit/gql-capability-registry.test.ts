@@ -2,6 +2,92 @@ import { getGraphqlHandler, listGraphqlCapabilities } from "@core/gql/capability
 import { describe, expect, it, vi } from "vitest"
 
 describe("gql capability registry", () => {
+  describe("smoke tests: all new handlers are registered", () => {
+    const newHandlers = [
+      "repo.labels.list",
+      "repo.issue_types.list",
+      "release.view",
+      "release.list",
+      "project_v2.org.view",
+      "project_v2.user.view",
+      "project_v2.fields.list",
+      "project_v2.items.list",
+      "pr.create",
+      "pr.update",
+      "pr.merge",
+      "pr.branch.update",
+      "pr.assignees.add",
+      "pr.assignees.remove",
+      "pr.reviews.request",
+      "project_v2.items.issue.add",
+      "project_v2.items.issue.remove",
+      "project_v2.items.field.update",
+    ]
+
+    for (const capabilityId of newHandlers) {
+      it(`returns a defined handler for ${capabilityId}`, () => {
+        const handler = getGraphqlHandler(capabilityId)
+        expect(handler).toBeDefined()
+      })
+    }
+  })
+
+  describe("representative handler invocation tests", () => {
+    it("project_v2.items.issue.add handler throws when addProjectV2Item is undefined", () => {
+      const handler = getGraphqlHandler("project_v2.items.issue.add")
+      expect(handler).toBeDefined()
+      if (!handler) throw new Error("missing project_v2.items.issue.add handler")
+
+      const client = {
+        addProjectV2Item: undefined,
+      } as unknown as Parameters<NonNullable<typeof handler>>[0]
+
+      expect(() =>
+        handler(client, {
+          owner: "acme",
+          projectNumber: 1,
+          issueUrl: "https://github.com/acme/repo/issues/1",
+        }),
+      ).toThrow()
+    })
+
+    it("pr.create handler throws when createPr is undefined", () => {
+      const handler = getGraphqlHandler("pr.create")
+      expect(handler).toBeDefined()
+      if (!handler) throw new Error("missing pr.create handler")
+
+      const client = {
+        createPr: undefined,
+      } as unknown as Parameters<NonNullable<typeof handler>>[0]
+
+      expect(() =>
+        handler(client, {
+          owner: "acme",
+          name: "repo",
+          title: "My PR",
+          head: "feat/branch",
+          base: "main",
+        }),
+      ).toThrow()
+    })
+
+    it("release.view handler delegates to fetchReleaseView", () => {
+      const handler = getGraphqlHandler("release.view")
+      expect(handler).toBeDefined()
+      if (!handler) throw new Error("missing release.view handler")
+
+      const fetchReleaseView = vi.fn().mockResolvedValue({ tagName: "v1.0.0" })
+      const client = { fetchReleaseView } as unknown as Parameters<NonNullable<typeof handler>>[0]
+
+      handler(client, { owner: "acme", name: "repo", tagName: "v1.0.0" })
+      expect(fetchReleaseView).toHaveBeenCalledWith({
+        owner: "acme",
+        name: "repo",
+        tagName: "v1.0.0",
+      })
+    })
+  })
+
   it("lists capabilities and validates submit handler availability", async () => {
     const capabilities = listGraphqlCapabilities()
     expect(capabilities).toContain("pr.reviews.submit")
@@ -147,7 +233,7 @@ describe("gql capability registry", () => {
       expect(mergePr).toHaveBeenCalledWith(expect.objectContaining({ mergeMethod: "SQUASH" }))
     })
 
-    it('defaults to "MERGE" when method is undefined', () => {
+    it("omits mergeMethod when method is undefined (server applies its own default)", () => {
       const handler = getGraphqlHandler("pr.merge")
       expect(handler).toBeDefined()
       if (!handler) throw new Error("missing pr.merge handler")
@@ -157,7 +243,9 @@ describe("gql capability registry", () => {
         name: "r",
         prNumber: 1,
       })
-      expect(mergePr).toHaveBeenCalledWith(expect.objectContaining({ mergeMethod: "MERGE" }))
+      expect(mergePr).toHaveBeenCalledWith(
+        expect.not.objectContaining({ mergeMethod: expect.anything() }),
+      )
     })
   })
 

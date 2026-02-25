@@ -26,6 +26,7 @@ routing:
   preferred: graphql
   fallbacks: [cli]
 graphql:
+  # GQL limitation: draft-only updates fall back to CLI
   operationName: PrUpdate
   documentPath: src/gql/operations/pr-update.graphql
 cli:
