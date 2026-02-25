@@ -351,6 +351,9 @@ export function assertPrCreateInput(input: PrCreateInput): void {
 
 export function assertPrUpdateInput(input: PrUpdateInput): void {
   assertPrInput({ owner: input.owner, name: input.name, prNumber: input.prNumber })
+  if (input.title === undefined && input.body === undefined) {
+    throw new Error("At least one of title or body must be provided")
+  }
 }
 
 export function assertPrMergeInput(input: PrMergeInput): void {

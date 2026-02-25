@@ -35,13 +35,12 @@ import type {
   IssueUpdateInput,
   IssueViewData,
   IssueViewInput,
+  PrAssigneesAddData,
   PrAssigneesAddInput,
-  PrAssigneesData,
+  PrAssigneesRemoveData,
   PrAssigneesRemoveInput,
   PrBranchUpdateData,
   PrBranchUpdateInput,
-  PrChecksListData,
-  PrChecksListInput,
   PrCommentsListData,
   PrCommentsListInput,
   PrCreateData,
@@ -138,10 +137,9 @@ export interface GithubClient extends GraphqlClient {
   updatePr(input: PrUpdateInput): Promise<PrUpdateData>
   mergePr(input: PrMergeInput): Promise<PrMergeData>
   updatePrBranch(input: PrBranchUpdateInput): Promise<PrBranchUpdateData>
-  addPrAssignees(input: PrAssigneesAddInput): Promise<PrAssigneesData>
-  removePrAssignees(input: PrAssigneesRemoveInput): Promise<PrAssigneesData>
+  addPrAssignees(input: PrAssigneesAddInput): Promise<PrAssigneesAddData>
+  removePrAssignees(input: PrAssigneesRemoveInput): Promise<PrAssigneesRemoveData>
   requestPrReviews(input: PrReviewsRequestInput): Promise<PrReviewsRequestData>
-  fetchPrChecksList(input: PrChecksListInput): Promise<PrChecksListData>
   addProjectV2Item(input: ProjectV2ItemAddInput): Promise<ProjectV2ItemAddData>
   removeProjectV2Item(input: ProjectV2ItemRemoveInput): Promise<ProjectV2ItemRemoveData>
   updateProjectV2ItemField(
@@ -258,7 +256,6 @@ export function createGithubClient(transport: GraphqlTransport): GithubClient {
       (await loadPrMutations()).runPrAssigneesRemove(transport, input),
     requestPrReviews: async (input) =>
       (await loadPrMutations()).runPrReviewsRequest(transport, input),
-    fetchPrChecksList: async (input) => (await loadPrQueries()).runPrChecksList(transport, input),
     addProjectV2Item: async (input) => (await loadProject()).runProjectV2ItemAdd(transport, input),
     removeProjectV2Item: async (input) =>
       (await loadProject()).runProjectV2ItemRemove(transport, input),

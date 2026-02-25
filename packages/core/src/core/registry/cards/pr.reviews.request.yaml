@@ -27,5 +27,8 @@ output_schema:
 routing:
   preferred: graphql
   fallbacks: [cli]
+graphql:
+  operationName: PrReviewsRequest
+  documentPath: src/gql/operations/pr-reviews-request.graphql
 cli:
   command: pr edit

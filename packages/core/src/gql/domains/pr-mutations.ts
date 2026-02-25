@@ -35,8 +35,9 @@ import type { GraphqlTransport } from "../transport.js"
 import { createGraphqlRequestClient } from "../transport.js"
 import type {
   DraftComment,
+  PrAssigneesAddData,
   PrAssigneesAddInput,
-  PrAssigneesData,
+  PrAssigneesRemoveData,
   PrAssigneesRemoveInput,
   PrBranchUpdateData,
   PrBranchUpdateInput,
@@ -403,12 +404,11 @@ export async function runPrCreate(
   }
 
   return {
-    id: pr.id,
     number: pr.number,
+    url: String(pr.url),
     title: pr.title,
     state: String(pr.state),
-    url: String(pr.url),
-    isDraft: pr.isDraft,
+    draft: pr.isDraft,
   }
 }
 
@@ -432,12 +432,11 @@ export async function runPrUpdate(
   }
 
   return {
-    id: pr.id,
     number: pr.number,
+    url: String(pr.url),
     title: pr.title,
     state: String(pr.state),
-    url: String(pr.url),
-    isDraft: pr.isDraft,
+    draft: pr.isDraft,
   }
 }
 
@@ -462,11 +461,10 @@ export async function runPrMerge(
   }
 
   return {
-    id: pr.id,
-    number: pr.number,
-    state: String(pr.state),
-    merged: pr.merged,
-    mergedAt: pr.mergedAt != null ? String(pr.mergedAt) : null,
+    prNumber: input.prNumber,
+    method: input.mergeMethod?.toLowerCase() ?? "merge",
+    queued: false,
+    deleteBranch: input.deleteBranch ?? false,
   }
 }
 
@@ -491,7 +489,7 @@ export async function runPrBranchUpdate(
   }
 
   return {
-    id: pr.id,
+    prNumber: input.prNumber,
     updated: true,
   }
 }
@@ -499,7 +497,7 @@ export async function runPrBranchUpdate(
 export async function runPrAssigneesAdd(
   transport: GraphqlTransport,
   input: PrAssigneesAddInput,
-): Promise<PrAssigneesData> {
+): Promise<PrAssigneesAddData> {
   assertPrAssigneesInput(input)
   const client = createGraphqlRequestClient(transport)
   const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
@@ -508,10 +506,12 @@ export async function runPrAssigneesAdd(
     input.logins.map((login) => getUserNodeIdSdk(client).UserNodeId({ login })),
   )
 
-  const userIds = userIdResults.flatMap((r) => (r.user?.id ? [r.user.id] : []))
-  if (userIds.length === 0) {
-    throw new Error(`None of the provided logins could be resolved: ${input.logins.join(", ")}`)
+  const unresolvedLogins = input.logins.filter((_, i) => !userIdResults[i]?.user?.id)
+  if (unresolvedLogins.length > 0) {
+    throw new Error(`Could not resolve logins: ${unresolvedLogins.join(", ")}`)
   }
+
+  const userIds = userIdResults.flatMap((r) => (r.user?.id ? [r.user.id] : []))
 
   const result = await getPrAssigneesAddSdk(client).PrAssigneesAdd({
     assignableId: pullRequestId,
@@ -532,15 +532,15 @@ export async function runPrAssigneesAdd(
   }
 
   return {
-    id: prAssignable.id,
-    assignees: (prAssignable.assignees.nodes ?? []).flatMap((n) => (n ? [n.login] : [])),
+    prNumber: input.prNumber,
+    added: (prAssignable.assignees.nodes ?? []).flatMap((n) => (n ? [n.login] : [])),
   }
 }
 
 export async function runPrAssigneesRemove(
   transport: GraphqlTransport,
   input: PrAssigneesRemoveInput,
-): Promise<PrAssigneesData> {
+): Promise<PrAssigneesRemoveData> {
   assertPrAssigneesInput(input)
   const client = createGraphqlRequestClient(transport)
   const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
@@ -549,10 +549,12 @@ export async function runPrAssigneesRemove(
     input.logins.map((login) => getUserNodeIdSdk(client).UserNodeId({ login })),
   )
 
-  const userIds = userIdResults.flatMap((r) => (r.user?.id ? [r.user.id] : []))
-  if (userIds.length === 0) {
-    throw new Error(`None of the provided logins could be resolved: ${input.logins.join(", ")}`)
+  const unresolvedLogins = input.logins.filter((_, i) => !userIdResults[i]?.user?.id)
+  if (unresolvedLogins.length > 0) {
+    throw new Error(`Could not resolve logins: ${unresolvedLogins.join(", ")}`)
   }
+
+  const userIds = userIdResults.flatMap((r) => (r.user?.id ? [r.user.id] : []))
 
   const result = await getPrAssigneesRemoveSdk(client).PrAssigneesRemove({
     assignableId: pullRequestId,
@@ -573,8 +575,8 @@ export async function runPrAssigneesRemove(
   }
 
   return {
-    id: prAssignable.id,
-    assignees: (prAssignable.assignees.nodes ?? []).flatMap((n) => (n ? [n.login] : [])),
+    prNumber: input.prNumber,
+    removed: (prAssignable.assignees.nodes ?? []).flatMap((n) => (n ? [n.login] : [])),
   }
 }
 
@@ -590,12 +592,14 @@ export async function runPrReviewsRequest(
     input.reviewerLogins.map((login) => getUserNodeIdSdk(client).UserNodeId({ login })),
   )
 
-  const reviewerUserIds = userIdResults.flatMap((r) => (r.user?.id ? [r.user.id] : []))
-  if (reviewerUserIds.length === 0) {
-    throw new Error(
-      `None of the provided logins could be resolved: ${input.reviewerLogins.join(", ")}`,
-    )
+  const unresolvedReviewerLogins = input.reviewerLogins.filter(
+    (_, i) => !userIdResults[i]?.user?.id,
+  )
+  if (unresolvedReviewerLogins.length > 0) {
+    throw new Error(`Could not resolve logins: ${unresolvedReviewerLogins.join(", ")}`)
   }
+
+  const reviewerUserIds = userIdResults.flatMap((r) => (r.user?.id ? [r.user.id] : []))
 
   const result = await getPrReviewsRequestSdk(client).PrReviewsRequest({
     pullRequestId,
@@ -617,7 +621,8 @@ export async function runPrReviewsRequest(
   })
 
   return {
-    id: pr.id,
-    requestedReviewers: reviewRequests,
+    prNumber: input.prNumber,
+    reviewers: reviewRequests,
+    updated: true,
   }
 }

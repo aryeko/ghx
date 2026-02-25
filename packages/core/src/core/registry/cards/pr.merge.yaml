@@ -25,5 +25,8 @@ output_schema:
 routing:
   preferred: graphql
   fallbacks: [cli]
+graphql:
+  operationName: PrMerge
+  documentPath: src/gql/operations/pr-merge.graphql
 cli:
   command: pr merge

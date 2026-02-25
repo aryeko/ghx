@@ -19,5 +19,8 @@ output_schema:
 routing:
   preferred: graphql
   fallbacks: [cli]
+graphql:
+  operationName: PrBranchUpdate
+  documentPath: src/gql/operations/pr-branch-update.graphql
 cli:
   command: pr update-branch

@@ -25,5 +25,8 @@ output_schema:
 routing:
   preferred: graphql
   fallbacks: [cli]
+graphql:
+  operationName: PrAssigneesRemove
+  documentPath: src/gql/operations/pr-assignees-remove.graphql
 cli:
   command: pr edit

@@ -66,12 +66,11 @@ describe("runPrCreate", () => {
 
     const result = await runPrCreate(transport, createInput)
 
-    expect(result.id).toBe("PR_kwDOA123")
     expect(result.number).toBe(42)
     expect(result.title).toBe("Add new feature")
     expect(result.state).toBe("OPEN")
     expect(result.url).toBe("https://github.com/acme/repo/pull/42")
-    expect(result.isDraft).toBe(false)
+    expect(result.draft).toBe(false)
   })
 
   it("passes draft flag when provided", async () => {
@@ -94,7 +93,7 @@ describe("runPrCreate", () => {
 
     const result = await runPrCreate(transport, { ...createInput, draft: true })
 
-    expect(result.isDraft).toBe(true)
+    expect(result.draft).toBe(true)
     const secondCall = execute.mock.calls[1]
     expect(secondCall?.[1]).toMatchObject({ draft: true })
   })
@@ -150,11 +149,10 @@ describe("runPrUpdate", () => {
 
     const result = await runPrUpdate(transport, updateInput)
 
-    expect(result.id).toBe("PR_kwDOA123")
     expect(result.number).toBe(42)
     expect(result.title).toBe("Updated title")
     expect(result.state).toBe("OPEN")
-    expect(result.isDraft).toBe(false)
+    expect(result.draft).toBe(false)
   })
 })
 
@@ -204,14 +202,13 @@ describe("runPrMerge", () => {
 
     const result = await runPrMerge(transport, mergeInput)
 
-    expect(result.id).toBe("PR_kwDOA123")
-    expect(result.number).toBe(42)
-    expect(result.state).toBe("MERGED")
-    expect(result.merged).toBe(true)
-    expect(result.mergedAt).toBe("2025-01-15T10:00:00Z")
+    expect(result.prNumber).toBe(42)
+    expect(result.method).toBe("merge")
+    expect(result.queued).toBe(false)
+    expect(result.deleteBranch).toBe(false)
   })
 
-  it("returns mergedAt as null when not present", async () => {
+  it("reflects mergeMethod and deleteBranch from input", async () => {
     const execute = vi
       .fn()
       .mockResolvedValueOnce({ repository: { pullRequest: { id: "PR_kwDOA123" } } })
@@ -222,15 +219,20 @@ describe("runPrMerge", () => {
             number: 42,
             state: "MERGED",
             merged: true,
-            mergedAt: null,
+            mergedAt: "2025-01-15T10:00:00Z",
           },
         },
       })
     const transport: GraphqlTransport = { execute }
 
-    const result = await runPrMerge(transport, mergeInput)
+    const result = await runPrMerge(transport, {
+      ...mergeInput,
+      mergeMethod: "SQUASH",
+      deleteBranch: true,
+    })
 
-    expect(result.mergedAt).toBeNull()
+    expect(result.method).toBe("squash")
+    expect(result.deleteBranch).toBe(true)
   })
 })
 
@@ -279,7 +281,7 @@ describe("runPrBranchUpdate", () => {
 
     const result = await runPrBranchUpdate(transport, branchUpdateInput)
 
-    expect(result.id).toBe("PR_kwDOA123")
+    expect(result.prNumber).toBe(42)
     expect(result.updated).toBe(true)
   })
 })
@@ -320,6 +322,19 @@ describe("runPrAssigneesAdd", () => {
     )
   })
 
+  it("throws when any login cannot be resolved", async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({ repository: { pullRequest: { id: "PR_kwDOA123" } } })
+      .mockResolvedValueOnce({ user: { id: "U_alice" } })
+      .mockResolvedValueOnce({ user: null })
+    const transport: GraphqlTransport = { execute }
+
+    await expect(runPrAssigneesAdd(transport, assigneesInput)).rejects.toThrow(
+      "Could not resolve logins: bob",
+    )
+  })
+
   it("returns mapped assignees on success", async () => {
     const execute = vi
       .fn()
@@ -341,8 +356,8 @@ describe("runPrAssigneesAdd", () => {
 
     const result = await runPrAssigneesAdd(transport, assigneesInput)
 
-    expect(result.id).toBe("PR_kwDOA123")
-    expect(result.assignees).toEqual(["alice", "bob"])
+    expect(result.prNumber).toBe(42)
+    expect(result.added).toEqual(["alice", "bob"])
   })
 
   it("filters null assignee nodes", async () => {
@@ -365,7 +380,7 @@ describe("runPrAssigneesAdd", () => {
 
     const result = await runPrAssigneesAdd(transport, { ...assigneesInput, logins: ["alice"] })
 
-    expect(result.assignees).toEqual(["alice"])
+    expect(result.added).toEqual(["alice"])
   })
 })
 
@@ -404,6 +419,18 @@ describe("runPrAssigneesRemove", () => {
     )
   })
 
+  it("throws when any login cannot be resolved", async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({ repository: { pullRequest: { id: "PR_kwDOA123" } } })
+      .mockResolvedValueOnce({ user: null })
+    const transport: GraphqlTransport = { execute }
+
+    await expect(runPrAssigneesRemove(transport, assigneesInput)).rejects.toThrow(
+      "Could not resolve logins: alice",
+    )
+  })
+
   it("returns mapped assignees after removal", async () => {
     const execute = vi
       .fn()
@@ -424,8 +451,8 @@ describe("runPrAssigneesRemove", () => {
 
     const result = await runPrAssigneesRemove(transport, assigneesInput)
 
-    expect(result.id).toBe("PR_kwDOA123")
-    expect(result.assignees).toEqual(["bob"])
+    expect(result.prNumber).toBe(42)
+    expect(result.removed).toEqual(["bob"])
   })
 })
 
@@ -460,6 +487,18 @@ describe("runPrReviewsRequest", () => {
     )
   })
 
+  it("throws when any reviewer login cannot be resolved", async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({ repository: { pullRequest: { id: "PR_kwDOA123" } } })
+      .mockResolvedValueOnce({ user: null })
+    const transport: GraphqlTransport = { execute }
+
+    await expect(runPrReviewsRequest(transport, reviewsRequestInput)).rejects.toThrow(
+      "Could not resolve logins: charlie",
+    )
+  })
+
   it("returns requested reviewers on success", async () => {
     const execute = vi
       .fn()
@@ -483,8 +522,9 @@ describe("runPrReviewsRequest", () => {
 
     const result = await runPrReviewsRequest(transport, reviewsRequestInput)
 
-    expect(result.id).toBe("PR_kwDOA123")
-    expect(result.requestedReviewers).toEqual(["charlie"])
+    expect(result.prNumber).toBe(42)
+    expect(result.reviewers).toEqual(["charlie"])
+    expect(result.updated).toBe(true)
   })
 
   it("filters non-User reviewers from results", async () => {
@@ -510,6 +550,6 @@ describe("runPrReviewsRequest", () => {
 
     const result = await runPrReviewsRequest(transport, reviewsRequestInput)
 
-    expect(result.requestedReviewers).toEqual(["charlie"])
+    expect(result.reviewers).toEqual(["charlie"])
   })
 })

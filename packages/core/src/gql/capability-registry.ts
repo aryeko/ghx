@@ -18,14 +18,10 @@ import type {
   IssueRelationsGetInput,
   IssueUpdateInput,
   IssueViewInput,
-  PrAssigneesAddInput,
-  PrAssigneesRemoveInput,
   PrBranchUpdateInput,
   PrCommentsListInput,
-  PrCreateInput,
   PrDiffListFilesInput,
   PrListInput,
-  PrMergeInput,
   PrMergeStatusInput,
   ProjectV2FieldsListInput,
   ProjectV2ItemAddInput,
@@ -36,7 +32,6 @@ import type {
   ProjectV2UserViewInput,
   PrReviewSubmitInput,
   PrReviewsListInput,
-  PrReviewsRequestInput,
   PrUpdateInput,
   PrViewInput,
   ReleaseListInput,
@@ -307,13 +302,80 @@ const handlers = new Map<string, GraphqlHandler>([
   ],
 
   // PR mutations (Phase 2)
-  ["pr.create", (c, p) => c.createPr(p as PrCreateInput)],
+  [
+    "pr.create",
+    (c, p) => {
+      const raw = p as {
+        owner: string
+        name: string
+        title: string
+        head: string
+        base?: string
+        body?: string
+        draft?: boolean
+      }
+      return c.createPr({
+        owner: raw.owner,
+        name: raw.name,
+        title: raw.title,
+        headRefName: raw.head,
+        baseRefName: raw.base ?? "main",
+        ...(raw.body !== undefined ? { body: raw.body } : {}),
+        ...(raw.draft !== undefined ? { draft: raw.draft } : {}),
+      })
+    },
+  ],
   ["pr.update", (c, p) => c.updatePr(p as PrUpdateInput)],
-  ["pr.merge", (c, p) => c.mergePr(p as PrMergeInput)],
+  [
+    "pr.merge",
+    (c, p) => {
+      const raw = p as { owner: string; name: string; prNumber: number; method?: string }
+      const methodMap: Record<string, string> = {
+        merge: "MERGE",
+        squash: "SQUASH",
+        rebase: "REBASE",
+      }
+      const mergeMethod = methodMap[raw.method ?? "merge"] ?? "MERGE"
+      return c.mergePr({ owner: raw.owner, name: raw.name, prNumber: raw.prNumber, mergeMethod })
+    },
+  ],
   ["pr.branch.update", (c, p) => c.updatePrBranch(p as PrBranchUpdateInput)],
-  ["pr.assignees.add", (c, p) => c.addPrAssignees(p as PrAssigneesAddInput)],
-  ["pr.assignees.remove", (c, p) => c.removePrAssignees(p as PrAssigneesRemoveInput)],
-  ["pr.reviews.request", (c, p) => c.requestPrReviews(p as PrReviewsRequestInput)],
+  [
+    "pr.assignees.add",
+    (c, p) => {
+      const raw = p as { owner: string; name: string; prNumber: number; assignees: string[] }
+      return c.addPrAssignees({
+        owner: raw.owner,
+        name: raw.name,
+        prNumber: raw.prNumber,
+        logins: raw.assignees,
+      })
+    },
+  ],
+  [
+    "pr.assignees.remove",
+    (c, p) => {
+      const raw = p as { owner: string; name: string; prNumber: number; assignees: string[] }
+      return c.removePrAssignees({
+        owner: raw.owner,
+        name: raw.name,
+        prNumber: raw.prNumber,
+        logins: raw.assignees,
+      })
+    },
+  ],
+  [
+    "pr.reviews.request",
+    (c, p) => {
+      const raw = p as { owner: string; name: string; prNumber: number; reviewers: string[] }
+      return c.requestPrReviews({
+        owner: raw.owner,
+        name: raw.name,
+        prNumber: raw.prNumber,
+        reviewerLogins: raw.reviewers,
+      })
+    },
+  ],
 
   // Project V2 mutations (Phase 2)
   ["project_v2.items.issue.add", (c, p) => c.addProjectV2Item(p as ProjectV2ItemAddInput)],

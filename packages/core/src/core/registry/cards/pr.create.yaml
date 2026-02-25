@@ -26,5 +26,8 @@ output_schema:
 routing:
   preferred: graphql
   fallbacks: [cli]
+graphql:
+  operationName: PrCreate
+  documentPath: src/gql/operations/pr-create.graphql
 cli:
   command: pr create

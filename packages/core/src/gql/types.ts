@@ -453,7 +453,7 @@ export type RepoIssueTypesListData = {
 export type ReleaseViewInput = ReleaseViewQueryVariables
 export type ReleaseViewData = {
   id: number | null
-  tagName: string | null
+  tagName: string
   name: string | null
   isDraft: boolean
   isPrerelease: boolean
@@ -518,12 +518,11 @@ export type PrCreateInput = {
 }
 
 export type PrCreateData = {
-  id: string
   number: number
+  url: string
   title: string
   state: string
-  url: string
-  isDraft: boolean
+  draft: boolean
 }
 
 export type PrUpdateInput = {
@@ -536,12 +535,11 @@ export type PrUpdateInput = {
 }
 
 export type PrUpdateData = {
-  id: string
   number: number
+  url: string
   title: string
   state: string
-  url: string
-  isDraft: boolean
+  draft: boolean
 }
 
 export type PrMergeInput = {
@@ -549,14 +547,14 @@ export type PrMergeInput = {
   name: string
   prNumber: number
   mergeMethod?: string // MERGE | SQUASH | REBASE
+  deleteBranch?: boolean
 }
 
 export type PrMergeData = {
-  id: string
-  number: number
-  state: string
-  merged: boolean
-  mergedAt: string | null
+  prNumber: number
+  method: string
+  queued: boolean
+  deleteBranch: boolean
 }
 
 export type PrBranchUpdateInput = {
@@ -567,7 +565,7 @@ export type PrBranchUpdateInput = {
 }
 
 export type PrBranchUpdateData = {
-  id: string
+  prNumber: number
   updated: boolean
 }
 
@@ -580,9 +578,14 @@ export type PrAssigneesInput = {
 export type PrAssigneesAddInput = PrAssigneesInput
 export type PrAssigneesRemoveInput = PrAssigneesInput
 
-export type PrAssigneesData = {
-  id: string
-  assignees: string[]
+export type PrAssigneesAddData = {
+  prNumber: number
+  added: string[]
+}
+
+export type PrAssigneesRemoveData = {
+  prNumber: number
+  removed: string[]
 }
 
 export type PrReviewsRequestInput = {
@@ -593,8 +596,9 @@ export type PrReviewsRequestInput = {
 }
 
 export type PrReviewsRequestData = {
-  id: string
-  requestedReviewers: string[]
+  prNumber: number
+  reviewers: string[]
+  updated: boolean
 }
 
 // PR checks
@@ -621,8 +625,9 @@ export type PrChecksListData = {
 
 // Project V2 mutations
 export type ProjectV2ItemAddInput = {
-  projectId: string
-  contentId: string
+  owner: string
+  projectNumber: number
+  issueUrl: string
 }
 
 export type ProjectV2ItemAddData = {
@@ -631,7 +636,8 @@ export type ProjectV2ItemAddData = {
 }
 
 export type ProjectV2ItemRemoveInput = {
-  projectId: string
+  owner: string
+  projectNumber: number
   itemId: string
 }
 
@@ -643,7 +649,12 @@ export type ProjectV2ItemFieldUpdateInput = {
   projectId: string
   itemId: string
   fieldId: string
-  value: Record<string, unknown>
+  valueText?: string
+  valueNumber?: number
+  valueDate?: string
+  valueSingleSelectOptionId?: string
+  valueIterationId?: string
+  clear?: boolean
 }
 
 export type ProjectV2ItemFieldUpdateData = {
