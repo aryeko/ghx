@@ -1,6 +1,7 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { PageInfoFieldsFragmentDoc } from "./fragments/page-info-fields.generated.js"
+import { ProjectV2CommonFieldsFragmentDoc } from "./project-v2-fields-list-org.generated.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type ProjectV2FieldsListUserQueryVariables = Types.Exact<{
@@ -73,7 +74,8 @@ export const ProjectV2FieldsListUserDocument = `
     }
   }
 }
-    ${PageInfoFieldsFragmentDoc}`
+    ${ProjectV2CommonFieldsFragmentDoc}
+${PageInfoFieldsFragmentDoc}`
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,
