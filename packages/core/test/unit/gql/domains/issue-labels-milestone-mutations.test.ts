@@ -46,7 +46,9 @@ describe("runIssueLabelsRemove", () => {
 
   it("validates input — rejects labels with empty string", async () => {
     const transport: GraphqlTransport = { execute: vi.fn() }
-    await expect(runIssueLabelsRemove(transport, { ...baseInput, labels: [""] })).rejects.toThrow()
+    await expect(runIssueLabelsRemove(transport, { ...baseInput, labels: [""] })).rejects.toThrow(
+      "Labels must be an array of non-empty strings",
+    )
   })
 
   it("throws when issue not found in lookup", async () => {
@@ -132,6 +134,20 @@ describe("runIssueLabelsRemove", () => {
 // --- runIssueMilestoneClear ---
 
 describe("runIssueMilestoneClear", () => {
+  it("validates input — rejects empty owner", async () => {
+    const transport: GraphqlTransport = { execute: vi.fn() }
+    await expect(runIssueMilestoneClear(transport, { ...baseInput, owner: "" })).rejects.toThrow(
+      "Repository owner and name are required",
+    )
+  })
+
+  it("validates input — rejects invalid issue number", async () => {
+    const transport: GraphqlTransport = { execute: vi.fn() }
+    await expect(
+      runIssueMilestoneClear(transport, { ...baseInput, issueNumber: 0 }),
+    ).rejects.toThrow("Issue number must be a positive integer")
+  })
+
   it("throws when issue not found in lookup", async () => {
     const execute = vi.fn().mockResolvedValue({ repository: { issue: null } })
     const transport: GraphqlTransport = { execute }

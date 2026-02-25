@@ -592,6 +592,7 @@ export async function runIssueMilestoneClear(
   transport: GraphqlTransport,
   input: IssueMilestoneClearInput,
 ): Promise<IssueMilestoneClearData> {
+  assertIssueMutationInput(input)
   const client = createGraphqlRequestClient(transport)
   const lookupResult = await getIssueNodeIdLookupSdk(client).IssueNodeIdLookup({
     owner: input.owner,
