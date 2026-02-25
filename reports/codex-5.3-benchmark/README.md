@@ -352,7 +352,7 @@ This means ghx adds ~2,000 tokens (SKILL.md + formatting overhead) to the cached
 
 ### Why total tokens mislead
 
-Consider the `pr-fix-mixed-threads-wf-001` scenario where ghx shows +8% total tokens:
+Consider the `pr-fix-mixed-threads-wf-001` scenario where ghx shows +21% total tokens:
 
 | Metric | ghx | agent_direct | Delta |
 |--------|-----|-------------|-------|

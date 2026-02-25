@@ -29,5 +29,5 @@ Source: 20 profiled runs per mode.
 - Median active-token reduction: 27.55%
 - Median latency reduction: 22.41%
 - Median tool-call reduction: 16.67%
-- Scenario win-rate (active tokens): 75.00% (4 comparable scenarios)
+- Scenario win-rate (active tokens): 75.00% (3/4 comparable scenarios)
 - Active-token reduction 95% CI: [-4.40, 55.07]
