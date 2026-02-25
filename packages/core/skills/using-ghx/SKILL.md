@@ -15,7 +15,6 @@ ghx capabilities list --compact --domain pr
 ```
 
 Domains: `repo`, `issue`, `pr`, `release`, `workflow`, `project_v2`.
-Required inputs shown in brackets (e.g. `[owner, name, prNumber]`).
 
 Only if you need the full input/output schema for a specific capability:
 
