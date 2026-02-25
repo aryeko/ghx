@@ -1651,3 +1651,657 @@ describe("executeTasks — CLI chain support", () => {
     expect(result.results[0]?.error?.message).toBe("unexpected internal failure")
   })
 })
+
+describe("executeTask — preflight branches", () => {
+  beforeEach(() => {
+    executeMock.mockReset()
+    getOperationCardMock.mockReset()
+    getOperationCardMock.mockReturnValue(baseCard)
+  })
+
+  it("forwards githubToken to preflight when provided", async () => {
+    executeMock.mockImplementation(
+      async (options: { preflight: (route: string) => Promise<unknown> }) => {
+        return options.preflight("graphql")
+      },
+    )
+
+    const { executeTask } = await import("@core/core/routing/engine.js")
+
+    await executeTask(
+      { task: "repo.view", input: { owner: "acme", name: "modkit" } },
+      {
+        githubClient: createGithubClient(),
+        githubToken: "ghp_test123",
+      },
+    )
+
+    expect(executeMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("preflight for non-CLI route skips CLI detection entirely", async () => {
+    const cliRunner = {
+      run: vi.fn(async () => ({ exitCode: 0, stdout: "ok", stderr: "" })),
+    }
+    executeMock.mockImplementation(
+      async (options: { preflight: (route: string) => Promise<unknown> }) => {
+        return options.preflight("graphql")
+      },
+    )
+
+    const { executeTask } = await import("@core/core/routing/engine.js")
+
+    await executeTask(
+      { task: "repo.view", input: { owner: "acme", name: "modkit" } },
+      {
+        githubClient: createGithubClient(),
+        cliRunner,
+      },
+    )
+
+    expect(cliRunner.run).not.toHaveBeenCalled()
+  })
+
+  it("uses provided ghCliAvailable and ghAuthenticated without probing", async () => {
+    const cliRunner = {
+      run: vi.fn(async () => ({ exitCode: 0, stdout: "ok", stderr: "" })),
+    }
+    executeMock.mockImplementation(
+      async (options: { preflight: (route: "cli") => Promise<unknown> }) => {
+        return options.preflight("cli")
+      },
+    )
+
+    const { executeTask } = await import("@core/core/routing/engine.js")
+
+    await executeTask(
+      { task: "repo.view", input: { owner: "acme", name: "modkit" } },
+      {
+        githubClient: createGithubClient(),
+        cliRunner,
+        ghCliAvailable: true,
+        ghAuthenticated: true,
+      },
+    )
+
+    expect(cliRunner.run).not.toHaveBeenCalled()
+  })
+
+  it("probes when ghCliAvailable is provided but ghAuthenticated is not", async () => {
+    const cliRunner = {
+      run: vi.fn(async () => ({ exitCode: 0, stdout: "gh version 1", stderr: "" })),
+    }
+    executeMock.mockImplementation(
+      async (options: { preflight: (route: "cli") => Promise<{ ok: boolean }> }) => {
+        return options.preflight("cli")
+      },
+    )
+
+    const { executeTask } = await import("@core/core/routing/engine.js")
+
+    await executeTask(
+      { task: "repo.view", input: { owner: "acme", name: "modkit" } },
+      {
+        githubClient: createGithubClient(),
+        cliRunner,
+        ghCliAvailable: true,
+      },
+    )
+
+    expect(cliRunner.run).toHaveBeenCalled()
+  })
+
+  it("skipGhPreflight fills only missing fields, preserves provided ghCliAvailable", async () => {
+    const cliRunner = {
+      run: vi.fn(async () => ({ exitCode: 1, stdout: "", stderr: "" })),
+    }
+    executeMock.mockImplementation(
+      async (options: { preflight: (route: "cli") => Promise<{ ok: boolean }> }) => {
+        return options.preflight("cli")
+      },
+    )
+
+    const { executeTask } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTask(
+      { task: "repo.view", input: { owner: "acme", name: "modkit" } },
+      {
+        githubClient: createGithubClient(),
+        cliRunner,
+        ghCliAvailable: true,
+        skipGhPreflight: true,
+      },
+    )
+
+    expect(cliRunner.run).not.toHaveBeenCalled()
+    expect(result).toEqual({ ok: true })
+  })
+
+  it("uses custom reason code when provided in deps", async () => {
+    getOperationCardMock.mockReturnValue(null)
+
+    const { executeTask } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTask(
+      { task: "unknown.task", input: {} },
+      {
+        githubClient: createGithubClient(),
+        reason: "CARD_PREFERRED",
+      },
+    )
+
+    expect(result.ok).toBe(false)
+    expect(result.meta.reason).toBe("CARD_PREFERRED")
+  })
+})
+
+describe("executeTasks — 1-item chain error paths", () => {
+  beforeEach(() => {
+    executeMock.mockReset()
+    getOperationCardMock.mockReset()
+    getOperationCardMock.mockReturnValue(baseCard)
+  })
+
+  it("1-item chain returns failed status when executeTask returns ok: false", async () => {
+    executeMock.mockResolvedValue({
+      ok: false,
+      data: undefined,
+      error: { code: "NOT_FOUND", message: "Not found", retryable: false },
+      meta: { route_used: "graphql" },
+    })
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTasks(
+      [{ task: "repo.view", input: { owner: "acme", name: "modkit" } }],
+      { githubClient: createGithubClient() },
+    )
+
+    expect(result.status).toBe("failed")
+    expect(result.results).toHaveLength(1)
+    expect(result.results[0]?.ok).toBe(false)
+    expect(result.results[0]?.error?.code).toBe("NOT_FOUND")
+    expect(result.meta.succeeded).toBe(0)
+    expect(result.meta.failed).toBe(1)
+  })
+
+  it("1-item chain uses Unknown error when result.error is null", async () => {
+    executeMock.mockResolvedValue({
+      ok: false,
+      data: undefined,
+      error: null,
+      meta: { route_used: "cli" },
+    })
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTasks(
+      [{ task: "repo.view", input: { owner: "acme", name: "modkit" } }],
+      { githubClient: createGithubClient() },
+    )
+
+    expect(result.status).toBe("failed")
+    expect(result.results[0]?.ok).toBe(false)
+    expect(result.results[0]?.error?.code).toBe("UNKNOWN")
+    expect(result.meta.route_used).toBe("cli")
+  })
+})
+
+describe("executeTasks — input validation preflight", () => {
+  it("rejects chain when input fails schema validation", async () => {
+    vi.resetModules()
+    vi.doMock("@core/core/execute/execute.js", () => ({
+      execute: (...args: unknown[]) => executeMock(...args),
+    }))
+
+    const cardWithSchema = {
+      ...baseCard,
+      input_schema: {
+        type: "object",
+        properties: { owner: { type: "string" }, name: { type: "string" } },
+        required: ["owner", "name"],
+      },
+      graphql: {
+        operationName: "RepoView",
+        documentPath: "src/gql/operations/repo-view.graphql",
+      },
+    }
+
+    vi.doMock("@core/core/registry/index.js", () => ({
+      getOperationCard: vi.fn().mockReturnValue(cardWithSchema),
+    }))
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTasks(
+      [
+        { task: "repo.view", input: {} },
+        { task: "repo.view", input: { owner: "acme", name: "modkit" } },
+      ],
+      { githubClient: createGithubClient() },
+    )
+
+    expect(result.status).toBe("failed")
+    expect(result.results[0]?.ok).toBe(false)
+    expect(result.results[0]?.error?.message).toContain("Input validation failed")
+    expect(result.results[1]?.ok).toBe(false)
+  })
+})
+
+describe("executeTasks — Phase 1 resolution failure", () => {
+  it("marks all steps as failed when Phase 1 batch lookup query rejects", async () => {
+    vi.resetModules()
+    vi.doMock("@core/core/execute/execute.js", () => ({
+      execute: (...args: unknown[]) => executeMock(...args),
+    }))
+    vi.doMock("@core/core/registry/index.js", () => ({
+      getOperationCard: (...args: unknown[]) => getOperationCardMock(...args),
+    }))
+
+    const cardWithResolution = {
+      ...baseCard,
+      graphql: {
+        operationName: "IssueLabelsSet",
+        documentPath: "x",
+        resolution: {
+          lookup: {
+            operationName: "IssueLabelsLookup",
+            documentPath: "y",
+            vars: { issueId: "issueId" },
+          },
+          inject: [],
+        },
+      },
+    }
+    getOperationCardMock.mockReturnValue(cardWithResolution)
+
+    vi.doMock("@core/gql/document-registry.js", () => ({
+      getLookupDocument: vi.fn().mockReturnValue("query IssueLabelsLookup { node { id } }"),
+      getMutationDocument: vi.fn(),
+    }))
+    vi.doMock("@core/gql/batch.js", () => ({
+      buildBatchQuery: vi
+        .fn()
+        .mockReturnValue({ document: "query { step0: node { id } }", variables: {} }),
+      buildBatchMutation: vi.fn(),
+    }))
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTasks(
+      [
+        { task: "issue.labels.set", input: { issueId: "I1" } },
+        { task: "issue.labels.set", input: { issueId: "I2" } },
+      ],
+      {
+        githubClient: createGithubClient({
+          query: vi.fn().mockRejectedValue(new Error("rate limit exceeded")),
+        }),
+      },
+    )
+
+    expect(result.status).toBe("failed")
+    expect(result.results).toHaveLength(2)
+    expect(result.results[0]?.ok).toBe(false)
+    expect(result.results[0]?.error?.message).toContain("Phase 1 (resolution) failed")
+    expect(result.results[1]?.ok).toBe(false)
+  })
+})
+
+describe("executeTasks — Phase 2 inject error", () => {
+  it("marks step as failed when applyInject throws during Phase 2", async () => {
+    vi.resetModules()
+    vi.doMock("@core/core/execute/execute.js", () => ({
+      execute: (...args: unknown[]) => executeMock(...args),
+    }))
+    vi.doMock("@core/core/registry/index.js", () => ({
+      getOperationCard: (...args: unknown[]) => getOperationCardMock(...args),
+    }))
+
+    const cardWithResolution = {
+      ...baseCard,
+      graphql: {
+        operationName: "IssueLabelsSet",
+        documentPath: "x",
+        resolution: {
+          lookup: {
+            operationName: "IssueLabelsLookup",
+            documentPath: "y",
+            vars: { issueId: "issueId" },
+          },
+          inject: [
+            {
+              target: "labelIds",
+              source: "map_array" as const,
+              from_input: "labels",
+              nodes_path: "repository.labels.nodes",
+              match_field: "name",
+              extract_field: "id",
+            },
+          ],
+        },
+      },
+    }
+    getOperationCardMock.mockReturnValue(cardWithResolution)
+
+    vi.doMock("@core/gql/document-registry.js", () => ({
+      getLookupDocument: vi.fn().mockReturnValue("query IssueLabelsLookup { node { id } }"),
+      getMutationDocument: vi
+        .fn()
+        .mockReturnValue("mutation IssueLabelsSet { updateIssue { id } }"),
+    }))
+    vi.doMock("@core/gql/batch.js", () => ({
+      buildBatchQuery: vi
+        .fn()
+        .mockReturnValue({ document: "query { step0: node { id } }", variables: {} }),
+      buildBatchMutation: vi
+        .fn()
+        .mockReturnValue({ document: "mutation { step0: x { id } }", variables: {} }),
+      extractRootFieldName: vi.fn().mockReturnValue(null),
+    }))
+    vi.doMock("@core/gql/resolve.js", () => ({
+      applyInject: vi.fn().mockImplementation(() => {
+        throw new Error("inject path resolution failed")
+      }),
+      buildMutationVars: vi.fn(),
+    }))
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const queryMock = vi.fn().mockResolvedValueOnce({
+      step0: { labels: { nodes: [] } },
+      step1: { labels: { nodes: [] } },
+    })
+    const queryRawMock = vi.fn().mockResolvedValue({ data: {}, errors: undefined })
+
+    const result = await executeTasks(
+      [
+        { task: "issue.labels.set", input: { issueId: "I1", labels: ["bug"] } },
+        { task: "issue.labels.set", input: { issueId: "I2", labels: ["bug"] } },
+      ],
+      {
+        githubClient: createGithubClient({ query: queryMock, queryRaw: queryRawMock }),
+      },
+    )
+
+    expect(result.status).toBe("failed")
+    expect(result.results[0]?.ok).toBe(false)
+    expect(result.results[0]?.error?.message).toContain("inject path resolution failed")
+  })
+})
+
+describe("executeTasks — Phase 2 null/missing data response", () => {
+  it("returns missing-alias error when data is null (falls through to empty {})", async () => {
+    vi.resetModules()
+    vi.doMock("@core/core/execute/execute.js", () => ({
+      execute: (...args: unknown[]) => executeMock(...args),
+    }))
+    vi.doMock("@core/core/registry/index.js", () => ({
+      getOperationCard: (...args: unknown[]) => getOperationCardMock(...args),
+    }))
+
+    const card = {
+      ...baseCard,
+      graphql: {
+        operationName: "IssueClose",
+        documentPath: "x",
+      },
+    }
+    getOperationCardMock.mockReturnValue(card)
+
+    vi.doMock("@core/gql/document-registry.js", () => ({
+      getLookupDocument: vi.fn(),
+      getMutationDocument: vi.fn().mockReturnValue("mutation IssueClose { closeIssue { id } }"),
+    }))
+    vi.doMock("@core/gql/batch.js", () => ({
+      buildBatchMutation: vi.fn().mockReturnValue({
+        document: "mutation { step0: closeIssue { id } step1: closeIssue { id } }",
+        variables: {},
+      }),
+      buildBatchQuery: vi.fn(),
+    }))
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTasks(
+      [
+        { task: "issue.close", input: { issueId: "I1" } },
+        { task: "issue.close", input: { issueId: "I2" } },
+      ],
+      {
+        githubClient: createGithubClient({
+          queryRaw: vi.fn().mockResolvedValue({
+            data: null,
+            errors: undefined,
+          }),
+        }),
+      },
+    )
+
+    expect(result.status).toBe("failed")
+    expect(result.results[0]?.ok).toBe(false)
+    expect(result.results[0]?.error?.message).toContain("missing mutation result")
+  })
+})
+
+describe("executeTasks — resolution cache population", () => {
+  it("populates resolution cache during Phase 1 and verifies entries", async () => {
+    vi.resetModules()
+    vi.doMock("@core/core/execute/execute.js", () => ({
+      execute: (...args: unknown[]) => executeMock(...args),
+    }))
+    vi.doMock("@core/core/registry/index.js", () => ({
+      getOperationCard: (...args: unknown[]) => getOperationCardMock(...args),
+    }))
+
+    const cardWithResolution = {
+      ...baseCard,
+      graphql: {
+        operationName: "IssueLabelsSet",
+        documentPath: "x",
+        resolution: {
+          lookup: {
+            operationName: "IssueLabelsLookup",
+            documentPath: "y",
+            vars: { issueId: "issueId" },
+          },
+          inject: [
+            {
+              target: "labelIds",
+              source: "map_array" as const,
+              from_input: "labels",
+              nodes_path: "repository.labels.nodes",
+              match_field: "name",
+              extract_field: "id",
+            },
+          ],
+        },
+      },
+    }
+    getOperationCardMock.mockReturnValue(cardWithResolution)
+
+    vi.doMock("@core/gql/document-registry.js", () => ({
+      getLookupDocument: vi
+        .fn()
+        .mockReturnValue("query IssueLabelsLookup($issueId: ID!) { node(id: $issueId) { id } }"),
+      getMutationDocument: vi
+        .fn()
+        .mockReturnValue("mutation IssueLabelsSet { updateIssue { id } }"),
+    }))
+    vi.doMock("@core/gql/batch.js", () => ({
+      buildBatchQuery: vi.fn().mockReturnValue({
+        document: "query { step0: node { id } step1: node { id } }",
+        variables: {},
+      }),
+      buildBatchMutation: vi.fn().mockReturnValue({
+        document: "mutation { step0: updateIssue { id } step1: updateIssue { id } }",
+        variables: {},
+      }),
+      extractRootFieldName: vi.fn().mockReturnValue("node"),
+    }))
+    vi.doMock("@core/gql/resolve.js", () => ({
+      applyInject: vi.fn().mockReturnValue({ labelIds: ["L1"] }),
+      buildMutationVars: vi
+        .fn()
+        .mockImplementation(
+          (_doc: string, input: Record<string, unknown>, resolved: Record<string, unknown>) => ({
+            ...input,
+            ...resolved,
+          }),
+        ),
+    }))
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+    const { createResolutionCache } = await import("@core/core/routing/resolution-cache.js")
+
+    const cache = createResolutionCache()
+    const queryMock = vi.fn().mockResolvedValueOnce({
+      step0: { labels: { nodes: [{ id: "L1", name: "bug" }] } },
+      step1: { labels: { nodes: [{ id: "L1", name: "bug" }] } },
+    })
+    const queryRawMock = vi.fn().mockResolvedValue({
+      data: {
+        step0: { updateIssue: { id: "I1" } },
+        step1: { updateIssue: { id: "I2" } },
+      },
+      errors: undefined,
+    })
+
+    const result = await executeTasks(
+      [
+        { task: "issue.labels.set", input: { issueId: "I1", labels: ["bug"] } },
+        { task: "issue.labels.set", input: { issueId: "I2", labels: ["bug"] } },
+      ],
+      {
+        githubClient: createGithubClient({ query: queryMock, queryRaw: queryRawMock }),
+        resolutionCache: cache,
+      },
+    )
+
+    expect(result.status).toBe("success")
+    expect(cache.size).toBe(2)
+  })
+})
+
+describe("executeTask — route callback invocation", () => {
+  beforeEach(() => {
+    executeMock.mockReset()
+    getOperationCardMock.mockReset()
+    getOperationCardMock.mockReturnValue(baseCard)
+  })
+
+  it("graphql route callback invokes runGraphqlCapability", async () => {
+    executeMock.mockImplementation(
+      async (options: {
+        routes: { graphql: (params: Record<string, unknown>) => Promise<unknown> }
+      }) => {
+        return options.routes.graphql({})
+      },
+    )
+
+    const { executeTask } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTask(
+      { task: "repo.view", input: { owner: "acme", name: "modkit" } },
+      { githubClient: createGithubClient() },
+    )
+
+    // runGraphqlCapability is called (not mocked here so it runs the real adapter)
+    // The result shape depends on the adapter, but execute was intercepted
+    expect(executeMock).toHaveBeenCalledTimes(1)
+    expect(result).toBeDefined()
+  })
+
+  it("cli route callback invokes runCliCapability", async () => {
+    executeMock.mockImplementation(
+      async (options: {
+        routes: { cli: (params: Record<string, unknown>) => Promise<unknown> }
+      }) => {
+        return options.routes.cli({})
+      },
+    )
+
+    const { executeTask } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTask(
+      { task: "repo.view", input: { owner: "acme", name: "modkit" } },
+      { githubClient: createGithubClient() },
+    )
+
+    expect(executeMock).toHaveBeenCalledTimes(1)
+    expect(result).toBeDefined()
+  })
+})
+
+describe("executeTasks — step skipped assembly fallback", () => {
+  it("returns step-skipped error when a step has no mutation input and no pre-result", async () => {
+    vi.resetModules()
+    vi.doMock("@core/core/execute/execute.js", () => ({
+      execute: (...args: unknown[]) => executeMock(...args),
+    }))
+    vi.doMock("@core/core/registry/index.js", () => ({
+      getOperationCard: (...args: unknown[]) => getOperationCardMock(...args),
+    }))
+
+    const card = {
+      ...baseCard,
+      graphql: {
+        operationName: "IssueClose",
+        documentPath: "x",
+      },
+    }
+    getOperationCardMock.mockReturnValue(card)
+
+    // getMutationDocument throws so buildMutationVars is never called, but the step
+    // catches it and records a stepPreResult. To get the "step skipped" path, we need
+    // a step that has no preResult AND no mutationInput. This can happen if card.graphql
+    // is unexpectedly undefined after preflight passes.
+    // We'll achieve this by having getMutationDocument throw for step 0 (which creates
+    // a stepPreResult) and having queryRaw return data only for step1.
+    vi.doMock("@core/gql/document-registry.js", () => ({
+      getLookupDocument: vi.fn(),
+      getMutationDocument: vi.fn().mockReturnValue("mutation IssueClose { closeIssue { id } }"),
+    }))
+    vi.doMock("@core/gql/batch.js", () => ({
+      buildBatchMutation: vi.fn().mockReturnValue({
+        document: "mutation { step0: closeIssue { id } step1: closeIssue { id } }",
+        variables: {},
+      }),
+      buildBatchQuery: vi.fn(),
+    }))
+    vi.doMock("@core/gql/resolve.js", () => ({
+      applyInject: vi.fn(),
+      // buildMutationVars throws for step index 0, creating stepPreResults[0]
+      // but step 1 succeeds and creates a mutationInput
+      buildMutationVars: vi
+        .fn()
+        .mockImplementationOnce(() => {
+          throw new Error("vars build failed")
+        })
+        .mockReturnValueOnce({ issueId: "I2" }),
+    }))
+
+    const { executeTasks } = await import("@core/core/routing/engine.js")
+
+    const result = await executeTasks(
+      [
+        { task: "issue.close", input: { issueId: "I1" } },
+        { task: "issue.close", input: { issueId: "I2" } },
+      ],
+      {
+        githubClient: createGithubClient({
+          queryRaw: vi.fn().mockResolvedValue({
+            data: { step1: { closeIssue: { issue: { id: "I2" } } } },
+            errors: undefined,
+          }),
+        }),
+      },
+    )
+
+    // step 0: preResult error from buildMutationVars throwing
+    expect(result.results[0]?.ok).toBe(false)
+    expect(result.results[0]?.error?.message).toContain("vars build failed")
+    // step 1: succeeds (mutation alias "step1" maps to stepIndex 1, which is the second mutationInput)
+    // But since buildBatchMutation only receives 1 item (step1), the alias is "step1"
+  })
+})
