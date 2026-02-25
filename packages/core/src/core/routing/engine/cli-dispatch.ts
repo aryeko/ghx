@@ -53,8 +53,8 @@ export async function collectCliResults(
     if (step === undefined || outcome === undefined) continue
 
     if (outcome.status === "fulfilled") {
-      const [, result] = outcome.value
-      cliResults.set(step.index, result)
+      const [resolvedIndex, result] = outcome.value
+      cliResults.set(resolvedIndex, result)
     } else {
       const msg = outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason)
       const req = requests[step.index]

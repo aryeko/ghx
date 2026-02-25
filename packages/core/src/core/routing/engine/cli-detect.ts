@@ -18,26 +18,13 @@ const cliEnvironmentInFlight = new WeakMap<CliCommandRunner, Promise<CliEnvironm
 export const defaultCliRunner = createSafeCliCommandRunner()
 
 async function detectCliEnvironment(runner: CliCommandRunner): Promise<CliEnvironmentState> {
-  try {
-    const version = await runner.run("gh", ["--version"], 1_500)
-    if (version.exitCode !== 0) {
-      return {
-        ghCliAvailable: false,
-        ghAuthenticated: false,
-      }
-    }
-
-    const auth = await runner.run("gh", ["auth", "status"], 2_500)
-    return {
-      ghCliAvailable: true,
-      ghAuthenticated: auth.exitCode === 0,
-    }
-  } catch {
-    return {
-      ghCliAvailable: false,
-      ghAuthenticated: false,
-    }
+  const version = await runner.run("gh", ["--version"], 1_500).catch(() => null)
+  if (!version || version.exitCode !== 0) {
+    return { ghCliAvailable: false, ghAuthenticated: false }
   }
+
+  const auth = await runner.run("gh", ["auth", "status"], 2_500).catch(() => null)
+  return { ghCliAvailable: true, ghAuthenticated: auth?.exitCode === 0 }
 }
 
 export async function detectCliEnvironmentCached(

@@ -95,13 +95,16 @@ export async function runResolutionPhase(
   // Re-wrap it so applyInject path traversal (e.g. "repository.issue.id") works correctly.
   for (const { alias, query, stepIndex } of lookupInputs) {
     const rawValue = (rawResult as Record<string, unknown>)[alias]
+    if (rawValue === undefined) {
+      logger.debug("resolution.step_missing", { step: stepIndex, alias })
+      continue
+    }
     const rootFieldName = extractRootFieldName(query)
     const result = rootFieldName !== null ? { [rootFieldName]: rawValue } : rawValue
     lookupResults[stepIndex] = result
     logger.debug("resolution.step_resolved", { step: stepIndex, alias })
 
-    // Populate resolution cache (skip undefined to avoid polluting cache)
-    if (resolutionCache && result !== undefined) {
+    if (resolutionCache) {
       const step = steps.find((s) => s.index === stepIndex)
       const req = requests[stepIndex]
       if (step?.card.graphql?.resolution && req) {

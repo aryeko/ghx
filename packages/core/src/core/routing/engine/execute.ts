@@ -99,17 +99,19 @@ export async function runGqlExecutePhase(
             )
 
             if (rawResponse.errors?.length) {
-              let perStepErrorCount = 0
+              const attributedAliases = new Set<string>()
               for (const err of rawResponse.errors) {
                 const alias = err.path?.[0]
                 if (typeof alias === "string" && alias.startsWith("step")) {
                   stepErrors.set(alias, err.message)
-                  perStepErrorCount += 1
+                  attributedAliases.add(alias)
                 }
               }
-              if (perStepErrorCount === 0) {
+              if (attributedAliases.size === 0) {
                 for (const { alias } of mutationInputs) {
-                  stepErrors.set(alias, rawResponse.errors[0]?.message ?? "GraphQL batch error")
+                  if (!stepErrors.has(alias)) {
+                    stepErrors.set(alias, rawResponse.errors[0]?.message ?? "GraphQL batch error")
+                  }
                 }
               }
             }
