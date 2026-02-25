@@ -15,7 +15,7 @@ describe("runSubmitPrReview", () => {
         prNumber: 1,
         event: "COMMENT",
       }),
-    ).rejects.toThrow("Repository owner and name are required")
+    ).rejects.toThrow("Repository owner is required")
 
     await expect(
       runSubmitPrReview(transport, {

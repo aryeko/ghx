@@ -696,7 +696,7 @@ describe("runSubmitPrReview", () => {
     const transport: GraphqlTransport = { execute }
 
     await expect(runSubmitPrReview(transport, { ...baseInput, owner: "" })).rejects.toThrow(
-      "Repository owner and name are required",
+      "Repository owner is required",
     )
     expect(execute).not.toHaveBeenCalled()
   })

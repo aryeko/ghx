@@ -319,9 +319,7 @@ export function assertProjectInput(input: {
   projectNumber: number
   first?: number
 }): void {
-  if (input.owner.trim().length === 0) {
-    throw new Error("Project owner is required")
-  }
+  assertNonEmptyString(input.owner, "Project owner")
   if (!Number.isInteger(input.projectNumber) || input.projectNumber <= 0) {
     throw new Error("Project number must be a positive integer")
   }
@@ -404,14 +402,20 @@ export function assertPrReviewsRequestInput(input: PrReviewsRequestInput): void 
   assertStringArray(input.reviewers, "Reviewers")
 }
 
+const VALID_REVIEW_EVENTS = new Set(["APPROVE", "COMMENT", "REQUEST_CHANGES"])
+
 export function assertPrReviewSubmitInput(input: PrReviewSubmitInput): void {
-  if (input.owner.trim().length === 0 || input.name.trim().length === 0) {
-    throw new Error("Repository owner and name are required")
-  }
+  assertNonEmptyString(input.owner, "Repository owner")
+  assertNonEmptyString(input.name, "Repository name")
   if (!Number.isInteger(input.prNumber) || input.prNumber <= 0) {
     throw new Error("PR number must be a positive integer")
   }
   if (!input.event || typeof input.event !== "string") {
     throw new Error("Review event is required")
+  }
+  if (!VALID_REVIEW_EVENTS.has(input.event)) {
+    throw new Error(
+      `event "${input.event}" is invalid. Expected one of: APPROVE, COMMENT, REQUEST_CHANGES`,
+    )
   }
 }

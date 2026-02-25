@@ -356,6 +356,9 @@ const handlers = new Map<string, GraphqlHandler>([
         squash: "SQUASH",
         rebase: "REBASE",
       }
+      if (raw.method !== undefined && typeof raw.method !== "string") {
+        throw new Error(`method must be a string for pr.merge, got ${typeof raw.method}`)
+      }
       const mergeMethod = raw.method !== undefined ? methodMap[raw.method.toLowerCase()] : undefined
       if (raw.method !== undefined && !mergeMethod) {
         throw new Error(
