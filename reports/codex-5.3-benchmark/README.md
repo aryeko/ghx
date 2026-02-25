@@ -49,12 +49,14 @@ The agent never needs to figure out GraphQL syntax, worry about array parameter 
 
 ## Executive Summary
 
-| Scenario | ghx TC | ad TC | TC delta | ghx tokens | ad tokens | Token delta | Latency delta |
-|----------|--------|-------|----------|------------|-----------|-------------|---------------|
-| pr-review-comment | 4.2 | 9.4 | **-55%** | 58,355 | 122,155 | **-52%** | **-57%** |
-| issue-triage-comment | 1.6 | 3.0 | **-47%** | 30,251 | 37,876 | **-20%** | **-1%** |
-| pr-fix-mixed-threads | 3.0 | 4.2 | **-29%** | 59,795 | 55,233 | +8% | **-26%** |
-| ci-diagnose-run | 3.6 | 4.6 | **-22%** | 55,035 | 62,151 | **-11%** | **-20%** |
+| Scenario | ghx TC | ad TC | TC delta | ghx tokens¹ | ad tokens¹ | Latency delta |
+|----------|--------|-------|----------|------------|-----------|-------------|
+| pr-review-comment | 4.2 | 9.4 | **-55%** | 58,355 | 122,155 | **-57%** |
+| issue-triage-comment | 1.6 | 3.0 | **-47%** | 30,251 | 37,876 | **-1%** |
+| pr-fix-mixed-threads | 3.0 | 4.2 | **-29%** | 59,795 | 55,233 | **-26%** |
+| ci-diagnose-run | 3.6 | 4.6 | **-22%** | 55,035 | 62,151 | **-20%** |
+
+¹ Session-level total tokens from the JSONL (input + output + cache, summed across all 5 iterations). These differ from the per-iteration averages in the deep-dive sections, which measure a single-session token count. Token delta is omitted here because the total token metric is dominated by cached tokens and is a poor efficiency indicator — see [Understanding Token Metrics](#understanding-token-metrics-active-vs-cached) for the active-token comparison.
 
 Both modes achieved 100% success and 100% output validity across all 40 runs. ghx reduced tool calls in every scenario, with the largest gains on complex multi-step operations like PR review submission (-55%) and issue triage (-47%). Latency improved by up to 57% on the PR review scenario where agent_direct agents struggled with array parameter syntax.
 
@@ -287,7 +289,7 @@ The agent_direct agent queried all 100 threads via raw GraphQL, manually filtere
 
 **Analysis:** ghx shows a consistent 3 tool calls across all iterations while agent_direct varies from 3 to 7. The latency advantage (-26%) is significant even when tool call counts are similar, because ghx's `chain` batches multiple GraphQL mutations into fewer API round-trips.
 
-**The token cache artifact:** ghx shows +8% total tokens in the summary table. This is because ghx's system prompt (SKILL.md) adds ~2,000 cached tokens to every iteration. Since this scenario's active work is relatively small, the cached overhead is proportionally large. However, active tokens tell the real story:
+**The token cache artifact:** ghx shows +8% total tokens in the exec summary (59,795 vs 55,233 across all 5 iterations). The per-iteration average is 16,377 vs 13,498 (+21%), which is the figure used in the [Understanding Token Metrics](#understanding-token-metrics-active-vs-cached) section below. Both figures reflect the same underlying dynamic: ghx's system prompt (SKILL.md) adds ~2,000 cached tokens to every iteration. Since this scenario's active work is relatively small, the cached overhead is proportionally large. However, active tokens tell the real story:
 
 | Iter | ghx active | ad active |
 |------|-----------|----------|
@@ -371,7 +373,7 @@ ghx uses 41% fewer active tokens (the tokens the model actually processes from s
 | pr-fix-mixed-threads | 607 | 1,031 | **-41.1%** |
 | ci-diagnose-run | 667 | 3,064 | **-78.2%** |
 
-The median active-token reduction across scenarios is **27.55%** (from the benchmark summary), with individual scenarios ranging from roughly neutral (issue-triage, where the task is simple enough that both modes are efficient) to 87.6% (PR review, where agent_direct wastes enormous active tokens on retry loops).
+Active-token reductions range from roughly neutral (issue-triage, where the task is simple enough that both modes are efficient) to 87.6% (PR review, where agent_direct wastes enormous active tokens on retry loops). The median across the four scenarios is **-59.65%** (average of the two middle values: -78.2% and -41.1%).
 
 ---
 
