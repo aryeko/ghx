@@ -301,8 +301,8 @@ export function assertRepoAndPaginationInput(input: {
   if (input.owner.trim().length === 0 || input.name.trim().length === 0) {
     throw new Error("Repository owner and name are required")
   }
-  if (!Number.isInteger(input.first) || input.first <= 0) {
-    throw new Error("List page size must be a positive integer")
+  if (!Number.isInteger(input.first) || input.first <= 0 || input.first > 100) {
+    throw new Error("List page size must be a positive integer between 1 and 100")
   }
 }
 

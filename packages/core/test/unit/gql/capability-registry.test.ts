@@ -234,34 +234,34 @@ describe("mutation handlers throw when client method is missing", () => {
     )
   })
 
-  it("pr.create throws when createPr is not available", () => {
-    const client = mockClient()
+  it("pr.create delegates to createPr when present", async () => {
+    const createPr = vi.fn().mockResolvedValue({ number: 10 })
+    const client = mockClient({ createPr } as Partial<GithubClient>)
     const handler = requireHandler("pr.create")
-    expect(() =>
-      handler(client, {
-        owner: "acme",
-        name: "repo",
-        title: "Fix",
-        head: "feature",
-        base: "main",
-      }),
-    ).toThrow("createPr operation not available")
+    await handler(client, {
+      owner: "acme",
+      name: "repo",
+      title: "Fix",
+      head: "feature",
+      base: "main",
+    })
+    expect(createPr).toHaveBeenCalled()
   })
 
-  it("pr.merge throws when mergePr is not available", () => {
-    const client = mockClient()
+  it("pr.merge delegates to mergePr when present", async () => {
+    const mergePr = vi.fn().mockResolvedValue({ merged: true })
+    const client = mockClient({ mergePr } as Partial<GithubClient>)
     const handler = requireHandler("pr.merge")
-    expect(() => handler(client, { owner: "acme", name: "repo", prNumber: 1 })).toThrow(
-      "mergePr operation not available",
-    )
+    await handler(client, { owner: "acme", name: "repo", prNumber: 1 })
+    expect(mergePr).toHaveBeenCalled()
   })
 
-  it("pr.update throws when updatePr is not available", () => {
-    const client = mockClient()
+  it("pr.update delegates to updatePr when present", async () => {
+    const updatePr = vi.fn().mockResolvedValue({ number: 1 })
+    const client = mockClient({ updatePr } as Partial<GithubClient>)
     const handler = requireHandler("pr.update")
-    expect(() =>
-      handler(client, { owner: "acme", name: "repo", prNumber: 1, title: "New" }),
-    ).toThrow("updatePr operation not available")
+    await handler(client, { owner: "acme", name: "repo", prNumber: 1, title: "New" })
+    expect(updatePr).toHaveBeenCalled()
   })
 
   it("issue.close throws when closeIssue is not available", () => {
@@ -296,36 +296,36 @@ describe("mutation handlers throw when client method is missing", () => {
     ).toThrow("updateIssue operation not available")
   })
 
-  it("pr.branch.update throws when updatePrBranch is not available", () => {
-    const client = mockClient()
+  it("pr.branch.update delegates to updatePrBranch when present", async () => {
+    const updatePrBranch = vi.fn().mockResolvedValue({})
+    const client = mockClient({ updatePrBranch } as Partial<GithubClient>)
     const handler = requireHandler("pr.branch.update")
-    expect(() => handler(client, { owner: "acme", name: "repo", prNumber: 1 })).toThrow(
-      "updatePrBranch operation not available",
-    )
+    await handler(client, { owner: "acme", name: "repo", prNumber: 1 })
+    expect(updatePrBranch).toHaveBeenCalled()
   })
 
-  it("pr.assignees.add throws when addPrAssignees is not available", () => {
-    const client = mockClient()
+  it("pr.assignees.add delegates to addPrAssignees when present", async () => {
+    const addPrAssignees = vi.fn().mockResolvedValue({})
+    const client = mockClient({ addPrAssignees } as Partial<GithubClient>)
     const handler = requireHandler("pr.assignees.add")
-    expect(() =>
-      handler(client, { owner: "acme", name: "repo", prNumber: 1, assignees: ["user1"] }),
-    ).toThrow("addPrAssignees operation not available")
+    await handler(client, { owner: "acme", name: "repo", prNumber: 1, assignees: ["user1"] })
+    expect(addPrAssignees).toHaveBeenCalled()
   })
 
-  it("pr.assignees.remove throws when removePrAssignees is not available", () => {
-    const client = mockClient()
+  it("pr.assignees.remove delegates to removePrAssignees when present", async () => {
+    const removePrAssignees = vi.fn().mockResolvedValue({})
+    const client = mockClient({ removePrAssignees } as Partial<GithubClient>)
     const handler = requireHandler("pr.assignees.remove")
-    expect(() =>
-      handler(client, { owner: "acme", name: "repo", prNumber: 1, assignees: ["user1"] }),
-    ).toThrow("removePrAssignees operation not available")
+    await handler(client, { owner: "acme", name: "repo", prNumber: 1, assignees: ["user1"] })
+    expect(removePrAssignees).toHaveBeenCalled()
   })
 
-  it("pr.reviews.request throws when requestPrReviews is not available", () => {
-    const client = mockClient()
+  it("pr.reviews.request delegates to requestPrReviews when present", async () => {
+    const requestPrReviews = vi.fn().mockResolvedValue({})
+    const client = mockClient({ requestPrReviews } as Partial<GithubClient>)
     const handler = requireHandler("pr.reviews.request")
-    expect(() =>
-      handler(client, { owner: "acme", name: "repo", prNumber: 1, reviewers: ["user1"] }),
-    ).toThrow("requestPrReviews operation not available")
+    await handler(client, { owner: "acme", name: "repo", prNumber: 1, reviewers: ["user1"] })
+    expect(requestPrReviews).toHaveBeenCalled()
   })
 
   it("pr.reviews.submit throws when submitPrReview is not available", () => {
@@ -440,34 +440,34 @@ describe("mutation handlers throw when client method is missing", () => {
     )
   })
 
-  it("project_v2.items.issue.add throws when addProjectV2Item is not available", () => {
-    const client = mockClient()
+  it("project_v2.items.issue.add delegates to addProjectV2Item when present", async () => {
+    const addProjectV2Item = vi.fn().mockResolvedValue({ itemId: "PVI_1", itemType: "ISSUE" })
+    const client = mockClient({ addProjectV2Item } as Partial<GithubClient>)
     const handler = requireHandler("project_v2.items.issue.add")
-    expect(() => handler(client, { owner: "acme", projectNumber: 1, issueId: "I_1" })).toThrow(
-      "addProjectV2Item operation not available",
-    )
+    await handler(client, { owner: "acme", projectNumber: 1, issueId: "I_1" })
+    expect(addProjectV2Item).toHaveBeenCalled()
   })
 
-  it("project_v2.items.issue.remove throws when removeProjectV2Item is not available", () => {
-    const client = mockClient()
+  it("project_v2.items.issue.remove delegates to removeProjectV2Item when present", async () => {
+    const removeProjectV2Item = vi.fn().mockResolvedValue({ deletedItemId: "PVI_1" })
+    const client = mockClient({ removeProjectV2Item } as Partial<GithubClient>)
     const handler = requireHandler("project_v2.items.issue.remove")
-    expect(() => handler(client, { owner: "acme", projectNumber: 1, itemId: "PVI_1" })).toThrow(
-      "removeProjectV2Item operation not available",
-    )
+    await handler(client, { owner: "acme", projectNumber: 1, itemId: "PVI_1" })
+    expect(removeProjectV2Item).toHaveBeenCalled()
   })
 
-  it("project_v2.items.field.update throws when updateProjectV2ItemField is not available", () => {
-    const client = mockClient()
+  it("project_v2.items.field.update delegates to updateProjectV2ItemField when present", async () => {
+    const updateProjectV2ItemField = vi.fn().mockResolvedValue({ itemId: "PVI_1" })
+    const client = mockClient({ updateProjectV2ItemField } as Partial<GithubClient>)
     const handler = requireHandler("project_v2.items.field.update")
-    expect(() =>
-      handler(client, {
-        owner: "acme",
-        projectNumber: 1,
-        itemId: "PVI_1",
-        fieldId: "F_1",
-        value: "Done",
-      }),
-    ).toThrow("updateProjectV2ItemField operation not available")
+    await handler(client, {
+      owner: "acme",
+      projectNumber: 1,
+      itemId: "PVI_1",
+      fieldId: "F_1",
+      value: "Done",
+    })
+    expect(updateProjectV2ItemField).toHaveBeenCalled()
   })
 })
 
@@ -552,15 +552,15 @@ describe("withDefaultFirst (indirect via issue.list)", () => {
   })
 })
 
-// --- project_v2.items.list defaults first to 100 ---
+// --- project_v2.items.list defaults first to 30 ---
 
 describe("project_v2.items.list default first", () => {
-  it("defaults first to 100 when not provided", async () => {
+  it("defaults first to 30 when not provided", async () => {
     const fetchProjectV2ItemsList = vi.fn().mockResolvedValue([])
     const client = mockClient({ fetchProjectV2ItemsList })
     const handler = requireHandler("project_v2.items.list")
     await handler(client, { owner: "acme", projectNumber: 1 })
-    expect(fetchProjectV2ItemsList).toHaveBeenCalledWith(expect.objectContaining({ first: 100 }))
+    expect(fetchProjectV2ItemsList).toHaveBeenCalledWith(expect.objectContaining({ first: 30 }))
   })
 
   it("preserves explicit first for project_v2.items.list", async () => {

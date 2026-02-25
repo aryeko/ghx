@@ -608,7 +608,7 @@ export async function runPrReviewsRequest(
   const result = await getPrReviewsRequestSdk(client).PrReviewsRequest({
     pullRequestId,
     userIds: reviewerUserIds,
-    reviewRequestsFirst: Math.max(reviewerUserIds.length, 1),
+    reviewRequestsFirst: Math.min(Math.max(reviewerUserIds.length, 1), 100),
   })
 
   const pr = result.requestReviews?.pullRequest

@@ -28,6 +28,10 @@ describe("executeTask project_v2.items.list", () => {
 
     expect(result.ok).toBe(true)
     expect(result.meta.route_used).toBe("graphql")
+    expect(result.data).toMatchObject({
+      items: expect.any(Array),
+      pageInfo: { hasNextPage: expect.any(Boolean) },
+    })
   })
 
   it("returns validation error envelope for missing projectId", async () => {

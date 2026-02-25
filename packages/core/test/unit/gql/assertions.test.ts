@@ -960,7 +960,13 @@ describe("assertRepoAndPaginationInput", () => {
 
   it("throws when first is zero", () => {
     expect(() => assertRepoAndPaginationInput({ owner: "acme", name: "repo", first: 0 })).toThrow(
-      "List page size must be a positive integer",
+      "List page size must be a positive integer between 1 and 100",
+    )
+  })
+
+  it("throws when first exceeds upper bound of 100", () => {
+    expect(() => assertRepoAndPaginationInput({ owner: "acme", name: "repo", first: 101 })).toThrow(
+      "List page size must be a positive integer between 1 and 100",
     )
   })
 })

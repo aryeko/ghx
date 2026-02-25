@@ -39,11 +39,10 @@ describe("executeTask release.list", () => {
 
     expect(result.ok).toBe(true)
     expect(result.meta.route_used).toBe("graphql")
-    expect(result.data).toEqual(
-      expect.objectContaining({
-        items: expect.any(Array),
-      }),
-    )
+    expect(result.data).toMatchObject({
+      items: expect.any(Array),
+      pageInfo: { hasNextPage: expect.any(Boolean) },
+    })
   })
 
   it("returns validation error envelope for missing name", async () => {

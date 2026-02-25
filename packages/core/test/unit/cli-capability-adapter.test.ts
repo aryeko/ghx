@@ -3589,6 +3589,7 @@ describe("runCliCapability", () => {
     expect(result.data).toEqual({
       prNumber: 10,
       method: "merge",
+      isMethodAssumed: true,
       queued: true,
       deleteBranch: false,
     })
@@ -3636,6 +3637,7 @@ describe("runCliCapability", () => {
 
     expect(result.ok).toBe(true)
     expect((result.data as Record<string, unknown>)?.method).toBe("rebase")
+    expect((result.data as Record<string, unknown>)?.isMethodAssumed).toBe(false)
     const call = runner.run.mock.calls[0] as unknown as [string, string[], number]
     expect(call[1]).toContain("--rebase")
     expect(call[1]).toContain("--delete-branch")
