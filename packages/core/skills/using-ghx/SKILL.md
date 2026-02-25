@@ -11,7 +11,7 @@ description: Execute GitHub operations via ghx — deterministic routing, normal
 If you don't know the capability ID or required inputs, list by domain first:
 
 ```bash
-ghx capabilities list --domain pr --compact
+ghx capabilities list --compact --domain pr
 ```
 
 Domains: `repo`, `issue`, `pr`, `release`, `workflow`, `project_v2`.
