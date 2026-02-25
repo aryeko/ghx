@@ -224,6 +224,169 @@ pnpm --filter @ghx-dev/benchmark run bench:fixture -- cleanup --out fixtures/lat
 pnpm --filter @ghx-dev/benchmark run bench:fixture -- cleanup --all --repo aryeko/ghx-bench-fixtures
 ```
 
+## Per-Iteration Logs and Comparison Reports
+
+When `BENCH_LOGS_DIR` is set, each iteration writes structured logs under a timestamped run directory. These logs can then be compared across modes using `report:iter`.
+
+### Directory Structure
+
+```
+<BENCH_LOGS_DIR>/
+  <YYYY-MM-DD>/
+    <benchRunTs>/               # one per benchmark invocation
+      <mode>/                   # ghx | agent_direct | mcp
+        <scenarioId>/
+          iter-1/
+            session.jsonl       # full OpenCode session transcript
+            ghx-YYYY-MM-DD.jsonl  # GHX capability routing logs (ghx mode only)
+          iter-2/
+            ...
+```
+
+Each `session.jsonl` line is a structured entry: `type: "tool"` (bash commands), `type: "text"` (assistant turns), `type: "reasoning"` (thinking blocks), `type: "step-finish"` (token usage).
+
+GHX log lines include `msg: "execute.complete"` with `capability_id` and `ok`, and `msg: "route.plan"` with the chosen route (`graphql` / `cli`).
+
+### End-to-End Example: Capture Logs, Then Compare
+
+The following creates a self-contained comparison under `reports/my-comparison/`:
+
+```
+reports/my-comparison/
+  iter-logs/          # BENCH_LOGS_DIR — raw per-iteration logs
+    2026-02-24/
+      2026-02-24T10-00-00-000Z/   # ghx run
+        ghx/
+          pr-fix-mixed-threads-wf-001/
+            iter-1/
+              session.jsonl
+              ghx-2026-02-24.jsonl
+            iter-2/
+              ...
+      2026-02-24T10-05-00-000Z/   # agent_direct run
+        agent_direct/
+          pr-fix-mixed-threads-wf-001/
+            iter-1/
+              session.jsonl
+            iter-2/
+              ...
+  comparison.md       # output of report:iter
+```
+
+**Step 1: Seed fixtures**
+
+```bash
+pnpm --filter @ghx-dev/benchmark run bench:fixture -- \
+  seed --repo aryeko/ghx-bench-fixtures \
+  --out fixtures/latest.json --seed-id local
+```
+
+**Step 2: Create the output directory**
+
+```bash
+mkdir -p reports/my-comparison/iter-logs
+```
+
+**Step 3: Run ghx with logging enabled**
+
+```bash
+BENCH_LOGS_DIR=$(pwd)/reports/my-comparison/iter-logs \
+pnpm run benchmark -- ghx 2 \
+  --scenario pr-fix-mixed-threads-wf-001 \
+  --skip-warmup \
+  --fixture-manifest fixtures/latest.json
+```
+
+**Step 4: Reset fixtures between modes**
+
+```bash
+pnpm --filter @ghx-dev/benchmark run bench:fixture -- \
+  seed --repo aryeko/ghx-bench-fixtures \
+  --out fixtures/latest.json --seed-id local
+```
+
+**Step 5: Run agent_direct with logging enabled**
+
+```bash
+BENCH_LOGS_DIR=$(pwd)/reports/my-comparison/iter-logs \
+pnpm run benchmark -- agent_direct 2 \
+  --scenario pr-fix-mixed-threads-wf-001 \
+  --skip-warmup \
+  --fixture-manifest fixtures/latest.json
+```
+
+**Step 6: Locate the two run directories**
+
+Each benchmark invocation creates a new timestamped subdirectory. Find them:
+
+```bash
+# List all run dirs under today's date
+ls reports/my-comparison/iter-logs/$(date +%Y-%m-%d)/
+
+# Identify which is ghx and which is agent_direct:
+ls reports/my-comparison/iter-logs/$(date +%Y-%m-%d)/*/
+
+# Example output:
+# 2026-02-24T10-00-00-000Z/  →  ghx/
+# 2026-02-24T10-05-00-000Z/  →  agent_direct/
+```
+
+**Step 7: Generate the comparison report**
+
+```bash
+# Substitute the actual timestamps from step 6
+GHX_RUN=reports/my-comparison/iter-logs/2026-02-24/2026-02-24T10-00-00-000Z
+AD_RUN=reports/my-comparison/iter-logs/2026-02-24/2026-02-24T10-05-00-000Z
+
+pnpm --filter @ghx-dev/benchmark run report:iter -- \
+  "$(pwd)/$GHX_RUN" \
+  "$(pwd)/$AD_RUN" \
+  --output "$(pwd)/reports/my-comparison/comparison.md"
+```
+
+> **Note:** `--output` must be an absolute path (pnpm shifts the working directory).
+> Use `$(pwd)/...` or set a full path explicitly.
+
+The report is written to `reports/my-comparison/comparison.md`.
+
+### What the Report Contains
+
+```
+# Benchmark Iteration Report
+
+## Summary Table
+| Scenario | Iters | ghx tool calls | ad tool calls | Delta tool calls | ... |
+
+## Scenario: pr-fix-mixed-threads-wf-001
+
+### Iteration 1
+
+| Metric           | ghx   | agent_direct | delta     |
+|------------------|-------|--------------|-----------|
+| Tool calls       | 4     | 11           | -7 (-64%) |
+| Tokens (total)   | 8200  | 15400        | -7200 (-47%) |
+| Reasoning blocks | 2     | 4            | -2        |
+| Bash commands    | 1     | 9            | -8        |
+
+**ghx capabilities invoked:**
+- `pr.threads.list` via graphql (ok)
+- `pr.reviews.submit` via graphql (ok)
+
+**agent_direct bash commands:**
+- `gh api /repos/aryeko/ghx-bench-fixtures/pulls/5/comments ...`
+- ...
+```
+
+### Inspecting Raw Session Logs
+
+```bash
+# Read a session transcript (one JSON object per line)
+cat reports/my-comparison/iter-logs/2026-02-24/2026-02-24T10-00-00-000Z/ghx/pr-fix-mixed-threads-wf-001/iter-1/session.jsonl | jq 'select(.type == "tool") | .state.input.command'
+
+# Read GHX routing decisions
+cat reports/my-comparison/iter-logs/2026-02-24/2026-02-24T10-00-00-000Z/ghx/pr-fix-mixed-threads-wf-001/iter-1/ghx-2026-02-24.jsonl | jq 'select(.msg == "execute.complete") | {capability_id, ok}'
+```
+
 ## CI Integration
 
 ### PR Verification (`.github/workflows/ci-pr.yml`)

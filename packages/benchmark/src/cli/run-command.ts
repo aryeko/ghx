@@ -5,6 +5,7 @@ import type { BenchmarkMode, Scenario } from "../domain/types.js"
 import { mintFixtureAppToken } from "../fixture/app-auth.js"
 import { loadFixtureManifest } from "../fixture/manifest.js"
 import { seedFixtureManifest } from "../fixture/seeder.js"
+import { buildBenchRunTs } from "../runner/iter-log-context.js"
 import { type ProgressEvent, runSuite } from "../runner/suite.js"
 import { loadScenarioSets, loadScenarios } from "../scenario/loader.js"
 import { parseFlagValue, parseMultiFlagValues, parseStrictFlagValue } from "./flag-utils.js"
@@ -105,6 +106,8 @@ const SCENARIOS_DIR = join(process.cwd(), "scenarios")
 const RESULTS_DIR = join(process.cwd(), "results")
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<void> {
+  const benchRunTs = buildBenchRunTs()
+  const benchLogsDir = process.env.BENCH_LOGS_DIR ?? null
   const parsed = parseCliArgs(argv)
 
   const scenarios = await loadScenarios(SCENARIOS_DIR)
@@ -233,11 +236,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
   }
 
   const outFile =
-    parsed.outputJsonlPath ??
-    join(
-      RESULTS_DIR,
-      `${new Date().toISOString().replace(/[:.]/g, "-")}-${parsed.mode}-suite.jsonl`,
-    )
+    parsed.outputJsonlPath ?? join(RESULTS_DIR, `${benchRunTs}-${parsed.mode}-suite.jsonl`)
 
   const providerId = parsed.providerId ?? process.env.BENCH_PROVIDER_ID ?? "openai"
   const modelId = parsed.modelId ?? process.env.BENCH_MODEL_ID ?? "gpt-5.1-codex-mini"
@@ -260,5 +259,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<void
     skipWarmup: parsed.skipWarmup,
     scenarioSet: resolvedScenarioSet,
     reviewerToken,
+    benchRunTs,
+    benchLogsDir,
   })
 }

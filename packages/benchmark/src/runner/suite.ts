@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto"
-import { appendFile, mkdir } from "node:fs/promises"
-import { dirname } from "node:path"
+import { appendFile, mkdir, readdir, rename } from "node:fs/promises"
+import { dirname, join } from "node:path"
 import type { BenchmarkMode, FixtureManifest, Scenario } from "../domain/types.js"
 import { resetScenarioFixtures } from "../fixture/reset.js"
 import { createSessionProvider } from "../provider/factory.js"
+import { buildIterDir } from "./iter-log-context.js"
 import { runScenarioIteration } from "./scenario-runner.js"
 
 export type ProgressEvent =
@@ -50,6 +51,8 @@ export async function runSuite(config: {
   skipWarmup?: boolean
   scenarioSet?: string | null
   reviewerToken?: string | null
+  benchRunTs?: string | null
+  benchLogsDir?: string | null
 }): Promise<{ rowCount: number; durationMs: number }> {
   const {
     modes,
@@ -62,6 +65,8 @@ export async function runSuite(config: {
     skipWarmup = false,
     scenarioSet = null,
     reviewerToken = null,
+    benchRunTs = null,
+    benchLogsDir = null,
   } = config
   let manifest = initialManifest
   const githubToken = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN ?? ""
@@ -141,13 +146,32 @@ export async function runSuite(config: {
         completed: totalCompleted,
       })
 
-      const provider = await createSessionProvider({
-        type: "opencode",
-        providerId: providerConfig.providerId,
-        modelId: providerConfig.modelId,
-      })
+      // Set GHX_LOG_DIR to a staging dir before spawning the opencode provider so the ghx
+      // subprocess inherits the env var and writes logs there. After each iteration we move
+      // newly-created files into the per-iteration dir.
+      let ghxStagingDir: string | null = null
+      let prevGhxLogDir: string | undefined
+      let prevGhxLogLevel: string | undefined
+
+      if (benchLogsDir && benchRunTs) {
+        const date = benchRunTs.slice(0, 10)
+        ghxStagingDir = join(benchLogsDir, date, benchRunTs, mode, "_ghx")
+        await mkdir(ghxStagingDir, { recursive: true })
+        prevGhxLogDir = process.env.GHX_LOG_DIR
+        prevGhxLogLevel = process.env.GHX_LOG_LEVEL
+        process.env.GHX_LOG_DIR = ghxStagingDir
+        process.env.GHX_LOG_LEVEL = process.env.BENCH_GHX_LOG_LEVEL ?? "info"
+      }
+
+      let provider: Awaited<ReturnType<typeof createSessionProvider>> | null = null
 
       try {
+        provider = await createSessionProvider({
+          type: "opencode",
+          providerId: providerConfig.providerId,
+          modelId: providerConfig.modelId,
+        })
+
         for (const scenario of scenarios) {
           for (let iteration = 1; iteration <= repetitions; iteration += 1) {
             onProgress({
@@ -162,6 +186,26 @@ export async function runSuite(config: {
               manifest = await resetScenarioFixtures(scenario, manifest, reviewerToken)
             }
 
+            const iterLogContext =
+              benchLogsDir && benchRunTs
+                ? {
+                    iterDir: buildIterDir({
+                      benchLogsDir,
+                      benchRunTs,
+                      mode,
+                      scenarioId: scenario.id,
+                      iteration,
+                    }),
+                  }
+                : null
+
+            // Snapshot staging dir before iteration so we can identify new ghx log files
+            let ghxFilesBefore: Set<string> | null = null
+            if (ghxStagingDir !== null) {
+              const files = await readdir(ghxStagingDir).catch(() => [])
+              ghxFilesBefore = new Set(files)
+            }
+
             const result = await runScenarioIteration({
               provider,
               scenario,
@@ -171,7 +215,24 @@ export async function runSuite(config: {
               manifest,
               runId: suiteRunId,
               githubToken,
+              iterLogContext,
             })
+
+            // Move ghx log files written during this iteration into the iter dir
+            if (ghxStagingDir !== null && ghxFilesBefore !== null && iterLogContext !== null) {
+              const filesAfter = await readdir(ghxStagingDir).catch(() => [])
+              const before = ghxFilesBefore
+              const newFiles = filesAfter.filter((f) => !before.has(f))
+              for (const file of newFiles) {
+                try {
+                  await rename(join(ghxStagingDir, file), join(iterLogContext.iterDir, file))
+                } catch (moveError) {
+                  console.warn(
+                    `[suite] Failed to move ghx log file "${file}" to iter dir: ${moveError instanceof Error ? moveError.message : String(moveError)}`,
+                  )
+                }
+              }
+            }
 
             await appendFile(outputJsonlPath, `${JSON.stringify(result)}\n`, "utf8")
 
@@ -191,7 +252,19 @@ export async function runSuite(config: {
           }
         }
       } finally {
-        await provider.cleanup()
+        await provider?.cleanup()
+        if (ghxStagingDir !== null) {
+          if (prevGhxLogDir === undefined) {
+            delete process.env.GHX_LOG_DIR
+          } else {
+            process.env.GHX_LOG_DIR = prevGhxLogDir
+          }
+          if (prevGhxLogLevel === undefined) {
+            delete process.env.GHX_LOG_LEVEL
+          } else {
+            process.env.GHX_LOG_LEVEL = prevGhxLogLevel
+          }
+        }
       }
 
       onProgress({

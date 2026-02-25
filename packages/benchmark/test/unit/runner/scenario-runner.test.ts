@@ -15,6 +15,15 @@ vi.mock("@bench/fixture/manifest.js", () => ({
   resolveWorkflowFixtureBindings: vi.fn((scenario) => scenario),
 }))
 
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>()
+  return { ...actual, mkdir: vi.fn().mockResolvedValue(undefined) }
+})
+
+vi.mock("@bench/runner/session-export.js", () => ({
+  exportSession: vi.fn().mockResolvedValue({ ok: true }),
+}))
+
 describe("runScenarioIteration", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -244,6 +253,167 @@ describe("runScenarioIteration", () => {
     })
 
     expect(resolveWorkflowFixtureBindings).not.toHaveBeenCalled()
+  })
+
+  it("creates iterDir when iterLogContext is provided", async () => {
+    const { evaluateCheckpoints } = await import("@bench/runner/checkpoint.js")
+    const { modeInstructions } = await import("@bench/runner/mode-instructions.js")
+    const { mkdir } = await import("node:fs/promises")
+
+    vi.mocked(evaluateCheckpoints).mockResolvedValue({
+      allPassed: true,
+      results: [{ name: "cp1", passed: true, data: null }],
+    })
+    vi.mocked(modeInstructions).mockResolvedValue(["mock instruction"])
+
+    const provider = createMockSessionProvider()
+    const scenario = makeWorkflowScenario()
+    const iterLogContext = { iterDir: "/logs/2026-02-23/ts/ghx/scenario/iter-1" }
+
+    await runScenarioIteration({
+      provider,
+      scenario,
+      mode: "ghx",
+      iteration: 1,
+      scenarioSet: null,
+      manifest: null,
+      runId: "run-123",
+      githubToken: "token-abc",
+      iterLogContext,
+    })
+
+    expect(vi.mocked(mkdir)).toHaveBeenCalledWith(iterLogContext.iterDir, { recursive: true })
+  })
+
+  it("calls exportSession with sessionId and iterDir in finally block", async () => {
+    const { evaluateCheckpoints } = await import("@bench/runner/checkpoint.js")
+    const { modeInstructions } = await import("@bench/runner/mode-instructions.js")
+    const { exportSession } = await import("@bench/runner/session-export.js")
+
+    vi.mocked(evaluateCheckpoints).mockResolvedValue({
+      allPassed: true,
+      results: [{ name: "cp1", passed: true, data: null }],
+    })
+    vi.mocked(modeInstructions).mockResolvedValue(["mock instruction"])
+
+    const provider = createMockSessionProvider()
+    const scenario = makeWorkflowScenario()
+    const iterLogContext = { iterDir: "/logs/2026-02-23/ts/ghx/scenario/iter-2" }
+
+    await runScenarioIteration({
+      provider,
+      scenario,
+      mode: "ghx",
+      iteration: 2,
+      scenarioSet: null,
+      manifest: null,
+      runId: "run-123",
+      githubToken: "token-abc",
+      iterLogContext,
+    })
+
+    expect(vi.mocked(exportSession)).toHaveBeenCalledWith(
+      expect.objectContaining({ destDir: iterLogContext.iterDir }),
+    )
+  })
+
+  it("warns but does not throw when exportSession returns ok=false", async () => {
+    const { evaluateCheckpoints } = await import("@bench/runner/checkpoint.js")
+    const { modeInstructions } = await import("@bench/runner/mode-instructions.js")
+    const { exportSession } = await import("@bench/runner/session-export.js")
+
+    vi.mocked(evaluateCheckpoints).mockResolvedValue({
+      allPassed: true,
+      results: [{ name: "cp1", passed: true, data: null }],
+    })
+    vi.mocked(modeInstructions).mockResolvedValue(["mock instruction"])
+    vi.mocked(exportSession).mockResolvedValue({ ok: false, reason: "session not found" })
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    const provider = createMockSessionProvider()
+    const scenario = makeWorkflowScenario()
+
+    const result = await runScenarioIteration({
+      provider,
+      scenario,
+      mode: "ghx",
+      iteration: 1,
+      scenarioSet: null,
+      manifest: null,
+      runId: "run-123",
+      githubToken: "token-abc",
+      iterLogContext: { iterDir: "/logs/iter-1" },
+    })
+
+    expect(result.success).toBe(true)
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("session export failed"))
+    warnSpy.mockRestore()
+  })
+
+  it("warns but does not throw when exportSession itself throws", async () => {
+    const { evaluateCheckpoints } = await import("@bench/runner/checkpoint.js")
+    const { modeInstructions } = await import("@bench/runner/mode-instructions.js")
+    const { exportSession } = await import("@bench/runner/session-export.js")
+
+    vi.mocked(evaluateCheckpoints).mockResolvedValue({
+      allPassed: true,
+      results: [{ name: "cp1", passed: true, data: null }],
+    })
+    vi.mocked(modeInstructions).mockResolvedValue(["mock instruction"])
+    vi.mocked(exportSession).mockRejectedValueOnce(new Error("export crashed"))
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+
+    const provider = createMockSessionProvider()
+    const scenario = makeWorkflowScenario()
+
+    const result = await runScenarioIteration({
+      provider,
+      scenario,
+      mode: "ghx",
+      iteration: 1,
+      scenarioSet: null,
+      manifest: null,
+      runId: "run-123",
+      githubToken: "token-abc",
+      iterLogContext: { iterDir: "/logs/iter-1" },
+    })
+
+    expect(result.success).toBe(true)
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("export crashed"))
+    warnSpy.mockRestore()
+  })
+
+  it("skips mkdir and exportSession when iterLogContext is null", async () => {
+    const { evaluateCheckpoints } = await import("@bench/runner/checkpoint.js")
+    const { modeInstructions } = await import("@bench/runner/mode-instructions.js")
+    const { mkdir } = await import("node:fs/promises")
+    const { exportSession } = await import("@bench/runner/session-export.js")
+
+    vi.mocked(evaluateCheckpoints).mockResolvedValue({
+      allPassed: true,
+      results: [{ name: "cp1", passed: true, data: null }],
+    })
+    vi.mocked(modeInstructions).mockResolvedValue(["mock instruction"])
+
+    const provider = createMockSessionProvider()
+    const scenario = makeWorkflowScenario()
+
+    await runScenarioIteration({
+      provider,
+      scenario,
+      mode: "ghx",
+      iteration: 1,
+      scenarioSet: null,
+      manifest: null,
+      runId: "run-123",
+      githubToken: "token-abc",
+      // iterLogContext omitted (defaults to null)
+    })
+
+    expect(vi.mocked(mkdir)).not.toHaveBeenCalled()
+    expect(vi.mocked(exportSession)).not.toHaveBeenCalled()
   })
 
   it("sets mode, scenario_id, iteration, tokens fields correctly in happy path", async () => {

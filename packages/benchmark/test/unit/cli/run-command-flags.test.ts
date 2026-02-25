@@ -249,4 +249,58 @@ describe("run-command flag parsing", () => {
       "Fixture manifest not found",
     )
   })
+
+  it("passes benchLogsDir from BENCH_LOGS_DIR env var to runSuite", async () => {
+    loadScenariosMock.mockResolvedValue([mockScenario("s1")])
+    const originalBenchLogsDir = process.env.BENCH_LOGS_DIR
+    process.env.BENCH_LOGS_DIR = "/custom/bench/logs"
+
+    try {
+      await main(["ghx", "1"])
+
+      expect(runSuiteMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          benchLogsDir: "/custom/bench/logs",
+        }),
+      )
+    } finally {
+      if (originalBenchLogsDir === undefined) {
+        delete process.env.BENCH_LOGS_DIR
+      } else {
+        process.env.BENCH_LOGS_DIR = originalBenchLogsDir
+      }
+    }
+  })
+
+  it("passes benchLogsDir=null when BENCH_LOGS_DIR is not set", async () => {
+    loadScenariosMock.mockResolvedValue([mockScenario("s1")])
+    const originalBenchLogsDir = process.env.BENCH_LOGS_DIR
+    delete process.env.BENCH_LOGS_DIR
+
+    try {
+      await main(["ghx", "1"])
+
+      expect(runSuiteMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          benchLogsDir: null,
+        }),
+      )
+    } finally {
+      if (originalBenchLogsDir !== undefined) {
+        process.env.BENCH_LOGS_DIR = originalBenchLogsDir
+      }
+    }
+  })
+
+  it("passes benchRunTs as a sanitized ISO string to runSuite", async () => {
+    loadScenariosMock.mockResolvedValue([mockScenario("s1")])
+
+    await main(["ghx", "1"])
+
+    expect(runSuiteMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        benchRunTs: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z$/),
+      }),
+    )
+  })
 })

@@ -2,7 +2,7 @@ import {
   openBenchmarkClient,
   withIsolatedBenchmarkClient,
 } from "@bench/provider/opencode/client-setup.js"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => {
   return {
@@ -72,8 +72,11 @@ vi.mock("@bench/runner/mode-instructions.js", () => ({
 }))
 
 describe("client-setup", () => {
+  let chdirSpy: ReturnType<typeof vi.spyOn>
+
   beforeEach(() => {
     vi.clearAllMocks()
+    chdirSpy = vi.spyOn(process, "chdir").mockImplementation(() => undefined)
     mocks.mkdtempMock.mockResolvedValue("/tmp/test-dir")
     mocks.readFileMock.mockResolvedValue("# SKILL.md content")
     mocks.rmMock.mockResolvedValue(undefined)
@@ -109,6 +112,10 @@ describe("client-setup", () => {
         },
       }),
     )
+  })
+
+  afterEach(() => {
+    chdirSpy.mockRestore()
   })
 
   describe("withIsolatedBenchmarkClient", () => {
@@ -303,6 +310,72 @@ describe("client-setup", () => {
       ).rejects.toThrow("callback error")
 
       expect(mocks.rmMock).toHaveBeenCalled()
+    })
+
+    it("chdirs to BENCH_SESSION_WORKDIR when set", async () => {
+      const original = process.env.BENCH_SESSION_WORKDIR
+      process.env.BENCH_SESSION_WORKDIR = "/Users/aryekogan/repos/ghx-bench-fixtures"
+
+      await withIsolatedBenchmarkClient("agent_direct", "openai", "gpt-4", async (ctx) => ctx)
+
+      expect(chdirSpy).toHaveBeenCalledWith("/Users/aryekogan/repos/ghx-bench-fixtures")
+
+      process.env.BENCH_SESSION_WORKDIR = original
+    })
+
+    it("does not chdir when BENCH_SESSION_WORKDIR is not set", async () => {
+      const original = process.env.BENCH_SESSION_WORKDIR
+      delete process.env.BENCH_SESSION_WORKDIR
+
+      await withIsolatedBenchmarkClient("agent_direct", "openai", "gpt-4", async (ctx) => ctx)
+
+      expect(chdirSpy).not.toHaveBeenCalled()
+
+      process.env.BENCH_SESSION_WORKDIR = original
+    })
+
+    it("restores original cwd after run", async () => {
+      const originalCwd = process.cwd()
+      const original = process.env.BENCH_SESSION_WORKDIR
+      process.env.BENCH_SESSION_WORKDIR = "/Users/aryekogan/repos/ghx-bench-fixtures"
+
+      await withIsolatedBenchmarkClient("agent_direct", "openai", "gpt-4", async (ctx) => ctx)
+
+      expect(chdirSpy).toHaveBeenLastCalledWith(originalCwd)
+
+      process.env.BENCH_SESSION_WORKDIR = original
+    })
+
+    it("restores original cwd even when createOpencode throws", async () => {
+      const originalCwd = process.cwd()
+      const original = process.env.BENCH_SESSION_WORKDIR
+      process.env.BENCH_SESSION_WORKDIR = "/Users/aryekogan/repos/ghx-bench-fixtures"
+      mocks.createOpencodeMock.mockRejectedValue(new Error("opencode failed"))
+
+      await expect(
+        withIsolatedBenchmarkClient("agent_direct", "openai", "gpt-4", async (ctx) => ctx),
+      ).rejects.toThrow("opencode failed")
+
+      expect(chdirSpy).toHaveBeenLastCalledWith(originalCwd)
+
+      process.env.BENCH_SESSION_WORKDIR = original
+    })
+
+    it("throws benchmark_session_workdir_invalid and calls teardown when process.chdir fails", async () => {
+      const original = process.env.BENCH_SESSION_WORKDIR
+      process.env.BENCH_SESSION_WORKDIR = "/nonexistent/path"
+      chdirSpy.mockImplementationOnce(() => {
+        throw new Error("ENOENT: no such file or directory")
+      })
+
+      await expect(
+        withIsolatedBenchmarkClient("agent_direct", "openai", "gpt-4", async (ctx) => ctx),
+      ).rejects.toThrow("benchmark_session_workdir_invalid")
+
+      // teardown ran: temp dir should be cleaned up
+      expect(mocks.rmMock).toHaveBeenCalled()
+
+      process.env.BENCH_SESSION_WORKDIR = original
     })
   })
 

@@ -50,9 +50,10 @@ type EnvSnapshot = {
   GH_TOKEN: string | undefined
   GITHUB_TOKEN: string | undefined
   PATH: string | undefined
+  cwd: string
 }
 
-function restoreEnv(previous: EnvSnapshot, tmpDir: string): () => Promise<void> {
+function restoreEnv(previous: EnvSnapshot, tmpDir: string, didChdir: boolean): () => Promise<void> {
   return async () => {
     if (previous.OPENCODE_CONFIG === undefined) {
       delete process.env.OPENCODE_CONFIG
@@ -90,6 +91,10 @@ function restoreEnv(previous: EnvSnapshot, tmpDir: string): () => Promise<void> 
       process.env.PATH = previous.PATH
     }
 
+    if (didChdir) {
+      process.chdir(previous.cwd)
+    }
+
     await rm(tmpDir, { recursive: true, force: true })
   }
 }
@@ -118,6 +123,7 @@ export async function openBenchmarkClient(
     GH_TOKEN: process.env.GH_TOKEN,
     GITHUB_TOKEN: process.env.GITHUB_TOKEN,
     PATH: process.env.PATH,
+    cwd: process.cwd(),
   }
 
   const ghToken = previousEnv.GH_TOKEN ?? previousEnv.GITHUB_TOKEN ?? resolveGhTokenFromCli()
@@ -136,7 +142,19 @@ export async function openBenchmarkClient(
         : BENCHMARK_BIN_DIR
   }
 
-  const teardown = restoreEnv(previousEnv, isolatedXdgConfigHome)
+  const sessionWorkdir = process.env.BENCH_SESSION_WORKDIR
+  let teardown = restoreEnv(previousEnv, isolatedXdgConfigHome, false)
+  if (sessionWorkdir) {
+    try {
+      process.chdir(sessionWorkdir)
+      teardown = restoreEnv(previousEnv, isolatedXdgConfigHome, true)
+    } catch (error) {
+      await teardown()
+      throw new Error(`benchmark_session_workdir_invalid: unable to chdir to "${sessionWorkdir}"`, {
+        cause: error,
+      })
+    }
+  }
 
   let server: { close: () => void } | null = null
 
