@@ -103,7 +103,7 @@ npx @ghx-dev/core setup --scope project --verify
 
 ## Chain: Batch Operations
 
-`ghx chain` batches multiple operations into a single tool call. One command, one GraphQL round-trip, three operations:
+`ghx chain` batches multiple operations into a single tool call. One command, batched execution, three operations:
 
 ```bash
 ghx chain --steps - <<'EOF'

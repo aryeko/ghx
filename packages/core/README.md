@@ -237,6 +237,7 @@ Subpaths:
 </details>
 
 <details>
+<a id="custom-graphql-transport"></a>
 <summary>Custom GraphQL Transport</summary>
 
 For full control over the GraphQL layer, pass your own transport to `createGithubClient`:

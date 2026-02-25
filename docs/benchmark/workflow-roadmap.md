@@ -179,9 +179,9 @@ Workflow scenarios differ from atomic scenarios by:
 4. Retrieve and analyze job results
 
 **Expected Capabilities:**
-- `workflow.get`
+- `workflow.view`
 - `workflow.dispatch`
-- `workflow-run.get`
+- `workflow.run.view`
 - `workflow.job.logs.view`
 
 **Complexity:** High
