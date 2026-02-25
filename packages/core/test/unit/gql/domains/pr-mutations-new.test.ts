@@ -164,9 +164,17 @@ describe("runPrUpdate", () => {
 
     await expect(
       runPrUpdate(transport, { ...baseInput, prNumber: 42, draft: true }),
-    ).rejects.toThrow(
-      "draft-only update operation not available via GraphQL route; provide 'title' or 'body' alongside draft, or use the CLI route",
-    )
+    ).rejects.toThrow("operation not available")
+    expect(execute).not.toHaveBeenCalled()
+  })
+
+  it("throws when draft is provided alongside title or body", async () => {
+    const execute = vi.fn()
+    const transport: GraphqlTransport = { execute }
+
+    await expect(
+      runPrUpdate(transport, { ...baseInput, prNumber: 42, draft: true, title: "new title" }),
+    ).rejects.toThrow("operation not available")
     expect(execute).not.toHaveBeenCalled()
   })
 })

@@ -105,6 +105,7 @@ describe("operation cards registry", () => {
     const projectFields = getOperationCard("project_v2.fields.list")
     const projectItems = getOperationCard("project_v2.items.list")
     const projectItemAddIssue = getOperationCard("project_v2.items.issue.add")
+    const projectItemRemoveIssue = getOperationCard("project_v2.items.issue.remove")
     const projectItemFieldUpdate = getOperationCard("project_v2.items.field.update")
     const issueTypes = getOperationCard("repo.issue_types.list")
 
@@ -113,6 +114,7 @@ describe("operation cards registry", () => {
     expect(projectFields?.routing.preferred).toBe("graphql")
     expect(projectItems?.routing.preferred).toBe("graphql")
     expect(projectItemAddIssue?.routing.preferred).toBe("graphql")
+    expect(projectItemRemoveIssue?.routing.preferred).toBe("graphql")
     expect(projectItemFieldUpdate?.routing.preferred).toBe("graphql")
     expect(issueTypes?.routing.preferred).toBe("graphql")
 
@@ -121,6 +123,7 @@ describe("operation cards registry", () => {
     expect(projectFields?.routing.fallbacks).toEqual(["cli"])
     expect(projectItems?.routing.fallbacks).toEqual(["cli"])
     expect(projectItemAddIssue?.routing.fallbacks).toEqual(["cli"])
+    expect(projectItemRemoveIssue?.routing.fallbacks).toEqual(["cli"])
     expect(projectItemFieldUpdate?.routing.fallbacks).toEqual(["cli"])
     expect(issueTypes?.routing.fallbacks).toEqual(["cli"])
   })

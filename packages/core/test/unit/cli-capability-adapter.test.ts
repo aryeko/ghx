@@ -1677,8 +1677,8 @@ describe("runCliCapability", () => {
     expect(items.data).toEqual(
       expect.objectContaining({ items: [expect.objectContaining({ id: "PVTI_1" })] }),
     )
-    expect(addIssue.data).toEqual({ itemId: "PVTI_2", added: true })
-    expect(fieldUpdate.data).toEqual({ itemId: "PVTI_1", updated: true })
+    expect(addIssue.data).toEqual({ itemId: "PVTI_2", itemType: null })
+    expect(fieldUpdate.data).toEqual({ itemId: "PVTI_1" })
     expect((org.data as Record<string, unknown>).columns).toBeUndefined()
     expect((user.data as Record<string, unknown>).columns).toBeUndefined()
   })
@@ -2377,7 +2377,7 @@ describe("runCliCapability", () => {
     )
 
     expect(addIssueResult.ok).toBe(true)
-    expect(addIssueResult.data).toEqual({ itemId: null, added: true })
+    expect(addIssueResult.data).toEqual({ itemId: null, itemType: null })
 
     expect(releaseGetResult.ok).toBe(true)
     expect(releaseGetResult.data).toEqual({
@@ -2642,7 +2642,6 @@ describe("runCliCapability", () => {
     expect(fieldUpdateResult.ok).toBe(true)
     expect(fieldUpdateResult.data).toEqual({
       itemId: "item-42",
-      updated: true,
     })
 
     expect(itemsResult.ok).toBe(true)

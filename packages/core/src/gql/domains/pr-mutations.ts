@@ -418,10 +418,8 @@ export async function runPrUpdate(
 ): Promise<PrUpdateData> {
   assertPrUpdateInput(input)
 
-  if (input.draft !== undefined && input.title === undefined && input.body === undefined) {
-    throw new Error(
-      "draft-only update operation not available via GraphQL route; provide 'title' or 'body' alongside draft, or use the CLI route",
-    )
+  if (input.draft !== undefined) {
+    throw new Error("draft update operation not available via GraphQL route")
   }
 
   const client = createGraphqlRequestClient(transport)

@@ -431,8 +431,9 @@ describe("project-v2 domain handlers", () => {
       expect(result.ok).toBe(true)
       expect(result.data).toMatchObject({
         itemId: "PVT_I_1",
-        added: true,
+        itemType: null,
       })
+      expect(result.data).not.toHaveProperty("added")
       expect(result.meta.capability_id).toBe("project_v2.items.issue.add")
     })
 
@@ -507,8 +508,8 @@ describe("project-v2 domain handlers", () => {
       expect(result.ok).toBe(true)
       expect(result.data).toMatchObject({
         itemId: "PVT_I_1",
-        updated: true,
       })
+      expect(result.data).not.toHaveProperty("updated")
       expect(result.meta.capability_id).toBe("project_v2.items.field.update")
     })
 
@@ -566,7 +567,6 @@ describe("project-v2 domain handlers", () => {
       expect(result.ok).toBe(true)
       expect(result.data).toMatchObject({
         itemId: "PVT_I_1",
-        updated: true,
       })
     })
 
@@ -624,7 +624,6 @@ describe("project-v2 domain handlers", () => {
       expect(result.ok).toBe(true)
       expect(result.data).toMatchObject({
         itemId: "PVT_I_1",
-        updated: true,
       })
     })
 
