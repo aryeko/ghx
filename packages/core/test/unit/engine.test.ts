@@ -182,48 +182,50 @@ describe("executeTask engine wiring", () => {
     )
 
     const nowSpy = vi.spyOn(Date, "now")
-    // 1st call: startMs = Date.now() in executeTask → ok
-    // 2nd call: const now = Date.now() in detectCliEnvironmentCached → ok
-    // 3rd call: Date.now() + CLI_ENV_CACHE_TTL_MS inside .then → throws, triggering .catch
-    nowSpy
-      .mockReturnValueOnce(1000)
-      .mockReturnValueOnce(0)
-      .mockImplementationOnce(() => {
-        throw new Error("clock unavailable")
-      })
-      .mockReturnValue(0)
+    try {
+      // 1st call: startMs = Date.now() in executeTask → ok
+      // 2nd call: const now = Date.now() in detectCliEnvironmentCached → ok
+      // 3rd call: Date.now() + CLI_ENV_CACHE_TTL_MS inside .then → throws, triggering .catch
+      nowSpy
+        .mockReturnValueOnce(1000)
+        .mockReturnValueOnce(0)
+        .mockImplementationOnce(() => {
+          throw new Error("clock unavailable")
+        })
+        .mockReturnValue(0)
 
-    const { executeTask } = await import("@core/core/routing/engine.js")
+      const { executeTask } = await import("@core/core/routing/engine.js")
 
-    // First call: .then throws → .catch fires (lines 105-106) → probe rejects → executeTask rejects
-    await expect(
-      executeTask(
-        {
-          task: "repo.view",
-          input: { owner: "acme", name: "modkit" },
-        },
-        {
-          githubClient: createGithubClient(),
-          cliRunner,
-        },
-      ),
-    ).rejects.toThrow("clock unavailable")
+      // First call: .then throws → .catch fires (lines 105-106) → probe rejects → executeTask rejects
+      await expect(
+        executeTask(
+          {
+            task: "repo.view",
+            input: { owner: "acme", name: "modkit" },
+          },
+          {
+            githubClient: createGithubClient(),
+            cliRunner,
+          },
+        ),
+      ).rejects.toThrow("clock unavailable")
 
-    // Second call: in-flight was cleared by .catch so a new probe is created → succeeds
-    await expect(
-      executeTask(
-        {
-          task: "repo.view",
-          input: { owner: "acme", name: "modkit" },
-        },
-        {
-          githubClient: createGithubClient(),
-          cliRunner,
-        },
-      ),
-    ).resolves.toEqual({ ok: true })
-
-    nowSpy.mockRestore()
+      // Second call: in-flight was cleared by .catch so a new probe is created → succeeds
+      await expect(
+        executeTask(
+          {
+            task: "repo.view",
+            input: { owner: "acme", name: "modkit" },
+          },
+          {
+            githubClient: createGithubClient(),
+            cliRunner,
+          },
+        ),
+      ).resolves.toEqual({ ok: true })
+    } finally {
+      nowSpy.mockRestore()
+    }
   })
 })
 

@@ -8,7 +8,7 @@ description: Execute GitHub operations via ghx — deterministic routing, normal
 
 ## Discovery
 
-If you don't know the capability ID or required inputs, list by domain first:
+If you don't know the capability ID, list by domain first (compact form shows IDs and domains only — it does not display required inputs):
 
 ```bash
 ghx capabilities list --domain pr --compact
@@ -16,7 +16,7 @@ ghx capabilities list --domain pr --compact
 
 Domains: `repo`, `issue`, `pr`, `release`, `workflow`, `project_v2`.
 
-Only if you need the full input/output schema for a specific capability:
+Once you have the capability ID, get the full input/output schema including required inputs:
 
 ```bash
 ghx capabilities explain <capability_id>
