@@ -202,7 +202,7 @@ describe("capabilityRegistry", () => {
       {
         task: "pr.checks.list",
         defaultRoute: "cli",
-        fallbackRoutes: ["graphql"],
+        fallbackRoutes: [],
       },
       {
         task: "pr.checks.rerun.failed",

@@ -17,12 +17,19 @@ import type {
   IssueRelationsGetInput,
   IssueUpdateInput,
   IssueViewInput,
+  PrAssigneesAddInput,
+  PrAssigneesRemoveInput,
+  PrBranchUpdateInput,
   PrCommentsListInput,
+  PrCreateInput,
   PrDiffListFilesInput,
   PrListInput,
+  PrMergeInput,
   ProjectV2OrgViewInput,
   ProjectV2UserViewInput,
   PrReviewsListInput,
+  PrReviewsRequestInput,
+  PrUpdateInput,
   PrViewInput,
   ReleaseViewInput,
   ReplyToReviewThreadInput,
@@ -333,4 +340,33 @@ export function assertProjectUserInput(input: ProjectV2UserViewInput): void {
   if (!Number.isInteger(input.projectNumber) || input.projectNumber <= 0) {
     throw new Error("Project number must be a positive integer")
   }
+}
+
+export function assertPrCreateInput(input: PrCreateInput): void {
+  assertRepoInput({ owner: input.owner, name: input.name })
+  assertNonEmptyString(input.title, "PR title")
+  assertNonEmptyString(input.headRefName, "Head branch name")
+  assertNonEmptyString(input.baseRefName, "Base branch name")
+}
+
+export function assertPrUpdateInput(input: PrUpdateInput): void {
+  assertPrInput({ owner: input.owner, name: input.name, prNumber: input.prNumber })
+}
+
+export function assertPrMergeInput(input: PrMergeInput): void {
+  assertPrInput({ owner: input.owner, name: input.name, prNumber: input.prNumber })
+}
+
+export function assertPrBranchUpdateInput(input: PrBranchUpdateInput): void {
+  assertPrInput({ owner: input.owner, name: input.name, prNumber: input.prNumber })
+}
+
+export function assertPrAssigneesInput(input: PrAssigneesAddInput | PrAssigneesRemoveInput): void {
+  assertPrInput({ owner: input.owner, name: input.name, prNumber: input.prNumber })
+  assertStringArray(input.logins, "Logins")
+}
+
+export function assertPrReviewsRequestInput(input: PrReviewsRequestInput): void {
+  assertPrInput({ owner: input.owner, name: input.name, prNumber: input.prNumber })
+  assertStringArray(input.reviewerLogins, "Reviewer logins")
 }

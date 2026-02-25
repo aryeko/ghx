@@ -1,4 +1,5 @@
 import { assertProjectInput, assertProjectOrgInput, assertProjectUserInput } from "../assertions.js"
+import type * as Types from "../operations/base-types.js"
 import { getSdk as getProjectV2FieldsListOrgSdk } from "../operations/project-v2-fields-list-org.generated.js"
 import { getSdk as getProjectV2FieldsListUserSdk } from "../operations/project-v2-fields-list-user.generated.js"
 import { getSdk as getAddProjectV2ItemSdk } from "../operations/project-v2-item-add.generated.js"
@@ -48,7 +49,7 @@ export async function runProjectV2OrgView(
     shortDescription: project.shortDescription ?? null,
     public: project.public ?? null,
     closed: project.closed ?? null,
-    url: project != null ? String(project.url) : null,
+    url: String(project.url),
   }
 }
 
@@ -69,7 +70,7 @@ export async function runProjectV2UserView(
     shortDescription: project.shortDescription ?? null,
     public: project.public ?? null,
     closed: project.closed ?? null,
-    url: project != null ? String(project.url) : null,
+    url: String(project.url),
   }
 }
 
@@ -79,6 +80,9 @@ export async function runProjectV2FieldsList(
 ): Promise<ProjectV2FieldsListData> {
   assertProjectInput(input)
   const client = createGraphqlRequestClient(transport)
+
+  // Tries org lookup first; falls back to user lookup if the owner is not an org.
+  // This costs an extra network round-trip when the owner is a user account.
 
   const orgResult = await getProjectV2FieldsListOrgSdk(client).ProjectV2FieldsListOrg({
     owner: input.owner,
@@ -127,6 +131,9 @@ export async function runProjectV2ItemsList(
 ): Promise<ProjectV2ItemsListData> {
   assertProjectInput(input)
   const client = createGraphqlRequestClient(transport)
+
+  // Tries org lookup first; falls back to user lookup if the owner is not an org.
+  // This costs an extra network round-trip when the owner is a user account.
 
   const orgResult = await getProjectV2ItemsListOrgSdk(client).ProjectV2ItemsListOrg({
     owner: input.owner,
@@ -245,8 +252,7 @@ export async function runProjectV2ItemFieldUpdate(
     projectId: input.projectId,
     itemId: input.itemId,
     fieldId: input.fieldId,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    value: input.value as any,
+    value: input.value as Types.ProjectV2FieldValue,
   })
 
   const projectV2Item = result.updateProjectV2ItemFieldValue?.projectV2Item

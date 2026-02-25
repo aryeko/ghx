@@ -1,10 +1,17 @@
 import type { GraphQLClient } from "graphql-request"
 import {
   asRecord,
+  assertPrAssigneesInput,
+  assertPrBranchUpdateInput,
   assertPrCommentsListInput,
+  assertPrCreateInput,
+  assertPrMergeInput,
+  assertPrReviewsRequestInput,
+  assertPrUpdateInput,
   assertReplyToReviewThreadInput,
   assertReviewThreadInput,
 } from "../assertions.js"
+import type * as Types from "../operations/base-types.js"
 import { getSdk as getIssueCreateRepositoryIdSdk } from "../operations/issue-create-repository-id.generated.js"
 import { getSdk as getPrAssigneesAddSdk } from "../operations/pr-assignees-add.generated.js"
 import { getSdk as getPrAssigneesRemoveSdk } from "../operations/pr-assignees-remove.generated.js"
@@ -368,6 +375,7 @@ export async function runPrCreate(
   transport: GraphqlTransport,
   input: PrCreateInput,
 ): Promise<PrCreateData> {
+  assertPrCreateInput(input)
   const client = createGraphqlRequestClient(transport)
 
   const repoResult = await getIssueCreateRepositoryIdSdk(client).IssueCreateRepositoryId({
@@ -408,6 +416,7 @@ export async function runPrUpdate(
   transport: GraphqlTransport,
   input: PrUpdateInput,
 ): Promise<PrUpdateData> {
+  assertPrUpdateInput(input)
   const client = createGraphqlRequestClient(transport)
   const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
 
@@ -436,14 +445,14 @@ export async function runPrMerge(
   transport: GraphqlTransport,
   input: PrMergeInput,
 ): Promise<PrMergeData> {
+  assertPrMergeInput(input)
   const client = createGraphqlRequestClient(transport)
   const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
 
   const result = await getPrMergeSdk(client).PrMerge({
     pullRequestId,
     ...(input.mergeMethod !== undefined
-      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        { mergeMethod: input.mergeMethod as any }
+      ? { mergeMethod: input.mergeMethod as Types.PullRequestMergeMethod }
       : {}),
   })
 
@@ -465,14 +474,14 @@ export async function runPrBranchUpdate(
   transport: GraphqlTransport,
   input: PrBranchUpdateInput,
 ): Promise<PrBranchUpdateData> {
+  assertPrBranchUpdateInput(input)
   const client = createGraphqlRequestClient(transport)
   const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
 
   const result = await getPrBranchUpdateSdk(client).PrBranchUpdate({
     pullRequestId,
     ...(input.updateMethod !== undefined
-      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        { updateMethod: input.updateMethod as any }
+      ? { updateMethod: input.updateMethod as Types.PullRequestBranchUpdateMethod }
       : {}),
   })
 
@@ -491,6 +500,7 @@ export async function runPrAssigneesAdd(
   transport: GraphqlTransport,
   input: PrAssigneesAddInput,
 ): Promise<PrAssigneesData> {
+  assertPrAssigneesInput(input)
   const client = createGraphqlRequestClient(transport)
   const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
 
@@ -499,6 +509,9 @@ export async function runPrAssigneesAdd(
   )
 
   const userIds = userIdResults.flatMap((r) => (r.user?.id ? [r.user.id] : []))
+  if (userIds.length === 0) {
+    throw new Error(`None of the provided logins could be resolved: ${input.logins.join(", ")}`)
+  }
 
   const result = await getPrAssigneesAddSdk(client).PrAssigneesAdd({
     assignableId: pullRequestId,
@@ -528,6 +541,7 @@ export async function runPrAssigneesRemove(
   transport: GraphqlTransport,
   input: PrAssigneesRemoveInput,
 ): Promise<PrAssigneesData> {
+  assertPrAssigneesInput(input)
   const client = createGraphqlRequestClient(transport)
   const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
 
@@ -536,6 +550,9 @@ export async function runPrAssigneesRemove(
   )
 
   const userIds = userIdResults.flatMap((r) => (r.user?.id ? [r.user.id] : []))
+  if (userIds.length === 0) {
+    throw new Error(`None of the provided logins could be resolved: ${input.logins.join(", ")}`)
+  }
 
   const result = await getPrAssigneesRemoveSdk(client).PrAssigneesRemove({
     assignableId: pullRequestId,
@@ -565,6 +582,7 @@ export async function runPrReviewsRequest(
   transport: GraphqlTransport,
   input: PrReviewsRequestInput,
 ): Promise<PrReviewsRequestData> {
+  assertPrReviewsRequestInput(input)
   const client = createGraphqlRequestClient(transport)
   const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
 
@@ -573,6 +591,11 @@ export async function runPrReviewsRequest(
   )
 
   const reviewerUserIds = userIdResults.flatMap((r) => (r.user?.id ? [r.user.id] : []))
+  if (reviewerUserIds.length === 0) {
+    throw new Error(
+      `None of the provided logins could be resolved: ${input.reviewerLogins.join(", ")}`,
+    )
+  }
 
   const result = await getPrReviewsRequestSdk(client).PrReviewsRequest({
     pullRequestId,
