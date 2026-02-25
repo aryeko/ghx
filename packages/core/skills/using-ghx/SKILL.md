@@ -40,8 +40,8 @@ ghx run pr.reviews.submit --input - <<'EOF'
 EOF
 ```
 
-Result (compact, default): `{ ok, data?, pagination? }` on success — `{ ok, error: { code, message } }` on failure.
-Add `--verbose` to get the full envelope including `meta` (capability_id, route_used, reason).
+**Result (compact, default):** `{ ok, data?, pagination? }` on success — `{ ok, error: { code, message } }` on failure.
+Add `--verbose` to get the full envelope including `meta` (`capability_id`, `route_used`, `reason`).
 
 ## Chain
 

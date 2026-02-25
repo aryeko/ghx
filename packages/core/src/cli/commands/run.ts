@@ -15,7 +15,9 @@ interface ParsedRunFlags {
 export function parseRunFlags(argv: string[]): ParsedRunFlags {
   const [task, ...rest] = argv
   if (!task || task.trim().length === 0) {
-    throw new Error("Usage: ghx run <task> --input '<json>' | --input - [--check-gh-preflight]")
+    throw new Error(
+      "Usage: ghx run <task> --input '<json>' | --input - [--check-gh-preflight] [--verbose]",
+    )
   }
 
   const inputIndex = rest.findIndex((arg) => arg === "--input")

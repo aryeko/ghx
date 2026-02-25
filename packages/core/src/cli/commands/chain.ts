@@ -149,7 +149,7 @@ async function executeRawGraphqlRequest<TData>(
 export async function chainCommand(argv: string[] = []): Promise<number> {
   if (argv.length === 0) {
     process.stdout.write(
-      "Usage: ghx chain --steps '<json-array>' | --steps - [--check-gh-preflight]\n",
+      "Usage: ghx chain --steps '<json-array>' | --steps - [--check-gh-preflight] [--verbose]\n",
     )
     return 1
   }

@@ -311,6 +311,29 @@ describe("runCommand", () => {
   })
 
   describe("--verbose flag and compact output", () => {
+    it("default compact output preserves pagination when present", async () => {
+      executeTaskMock.mockResolvedValue({
+        ok: true,
+        data: [{ id: "I_1" }],
+        meta: {
+          capability_id: "issue.list",
+          route_used: "graphql",
+          pagination: { has_next_page: true, end_cursor: "CUR_1" },
+        },
+      })
+
+      const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true)
+      await runCommand(["issue.list", "--input", '{"owner":"a","repo":"b"}'])
+
+      const written = String(stdout.mock.calls[0]?.[0] ?? "")
+      const parsed = JSON.parse(written)
+      expect(parsed).toEqual({
+        ok: true,
+        data: [{ id: "I_1" }],
+        pagination: { has_next_page: true, end_cursor: "CUR_1" },
+      })
+    })
+
     it("parses --verbose as true in parseRunFlags", () => {
       const flags = parseRunFlags(["repo.view", "--input", "{}", "--verbose"])
       expect(flags.verbose).toBe(true)
