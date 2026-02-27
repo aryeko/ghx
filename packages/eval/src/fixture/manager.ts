@@ -1,6 +1,12 @@
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
-import { type FixtureManifest, type FixtureResource, loadFixtureManifest } from "./manifest.js"
+import {
+  type FixtureManifest,
+  type FixtureResource,
+  loadFixtureManifest,
+  writeFixtureManifest,
+} from "./manifest.js"
+import { getSeeder } from "./seeders/index.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -11,6 +17,8 @@ export interface FixtureManagerOptions {
   readonly manifest: string
   /** When `true`, auto-seed fixtures if the manifest file is not found. */
   readonly seedIfMissing?: boolean
+  /** Identifier for the seed run; defaults to `"default"`. */
+  readonly seedId?: string
 }
 
 export interface FixtureStatus {
@@ -76,8 +84,39 @@ export class FixtureManager {
     }
   }
 
-  async seed(_scenarioIds: readonly string[]): Promise<void> {
-    throw new Error("FixtureManager.seed(): not yet implemented — run eval fixture seed manually")
+  async seed(
+    scenarios: readonly { readonly fixture?: { readonly requires: readonly string[] } }[],
+  ): Promise<void> {
+    const uniqueRequires = new Set<string>()
+    for (const s of scenarios) {
+      if (s.fixture) {
+        for (const r of s.fixture.requires) {
+          uniqueRequires.add(r)
+        }
+      }
+    }
+
+    const fixtures: Record<string, FixtureResource> = {}
+
+    for (const name of uniqueRequires) {
+      const type = resolveFixtureType(name)
+      const seeder = getSeeder(type)
+      const resource = await seeder.seed({
+        repo: this.options.repo,
+        name,
+        labels: ["bench-fixture"],
+      })
+      fixtures[name] = resource
+    }
+
+    const manifest: FixtureManifest = {
+      seedId: this.options.seedId ?? "default",
+      createdAt: new Date().toISOString(),
+      repo: this.options.repo,
+      fixtures,
+    }
+
+    await writeFixtureManifest(this.options.manifest, manifest)
   }
 
   async cleanup(options?: { all?: boolean }): Promise<void> {
@@ -208,6 +247,11 @@ export class FixtureManager {
     const { stdout } = await execFileAsync("gh", args as string[])
     return stdout.trim()
   }
+}
+
+function resolveFixtureType(name: string): string {
+  const idx = name.indexOf("_")
+  return idx === -1 ? name : name.slice(0, idx)
 }
 
 function sleep(ms: number): Promise<void> {

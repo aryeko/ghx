@@ -1,12 +1,15 @@
+import { readFile } from "node:fs/promises"
+import { loadEvalConfig } from "@eval/config/loader.js"
 import { FixtureManager } from "@eval/fixture/manager.js"
-import { parseFlag } from "./parse-flags.js"
+import { loadEvalScenarios } from "@eval/scenario/loader.js"
+import { hasFlag, parseFlag } from "./parse-flags.js"
 
 export async function fixture(argv: readonly string[]): Promise<void> {
   const subcommand = argv[0]
 
   if (!subcommand || !["seed", "status", "cleanup"].includes(subcommand)) {
     console.error(
-      "Usage: eval fixture <seed|status|cleanup> [--repo <owner/name>] [--manifest <path>] [--all]",
+      "Usage: eval fixture <seed|status|cleanup> [--repo <owner/name>] [--manifest <path>] [--seed-id <id>] [--config <path>] [--dry-run] [--all]",
     )
     process.exit(1)
   }
@@ -16,10 +19,38 @@ export async function fixture(argv: readonly string[]): Promise<void> {
   const manifest =
     parseFlag(argv, "--manifest") ?? process.env["EVAL_FIXTURE_MANIFEST"] ?? "fixtures/latest.json"
 
-  const manager = new FixtureManager({ repo, manifest })
+  const seedId = parseFlag(argv, "--seed-id") ?? "default"
+  const dryRun = hasFlag(argv, "--dry-run")
+
+  const manager = new FixtureManager({ repo, manifest, seedId })
 
   if (subcommand === "seed") {
-    await manager.seed([])
+    const configPath = parseFlag(argv, "--config") ?? "config/eval.config.yaml"
+    const yamlContent = await readFile(configPath, "utf-8")
+    const config = loadEvalConfig(yamlContent)
+
+    const scenarioIds = config.scenarios.ids ?? undefined
+    const scenarios = await loadEvalScenarios("scenarios", scenarioIds)
+
+    if (dryRun) {
+      const uniqueRequires = new Set<string>()
+      for (const s of scenarios) {
+        if (s.fixture) {
+          for (const r of s.fixture.requires) {
+            uniqueRequires.add(r)
+          }
+        }
+      }
+      console.log("Dry-run: fixture requirements collected from scenarios:")
+      for (const req of uniqueRequires) {
+        console.log(`  - ${req}`)
+      }
+      return
+    }
+
+    await manager.seed(
+      scenarios as readonly { readonly fixture?: { readonly requires: readonly string[] } }[],
+    )
     console.log("Fixture seeding complete.")
     return
   }
