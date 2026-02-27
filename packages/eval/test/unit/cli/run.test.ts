@@ -10,7 +10,8 @@ vi.mock("@eval/config/loader.js", () => ({
 }))
 
 vi.mock("@eval/scenario/loader.js", () => ({
-  loadEvalScenarios: vi.fn(),
+  loadEvalScenarios: vi.fn().mockResolvedValue([]),
+  loadScenarioSets: vi.fn().mockResolvedValue({}),
 }))
 
 vi.mock("@eval/fixture/manager.js", () => ({
@@ -197,6 +198,28 @@ describe("run command", () => {
 
     const call = vi.mocked(runProfileSuite).mock.calls[0]
     expect(call).toBeDefined()
-    expect((call as unknown[][])[0]).toMatchObject({ outputPath: "/tmp/custom-output.jsonl" })
+    expect((call as unknown[][])[0]).toMatchObject({ outputJsonlPath: "/tmp/custom-output.jsonl" })
+  })
+
+  it("--scenario-set resolves scenario IDs from scenario-sets.json", async () => {
+    const { loadEvalScenarios, loadScenarioSets } = await import("@eval/scenario/loader.js")
+    vi.mocked(loadScenarioSets).mockResolvedValue({ smoke: ["pr-fix-001", "issue-close-001"] })
+
+    await runFn(["--scenario-set", "smoke"])
+
+    expect(loadScenarioSets).toHaveBeenCalled()
+    expect(loadEvalScenarios).toHaveBeenCalledWith(expect.any(String), [
+      "pr-fix-001",
+      "issue-close-001",
+    ])
+  })
+
+  it("--scenario-set throws when set name is not found", async () => {
+    const { loadScenarioSets } = await import("@eval/scenario/loader.js")
+    vi.mocked(loadScenarioSets).mockResolvedValue({})
+
+    await expect(runFn(["--scenario-set", "nonexistent"])).rejects.toThrow(
+      'Scenario set "nonexistent" not found',
+    )
   })
 })

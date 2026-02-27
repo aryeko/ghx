@@ -7,7 +7,7 @@ import { FixtureManager } from "@eval/fixture/manager.js"
 import { createEvalHooks } from "@eval/hooks/eval-hooks.js"
 import { EvalModeResolver } from "@eval/mode/resolver.js"
 import { OpenCodeProvider } from "@eval/provider/opencode-provider.js"
-import { loadEvalScenarios } from "@eval/scenario/loader.js"
+import { loadEvalScenarios, loadScenarioSets } from "@eval/scenario/loader.js"
 import { CheckpointScorer } from "@eval/scorer/checkpoint-scorer.js"
 import type { BaseScenario } from "@ghx-dev/agent-profiler"
 import { runProfileSuite } from "@ghx-dev/agent-profiler"
@@ -82,24 +82,43 @@ function applyFlagOverrides(config: EvalConfig, argv: readonly string[]): EvalCo
   return result
 }
 
+async function resolveScenarioIds(
+  scenariosDir: string,
+  scenarios: EvalConfig["scenarios"],
+): Promise<readonly string[] | undefined> {
+  if (scenarios.ids !== undefined && scenarios.ids.length > 0) {
+    return scenarios.ids
+  }
+  if (scenarios.set !== undefined) {
+    const sets = await loadScenarioSets(scenariosDir)
+    const ids = sets[scenarios.set]
+    if (ids === undefined) {
+      throw new Error(`Scenario set "${scenarios.set}" not found in scenario-sets.json`)
+    }
+    return ids
+  }
+  return undefined
+}
+
 export async function run(argv: readonly string[]): Promise<void> {
   const configPath = parseFlag(argv, "--config") ?? "eval.config.yaml"
   const yamlContent = await readFile(configPath, "utf-8")
   const rawConfig = loadEvalConfig(yamlContent as string)
   const config = applyFlagOverrides(rawConfig, argv)
 
+  const scenariosDir = join(process.cwd(), "scenarios")
+
   if (hasFlag(argv, "--dry-run")) {
     console.log("eval run --dry-run: resolved config:")
     console.log(JSON.stringify(config, null, 2))
-    const scenarios = await loadEvalScenarios(
-      join(process.cwd(), "scenarios"),
-      config.scenarios.ids,
-    )
+    const resolvedIds = await resolveScenarioIds(scenariosDir, config.scenarios)
+    const scenarios = await loadEvalScenarios(scenariosDir, resolvedIds)
     console.log(`Scenarios: ${scenarios.length}`)
     return
   }
 
-  const scenarios = await loadEvalScenarios(join(process.cwd(), "scenarios"), config.scenarios.ids)
+  const resolvedIds = await resolveScenarioIds(scenariosDir, config.scenarios)
+  const scenarios = await loadEvalScenarios(scenariosDir, resolvedIds)
 
   const fixtureManager = new FixtureManager({
     repo: config.fixtures.repo,
