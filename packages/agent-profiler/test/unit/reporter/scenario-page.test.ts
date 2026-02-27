@@ -63,4 +63,30 @@ describe("generateScenarioPage", () => {
       "| Iteration | Mode | Success | Wall (ms) | Tokens | Tool Calls | Cost (USD) |",
     )
   })
+
+  it("renders timing segments section when segments exist", () => {
+    const row = makeProfileRow({
+      scenarioId: "s1",
+      mode: "mode_a",
+      iteration: 0,
+      timing: {
+        wallMs: 1000,
+        segments: [
+          { label: "thinking", startMs: 0, endMs: 400 },
+          { label: "tool_call", startMs: 400, endMs: 700 },
+        ],
+      },
+    })
+    const output = generateScenarioPage([row], "s1")
+    expect(output).toContain("## Timing Segments")
+    expect(output).toContain("thinking")
+    expect(output).toContain("| 0 | 400 | 400 |")
+    expect(output).toContain("tool_call")
+  })
+
+  it("omits timing segments section when no segments", () => {
+    const row = makeProfileRow({ scenarioId: "s1", timing: { wallMs: 500, segments: [] } })
+    const output = generateScenarioPage([row], "s1")
+    expect(output).not.toContain("## Timing Segments")
+  })
 })

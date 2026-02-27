@@ -22,5 +22,19 @@ export function generateScenarioPage(rows: readonly ProfileRow[], scenarioId: st
     )
   }
 
+  const rowsWithSegments = sorted.filter((r) => r.timing.segments.length > 0)
+  if (rowsWithSegments.length > 0) {
+    lines.push("", "## Timing Segments", "")
+    for (const row of rowsWithSegments) {
+      lines.push(`### ${row.mode} — iteration ${row.iteration}`, "")
+      lines.push("| Segment | Start (ms) | End (ms) | Duration (ms) |")
+      lines.push("| --- | --- | --- | --- |")
+      for (const seg of row.timing.segments) {
+        lines.push(`| ${seg.label} | ${seg.startMs} | ${seg.endMs} | ${seg.endMs - seg.startMs} |`)
+      }
+      lines.push("")
+    }
+  }
+
   return lines.join("\n")
 }
