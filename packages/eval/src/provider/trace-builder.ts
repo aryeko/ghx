@@ -141,15 +141,46 @@ export class TraceBuilder {
     const events = this.buildEvents(messages)
     const turns = this.groupIntoTurns(events)
 
-    const totalTokens = {
-      input: 0,
-      output: 0,
-      reasoning: 0,
-      cacheRead: 0,
-      cacheWrite: 0,
-      total: 0,
-      active: 0,
+    let inputTokens = 0
+    let outputTokens = 0
+    let cacheReadTokens = 0
+    let cacheWriteTokens = 0
+
+    for (const msg of messages) {
+      const message = msg as OpenCodeMessage
+      if (message.role !== "assistant" || !message.tokens) continue
+      inputTokens += message.tokens.input ?? 0
+      outputTokens += message.tokens.output ?? 0
+      cacheReadTokens += message.tokens.cache_read ?? 0
+      cacheWriteTokens += message.tokens.cache_write ?? 0
     }
+
+    let reasoningTokens = 0
+    for (const event of events) {
+      if (event.type === "reasoning") {
+        reasoningTokens += event.tokenCount ?? 0
+      }
+    }
+
+    const total = inputTokens + outputTokens + cacheReadTokens + cacheWriteTokens + reasoningTokens
+    const active = inputTokens + outputTokens + reasoningTokens
+
+    const totalTokens = {
+      input: inputTokens,
+      output: outputTokens,
+      reasoning: reasoningTokens,
+      cacheRead: cacheReadTokens,
+      cacheWrite: cacheWriteTokens,
+      total,
+      active,
+    }
+
+    const firstTurn = turns[0]
+    const lastTurn = turns[turns.length - 1]
+    const totalDuration =
+      firstTurn !== undefined && lastTurn !== undefined
+        ? new Date(lastTurn.endTimestamp).getTime() - new Date(firstTurn.startTimestamp).getTime()
+        : 0
 
     return {
       sessionId,
@@ -159,7 +190,7 @@ export class TraceBuilder {
         totalTurns: turns.length,
         totalToolCalls: events.filter((e) => e.type === "tool_call").length,
         totalTokens,
-        totalDuration: 0,
+        totalDuration,
       },
     }
   }

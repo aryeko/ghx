@@ -323,4 +323,38 @@ describe("TraceBuilder.buildTrace", () => {
     const trace = builder.buildTrace("ses_dur", [])
     expect(trace.summary.totalDuration).toBe(0)
   })
+
+  it("sums token counts from message.tokens", () => {
+    const messages = [
+      {
+        role: "assistant",
+        tokens: { input: 100, output: 50, cache_read: 20, cache_write: 10 },
+        parts: [],
+      },
+      {
+        role: "assistant",
+        tokens: { input: 200, output: 80 },
+        parts: [],
+      },
+    ]
+    const trace = builder.buildTrace("ses_tok_sum", messages)
+    expect(trace.summary.totalTokens.input).toBe(300)
+    expect(trace.summary.totalTokens.output).toBe(130)
+    expect(trace.summary.totalTokens.cacheRead).toBe(20)
+    expect(trace.summary.totalTokens.cacheWrite).toBe(10)
+    expect(trace.summary.totalTokens.total).toBe(460) // 300+130+20+10
+    expect(trace.summary.totalTokens.active).toBe(430) // 300+130+0 reasoning
+  })
+
+  it("returns non-negative totalDuration for non-empty messages", () => {
+    const messages = [
+      {
+        role: "assistant",
+        time_created: "2026-01-01T00:00:00.000Z",
+        parts: [{ type: "text", text: "Hello" }],
+      },
+    ]
+    const trace = builder.buildTrace("ses_dur_pos", messages)
+    expect(trace.summary.totalDuration).toBeGreaterThanOrEqual(0)
+  })
 })
