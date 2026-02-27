@@ -1,7 +1,9 @@
 import type { RouteSource } from "../contracts/envelope.js"
 
+/** Represents a JSON Schema definition for card inputs/outputs. */
 export type JsonSchema = Record<string, unknown>
 
+/** Defines when a fallback route should override the preferred route. */
 export interface SuitabilityRule {
   when: "always" | "env" | "params"
   predicate: string
@@ -91,19 +93,28 @@ export interface NullLiteralInject {
   source: "null_literal"
 }
 
+/** A specification for how to inject a resolved Phase 1 value into Phase 2. */
 export type InjectSpec = ScalarInject | MapArrayInject | InputPassthroughInject | NullLiteralInject
 
+/** Defines the GraphQL query to run during the Phase 1 lookup. */
 export interface LookupSpec {
   operationName: string
   documentPath: string
   vars: Record<string, string>
 }
 
+/** Configuration for a Phase 1 node ID lookup prior to mutation execution. */
 export interface ResolutionConfig {
   lookup: LookupSpec
   inject: InjectSpec[]
 }
 
+/**
+ * Declarative configuration for a single ghx capability.
+ *
+ * Defines the capability's identity, input/output schemas, routing preferences,
+ * and adapter-specific execution details (GraphQL, CLI, REST).
+ */
 export interface OperationCard<Input = Record<string, unknown>> {
   capability_id: string
   version: string

@@ -13,6 +13,11 @@ export type ClassifiedStep = {
   request: { task: string; input: Record<string, unknown> }
 }
 
+/**
+ * Dependencies required by the execution engine.
+ *
+ * Pass to {@link executeTask} or {@link executeTasks}.
+ */
 export type ExecutionDeps = {
   githubClient: GithubClient
   githubToken?: string | null

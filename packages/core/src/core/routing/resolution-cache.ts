@@ -1,3 +1,9 @@
+/**
+ * Cache for Phase 1 resolution lookups in batch execution.
+ *
+ * Avoids redundant GraphQL lookups when the same entity is referenced
+ * by multiple steps in a chain.
+ */
 export interface ResolutionCache {
   get(key: string): unknown | undefined
   set(key: string, value: unknown): void
@@ -16,6 +22,11 @@ export interface ResolutionCacheOptions {
 const DEFAULT_TTL_MS = 60_000
 const DEFAULT_MAX_ENTRIES = 200
 
+/**
+ * Create an in-memory resolution cache with TTL and FIFO eviction.
+ *
+ * Pass to `ExecutionDeps.resolutionCache` for batch operations.
+ */
 export function createResolutionCache(opts?: ResolutionCacheOptions): ResolutionCache {
   const ttlMs = opts?.ttlMs ?? DEFAULT_TTL_MS
   const maxEntries = opts?.maxEntries ?? DEFAULT_MAX_ENTRIES
@@ -62,6 +73,7 @@ export function createResolutionCache(opts?: ResolutionCacheOptions): Resolution
   }
 }
 
+/** Build a deterministic cache key from an operation name and variables. */
 export function buildCacheKey(operationName: string, variables: Record<string, unknown>): string {
   const sortedKeys = Object.keys(variables).sort()
   const sorted: Record<string, unknown> = {}

@@ -133,10 +133,12 @@ export function validateOperationCard(card: unknown): { ok: true } | { ok: false
 
 const operationCards = loadCardsFromYaml()
 
+/** Return a copy of all registered operation cards, in canonical order. */
 export function listOperationCards(): OperationCard[] {
   return [...operationCards]
 }
 
+/** Look up a single operation card by its dotted capability ID (e.g. `"pr.view"`). */
 export function getOperationCard(capabilityId: string): OperationCard | undefined {
   return operationCards.find((card) => card.capability_id === capabilityId)
 }

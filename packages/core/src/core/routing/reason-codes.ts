@@ -1,3 +1,8 @@
+/**
+ * All possible reason codes explaining why a particular route was selected.
+ *
+ * Included in {@link ResultMeta.reason}.
+ */
 export const routeReasonCodes = [
   "INPUT_VALIDATION",
   "OUTPUT_VALIDATION",
@@ -9,4 +14,5 @@ export const routeReasonCodes = [
   "DEFAULT_POLICY",
 ] as const
 
+/** Reason code explaining why a particular route was selected. */
 export type RouteReasonCode = (typeof routeReasonCodes)[number]

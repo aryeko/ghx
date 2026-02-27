@@ -3,12 +3,14 @@ import type { GraphQLClient, RequestDocument, RequestOptions } from "graphql-req
 
 export type GraphqlVariables = Record<string, unknown>
 
+/** A single error from a GraphQL response. */
 export type GraphqlError = {
   message: string
   path?: ReadonlyArray<string | number>
   extensions?: Record<string, unknown>
 }
 
+/** Raw GraphQL response containing both `data` and `errors` fields. */
 export type GraphqlRawResult<TData> = {
   data: TData | undefined
   errors: GraphqlError[] | undefined
@@ -17,11 +19,22 @@ export type GraphqlRawResult<TData> = {
 type GraphqlDocument = string | DocumentNode
 type QueryLike = GraphqlDocument | RequestDocument
 
+/**
+ * Low-level transport interface for sending GraphQL queries.
+ *
+ * Implement this to use a custom HTTP client, proxy, or mock.
+ * Pass to {@link createGithubClient} or {@link createGraphqlClient}.
+ */
 export interface GraphqlTransport {
   execute<TData>(query: string, variables?: GraphqlVariables): Promise<TData>
   executeRaw?<TData>(query: string, variables?: GraphqlVariables): Promise<GraphqlRawResult<TData>>
 }
 
+/**
+ * Higher-level GraphQL client with `query` and `queryRaw` methods.
+ *
+ * Created by {@link createGraphqlClient} from a {@link GraphqlTransport}.
+ */
 export interface GraphqlClient {
   query<TData, TVariables extends GraphqlVariables = GraphqlVariables>(
     query: GraphqlDocument,
@@ -33,6 +46,7 @@ export interface GraphqlClient {
   ): Promise<GraphqlRawResult<TData>>
 }
 
+/** Options for creating a token-based GraphQL transport. */
 export type TokenClientOptions = {
   token: string
   graphqlUrl?: string
@@ -56,6 +70,12 @@ function assertQuery(query: string): void {
   }
 }
 
+/**
+ * Create a {@link GraphqlClient} from a {@link GraphqlTransport}.
+ *
+ * Wraps the raw transport `execute` method with query string normalization
+ * and a `queryRaw` method that returns settled results.
+ */
 export function createGraphqlClient(transport: GraphqlTransport): GraphqlClient {
   return {
     async query<TData, TVariables extends GraphqlVariables = GraphqlVariables>(

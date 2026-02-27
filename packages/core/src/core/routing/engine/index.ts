@@ -12,6 +12,12 @@ import type { ExecutionDeps } from "./types.js"
 
 export type { ExecutionDeps } from "./types.js"
 
+/**
+ * Execute a single GitHub operation.
+ *
+ * Looks up the operation card, validates input, selects a route, and returns
+ * a {@link ResultEnvelope}. Never throws.
+ */
 export async function executeTask(
   request: TaskRequest,
   deps: ExecutionDeps,
@@ -19,6 +25,12 @@ export async function executeTask(
   return runSingleTask(request.task, request.input as Record<string, unknown>, deps)
 }
 
+/**
+ * Execute multiple operations as a batch.
+ *
+ * Classifies steps, resolves node IDs via Phase 1 lookups, batches GraphQL
+ * operations, and returns a {@link ChainResultEnvelope}.
+ */
 export async function executeTasks(
   requests: Array<{ task: string; input: Record<string, unknown> }>,
   deps: ExecutionDeps,

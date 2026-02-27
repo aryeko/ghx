@@ -5,6 +5,7 @@ import {
   extractRequiredInputs,
 } from "./schema-utils.js"
 
+/** Structured explanation of a capability, returned by {@link explainCapability}. */
 export type CapabilityExplanation = {
   capability_id: string
   purpose: string
@@ -15,6 +16,11 @@ export type CapabilityExplanation = {
   output_fields: string[]
 }
 
+/**
+ * Return a structured explanation of a capability by its ID.
+ *
+ * @throws If the capability ID is unknown.
+ */
 export function explainCapability(capabilityId: string): CapabilityExplanation {
   const card = getOperationCard(capabilityId)
   if (!card) {
