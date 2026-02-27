@@ -1,0 +1,10 @@
+export const DEFAULT_REPETITIONS = 5
+export const DEFAULT_TIMEOUT_MS = 120_000
+export const DEFAULT_WARMUP = true
+export const DEFAULT_LOG_LEVEL = "info" as const
+export const DEFAULT_RESULTS_DIR = "results"
+export const DEFAULT_REPORTS_DIR = "reports"
+export const DEFAULT_SESSION_EXPORT = true
+export const DEFAULT_BOOTSTRAP_RESAMPLES = 10_000
+export const DEFAULT_PERMUTATION_COUNT = 10_000
+export const DEFAULT_CONFIDENCE_LEVEL = 0.95
