@@ -71,11 +71,57 @@ describe("GhxCollector", () => {
 
   it("counts gh CLI commands via bash", async () => {
     const result = makePromptResult([{ name: "bash" }])
-    // Note: classifyToolCall only sees the name, not the input from PromptResult.toolCalls
-    // gh_cli detection requires input, which ToolCallRecord doesn't have
-    // So bash without input → "bash"
+    // Null-trace fallback: classifyToolCall only sees the name, not input, so bash → "bash"
     const metrics = await collector.collect(result, dummyScenario, "baseline", null)
     const bashMetric = metrics.find((m) => m.name === "ghx.bash_commands")
+    expect(bashMetric?.value).toBe(1)
+  })
+
+  it("uses trace tool_call events for classification when trace is available", async () => {
+    // result has one "bash" tool call
+    const result = makePromptResult([{ name: "bash" }])
+    // trace has the same bash call but with a gh command input
+    const trace = {
+      sessionId: "ses-test",
+      events: [
+        {
+          type: "tool_call" as const,
+          name: "bash",
+          input: { command: "gh pr list --repo owner/repo" },
+          output: null,
+          durationMs: 100,
+          success: true,
+        },
+      ],
+      turns: [],
+      summary: {
+        totalTurns: 0,
+        totalToolCalls: 1,
+        totalTokens: {
+          input: 0,
+          output: 0,
+          reasoning: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          total: 0,
+          active: 0,
+        },
+        totalDuration: 0,
+      },
+    }
+    const metrics = await collector.collect(result, dummyScenario, "baseline", trace)
+    const ghCliMetric = metrics.find((m) => m.name === "ghx.gh_cli_commands")
+    const bashMetric = metrics.find((m) => m.name === "ghx.bash_commands")
+    expect(ghCliMetric?.value).toBe(1)
+    expect(bashMetric?.value).toBe(0)
+  })
+
+  it("falls back to PromptResult toolCalls when trace is null (gh_cli always 0)", async () => {
+    const result = makePromptResult([{ name: "bash" }])
+    const metrics = await collector.collect(result, dummyScenario, "baseline", null)
+    const ghCliMetric = metrics.find((m) => m.name === "ghx.gh_cli_commands")
+    const bashMetric = metrics.find((m) => m.name === "ghx.bash_commands")
+    expect(ghCliMetric?.value).toBe(0)
     expect(bashMetric?.value).toBe(1)
   })
 

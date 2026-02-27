@@ -46,7 +46,7 @@ export class GhxCollector implements Collector {
     result: PromptResult,
     _scenario: BaseScenario,
     _mode: string,
-    _trace: SessionTrace | null,
+    trace: SessionTrace | null,
   ): Promise<readonly CustomMetric[]> {
     const counts: Record<ToolCategory, number> = {
       ghx: 0,
@@ -57,9 +57,21 @@ export class GhxCollector implements Collector {
       other: 0,
     }
 
-    for (const tc of result.metrics.toolCalls) {
-      const category = classifyToolCall(tc.name)
-      counts[category]++
+    if (trace !== null) {
+      // Prefer trace events: they carry input, enabling gh_cli detection for bash tool calls
+      for (const event of trace.events) {
+        if (event.type === "tool_call") {
+          const toolEvent = event as { name: string; input: unknown }
+          const category = classifyToolCall(toolEvent.name, toolEvent.input)
+          counts[category]++
+        }
+      }
+    } else {
+      // Fall back to PromptResult.metrics.toolCalls (no input available, gh_cli always 0)
+      for (const tc of result.metrics.toolCalls) {
+        const category = classifyToolCall(tc.name)
+        counts[category]++
+      }
     }
 
     const metrics: CustomMetric[] = []
