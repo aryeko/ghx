@@ -43,5 +43,5 @@ models:
 fixtures:
   repo: aryeko/ghx-bench-fixtures
   manifest: fixtures/latest.json
-  seed_if_missing: false
-  reseed_between_modes: false
+  seed_if_missing: true
+  reseed_between_modes: true
