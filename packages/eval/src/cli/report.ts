@@ -7,7 +7,12 @@ import { parseFlag, parseFlagAll } from "./parse-flags.js"
 export async function report(argv: readonly string[]): Promise<void> {
   const runDir = parseFlag(argv, "--run-dir") ?? "results"
   const resultsPaths = parseFlagAll(argv, "--results")
-  const format = (parseFlag(argv, "--format") ?? "all") as "all" | "md" | "csv" | "json"
+  const VALID_FORMATS = ["all", "md", "csv", "json"] as const
+  const rawFormat = parseFlag(argv, "--format") ?? "all"
+  if (!VALID_FORMATS.includes(rawFormat as (typeof VALID_FORMATS)[number])) {
+    throw new Error(`Invalid --format "${rawFormat}". Expected one of: ${VALID_FORMATS.join(", ")}`)
+  }
+  const format = rawFormat as (typeof VALID_FORMATS)[number]
   const outputDir = parseFlag(argv, "--output-dir") ?? join(runDir, "reports")
 
   // Default results path if none specified

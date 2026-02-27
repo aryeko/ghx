@@ -16,7 +16,7 @@ async function loadAnalysisBundles(runDir: string): Promise<readonly SessionAnal
   let scenarioDirs: string[]
 
   try {
-    scenarioDirs = (await readdir(analysisDir)) as unknown as string[]
+    scenarioDirs = await readdir(analysisDir, { encoding: "utf-8" })
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return []
     throw error
@@ -28,7 +28,7 @@ async function loadAnalysisBundles(runDir: string): Promise<readonly SessionAnal
     const scenarioDir = join(analysisDir, scenarioId)
     let files: string[]
     try {
-      files = ((await readdir(scenarioDir)) as unknown as string[]).filter((f) =>
+      files = (await readdir(scenarioDir, { encoding: "utf-8" })).filter((f) =>
         f.endsWith("-analysis.json"),
       )
     } catch {
@@ -36,8 +36,12 @@ async function loadAnalysisBundles(runDir: string): Promise<readonly SessionAnal
     }
 
     for (const file of files) {
-      const content = await readFile(join(scenarioDir, file), "utf-8")
-      bundles.push(JSON.parse(content) as SessionAnalysisBundle)
+      try {
+        const content = await readFile(join(scenarioDir, file), "utf-8")
+        bundles.push(JSON.parse(content) as SessionAnalysisBundle)
+      } catch {
+        continue
+      }
     }
   }
 

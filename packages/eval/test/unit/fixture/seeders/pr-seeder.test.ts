@@ -19,9 +19,7 @@ const LABELS = ["eval-fixture", "bench"]
 
 function mockGhCall(stdout: string) {
   mockedExecFile.mockImplementationOnce((_cmd: unknown, _args: unknown, callback: unknown) => {
-    ;(callback as (err: null, result: { stdout: string }) => void)(null, {
-      stdout,
-    })
+    ;(callback as (err: null, stdout: string, stderr: string) => void)(null, stdout, "")
     return undefined as never
   })
 }

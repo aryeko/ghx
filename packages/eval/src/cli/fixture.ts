@@ -9,7 +9,7 @@ export async function fixture(argv: readonly string[]): Promise<void> {
 
   if (!subcommand || !["seed", "status", "cleanup"].includes(subcommand)) {
     console.error(
-      "Usage: eval fixture <seed|status|cleanup> [--repo <owner/name>] [--manifest <path>] [--seed-id <id>] [--dry-run] [--all]",
+      "Usage: eval fixture <seed|status|cleanup> [--repo <owner/name>] [--manifest <path>] [--seed-id <id>] [--config <path>] [--dry-run] [--all]",
     )
     process.exit(1)
   }
@@ -29,12 +29,8 @@ export async function fixture(argv: readonly string[]): Promise<void> {
     const yamlContent = await readFile(configPath, "utf-8")
     const config = loadEvalConfig(yamlContent)
 
-    const scenariosDir = (config.scenarios as Record<string, unknown> | undefined)?.["directory"] as
-      | string
-      | undefined
-    const resolvedDir = scenariosDir ?? "scenarios"
-
-    const scenarios = await loadEvalScenarios(resolvedDir)
+    const scenarioIds = config.scenarios.ids ?? undefined
+    const scenarios = await loadEvalScenarios("scenarios", scenarioIds)
 
     if (dryRun) {
       const uniqueRequires = new Set<string>()

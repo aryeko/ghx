@@ -39,7 +39,7 @@ export async function runAnalyzers(
   let scenarioDirs: readonly string[]
 
   try {
-    scenarioDirs = (await readdir(sessionsDir)) as unknown as string[]
+    scenarioDirs = await readdir(sessionsDir, { encoding: "utf-8" })
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return []
     throw error
@@ -51,7 +51,7 @@ export async function runAnalyzers(
     const scenarioDir = join(sessionsDir, scenarioId)
     let traceFiles: readonly string[]
     try {
-      traceFiles = ((await readdir(scenarioDir)) as unknown as string[]).filter((f) =>
+      traceFiles = (await readdir(scenarioDir, { encoding: "utf-8" })).filter((f) =>
         f.endsWith(".json"),
       )
     } catch {
@@ -59,8 +59,13 @@ export async function runAnalyzers(
     }
 
     for (const traceFile of traceFiles) {
-      const content = await readFile(join(scenarioDir, traceFile), "utf-8")
-      const trace = JSON.parse(content) as SessionTrace
+      let trace: SessionTrace
+      try {
+        const content = await readFile(join(scenarioDir, traceFile), "utf-8")
+        trace = JSON.parse(content) as SessionTrace
+      } catch {
+        continue
+      }
 
       // Parse mode from filename: "{mode}-iter-{n}.json"
       const match = traceFile.match(/^(.+)-iter-\d+\.json$/)

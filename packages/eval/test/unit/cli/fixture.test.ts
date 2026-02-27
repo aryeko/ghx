@@ -74,7 +74,7 @@ describe("fixture command", () => {
 
       expect(readFile).toHaveBeenCalledWith("config/eval.config.yaml", "utf-8")
       expect(loadEvalConfig).toHaveBeenCalledWith("modes: [ghx]")
-      expect(loadEvalScenarios).toHaveBeenCalledWith("scenarios")
+      expect(loadEvalScenarios).toHaveBeenCalledWith("scenarios", undefined)
 
       const lastInstance = vi.mocked(FixtureManager).mock.results.at(-1)?.value as {
         seed: ReturnType<typeof vi.fn>

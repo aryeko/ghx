@@ -5,20 +5,30 @@ import type { FixtureSeeder, SeedOptions } from "@eval/fixture/seeders/types.js"
 
 function runGh(args: readonly string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile("gh", args, (error, result) => {
+    execFile("gh", args as string[], (error, stdout) => {
       if (error) {
         reject(error)
         return
       }
-      resolve((result as unknown as { stdout: string }).stdout)
+      resolve(stdout.trim())
     })
   })
 }
 
 async function getDefaultBranch(repo: string): Promise<string> {
   const [owner, name] = repo.split("/")
-  const query = `query { repository(owner: "${owner}", name: "${name}") { defaultBranchRef { name } } }`
-  const stdout = await runGh(["api", "graphql", "-f", `query=${query}`])
+  const query =
+    "query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { defaultBranchRef { name } } }"
+  const stdout = await runGh([
+    "api",
+    "graphql",
+    "-f",
+    `query=${query}`,
+    "-f",
+    `owner=${owner}`,
+    "-f",
+    `name=${name}`,
+  ])
   const parsed: {
     data: { repository: { defaultBranchRef: { name: string } } }
   } = JSON.parse(stdout)
