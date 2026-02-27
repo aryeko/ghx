@@ -9,7 +9,7 @@ import type {
   SessionTrace,
 } from "@ghx-dev/agent-profiler"
 
-interface EvalHooksOptions {
+export interface EvalHooksOptions {
   readonly fixtureManager: FixtureManager
   readonly sessionExport: boolean
   readonly reportsDir?: string
