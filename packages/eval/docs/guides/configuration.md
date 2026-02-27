@@ -140,7 +140,7 @@ Environment variables take precedence over config file values. CLI flags take pr
 
 The eval CLI expands the full evaluation matrix: **models x modes x scenarios x repetitions**.
 
-```
+```text
 Config:
   models: [A, B]
   modes: [ghx, baseline, mcp]

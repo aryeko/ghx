@@ -16,7 +16,7 @@ Same agent, same model, same task, same starting GitHub state -- only the toolse
 
 ## Architecture
 
-Built on `@ghx-dev/agent-profiler`, implementing its 6 plugin contracts:
+Built on `@ghx-dev/agent-profiler`, implementing 5 of its 6 plugin contracts:
 
 | Contract | Eval Implementation | Purpose |
 |----------|-------------------|---------|

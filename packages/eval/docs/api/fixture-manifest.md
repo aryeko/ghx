@@ -38,7 +38,7 @@ interface FixtureResource {
   repo: string
   branch?: string
   labels?: string[]
-  metadata: Record<string, unknown>  // Default: {}
+  metadata?: Record<string, unknown>  // Default: {}
 }
 ```
 

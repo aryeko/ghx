@@ -29,7 +29,7 @@ The numeric suffix provides ordering within a category. Start at `001` for the f
 
 The `prompt` field contains the task sent to the agent. Use `{{variable}}` placeholders for fixture-dependent values:
 
-```
+```text
 "Review the changes in PR #{{pr_number}} in {{repo}}. Examine the diff carefully and leave a review comment summarizing your findings."
 ```
 

@@ -56,7 +56,7 @@ Example manifest:
 
 ## Seeding Fixtures
 
-Seeding creates all fixtures required by the selected scenarios. This is currently a manual process -- write the manifest JSON by hand or use a seed script.
+Seeding creates all fixtures required by the selected scenarios. Use the CLI seeder; manual manifest editing is a fallback for custom workflows.
 
 ```bash
 pnpm --filter @ghx-dev/eval run eval fixture seed

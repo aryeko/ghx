@@ -20,10 +20,10 @@ interface EvalScenario {
   allowedRetries: number
   /** Arbitrary string tags for filtering and grouping */
   tags: string[]
-  /** GitHub domain: "pr" | "issue" | "workflow" | "release" | "repo" */
-  category: string
-  /** Complexity level: "basic" | "intermediate" | "advanced" */
-  difficulty: string
+  /** GitHub domain */
+  category: "pr" | "issue" | "workflow" | "release" | "repo"
+  /** Complexity level */
+  difficulty: "basic" | "intermediate" | "advanced"
   /** GitHub fixture requirements (optional) */
   fixture?: FixtureRequirements
   /** Assertion checkpoints evaluated after the session */
