@@ -115,6 +115,8 @@ Summary statistics computed from a sample of numeric values.
 
 ### ComparisonResult
 
+<!-- TODO: ci95 tuple should have readonly qualifier -->
+
 Result of comparing a candidate mode against a baseline mode on a single metric.
 
 | Field | Type | Description |

@@ -1,5 +1,7 @@
 # Public API
 
+<!-- TODO: Verify PROFILER_FLAGS type (actual: as-const literal, not Record<string,string>), parseProfilerFlags argv readonly qualifier -->
+
 Reference for all exported functions, classes, types, and constants from `@ghx-dev/agent-profiler`.
 
 **Source:** `packages/agent-profiler/src/index.ts`
@@ -280,7 +282,6 @@ Default values used throughout the profiler when configuration does not specify 
 | `DEFAULT_RESULTS_DIR` | Default directory path for raw JSONL result files |
 | `DEFAULT_REPORTS_DIR` | Default directory path for generated reports |
 | `DEFAULT_SESSION_EXPORT` | Default for whether full session traces are exported |
-| `DEFAULT_ALLOWED_RETRIES` | Default number of times to retry a failed iteration |
 | `DEFAULT_BOOTSTRAP_RESAMPLES` | Default number of bootstrap resamples for CI computation |
 | `DEFAULT_PERMUTATION_COUNT` | Default number of permutations for hypothesis tests |
 | `DEFAULT_CONFIDENCE_LEVEL` | Default confidence level for intervals (0.95) |

@@ -85,7 +85,7 @@ describe("generateReport", () => {
   })
 
   it("continues generating other pages when one page generator throws", async () => {
-    vi.mocked(generateMetricsPage).mockImplementation(() => {
+    vi.mocked(generateMetricsPage).mockImplementationOnce(() => {
       throw new Error("metrics kaboom")
     })
 
@@ -112,6 +112,35 @@ describe("generateReport", () => {
     expect(writtenPaths.some((p) => p.endsWith("results.csv"))).toBe(true)
     // metrics.md should NOT have been written since the generator threw
     expect(writtenPaths.some((p) => p.endsWith("metrics.md"))).toBe(false)
+  })
+
+  it("logs warning and continues when writeFile rejects for a single page", async () => {
+    const writeFileMock = vi.mocked(writeFile)
+    writeFileMock.mockImplementationOnce((path) => {
+      if (String(path).endsWith("index.md")) {
+        return Promise.reject(new Error("ENOSPC: no space left on device"))
+      }
+      return Promise.resolve()
+    })
+
+    const logger = { warn: vi.fn() }
+    const rows = [makeProfileRow()]
+    const result = await generateReport({
+      runId: "run_1",
+      rows,
+      reportsDir: "/tmp/reports",
+      logger,
+    })
+
+    expect(result).toBeDefined()
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("ENOSPC: no space left on device"),
+    )
+
+    // Other pages should still be written
+    const writtenPaths = writeFileMock.mock.calls.map((c) => String(c[0]))
+    expect(writtenPaths.some((p) => p.endsWith("metrics.md"))).toBe(true)
+    expect(writtenPaths.some((p) => p.endsWith("results.csv"))).toBe(true)
   })
 
   it("passes analysis results to analysis page", async () => {

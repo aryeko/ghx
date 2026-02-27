@@ -70,7 +70,7 @@ async init(config: ProviderConfig): Promise<void> {
 }
 ```
 
-The runner calls `init()` once per mode. If you profile two modes, `init()` is called twice total, each time preceded by a `shutdown()` of the previous mode (except the first).
+The runner calls `init()` once per suite, before the mode loop begins. It is not called again for each mode. `shutdown()` is called once after all modes complete.
 
 ## Step 3: Implement createSession()
 
@@ -238,7 +238,7 @@ async destroySession(handle: SessionHandle): Promise<void> {
 
 ## Step 7: Implement shutdown()
 
-The `shutdown` method performs final cleanup for the provider. The runner calls this once per mode, after all iterations within that mode complete.
+The `shutdown` method performs final cleanup for the provider. The runner calls this once per suite, after all modes and iterations complete (in a `finally` block).
 
 ```typescript
 async shutdown(): Promise<void> {
@@ -317,7 +317,7 @@ const stubProvider: SessionProvider = {
 
 - **`destroySession` is always called**, even after errors. Ensure your implementation is idempotent -- calling it twice on the same handle must not throw.
 - **`exportSession` is only called** when `sessionExport: true` in the configuration or when analyzers are present. Do not assume it runs for every iteration.
-- **`init()` is called once per mode**, not once per iteration. Store mode-level state in instance fields rather than recreating it per session.
+- **`init()` is called once per suite**, not once per mode or per iteration. Store suite-level state in instance fields rather than recreating it per session.
 - **`prompt` timeout may be `undefined`**. If `timeoutMs` is not provided, the provider should either apply its own default timeout or allow unbounded execution. Do not assume the parameter is always present.
 
 ## Source Reference

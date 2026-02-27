@@ -24,6 +24,20 @@ export interface ReportOptions {
   readonly logger?: { warn: (msg: string) => void }
 }
 
+// TODO: Consider returning { reportDir, failedPages } to signal partial failures to callers
+async function safeWrite(
+  path: string,
+  generate: () => string,
+  logger?: { warn: (msg: string) => void },
+): Promise<void> {
+  try {
+    await writeFile(path, generate(), "utf-8")
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    logger?.warn(`Failed to generate report page ${path}: ${message}`)
+  }
+}
+
 /**
  * Generate a complete multi-page Markdown report and data exports for a profiling run.
  *
@@ -39,20 +53,8 @@ export interface ReportOptions {
  *
  * @param options - Report configuration including run ID, rows, and output paths.
  * @returns The absolute path to the generated report directory.
+ * @throws If the report directory cannot be created (mkdir failure).
  */
-async function safeWrite(
-  path: string,
-  generate: () => string,
-  logger?: { warn: (msg: string) => void },
-): Promise<void> {
-  try {
-    await writeFile(path, generate(), "utf-8")
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    logger?.warn(`Failed to generate report page ${path}: ${message}`)
-  }
-}
-
 export async function generateReport(options: ReportOptions): Promise<string> {
   const { runId, rows, reportsDir, analysisResults, logger } = options
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-")

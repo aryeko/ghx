@@ -157,6 +157,7 @@ export async function runIteration(params: IterationParams): Promise<{
         })
         const timeoutMs = scenario.timeoutMs ?? DEFAULT_TIMEOUT_MS
         let timer: ReturnType<typeof setTimeout> | undefined
+        // TODO: Pass AbortSignal to provider.prompt() for cooperative cancellation
         promptResult = await Promise.race([
           provider.prompt(handle, scenario.prompt, timeoutMs),
           new Promise<never>((_, reject) => {

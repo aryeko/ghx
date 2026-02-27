@@ -1,6 +1,6 @@
 # Configuration
 
-Full reference for YAML configuration, CLI flags, and environment variables.
+Full reference for YAML configuration, CLI flags, and configuration precedence.
 
 ## YAML Configuration File
 
@@ -37,7 +37,7 @@ extensions: {}           # arbitrary key-value
 
 #### modes
 
-An array of mode names that the runner iterates over as the outermost loop. Each mode triggers a `ModeResolver.resolve()` call and a fresh `Provider.init()`.
+An array of mode names that the runner iterates over as the outermost loop. Each mode triggers a `ModeResolver.resolve()` call to obtain mode-specific configuration. `Provider.init()` is called once per suite before the mode loop, not per mode.
 
 ```yaml
 modes:
@@ -132,6 +132,26 @@ CLI flags take precedence over YAML values. The merge is immutable: `parseProfil
 ```text
 CLI flags > YAML file > defaults
 ```
+
+## Environment Variables
+
+The agent-profiler does **not** read any environment variables for its own configuration. All profiler settings are supplied through the YAML config file and CLI flags. The source code (`loader.ts`, `schema.ts`) contains no `process.env` references.
+
+However, **SessionProvider** implementations (which the profiler calls into) may require environment variables for the underlying agent runtime -- for example, API keys or port overrides. Those variables are documented by each provider, not the profiler itself.
+
+### Configuration Precedence
+
+The profiler resolves values in the following order (highest priority wins):
+
+```text
+CLI flags > YAML config file > schema defaults
+```
+
+1. **Schema defaults** -- `ProfilerConfigSchema` applies Zod `.default()` values for every field in the `execution` and `output` sections (see Defaults Reference below). Only `modes` and `scenarios` are strictly required.
+2. **YAML config file** -- `loadConfig()` parses the file, converts `snake_case` to `camelCase`, and validates through Zod. Any values present override schema defaults.
+3. **CLI flags** -- `parseProfilerFlags()` merges overrides immutably on top of the validated config. A flag only takes effect when explicitly passed; absent flags leave the YAML/default value intact.
+
+There is no environment-variable layer in this precedence chain.
 
 ## Defaults Reference
 

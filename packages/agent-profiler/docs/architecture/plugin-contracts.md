@@ -185,11 +185,11 @@ interface ModeConfig {
 }
 ```
 
-**When called during execution:** Once per mode, before `Provider.init()`.
+**When called during execution:** Once per mode, inside the mode loop (after `Provider.init()` has already run once for the suite).
 
 **Gotchas:**
 
-- `resolve()` is called before `Provider.init()`. The returned `ModeConfig.providerOverrides` are passed into `init()` as part of the provider configuration.
+- `resolve()` is called inside the mode loop, after `Provider.init()` has already completed. The returned `ModeConfig.providerOverrides` are used by the runner to extract the model name and other per-mode settings -- they are not passed into `init()`.
 - `environment` values are set as process-level environment variables for the duration of the mode. They are restored to their previous values (or unset) after the mode completes.
 - Unknown mode names should cause `resolve()` to throw with a descriptive error rather than returning a default configuration silently.
 

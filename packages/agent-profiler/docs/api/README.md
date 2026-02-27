@@ -13,5 +13,5 @@ The `@ghx-dev/agent-profiler` API reference provides detailed documentation for 
 ## Related Documentation
 
 - [Quick Start](../getting-started/quick-start.md)
-- [Architecture Overview](../architecture/plugin-contracts.md)
+- [Architecture Overview](../architecture/overview.md)
 - [Configuration Guide](../guides/configuration.md)

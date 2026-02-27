@@ -76,10 +76,10 @@ The profiler pipeline moves data through five stages:
    - Calls `ModeResolver` to get mode-specific configuration
    - Calls `SessionProvider.createSession` to start an agent session
    - Calls `SessionProvider.prompt` with the scenario prompt and collects a `PromptResult`
-   - Passes the `PromptResult` through each `Collector` to extract `CustomMetrics`
-   - Calls `Scorer` to evaluate checkpoints
-   - Calls `SessionProvider.exportSession` to get a `SessionTrace`
+   - Calls `SessionProvider.exportSession` to get a `SessionTrace` (when session export is enabled or analyzers are registered)
+   - Passes the `PromptResult` and optional trace through each `Collector` to extract `CustomMetrics`
    - Passes the trace through each `Analyzer` to produce findings
+   - Calls `Scorer` to evaluate checkpoints
    - Writes a `ProfileRow` to the JSONL store
 
 4. **Statistical analysis** -- the statistics engine reads all `ProfileRow` records and computes descriptive statistics (mean, median, p90, p95, IQR, CV, stddev), bootstrap confidence intervals, Cohen's d effect sizes, and permutation tests.

@@ -71,10 +71,10 @@ const toolDurationAnalyzer: Analyzer = {
   name: "tool-duration",
 
   async analyze(trace: SessionTrace, _scenario: BaseScenario, _mode: string): Promise<AnalysisResult> {
+    // TraceEvent is a discriminated union on `type`. After filtering for "tool_call",
+    // fields like `name` and `durationMs` are top-level properties on the event.
     const toolEvents = trace.events.filter((e) => e.type === "tool_call")
-    const durations = toolEvents
-      .map((e) => e.data?.durationMs)
-      .filter((d): d is number => typeof d === "number")
+    const durations = toolEvents.map((e) => e.durationMs)
 
     const avgMs = durations.length > 0
       ? durations.reduce((sum, d) => sum + d, 0) / durations.length
@@ -86,12 +86,8 @@ const toolDurationAnalyzer: Analyzer = {
     // Build per-tool breakdown table
     const toolMap = new Map<string, { total: number, count: number }>()
     for (const event of toolEvents) {
-      const name = event.data?.name ?? "unknown"
-      const dur = event.data?.durationMs
-      if (typeof dur === "number") {
-        const existing = toolMap.get(name) ?? { total: 0, count: 0 }
-        toolMap.set(name, { total: existing.total + dur, count: existing.count + 1 })
-      }
+      const existing = toolMap.get(event.name) ?? { total: 0, count: 0 }
+      toolMap.set(event.name, { total: existing.total + event.durationMs, count: existing.count + 1 })
     }
 
     const rows = [...toolMap.entries()].map(([name, stats]) => [

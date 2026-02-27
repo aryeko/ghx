@@ -77,10 +77,14 @@ const scenarioWithExpectation: BaseScenario = {
 }
 ```
 
-The scorer accesses these values via `scenario.extensions`:
+The scorer accesses these values via `scenario.extensions`. Since `extensions` values are `unknown`, narrow the type at runtime before using them:
 
 ```typescript
-const labels = scenario.extensions.expectedLabels as string[]
+const raw = scenario.extensions.expectedLabels
+if (!Array.isArray(raw) || !raw.every((v): v is string => typeof v === "string")) {
+  throw new Error(`Scenario ${scenario.id}: expectedLabels must be a string[]`)
+}
+const labels: readonly string[] = raw
 ```
 
 ### Pattern: Domain Metadata for Collectors
@@ -104,7 +108,7 @@ const scenarioWithMetadata: BaseScenario = {
 }
 ```
 
-Since `extensions` is typed as `Record<string, unknown>`, always narrow the type when reading values. Use explicit type assertions or runtime checks.
+Since `extensions` is typed as `Record<string, unknown>`, always narrow the type at runtime when reading values. Prefer `typeof` / `Array.isArray` checks over `as` casts -- this matches the codebase convention of `unknown` + narrowing over `any`.
 
 ## Scenario Sets
 
@@ -165,9 +169,12 @@ type ScenarioLoader = (ids: readonly string[]) => Promise<readonly BaseScenario[
 
 ### File-Based Loader Example
 
+Use Zod validation (see [Validating Scenarios with Zod](#validating-scenarios-with-zod) below) instead of `as` casts when loading from untrusted sources:
+
 ```typescript
 import { readFile } from "node:fs/promises"
 import type { BaseScenario } from "@ghx-dev/agent-profiler"
+import { BaseScenarioSchema } from "./scenario-schema.js" // see Zod section below
 
 type ScenarioLoader = (ids: readonly string[]) => Promise<readonly BaseScenario[]>
 
@@ -176,8 +183,9 @@ const fileLoader: ScenarioLoader = async (ids) => {
 
   for (const id of ids) {
     const raw = await readFile(`scenarios/${id}.json`, "utf-8")
-    const parsed = JSON.parse(raw) as BaseScenario
-    scenarios.push(parsed)
+    const parsed: unknown = JSON.parse(raw)
+    const validated = BaseScenarioSchema.parse(parsed)
+    scenarios.push(validated)
   }
 
   return scenarios
@@ -186,7 +194,16 @@ const fileLoader: ScenarioLoader = async (ids) => {
 
 ### API-Based Loader Example
 
+Validate the API response through a Zod schema rather than casting the JSON body:
+
 ```typescript
+import { z } from "zod"
+import { BaseScenarioSchema } from "./scenario-schema.js" // see Zod section below
+
+const ApiResponseSchema = z.object({
+  scenarios: z.array(BaseScenarioSchema),
+})
+
 type ScenarioLoader = (ids: readonly string[]) => Promise<readonly BaseScenario[]>
 
 const apiLoader: ScenarioLoader = async (ids) => {
@@ -200,10 +217,82 @@ const apiLoader: ScenarioLoader = async (ids) => {
     throw new Error(`Scenario API returned ${response.status}`)
   }
 
-  const data = (await response.json()) as { scenarios: BaseScenario[] }
+  const json: unknown = await response.json()
+  const data = ApiResponseSchema.parse(json)
   return data.scenarios
 }
 ```
+
+## Validating Scenarios with Zod
+
+The profiler defines `BaseScenario` as a TypeScript interface, not a Zod schema. When loading scenarios from untrusted sources (JSON files, API responses, user input), create a Zod schema to validate at the boundary. This matches the codebase pattern: `ProfilerConfigSchema` validates config files with Zod; apply the same approach to scenarios.
+
+### BaseScenarioSchema
+
+Define a reusable schema that mirrors the `BaseScenario` interface:
+
+```typescript
+import { z } from "zod"
+
+export const BaseScenarioSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  description: z.string(),
+  prompt: z.string().min(1),
+  timeoutMs: z.number().positive(),
+  allowedRetries: z.number().int().min(0),
+  tags: z.array(z.string()),
+  extensions: z.record(z.string(), z.unknown()).default(() => ({})),
+})
+```
+
+The schema enforces the same constraints as the interface: `id`, `name`, and `prompt` must be non-empty strings; `timeoutMs` must be positive; `allowedRetries` must be a non-negative integer. The `extensions` field defaults to an empty object when omitted.
+
+### Using the Schema in a Loader
+
+Pass untrusted data through `BaseScenarioSchema.parse()` instead of casting with `as`:
+
+```typescript
+import { readFile } from "node:fs/promises"
+import { BaseScenarioSchema } from "./scenario-schema.js"
+
+async function loadScenario(id: string) {
+  const raw = await readFile(`scenarios/${id}.json`, "utf-8")
+  const json: unknown = JSON.parse(raw)
+  return BaseScenarioSchema.parse(json) // throws ZodError on invalid data
+}
+```
+
+### Partial Validation with safeParse
+
+When you want to handle validation errors without throwing, use `safeParse`:
+
+```typescript
+const result = BaseScenarioSchema.safeParse(json)
+if (!result.success) {
+  console.error("Invalid scenario:", result.error.format())
+  // handle gracefully -- skip, log, or return a default
+} else {
+  const scenario = result.data
+  // scenario is fully typed as BaseScenario
+}
+```
+
+### Extending the Schema
+
+Add domain-specific fields by extending `BaseScenarioSchema` with `.extend()` or by refining the `extensions` field:
+
+```typescript
+const PRReviewScenarioSchema = BaseScenarioSchema.extend({
+  extensions: z.object({
+    prNumber: z.number().int().positive(),
+    expectedLabels: z.array(z.string()),
+    repo: z.string().min(1),
+  }),
+})
+```
+
+This gives you compile-time types and runtime validation for domain-specific extension data, eliminating the need for manual narrowing in scorers and collectors.
 
 ## Progress Events
 
