@@ -67,7 +67,7 @@ pnpm --filter @ghx-dev/core exec vitest run -t "executeTask"
 
 # By package
 pnpm --filter @ghx-dev/core run test
-pnpm --filter @ghx-dev/benchmark run test
+pnpm --filter @ghx-dev/agent-profiler run test
 ```
 
 ### Git & Commits

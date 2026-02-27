@@ -13,7 +13,7 @@ graph TD
 
   A --> B["🚀 Getting Started"]
   A --> C["🔧 Architecture & Design"]
-  A --> D["📊 Benchmarks"]
+  A --> D["📊 Agent Profiling"]
   A --> E["🤝 Contributing"]
 
   B --> B1["Installation"]
@@ -27,9 +27,9 @@ graph TD
   C --> C4["Adapters"]
   C --> C5["Agent Interface"]
 
-  D --> D1["Benchmarking Methodology"]
-  D --> D2["Running Benchmarks"]
-  D --> D3["Scenario Authoring"]
+  D --> D1["Getting Started"]
+  D --> D2["Architecture"]
+  D --> D3["Guides"]
 
   E --> E1["Code Style & Patterns"]
   E --> E2["Repository Structure"]
@@ -68,13 +68,13 @@ See: **[Contributing Guide](contributing/README.md)**
 - [Code repository structure](architecture/repository-structure.md)
 - [Adding a capability](contributing/adding-a-capability.md) — Step-by-step guide
 
-### I want to understand performance improvements
+### I want to profile agent performance
 
-Check: **[Benchmark Documentation](benchmark/README.md)**
+Check: **[Agent Profiler Documentation](../packages/agent-profiler/docs/README.md)**
 
-- [Benchmarking methodology](benchmark/methodology.md)
-- [How to run benchmarks](benchmark/running-benchmarks.md)
-- [Scenario authoring guide](benchmark/scenario-authoring.md)
+- [Getting started](../packages/agent-profiler/docs/getting-started/README.md) -- Installation, quick start, core concepts
+- [Architecture](../packages/agent-profiler/docs/architecture/README.md) -- System design, plugin contracts, statistics
+- [Guides](../packages/agent-profiler/docs/guides/README.md) -- Implementing providers, scorers, custom plugins
 
 ## Key Facts
 
