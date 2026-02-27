@@ -78,6 +78,25 @@ describe("EvalScenarioSchema", () => {
     expect(result.fixture).toBeUndefined()
   })
 
+  it("rejects field_equals with object value", () => {
+    expect(() =>
+      EvalScenarioSchema.parse({
+        ...validScenario,
+        assertions: {
+          checkpoints: [
+            {
+              id: "cp-1",
+              description: "test",
+              task: "pr.list",
+              input: {},
+              condition: { type: "field_equals", path: "state", value: { nested: true } },
+            },
+          ],
+        },
+      }),
+    ).toThrow()
+  })
+
   it("parses all checkpoint condition types", () => {
     const conditions = [
       { type: "non_empty" },

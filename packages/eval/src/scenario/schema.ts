@@ -10,7 +10,7 @@ import { z } from "zod"
  * - `empty`: Passes when the task result array is empty.
  * - `count_gte`: Passes when the result count is ≥ `value`.
  * - `count_eq`: Passes when the result count equals `value`.
- * - `field_equals`: Passes when `result[path]` deep-equals `value`.
+ * - `field_equals`: Passes when `result[path]` strictly equals `value`. Value must be a primitive (string, number, boolean, or null).
  * - `field_contains`: Passes when `result[path]` contains the `value` substring.
  * - `custom`: Delegates to a named custom scorer function (v2 — not yet implemented).
  */
@@ -22,7 +22,7 @@ const CheckpointConditionSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("field_equals"),
     path: z.string(),
-    value: z.unknown(),
+    value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
   }),
   z.object({
     type: z.literal("field_contains"),
