@@ -1,45 +1,18 @@
 import type { Analyzer } from "@profiler/contracts/analyzer.js"
 import type { BaseScenario } from "@profiler/types/scenario.js"
 import type { AnalysisResult, SessionTrace, TraceEvent } from "@profiler/types/trace.js"
+import { countBacktracking, countRedundant, isToolCall } from "./utils.js"
 
-function isToolCall(e: TraceEvent): e is Extract<TraceEvent, { readonly type: "tool_call" }> {
-  return e.type === "tool_call"
-}
+const EXPLORATORY_UNIQUE_TOOL_THRESHOLD = 5
+const EXPLORATORY_REASONING_DENSITY_THRESHOLD = 0.3
+const DIRECT_MAX_TOOL_CALLS = 5
+const HIGH_ERROR_RATE_THRESHOLD = 20
+const REDUNDANT_CALL_THRESHOLD = 2
+const STRONG_REASONING_DENSITY_THRESHOLD = 0.2
 
 function countUniqueTools(events: readonly TraceEvent[]): number {
   const names = new Set(events.filter(isToolCall).map((e) => e.name))
   return names.size
-}
-
-function countBacktracking(events: readonly TraceEvent[]): number {
-  const toolCalls = events.filter(isToolCall)
-  const seenInputs = new Map<string, string>()
-  let count = 0
-  for (const tc of toolCalls) {
-    const inputStr = JSON.stringify(tc.input)
-    const prev = seenInputs.get(tc.name)
-    if (prev !== undefined && prev !== inputStr) {
-      count += 1
-    }
-    seenInputs.set(tc.name, inputStr)
-  }
-  return count
-}
-
-function countRedundant(events: readonly TraceEvent[]): number {
-  const toolCalls = events.filter(isToolCall)
-  const seen = new Map<string, number>()
-  for (const tc of toolCalls) {
-    const key = `${tc.name}::${JSON.stringify(tc.input)}`
-    seen.set(key, (seen.get(key) ?? 0) + 1)
-  }
-  let total = 0
-  for (const count of seen.values()) {
-    if (count > 1) {
-      total += count - 1
-    }
-  }
-  return total
 }
 
 function computeErrorRate(events: readonly TraceEvent[]): number {
@@ -105,9 +78,12 @@ export const strategyAnalyzer: Analyzer = {
     const reasoningDensity = totalTokens === 0 ? 0 : reasoningTokens / totalTokens
 
     let strategy: string
-    if (uniqueTools > 5 || reasoningDensity > 0.3) {
+    if (
+      uniqueTools > EXPLORATORY_UNIQUE_TOOL_THRESHOLD ||
+      reasoningDensity > EXPLORATORY_REASONING_DENSITY_THRESHOLD
+    ) {
       strategy = "exploratory"
-    } else if (totalToolCalls <= 5 && backtracking === 0) {
+    } else if (totalToolCalls <= DIRECT_MAX_TOOL_CALLS && backtracking === 0) {
       strategy = "direct"
     } else {
       strategy = "iterative"
@@ -117,14 +93,14 @@ export const strategyAnalyzer: Analyzer = {
 
     const notes: string[] = []
     const errorRate = computeErrorRate(trace.events)
-    if (errorRate > 20) {
+    if (errorRate > HIGH_ERROR_RATE_THRESHOLD) {
       notes.push(`High error rate (${errorRate.toFixed(0)}%)`)
     }
     const redundant = countRedundant(trace.events)
-    if (redundant > 2) {
+    if (redundant > REDUNDANT_CALL_THRESHOLD) {
       notes.push("Many redundant calls")
     }
-    if (reasoningDensity > 0.2) {
+    if (reasoningDensity > STRONG_REASONING_DENSITY_THRESHOLD) {
       notes.push("Strong reasoning foundation")
     }
 

@@ -33,7 +33,7 @@ const HEADERS = [
 
 function escapeCsvField(value: string | number | boolean): string {
   const str = String(value)
-  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+  if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
     return `"${str.replace(/"/g, '""')}"`
   }
   return str

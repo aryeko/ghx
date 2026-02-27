@@ -159,7 +159,11 @@ export async function runIteration(params: IterationParams): Promise<{
       } catch (err) {
         lastError = err instanceof Error ? err.message : String(err)
         if (handle) {
-          await provider.destroySession(handle).catch(() => {})
+          await provider.destroySession(handle).catch((destroyErr: unknown) => {
+            logger.warn(
+              `Failed to destroy session during retry cleanup: ${destroyErr instanceof Error ? destroyErr.message : String(destroyErr)}`,
+            )
+          })
           handle = null
         }
         if (attempt < allowedRetries) {
@@ -171,7 +175,7 @@ export async function runIteration(params: IterationParams): Promise<{
     }
 
     if (!promptResult || !handle) {
-      throw new Error(lastError)
+      throw new Error(lastError || "All retry attempts failed with unknown error")
     }
 
     const result: PromptResult = promptResult
@@ -256,7 +260,13 @@ export async function runIteration(params: IterationParams): Promise<{
     return { row: failedRow, trace: null, analysisResults: [] }
   } finally {
     if (handle) {
-      await provider.destroySession(handle)
+      try {
+        await provider.destroySession(handle)
+      } catch (destroyErr) {
+        logger.warn(
+          `Failed to destroy session ${handle.sessionId}: ${destroyErr instanceof Error ? destroyErr.message : String(destroyErr)}`,
+        )
+      }
     }
   }
 }

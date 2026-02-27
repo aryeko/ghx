@@ -1,20 +1,21 @@
 // @ghx-dev/agent-profiler public API
 
+// ── Analyzers ──────────────────────────────────────────────────────────────
 export { efficiencyAnalyzer } from "./analyzer/efficiency-analyzer.js"
 export { errorAnalyzer } from "./analyzer/error-analyzer.js"
-// ── Analyzers ──────────────────────────────────────────────────────────────
 export { reasoningAnalyzer } from "./analyzer/reasoning-analyzer.js"
 export { strategyAnalyzer } from "./analyzer/strategy-analyzer.js"
 export { toolPatternAnalyzer } from "./analyzer/tool-pattern-analyzer.js"
+// ── Collectors ─────────────────────────────────────────────────────────────
 export { CostCollector } from "./collector/cost-collector.js"
 export { LatencyCollector } from "./collector/latency-collector.js"
-// ── Collectors ─────────────────────────────────────────────────────────────
 export { TokenCollector } from "./collector/token-collector.js"
 export { ToolCallCollector } from "./collector/tool-call-collector.js"
 // ── Config ─────────────────────────────────────────────────────────────────
 export { loadConfig, PROFILER_FLAGS, parseProfilerFlags } from "./config/loader.js"
 export type { ProfilerConfig } from "./config/schema.js"
 export { ProfilerConfigSchema } from "./config/schema.js"
+// ── Contracts ──────────────────────────────────────────────────────────────
 export type { Analyzer } from "./contracts/analyzer.js"
 export type { Collector } from "./contracts/collector.js"
 export type {
@@ -24,7 +25,6 @@ export type {
   RunHooks,
 } from "./contracts/hooks.js"
 export type { ModeConfig, ModeResolver } from "./contracts/mode-resolver.js"
-// ── Contracts ──────────────────────────────────────────────────────────────
 export type {
   CreateSessionParams,
   PermissionConfig,
@@ -39,12 +39,13 @@ export type {
   ScorerContext,
   ScorerResult,
 } from "./contracts/scorer.js"
-export type { ReportOptions } from "./reporter/orchestrator.js"
 // ── Reporter ───────────────────────────────────────────────────────────────
+export type { ReportOptions } from "./reporter/orchestrator.js"
 export { generateReport } from "./reporter/orchestrator.js"
-export type { ProfileSuiteOptions, ProfileSuiteResult } from "./runner/profile-runner.js"
 // ── Runner ─────────────────────────────────────────────────────────────────
+export type { ProfileSuiteOptions, ProfileSuiteResult } from "./runner/profile-runner.js"
 export { runProfileSuite } from "./runner/profile-runner.js"
+// ── Shared ─────────────────────────────────────────────────────────────────
 export {
   DEFAULT_BOOTSTRAP_RESAMPLES,
   DEFAULT_CONFIDENCE_LEVEL,
@@ -58,13 +59,12 @@ export {
   DEFAULT_WARMUP,
 } from "./shared/constants.js"
 export type { Logger, LogLevel } from "./shared/logger.js"
-// ── Shared ─────────────────────────────────────────────────────────────────
 export { createLogger } from "./shared/logger.js"
+// ── Statistics ─────────────────────────────────────────────────────────────
 export type { BootstrapCIOptions } from "./stats/bootstrap.js"
 export { bootstrapCI, bootstrapReductionCI } from "./stats/bootstrap.js"
 export type { CompareGroupsOptions, PermutationTestOptions } from "./stats/comparison.js"
 export { cohensD, compareGroups, permutationTest } from "./stats/comparison.js"
-// ── Statistics ─────────────────────────────────────────────────────────────
 export { computeDescriptive } from "./stats/descriptive.js"
 // ── Store ──────────────────────────────────────────────────────────────────
 export {

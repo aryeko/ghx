@@ -1,10 +1,7 @@
 import type { Analyzer } from "@profiler/contracts/analyzer.js"
 import type { BaseScenario } from "@profiler/types/scenario.js"
 import type { AnalysisResult, SessionTrace, TraceEvent } from "@profiler/types/trace.js"
-
-function isToolCall(e: TraceEvent): e is Extract<TraceEvent, { readonly type: "tool_call" }> {
-  return e.type === "tool_call"
-}
+import { countBacktracking, isToolCall } from "./utils.js"
 
 function countProductiveTurns(trace: SessionTrace): number {
   let count = 0
@@ -38,23 +35,6 @@ function countDuplicateToolCalls(events: readonly TraceEvent[]): {
   return { duplicates, total }
 }
 
-function countBacktrackingEvents(events: readonly TraceEvent[]): number {
-  const toolCalls = events.filter(isToolCall)
-  const seenInputs = new Map<string, string>()
-  let backtracking = 0
-
-  for (const tc of toolCalls) {
-    const inputStr = JSON.stringify(tc.input)
-    const previousInput = seenInputs.get(tc.name)
-    if (previousInput !== undefined && previousInput !== inputStr) {
-      backtracking += 1
-    }
-    seenInputs.set(tc.name, inputStr)
-  }
-
-  return backtracking
-}
-
 /**
  * Analyzer that measures session efficiency in terms of turn productivity and information redundancy.
  *
@@ -78,7 +58,7 @@ export const efficiencyAnalyzer: Analyzer = {
     const { duplicates, total } = countDuplicateToolCalls(trace.events)
     const redundancy = total === 0 ? 0 : duplicates / total
 
-    const backtracking = countBacktrackingEvents(trace.events)
+    const backtracking = countBacktracking(trace.events)
 
     return {
       analyzer: "efficiency",

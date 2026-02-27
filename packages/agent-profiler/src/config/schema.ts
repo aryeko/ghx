@@ -19,10 +19,12 @@ import {
  */
 export const ProfilerConfigSchema = z.object({
   modes: z.array(z.string()).min(1),
-  scenarios: z.object({
-    set: z.string().optional(),
-    ids: z.array(z.string()).optional(),
-  }),
+  scenarios: z
+    .object({
+      set: z.string().optional(),
+      ids: z.array(z.string()).optional(),
+    })
+    .strict(),
   execution: z
     .object({
       repetitions: z.number().int().positive().default(DEFAULT_REPETITIONS),
@@ -30,6 +32,7 @@ export const ProfilerConfigSchema = z.object({
       timeoutDefaultMs: z.number().positive().default(DEFAULT_TIMEOUT_MS),
       allowedRetries: z.number().int().min(0).default(DEFAULT_ALLOWED_RETRIES),
     })
+    .strict()
     .default({}),
   output: z
     .object({
@@ -38,6 +41,7 @@ export const ProfilerConfigSchema = z.object({
       sessionExport: z.boolean().default(DEFAULT_SESSION_EXPORT),
       logLevel: z.enum(["debug", "info", "warn", "error"]).default(DEFAULT_LOG_LEVEL),
     })
+    .strict()
     .default({}),
   extensions: z.record(z.unknown()).default({}),
 })

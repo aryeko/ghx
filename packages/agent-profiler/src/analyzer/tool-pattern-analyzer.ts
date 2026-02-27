@@ -1,10 +1,7 @@
 import type { Analyzer } from "@profiler/contracts/analyzer.js"
 import type { BaseScenario } from "@profiler/types/scenario.js"
 import type { AnalysisResult, SessionTrace, TraceEvent } from "@profiler/types/trace.js"
-
-function isToolCall(e: TraceEvent): e is Extract<TraceEvent, { readonly type: "tool_call" }> {
-  return e.type === "tool_call"
-}
+import { isToolCall } from "./utils.js"
 
 function computeBigrams(toolNames: readonly string[]): ReadonlyMap<string, number> {
   const counts = new Map<string, number>()

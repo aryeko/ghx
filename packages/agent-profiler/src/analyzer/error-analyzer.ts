@@ -66,6 +66,8 @@ function computeRecoveryPatterns(events: readonly TraceEvent[]): ReadonlyMap<str
     } else if (next.type === "tool_call") {
       if (currentName !== undefined && next.name === currentName) {
         patterns.set("retry", (patterns.get("retry") ?? 0) + 1)
+      } else if (currentName === undefined) {
+        patterns.set("tool_followup", (patterns.get("tool_followup") ?? 0) + 1)
       } else {
         patterns.set("alternative", (patterns.get("alternative") ?? 0) + 1)
       }

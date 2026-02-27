@@ -31,8 +31,22 @@ function preprocessKeys(obj: unknown): unknown {
  * @returns The validated and fully defaulted ProfilerConfig.
  */
 export async function loadConfig(yamlPath: string): Promise<ProfilerConfig> {
-  const content = await readFile(yamlPath, "utf-8")
-  const raw = yaml.load(content)
+  let content: string
+  try {
+    content = await readFile(yamlPath, "utf-8")
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    throw new Error(`Failed to read config file "${yamlPath}": ${message}`)
+  }
+
+  let raw: unknown
+  try {
+    raw = yaml.load(content)
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    throw new Error(`Failed to parse YAML in "${yamlPath}": ${message}`)
+  }
+
   const preprocessed = preprocessKeys(raw)
   return ProfilerConfigSchema.parse(preprocessed) as ProfilerConfig
 }
@@ -48,8 +62,6 @@ export const PROFILER_FLAGS = {
   "--repetitions": "Override repetition count",
   "--retries": "Override allowed retries per iteration",
   "--skip-warmup": "Skip warmup canary",
-  "--output-jsonl": "Write raw JSONL to specific file",
-  "--dry-run": "Show what would be executed without running",
 } as const
 
 /**
@@ -92,18 +104,30 @@ export function parseProfilerFlags(argv: readonly string[], base: ProfilerConfig
           i++
         }
         break
-      case "--repetitions":
-        if (next) {
-          repetitions = Number.parseInt(next, 10)
-          i++
+      case "--repetitions": {
+        if (!next || next.startsWith("--")) {
+          throw new Error("--repetitions requires a numeric value")
         }
-        break
-      case "--retries":
-        if (next) {
-          allowedRetries = Number.parseInt(next, 10)
-          i++
+        const parsedReps = Number.parseInt(next, 10)
+        if (Number.isNaN(parsedReps)) {
+          throw new Error(`--repetitions received invalid number: ${next}`)
         }
+        repetitions = parsedReps
+        i++
         break
+      }
+      case "--retries": {
+        if (!next || next.startsWith("--")) {
+          throw new Error("--retries requires a numeric value")
+        }
+        const parsedRetries = Number.parseInt(next, 10)
+        if (Number.isNaN(parsedRetries)) {
+          throw new Error(`--retries received invalid number: ${next}`)
+        }
+        allowedRetries = parsedRetries
+        i++
+        break
+      }
       case "--skip-warmup":
         skipWarmup = true
         break

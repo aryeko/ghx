@@ -12,7 +12,7 @@ export function makeSessionHandle(overrides?: Partial<SessionHandle>): SessionHa
   return {
     sessionId: "ses_test_001",
     provider: "mock-provider",
-    createdAt: new Date().toISOString(),
+    createdAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
   }
 }

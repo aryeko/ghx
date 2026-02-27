@@ -144,4 +144,15 @@ describe("runProfileSuite", () => {
 
     expect(provider.calls.shutdown?.length ?? 0).toBe(1)
   })
+
+  it("calls provider.shutdown even when the main loop throws", async () => {
+    const { appendJsonlLine } = await import("@profiler/store/jsonl-store.js")
+    vi.mocked(appendJsonlLine).mockRejectedValueOnce(new Error("disk write failed"))
+
+    const provider = createMockProvider()
+    const options = makeOptions({ provider })
+
+    await expect(runProfileSuite(options)).rejects.toThrow("disk write failed")
+    expect(provider.calls.shutdown?.length ?? 0).toBe(1)
+  })
 })

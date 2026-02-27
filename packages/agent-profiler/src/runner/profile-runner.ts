@@ -86,6 +86,13 @@ export async function runProfileSuite(options: ProfileSuiteOptions): Promise<Pro
     logLevel,
   } = options
 
+  if (repetitions < 1) {
+    throw new Error(`repetitions must be >= 1, got ${repetitions}`)
+  }
+  if (allowedRetries < 0) {
+    throw new Error(`allowedRetries must be >= 0, got ${allowedRetries}`)
+  }
+
   const runId = `run_${Date.now()}`
   const logger = createLogger(logLevel)
   const suiteStart = Date.now()
@@ -105,68 +112,70 @@ export async function runProfileSuite(options: ProfileSuiteOptions): Promise<Pro
     workdir: "",
   })
 
-  if (warmup && scenarios.length > 0 && modes.length > 0) {
-    const firstMode = modes[0]
-    const firstScenario = scenarios[0]
-    if (firstMode && firstScenario) {
-      const modeConfig = await modeResolver.resolve(firstMode)
-      await runWarmup(provider, firstScenario, modeConfig.systemInstructions, logger)
-    }
-  }
-
-  for (const mode of modes) {
-    const modeConfig = await modeResolver.resolve(mode)
-
-    if (hooks.beforeMode) {
-      await hooks.beforeMode(mode)
-    }
-
-    for (const scenario of scenarios) {
-      for (let rep = 0; rep < repetitions; rep++) {
-        logger.info(`[${mode}] ${scenario.id} iteration ${rep + 1}/${repetitions}`)
-
-        const { row, analysisResults } = await runIteration({
-          provider,
-          scorer,
-          collectors,
-          analyzers,
-          hooks,
-          scenario,
-          mode,
-          model: (modeConfig.providerOverrides["model"] as string) ?? "",
-          iteration: rep,
-          runId,
-          systemInstructions: modeConfig.systemInstructions,
-          sessionExport,
-          allowedRetries,
-          logger,
-        })
-
-        if (analysisResults.length > 0) {
-          allAnalysisBundles.push({
-            sessionId: row.sessionId,
-            scenarioId: scenario.id,
-            mode,
-            model: row.model,
-            results: Object.fromEntries(analysisResults.map((r) => [r.analyzer, r])),
-          })
-        }
-
-        await appendJsonlLine(outputJsonlPath, row)
-        rows.push(row)
+  try {
+    if (warmup && scenarios.length > 0 && modes.length > 0) {
+      const firstMode = modes[0]
+      const firstScenario = scenarios[0]
+      if (firstMode && firstScenario) {
+        const modeConfig = await modeResolver.resolve(firstMode)
+        await runWarmup(provider, firstScenario, modeConfig.systemInstructions, logger)
       }
     }
 
-    if (hooks.afterMode) {
-      await hooks.afterMode(mode)
+    for (const mode of modes) {
+      const modeConfig = await modeResolver.resolve(mode)
+
+      if (hooks.beforeMode) {
+        await hooks.beforeMode(mode)
+      }
+
+      for (const scenario of scenarios) {
+        for (let rep = 0; rep < repetitions; rep++) {
+          logger.info(`[${mode}] ${scenario.id} iteration ${rep + 1}/${repetitions}`)
+
+          const { row, analysisResults } = await runIteration({
+            provider,
+            scorer,
+            collectors,
+            analyzers,
+            hooks,
+            scenario,
+            mode,
+            model: (modeConfig.providerOverrides["model"] as string) ?? "",
+            iteration: rep,
+            runId,
+            systemInstructions: modeConfig.systemInstructions,
+            sessionExport,
+            allowedRetries,
+            logger,
+          })
+
+          if (analysisResults.length > 0) {
+            allAnalysisBundles.push({
+              sessionId: row.sessionId,
+              scenarioId: scenario.id,
+              mode,
+              model: row.model,
+              results: Object.fromEntries(analysisResults.map((r) => [r.analyzer, r])),
+            })
+          }
+
+          await appendJsonlLine(outputJsonlPath, row)
+          rows.push(row)
+        }
+      }
+
+      if (hooks.afterMode) {
+        await hooks.afterMode(mode)
+      }
     }
-  }
 
-  if (hooks.afterRun) {
-    await hooks.afterRun({ runId, modes, scenarios, repetitions })
+    if (hooks.afterRun) {
+      await hooks.afterRun({ runId, modes, scenarios, repetitions })
+    }
+  } finally {
+    await provider.shutdown()
   }
-
-  await provider.shutdown()
 
   const durationMs = Date.now() - suiteStart
   return { runId, rows, durationMs, outputJsonlPath, analysisResults: allAnalysisBundles }

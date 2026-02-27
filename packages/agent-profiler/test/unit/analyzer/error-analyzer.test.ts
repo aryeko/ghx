@@ -116,9 +116,10 @@ describe("error-analyzer", () => {
     expect(rowMap.get("unknown")).toBe("1")
   })
 
-  it("detects recovery patterns: retry, alternative, give_up", async () => {
+  it("detects recovery patterns: retry, alternative, tool_followup, give_up", async () => {
     const trace = makeSessionTrace({
       events: [
+        // retry: failed bash → bash again
         {
           type: "tool_call",
           name: "bash",
@@ -136,7 +137,16 @@ describe("error-analyzer", () => {
           durationMs: 50,
           success: true,
         },
-        { type: "error", message: "something broke", recoverable: true },
+        // alternative: failed tool_call → different tool_call
+        {
+          type: "tool_call",
+          name: "bash",
+          input: "rm -rf",
+          output: "",
+          durationMs: 50,
+          success: false,
+          error: "permission denied",
+        },
         {
           type: "tool_call",
           name: "read_file",
@@ -145,6 +155,17 @@ describe("error-analyzer", () => {
           durationMs: 30,
           success: true,
         },
+        // tool_followup: error (non-tool_call) → tool_call
+        { type: "error", message: "something broke", recoverable: true },
+        {
+          type: "tool_call",
+          name: "read_file",
+          input: "g.ts",
+          output: "code",
+          durationMs: 30,
+          success: true,
+        },
+        // give_up: error with no next event
         { type: "error", message: "final error", recoverable: false },
       ],
     })
@@ -157,6 +178,7 @@ describe("error-analyzer", () => {
     const recMap = new Map(recTable.rows.map((r) => [r[0], r[1]]))
     expect(recMap.get("retry")).toBe("1")
     expect(recMap.get("alternative")).toBe("1")
+    expect(recMap.get("tool_followup")).toBe("1")
     expect(recMap.get("give_up")).toBe("1")
   })
 

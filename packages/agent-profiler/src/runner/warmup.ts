@@ -25,7 +25,13 @@ export async function runWarmup(
     try {
       await provider.prompt(handle, scenario.prompt, scenario.timeoutMs)
     } finally {
-      await provider.destroySession(handle)
+      try {
+        await provider.destroySession(handle)
+      } catch (destroyErr) {
+        logger.warn(
+          `Failed to destroy warmup session: ${destroyErr instanceof Error ? destroyErr.message : String(destroyErr)}`,
+        )
+      }
     }
     const durationMs = Date.now() - start
     logger.info(`Warmup completed in ${durationMs}ms`)
