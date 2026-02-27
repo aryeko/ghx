@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises"
+import { join } from "node:path"
 import { GhxCollector } from "@eval/collector/ghx-collector.js"
 import { loadEvalConfig } from "@eval/config/loader.js"
 import type { EvalConfig } from "@eval/config/schema.js"
@@ -90,12 +91,15 @@ export async function run(argv: readonly string[]): Promise<void> {
   if (hasFlag(argv, "--dry-run")) {
     console.log("eval run --dry-run: resolved config:")
     console.log(JSON.stringify(config, null, 2))
-    const scenarios = await loadEvalScenarios(process.cwd(), config.scenarios.ids)
+    const scenarios = await loadEvalScenarios(
+      join(process.cwd(), "scenarios"),
+      config.scenarios.ids,
+    )
     console.log(`Scenarios: ${scenarios.length}`)
     return
   }
 
-  const scenarios = await loadEvalScenarios(process.cwd(), config.scenarios.ids)
+  const scenarios = await loadEvalScenarios(join(process.cwd(), "scenarios"), config.scenarios.ids)
 
   const fixtureManager = new FixtureManager({
     repo: config.fixtures.repo,
