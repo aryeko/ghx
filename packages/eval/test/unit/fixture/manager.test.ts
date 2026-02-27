@@ -6,9 +6,15 @@ vi.mock("@eval/fixture/manifest.js", () => ({
   writeFixtureManifest: vi.fn(),
 }))
 
+vi.mock("@eval/fixture/seeders/index.js", () => ({
+  getSeeder: vi.fn(),
+  registerSeeder: vi.fn(),
+}))
+
 import { FixtureManager } from "@eval/fixture/manager.js"
 import type { FixtureManifest } from "@eval/fixture/manifest.js"
-import { loadFixtureManifest } from "@eval/fixture/manifest.js"
+import { loadFixtureManifest, writeFixtureManifest } from "@eval/fixture/manifest.js"
+import { getSeeder } from "@eval/fixture/seeders/index.js"
 
 const mockLoadManifest = vi.mocked(loadFixtureManifest)
 
@@ -211,20 +217,139 @@ describe("FixtureManager.reset()", () => {
 })
 
 describe("FixtureManager.seed()", () => {
-  it("throws not implemented", async () => {
+  it("collects unique fixture.requires and seeds each", async () => {
+    const mockSeeder = {
+      type: "pr",
+      seed: vi.fn().mockResolvedValue({
+        type: "pr",
+        number: 42,
+        repo: "owner/repo",
+        branch: "bench-fixture/pr_with_changes-123",
+        labels: ["bench-fixture"],
+        metadata: { originalSha: "abc123" },
+      }),
+    }
+    vi.mocked(getSeeder).mockReturnValue(mockSeeder)
+
     const manager = new FixtureManager({
-      repo: "aryeko/ghx-bench-fixtures",
+      repo: "owner/repo",
       manifest: "fixtures/latest.json",
+      seedId: "test-seed",
     })
-    await expect(manager.seed(["scenario-001"])).rejects.toThrow("not yet implemented")
+
+    const scenarios = [
+      {
+        id: "sc-001",
+        fixture: {
+          requires: ["pr_with_changes"],
+          repo: "owner/repo",
+          bindings: {},
+          reseedPerIteration: false,
+        },
+      },
+      {
+        id: "sc-002",
+        fixture: {
+          requires: ["pr_with_changes"],
+          repo: "owner/repo",
+          bindings: {},
+          reseedPerIteration: false,
+        },
+      },
+    ]
+
+    await manager.seed(scenarios)
+
+    // pr_with_changes appears twice but should only be seeded once
+    expect(mockSeeder.seed).toHaveBeenCalledTimes(1)
+    expect(writeFixtureManifest).toHaveBeenCalledWith(
+      "fixtures/latest.json",
+      expect.objectContaining({
+        seedId: "test-seed",
+        repo: "owner/repo",
+      }),
+    )
   })
 
-  it("throws not implemented even for empty array", async () => {
+  it("uses default seedId when not provided", async () => {
+    const mockSeeder = {
+      type: "pr",
+      seed: vi.fn().mockResolvedValue({
+        type: "pr",
+        number: 1,
+        repo: "owner/repo",
+        metadata: {},
+      }),
+    }
+    vi.mocked(getSeeder).mockReturnValue(mockSeeder)
+
     const manager = new FixtureManager({
-      repo: "aryeko/ghx-bench-fixtures",
+      repo: "owner/repo",
       manifest: "fixtures/latest.json",
     })
-    await expect(manager.seed([])).rejects.toThrow("not yet implemented")
+
+    await manager.seed([
+      {
+        id: "sc-001",
+        fixture: {
+          requires: ["pr_test"],
+          repo: "owner/repo",
+          bindings: {},
+          reseedPerIteration: false,
+        },
+      },
+    ])
+
+    expect(writeFixtureManifest).toHaveBeenCalledWith(
+      "fixtures/latest.json",
+      expect.objectContaining({ seedId: "default" }),
+    )
+  })
+
+  it("skips scenarios without fixture requirements", async () => {
+    const manager = new FixtureManager({
+      repo: "owner/repo",
+      manifest: "fixtures/latest.json",
+    })
+
+    await manager.seed([{ id: "sc-001" }])
+
+    expect(writeFixtureManifest).toHaveBeenCalledWith(
+      "fixtures/latest.json",
+      expect.objectContaining({ fixtures: {} }),
+    )
+  })
+
+  it("resolves seeder type from fixture name prefix", async () => {
+    const mockPrSeeder = {
+      type: "pr",
+      seed: vi.fn().mockResolvedValue({ type: "pr", number: 1, repo: "r", metadata: {} }),
+    }
+    const mockIssueSeeder = {
+      type: "issue",
+      seed: vi.fn().mockResolvedValue({ type: "issue", number: 2, repo: "r", metadata: {} }),
+    }
+    vi.mocked(getSeeder).mockImplementation((type) => {
+      if (type === "pr") return mockPrSeeder
+      if (type === "issue") return mockIssueSeeder
+      throw new Error(`Unknown: ${type}`)
+    })
+
+    const manager = new FixtureManager({ repo: "r", manifest: "m.json" })
+    await manager.seed([
+      {
+        id: "sc-001",
+        fixture: {
+          requires: ["pr_with_changes", "issue_for_triage"],
+          repo: "r",
+          bindings: {},
+          reseedPerIteration: false,
+        },
+      },
+    ])
+
+    expect(getSeeder).toHaveBeenCalledWith("pr")
+    expect(getSeeder).toHaveBeenCalledWith("issue")
   })
 })
 
