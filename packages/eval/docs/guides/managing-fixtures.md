@@ -1,12 +1,12 @@
 # Managing Fixtures
 
-How to seed, verify, reset, and clean up GitHub test fixtures for reproducible evaluations.
+How to seed, verify, and clean up GitHub test fixtures for reproducible evaluations.
 
 ## Overview
 
 Fixtures are managed GitHub resources -- PRs, issues, branches, labels -- in a dedicated benchmark repository. They provide identical starting conditions for every evaluation iteration across all three modes (ghx, mcp, baseline).
 
-Fixture lifecycle: **seed** (create resources) -> **status** (verify they exist) -> **reset** (restore state between iterations) -> **cleanup** (remove after evaluation).
+Fixture lifecycle: **seed** (create resources) -> **status** (verify they exist) -> **cleanup** (remove after evaluation). Reset between iterations is handled automatically by internal hooks.
 
 ## Fixture Manifest
 
@@ -80,9 +80,9 @@ pnpm --filter @ghx-dev/eval run eval fixture status
 
 Output reports each fixture as OK, MISSING, or STALE, with a summary line (e.g. `5/5 fixtures healthy`).
 
-## Resetting Between Iterations
+## Automatic Reset Between Iterations
 
-For scenarios with `reseedPerIteration: true`, fixtures are automatically reset before each iteration via the `beforeScenario` RunHook. The reset:
+For scenarios with `reseedPerIteration: true`, fixtures are automatically reset before each iteration via the `beforeScenario` RunHook. There is no user-facing CLI command for reset -- it is an internal lifecycle hook. The reset:
 
 1. Force-pushes the branch to its original SHA (reverts agent commits)
    - Retries up to 3 attempts with 1-second delays on transient failures
@@ -90,12 +90,6 @@ For scenarios with `reseedPerIteration: true`, fixtures are automatically reset 
 2. Deletes extra comments and reviews added by the agent
    - Batched GraphQL mutations (up to 10 deletions per request)
 3. Verifies the fixture is back to its original state
-
-Manual reset:
-
-```bash
-pnpm --filter @ghx-dev/eval run eval fixture reset
-```
 
 Reset overhead is approximately 3 seconds per fixture. For a run with 5 repetitions across 3 modes, that is ~45 seconds of fixture overhead per scenario with `reseedPerIteration: true`.
 

@@ -32,7 +32,6 @@ Options:
   --scenario <id>          Override scenarios (repeatable)
   --scenario-set <name>    Override scenario set
   --repetitions <n>        Override repetition count
-  --retries <n>            Override allowed retries per iteration
   --skip-warmup            Skip warmup canary
   --output-jsonl <path>    Write raw JSONL to specific file
   --seed-if-missing        Auto-seed fixtures if manifest not found
