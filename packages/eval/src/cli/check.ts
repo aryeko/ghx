@@ -62,7 +62,7 @@ export async function check(argv: readonly string[]): Promise<void> {
 
   if (hasConfig || hasAll) {
     const configPathValue = parseFlag(argv, "--config")
-    const configPath = configPathValue !== null ? configPathValue : "eval.config.yaml"
+    const configPath = configPathValue !== null ? configPathValue : "config/eval.config.yaml"
     console.log("Checking config:")
     const valid = await checkConfig(configPath)
     if (!valid) allValid = false

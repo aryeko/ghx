@@ -70,7 +70,9 @@ describe("check command", () => {
 
       await checkFn(["--config"])
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("✓ eval.config.yaml"))
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining("✓ config/eval.config.yaml"),
+      )
     })
 
     it("validates config file from specified --config path", async () => {
@@ -89,7 +91,9 @@ describe("check command", () => {
 
       await expect(checkFn(["--config"])).rejects.toThrow("process.exit(1)")
 
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("✗ eval.config.yaml"))
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining("✗ config/eval.config.yaml"),
+      )
       expect(processExitSpy).toHaveBeenCalledWith(1)
     })
   })
