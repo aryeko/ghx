@@ -1,5 +1,6 @@
 import { readdir, readFile } from "node:fs/promises"
 import { join } from "node:path"
+import { z } from "zod"
 import { bindFixtureVariables, type FixtureBindings } from "./fixture-binder.js"
 import { type EvalScenario, EvalScenarioSchema } from "./schema.js"
 
@@ -93,14 +94,17 @@ export async function loadEvalScenarios(
  * console.log(sets["smoke"]) // ["pr-fix-001", "issue-close-001"]
  * ```
  */
+const ScenarioSetsSchema = z.record(z.string(), z.array(z.string()))
+
 export async function loadScenarioSets(
   scenariosDir: string,
 ): Promise<Readonly<Record<string, readonly string[]>>> {
   const filePath = join(scenariosDir, "scenario-sets.json")
+  let content: string
   try {
-    const content = await readFile(filePath, "utf-8")
-    return JSON.parse(content) as Record<string, readonly string[]>
+    content = await readFile(filePath, "utf-8")
   } catch {
     return {}
   }
+  return ScenarioSetsSchema.parse(JSON.parse(content) as unknown)
 }

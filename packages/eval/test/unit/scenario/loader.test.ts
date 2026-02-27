@@ -90,4 +90,9 @@ describe("loadScenarioSets", () => {
     const sets = await loadScenarioSets(tmpDir)
     expect(sets).toEqual({})
   })
+
+  it("throws when scenario-sets.json has invalid shape", async () => {
+    await writeFile(join(tmpDir, "scenario-sets.json"), JSON.stringify({ default: "not-an-array" }))
+    await expect(loadScenarioSets(tmpDir)).rejects.toThrow()
+  })
 })
