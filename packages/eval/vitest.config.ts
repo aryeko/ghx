@@ -11,6 +11,10 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text-summary", "lcov"],
       include: ["src/**/*.ts"],
+      exclude: [
+        // SDK-dependent provider — integration tested only, no unit test
+        "src/provider/opencode-provider.ts",
+      ],
       thresholds: {
         lines: 90,
         functions: 90,
