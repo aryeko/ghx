@@ -99,5 +99,6 @@ describe("generateReport", () => {
     // Should not contain "No session analysis data available" since we passed bundles
     const content = String(analysisCall?.[1] ?? "")
     expect(content).toContain("# Session Analysis")
+    expect(content).not.toContain("No session analysis data available")
   })
 })

@@ -87,30 +87,33 @@ export function parseProfilerFlags(argv: readonly string[], base: ProfilerConfig
     const next = argv[i + 1]
     switch (arg) {
       case "--mode":
-        if (next) {
-          modes.push(next)
-          i++
+        if (!next || next.startsWith("--")) {
+          throw new Error("--mode requires a value")
         }
+        modes.push(next)
+        i++
         break
       case "--scenario":
-        if (next) {
-          scenarioIds.push(next)
-          i++
+        if (!next || next.startsWith("--")) {
+          throw new Error("--scenario requires a value")
         }
+        scenarioIds.push(next)
+        i++
         break
       case "--scenario-set":
-        if (next) {
-          scenarioSet = next
-          i++
+        if (!next || next.startsWith("--")) {
+          throw new Error("--scenario-set requires a value")
         }
+        scenarioSet = next
+        i++
         break
       case "--repetitions": {
         if (!next || next.startsWith("--")) {
           throw new Error("--repetitions requires a numeric value")
         }
         const parsedReps = Number.parseInt(next, 10)
-        if (Number.isNaN(parsedReps)) {
-          throw new Error(`--repetitions received invalid number: ${next}`)
+        if (Number.isNaN(parsedReps) || parsedReps < 1) {
+          throw new Error(`--repetitions requires a positive integer, got: ${next}`)
         }
         repetitions = parsedReps
         i++
@@ -121,8 +124,8 @@ export function parseProfilerFlags(argv: readonly string[], base: ProfilerConfig
           throw new Error("--retries requires a numeric value")
         }
         const parsedRetries = Number.parseInt(next, 10)
-        if (Number.isNaN(parsedRetries)) {
-          throw new Error(`--retries received invalid number: ${next}`)
+        if (Number.isNaN(parsedRetries) || parsedRetries < 0) {
+          throw new Error(`--retries requires a non-negative integer, got: ${next}`)
         }
         allowedRetries = parsedRetries
         i++

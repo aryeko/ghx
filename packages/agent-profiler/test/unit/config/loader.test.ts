@@ -142,4 +142,38 @@ describe("parseProfilerFlags", () => {
     expect(result.execution.warmup).toBe(false)
     expect(result.scenarios.set).toBe("minimal")
   })
+
+  it("throws when --mode is missing a value", () => {
+    expect(() => parseProfilerFlags(["--mode"], baseConfig)).toThrow("--mode requires a value")
+    expect(() => parseProfilerFlags(["--mode", "--skip-warmup"], baseConfig)).toThrow(
+      "--mode requires a value",
+    )
+  })
+
+  it("throws when --scenario is missing a value", () => {
+    expect(() => parseProfilerFlags(["--scenario"], baseConfig)).toThrow(
+      "--scenario requires a value",
+    )
+  })
+
+  it("throws when --scenario-set is missing a value", () => {
+    expect(() => parseProfilerFlags(["--scenario-set"], baseConfig)).toThrow(
+      "--scenario-set requires a value",
+    )
+  })
+
+  it("throws when --repetitions is zero or negative", () => {
+    expect(() => parseProfilerFlags(["--repetitions", "0"], baseConfig)).toThrow(
+      "--repetitions requires a positive integer",
+    )
+    expect(() => parseProfilerFlags(["--repetitions", "-1"], baseConfig)).toThrow(
+      "--repetitions requires a positive integer",
+    )
+  })
+
+  it("throws when --retries is negative", () => {
+    expect(() => parseProfilerFlags(["--retries", "-1"], baseConfig)).toThrow(
+      "--retries requires a non-negative integer",
+    )
+  })
 })
