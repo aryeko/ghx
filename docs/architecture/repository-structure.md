@@ -4,7 +4,7 @@ This document provides a comprehensive overview of the ghx repository layout, mo
 
 ## Workspace Structure
 
-`ghx` is an Nx + pnpm monorepo with two runtime packages plus supporting tooling:
+`ghx` is an Nx + pnpm monorepo with two packages plus supporting tooling:
 
 ```text
 ghx/
@@ -41,18 +41,20 @@ ghx/
 │   │   ├── scripts/            # Build-time scripts
 │   │   ├── test/               # Tests
 │   │   └── tsup.config.ts      # Build config
-│   └── benchmark/              # @ghx-dev/benchmark (private)
+│   └── agent-profiler/          # @ghx-dev/agent-profiler (private)
 │       ├── src/
-│       │   ├── cli/            # Benchmark CLI entrypoints
-│       │   ├── domain/         # Types & contracts
-│       │   ├── extract/        # Envelope & tool extraction
-│       │   ├── report/         # Reporting & gates
-│       │   ├── runner/         # Scenario execution orchestrator
-│       │   └── scenario/       # Scenario schema & loading
-│       ├── scenarios/          # Benchmark test scenarios
-│       ├── results/            # Benchmark output files
-│       ├── reports/            # Generated reports
-│       ├── test/               # Tests
+│       │   ├── analyzer/       # Built-in analyzers (5)
+│       │   ├── collector/      # Built-in collectors (4)
+│       │   ├── config/         # Config schema & YAML loader
+│       │   ├── contracts/      # Plugin contracts (6)
+│       │   ├── reporter/       # Report generation (Markdown, CSV, JSON)
+│       │   ├── runner/         # Profile runner & iteration lifecycle
+│       │   ├── shared/         # Logger & constants
+│       │   ├── stats/          # Statistics engine (descriptive, bootstrap, comparison)
+│       │   ├── store/          # JSONL store & run manifests
+│       │   └── types/          # Core type definitions
+│       ├── docs/               # Package documentation
+│       ├── test/               # Tests (unit + integration)
 │       └── tsup.config.ts      # Build config
 ├── nx.json                     # Nx configuration
 ├── package.json                # Root package and workspace scripts
@@ -177,35 +179,60 @@ ghx/
 |------|---------|
 | `index.ts` | Public npm package API |
 
-## Benchmark Package Modules
+## Agent Profiler Package Modules
 
-`packages/benchmark/src` is organized by concern:
+`packages/agent-profiler/src` is organized by concern:
 
-### Domain & Scenario (`domain`, `scenario`)
-
-| Module | Purpose | Key Exports |
-|--------|---------|-------------|
-| `domain/types.ts` | Benchmark row types | `BenchmarkMode`, `Scenario`, `BenchmarkRow` |
-| `scenario/schema.ts` | Zod scenario validation | `validateScenario()` |
-| `scenario/loader.ts` | Scenario file loading | `loadScenarios()`, `loadScenarioSets()` |
-
-### Runner & Extraction (`runner`, `extract`)
+### Contracts (`contracts`)
 
 | Module | Purpose | Key Exports |
 |--------|---------|-------------|
-| `runner/suite-runner.ts` | Orchestrator | `runSuite()`, `runScenario()` |
-| `extract/envelope.ts` | Envelope extraction | `extractFirstJsonObject()`, `validateEnvelope()` |
-| `extract/attempts.ts` | Attempt metrics | `extractAttemptMetrics()` |
-| `extract/tool-usage.ts` | Tool aggregation | `aggregateToolCounts()` |
+| `contracts/provider.ts` | Session provider contract | `SessionProvider`, `ProviderConfig`, `PromptResult` |
+| `contracts/scorer.ts` | Scoring contract | `Scorer`, `ScorerResult`, `ScorerContext` |
+| `contracts/collector.ts` | Metric collector contract | `Collector` |
+| `contracts/analyzer.ts` | Trace analyzer contract | `Analyzer` |
+| `contracts/mode-resolver.ts` | Mode resolution contract | `ModeResolver`, `ModeConfig` |
+| `contracts/hooks.ts` | Lifecycle hooks | `RunHooks`, `BeforeScenarioContext`, `AfterScenarioContext` |
 
-### Reporting & CLI (`report`, `cli`)
+### Runner (`runner`)
 
 | Module | Purpose | Key Exports |
 |--------|---------|-------------|
-| `report/aggregate.ts` | Summary & gates | `buildSummary()`, `toMarkdown()` |
-| `cli/benchmark.ts` | Benchmark command | `main()` |
-| `cli/check-scenarios.ts` | Scenario validation | `main()` |
-| `cli/report.ts` | Report generation | `main()` |
+| `runner/profile-runner.ts` | Suite orchestrator | `runProfileSuite()`, `ProfileSuiteOptions` |
+| `runner/iteration.ts` | Single iteration executor | `runIteration()` |
+| `runner/warmup.ts` | Warmup canary | `runWarmup()` |
+
+### Collectors & Analyzers (`collector`, `analyzer`)
+
+| Module | Purpose | Key Exports |
+|--------|---------|-------------|
+| `collector/token-collector.ts` | Token usage metrics | `TokenCollector` |
+| `collector/latency-collector.ts` | Latency metrics | `LatencyCollector` |
+| `collector/cost-collector.ts` | Cost metrics | `CostCollector` |
+| `collector/tool-call-collector.ts` | Tool call metrics | `ToolCallCollector` |
+| `analyzer/reasoning-analyzer.ts` | Reasoning analysis | `reasoningAnalyzer` |
+| `analyzer/strategy-analyzer.ts` | Strategy classification | `strategyAnalyzer` |
+| `analyzer/efficiency-analyzer.ts` | Efficiency measurement | `efficiencyAnalyzer` |
+| `analyzer/tool-pattern-analyzer.ts` | Tool pattern detection | `toolPatternAnalyzer` |
+| `analyzer/error-analyzer.ts` | Error categorization | `errorAnalyzer` |
+
+### Statistics & Reporting (`stats`, `reporter`, `store`)
+
+| Module | Purpose | Key Exports |
+|--------|---------|-------------|
+| `stats/descriptive.ts` | Descriptive statistics | `computeDescriptive()` |
+| `stats/bootstrap.ts` | Bootstrap CIs | `bootstrapCI()`, `bootstrapReductionCI()` |
+| `stats/comparison.ts` | Group comparison | `compareGroups()`, `cohensD()`, `permutationTest()` |
+| `reporter/orchestrator.ts` | Report generation | `generateReport()` |
+| `store/jsonl-store.ts` | JSONL storage | `appendJsonlLine()`, `readJsonlFile()` |
+| `store/run-manifest.ts` | Run manifests | `readManifest()`, `writeManifest()` |
+
+### Configuration (`config`)
+
+| Module | Purpose | Key Exports |
+|--------|---------|-------------|
+| `config/schema.ts` | Zod config validation | `ProfilerConfigSchema`, `ProfilerConfig` |
+| `config/loader.ts` | YAML config loading | `loadConfig()`, `parseProfilerFlags()` |
 
 ## Key Files by Concern
 
@@ -245,18 +272,19 @@ ghx/
 - `packages/core/src/core/registry/list-capabilities.ts` - list tool
 - `packages/core/src/core/registry/explain-capability.ts` - explain tool
 
-### Benchmark Orchestration
+### Agent Profiler
 
-- `packages/benchmark/src/cli/benchmark.ts` - benchmark run command
-- `packages/benchmark/src/runner/suite-runner.ts` - scenario execution
-- `packages/benchmark/src/extract/envelope.ts` - result extraction
-- `packages/benchmark/src/report/aggregate.ts` - summary + gates
+- `packages/agent-profiler/src/runner/profile-runner.ts` - **suite orchestration**
+- `packages/agent-profiler/src/runner/iteration.ts` - single iteration executor
+- `packages/agent-profiler/src/stats/comparison.ts` - cross-mode comparison
+- `packages/agent-profiler/src/reporter/orchestrator.ts` - report generation
 
 ### Tests
 
 - `packages/core/test/unit/*.test.ts` - unit tests
 - `packages/core/test/integration/*.integration.test.ts` - integration tests
-- `packages/benchmark/test/unit/*.test.ts` - benchmark tests
+- `packages/agent-profiler/test/unit/*.test.ts` - profiler unit tests
+- `packages/agent-profiler/test/integration/*.integration.test.ts` - profiler integration tests
 
 ## Package Boundaries
 
@@ -280,16 +308,15 @@ graph TB
         Agent --> Routing
     end
 
-    subgraph Benchmark["@ghx-dev/benchmark"]
+    subgraph Profiler["@ghx-dev/agent-profiler"]
         direction TB
-        BenchmarkRunner["Benchmark Runner"]
-        Scenarios["Scenario Schema & Loading"]
-        Extract["Extraction: Envelope, Tools"]
-        Report["Reporting & Gates"]
-        BenchmarkRunner --> Scenarios
-        BenchmarkRunner --> Extract
-        Extract --> Report
-        BenchmarkRunner -->|depends on| NPM
+        ProfileRunner["Profile Runner"]
+        Contracts2["Contracts: Provider, Scorer, Collector, Analyzer"]
+        Stats["Statistics Engine"]
+        Reporter["Reporter: Markdown, CSV, JSON"]
+        ProfileRunner --> Contracts2
+        ProfileRunner --> Stats
+        Stats --> Reporter
     end
 ```
 
@@ -304,9 +331,9 @@ Use these paths when debugging common concerns:
 | Capability metadata | `packages/core/src/core/registry/cards/*.yaml` |
 | CLI command shape | `packages/core/src/core/execution/adapters/cli-capability-adapter.ts` |
 | GraphQL field mismatch | `packages/core/src/gql/domains/*.ts` + `packages/core/src/gql/operations/*.generated.ts` |
-| Benchmark scenario failure | `packages/benchmark/src/scenario/schema.ts` |
-| Scenario coverage | `packages/benchmark/src/cli/check-scenarios.ts` + `packages/benchmark/scenario-sets.json` |
-| Gate failure | `packages/benchmark/src/report/aggregate.ts` |
+| Profiler suite configuration | `packages/agent-profiler/src/config/schema.ts` |
+| Profiler iteration failure | `packages/agent-profiler/src/runner/iteration.ts` |
+| Report generation | `packages/agent-profiler/src/reporter/orchestrator.ts` |
 
 ## Suggested Reading Paths
 
@@ -331,23 +358,22 @@ Use these paths when debugging common concerns:
 3. [docs/architecture/adapters.md](adapters.md) — adapter support
 4. [docs/architecture/routing-engine.md](routing-engine.md) — routing policy
 
-### Benchmark Internals
+### Agent Profiler Internals
 
-1. [docs/benchmark/harness-design.md](../benchmark/harness-design.md)
-2. [packages/benchmark/src/runner/suite-runner.ts](../../packages/benchmark/src/runner/suite-runner.ts)
-3. [docs/benchmark/reporting.md](../benchmark/reporting.md)
+1. [packages/agent-profiler/docs/architecture/overview.md](../../packages/agent-profiler/docs/architecture/overview.md)
+2. [packages/agent-profiler/src/runner/profile-runner.ts](../../packages/agent-profiler/src/runner/profile-runner.ts)
+3. [packages/agent-profiler/docs/architecture/statistics.md](../../packages/agent-profiler/docs/architecture/statistics.md)
 
 ## External Integration Points
 
 - **GitHub GraphQL API** — `packages/core/src/gql/github-client.ts`
 - **GitHub CLI (`gh`)** — `packages/core/src/core/execution/adapters/cli-capability-adapter.ts`
-- **OpenCode SDK** — `packages/benchmark/src/runner/suite-runner.ts`
 - **JSON Schema Validation (AJV)** — `packages/core/src/core/registry/`
-- **Scenario Validation (Zod)** — `packages/benchmark/src/scenario/schema.ts`
+- **Config Validation (Zod)** — `packages/agent-profiler/src/config/schema.ts`
 
 ## Related Documentation
 
 - [docs/architecture/](.) — All architecture docs
-- [docs/benchmark/](../benchmark/) — Benchmark methodology & metrics
+- [packages/agent-profiler/docs/](../../packages/agent-profiler/docs/) — Agent profiler documentation
 - [docs/guides/](../guides/) — CLI usage, library API, agent integration, error handling
 - [docs/contributing/](../contributing/) — Development setup, testing, CI, publishing

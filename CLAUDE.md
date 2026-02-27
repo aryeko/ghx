@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 `ghx` is a GitHub execution router for AI agents — a monorepo (`pnpm` + `Nx`) with two packages:
 
 - `@ghx-dev/core` (`packages/core`) — public npm package; CLI + capability routing engine
-- `@ghx-dev/benchmark` (`packages/benchmark`) — private benchmark harness comparing `agent_direct`, `mcp`, and `ghx` execution modes
+- `@ghx-dev/agent-profiler` (`packages/agent-profiler`) — private; generic AI agent session profiler (latency, tokens, tool calls, cost, behavioral analysis)
 
 **Runtime:** Node.js `>=22`. **Language:** TypeScript strict, ESM (`module`/`moduleResolution` = `NodeNext`).
 
@@ -41,7 +41,7 @@ Format (write mode): `pnpm run format`
 ```bash
 # By file
 pnpm --filter @ghx-dev/core exec vitest run test/unit/engine.test.ts
-pnpm --filter @ghx-dev/benchmark exec vitest run test/unit/cli-main.test.ts
+pnpm --filter @ghx-dev/agent-profiler exec vitest run test/unit/runner/profile-runner.test.ts
 
 # By test name
 pnpm --filter @ghx-dev/core exec vitest run -t "executeTask"
@@ -50,39 +50,21 @@ pnpm --filter @ghx-dev/core exec vitest run -t "executeTask"
 pnpm --filter @ghx-dev/core exec vitest run test/unit/run-command.test.ts -t "parses"
 ```
 
-### GraphQL and Benchmark
+### GraphQL and Agent Profiler
 ```bash
 pnpm run ghx:gql:verify           # verify GraphQL operations (run if .graphql files change)
-pnpm run benchmark
-pnpm --filter @ghx-dev/benchmark run check:scenarios
-pnpm --filter @ghx-dev/benchmark run report
-pnpm --filter @ghx-dev/benchmark run report:gate
+pnpm --filter @ghx-dev/agent-profiler run test
+pnpm --filter @ghx-dev/agent-profiler run test:coverage
 ```
 
-**Benchmark CLI flags:**
+**Agent Profiler CLI flags** (used by consumers via `parseProfilerFlags()`):
 
-**CRITICAL:** `mode` and `repetitions` are positional, not flags. Use: `pnpm run benchmark -- <mode> <repetitions> [flags]`
-Example: `pnpm run benchmark -- agent_direct 1 --scenario pr-fix-mixed-threads-wf-001 --skip-warmup --fixture-manifest fixtures/latest.json`
-
-- `--skip-warmup` — skip warm-up canary run (useful for rapid iteration; default: run warmup)
-- `--scenario-set <name>` — run named scenario set from `scenario-sets.json`
-- `--scenario <id> ...` — run specific scenario(s) by ID (can be used multiple times)
-- `--fixture-manifest <path>` — use fixture manifest for seeded scenario execution
-- `--seed-if-missing` — auto-seed fixtures if manifest not found (requires GitHub auth)
-- `--provider <id>` — override provider (e.g., `openai`)
-- `--model <id>` — override model (e.g., `gpt-5.3-codex`)
-- `--output-jsonl <path>` — write raw results to specified JSONL file (**must be absolute path** — pnpm shifts cwd, relative paths cause ENOENT)
-
-**Benchmark gotchas:**
-- Port conflict: OpenCode server defaults to port 3000; set `BENCH_OPENCODE_PORT=<port>` to use a different port if 3000 is in use
-
-**Fixture CLI flags** (`pnpm --filter @ghx-dev/benchmark run bench:fixture --`):
-
-- `seed` / `status` / `cleanup` — fixture lifecycle commands
-- `--repo <owner/name>` — target repo (default: `aryeko/ghx-bench-fixtures`, env: `BENCH_FIXTURE_REPO`)
-- `--out <path>` — manifest file path (default: `fixtures/latest.json`, env: `BENCH_FIXTURE_MANIFEST`)
-- `--seed-id <id>` — seed identifier for labeling (default: `default`, env: `BENCH_FIXTURE_SEED_ID`)
-- `--all` — (cleanup only) skip manifest, discover and remove all `bench-fixture`-labeled resources from the repo
+- `--mode <name>` — override modes (repeatable)
+- `--scenario <id>` — override scenarios (repeatable)
+- `--scenario-set <name>` — override scenario set
+- `--repetitions <n>` — override repetition count
+- `--retries <n>` — override allowed retries per iteration
+- `--skip-warmup` — skip warmup canary
 
 ## Architecture
 
@@ -109,22 +91,22 @@ User/Agent → CLI (packages/core/src/cli/) → executeTask() [core/routing/engi
 
 5. **Public API** — `packages/core/src/index.ts` (library exports including agent tools: `listCapabilities`, `createExecuteTool`, `explainCapability`).
 
-### Benchmark Flow
+### Agent Profiler Flow
 
-`packages/benchmark/src/cli/index.ts` → scenario selection from `packages/benchmark/scenario-sets.json` → isolated OpenCode sessions → assertion validation → `results/*.jsonl` → `reports/latest-summary.{json,md}`.
+`packages/agent-profiler/src/runner/profile-runner.ts` → `runProfileSuite()` expands mode x scenario x repetition matrix → for each iteration: `SessionProvider.createSession()` → `prompt()` → `Collector.collect()` → `Analyzer.analyze()` → `Scorer.evaluate()` → `ProfileRow` written to JSONL → `stats/` computes descriptive stats, bootstrap CIs, comparisons → `reporter/` generates Markdown + CSV + JSON reports.
 
-**Inspecting opencode sessions:** `sqlite3 ~/.local/share/opencode/opencode.db "SELECT data FROM part WHERE session_id='ses_...' ORDER BY time_created;"` — `data` is a JSON column; key `type` values: `tool` (`.state.input.command`), `step-finish` (`.tokens`, `.reason`), `reasoning`, `text`. Sum tokens across all `step-finish` parts for full session totals.
+**6 plugin contracts:** SessionProvider, Scorer, Collector, Analyzer, ModeResolver, RunHooks. **4 built-in collectors:** Token, Latency, Cost, ToolCall. **5 built-in analyzers:** Reasoning, Strategy, Efficiency, ToolPattern, Error. See `packages/agent-profiler/docs/` for full documentation.
 
 ## Code Style
 
 - **Formatter:** Biome (`biome.json`). Double quotes, no semicolons, trailing commas, 2-space indent, 100-char line width. Do not introduce Prettier or other formatters.
 - **Imports:** Use `import type` for type-only imports. Relative imports require explicit `.js` extension (NodeNext resolution). When a module needs both a value and a type import from the same source, Biome's `organizeImports` places `import type` first — accept this ordering to avoid churn.
-- **Path aliases:** Use `@core/*` (maps to `packages/core/src/*`) and `@bench/*` (maps to `packages/benchmark/src/*`) for imports crossing 2+ directory levels. Single-level relative imports (`./`, `../`) remain as-is. Aliases are configured per-package in `tsconfig.json`, `tsup.config.ts`, and `vitest.config.ts`.
-- **Types:** `unknown` + narrowing over `any`. Validate untrusted input at boundaries (AJV in core, Zod in benchmark). Result envelope shape `{ ok, data, error, meta }` is a stable contract — do not change it.
+- **Path aliases:** Use `@core/*` (maps to `packages/core/src/*`) and `@profiler/*` (maps to `packages/agent-profiler/src/*`) for imports crossing 2+ directory levels. Single-level relative imports (`./`, `../`) remain as-is. Aliases are configured per-package in `tsconfig.json`, `tsup.config.ts`, and `vitest.config.ts`.
+- **Types:** `unknown` + narrowing over `any`. Validate untrusted input at boundaries (AJV in core, Zod in agent-profiler). Result envelope shape `{ ok, data, error, meta }` is a stable contract — do not change it.
 - **Error codes:** Reuse from `packages/core/src/core/errors/codes.ts`.
 - **`mapErrorToCode` ordering:** In `core/errors/map-error.ts`, Auth must precede Validation (both match "invalid…" messages). Current order: RateLimit → Server → Network → NotFound → Auth → Validation → Unknown.
 - **Files:** kebab-case. Tests: `*.test.ts` (unit), `*.integration.test.ts` (integration). Types: PascalCase. Constants: `UPPER_SNAKE_CASE`.
-- **`exactOptionalPropertyTypes: true`** is set in tsconfig. Zod's `.optional()` infers `T | undefined`, which conflicts with TypeScript's strict optional semantics. When returning Zod-parsed values where the declared return type uses optional fields (`field?: T`), cast the result (e.g. `as Promise<BenchmarkRow[]>`).
+- **`exactOptionalPropertyTypes: true`** is set in tsconfig. Zod's `.optional()` infers `T | undefined`, which conflicts with TypeScript's strict optional semantics. When returning Zod-parsed values where the declared return type uses optional fields (`field?: T`), cast the result (e.g. `as Promise<ProfileRow[]>`).
 - **Generated code:** Never edit manually — `packages/core/src/gql/generated/**` and `packages/core/src/gql/operations/*.generated.ts`. Regenerate via codegen script.
 
 ## Pre-commit Hooks
@@ -151,7 +133,7 @@ Documentation hub: `docs/README.md`. Key sections:
 - `docs/capabilities/` — per-domain capability reference (issues, PRs, workflows, releases, etc.)
 - `docs/getting-started/` — installation, first-task, setup-for-agents, how-it-works
 - `docs/guides/` — CLI usage, library API, agent integration, result envelope, error handling, routing explained
-- `docs/benchmark/` — methodology, running benchmarks, scenario authoring, metrics, reporting
+- `packages/agent-profiler/docs/` — profiler architecture, guides, API reference, contributing
 - `docs/contributing/` — development setup, testing, code style, adding capabilities, CI, publishing
 
 If architecture, module, or file layout changes, update `docs/architecture/repository-structure.md`.
