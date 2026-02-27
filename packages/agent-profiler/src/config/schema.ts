@@ -1,0 +1,36 @@
+import { z } from "zod"
+import {
+  DEFAULT_LOG_LEVEL,
+  DEFAULT_REPETITIONS,
+  DEFAULT_REPORTS_DIR,
+  DEFAULT_RESULTS_DIR,
+  DEFAULT_SESSION_EXPORT,
+  DEFAULT_TIMEOUT_MS,
+  DEFAULT_WARMUP,
+} from "../shared/constants.js"
+
+export const ProfilerConfigSchema = z.object({
+  modes: z.array(z.string()).min(1),
+  scenarios: z.object({
+    set: z.string().optional(),
+    ids: z.array(z.string()).optional(),
+  }),
+  execution: z
+    .object({
+      repetitions: z.number().int().positive().default(DEFAULT_REPETITIONS),
+      warmup: z.boolean().default(DEFAULT_WARMUP),
+      timeoutDefaultMs: z.number().positive().default(DEFAULT_TIMEOUT_MS),
+    })
+    .default({}),
+  output: z
+    .object({
+      resultsDir: z.string().default(DEFAULT_RESULTS_DIR),
+      reportsDir: z.string().default(DEFAULT_REPORTS_DIR),
+      sessionExport: z.boolean().default(DEFAULT_SESSION_EXPORT),
+      logLevel: z.enum(["debug", "info", "warn", "error"]).default(DEFAULT_LOG_LEVEL),
+    })
+    .default({}),
+  extensions: z.record(z.unknown()).default({}),
+})
+
+export type ProfilerConfig = z.infer<typeof ProfilerConfigSchema>
