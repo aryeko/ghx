@@ -15,6 +15,10 @@ import type { EvalScenario } from "./schema.js"
  * - `{{owner}}` — owner portion of the `repo` binding value
  * - `{{repo_name}}` — repo-name portion of the `repo` binding value
  *
+ * Numeric types are preserved when a checkpoint input field is a pure single-variable
+ * substitution (i.e. the entire value is `"{{key}}"`). This allows integer fields
+ * (e.g. `prNumber`) to pass JSON Schema validation without coercion.
+ *
  * Returns a new scenario object; the input is not mutated.
  *
  * @param scenario - Scenario with unresolved `{{variable}}` placeholders
@@ -35,11 +39,11 @@ export function bindFixtureVariables(
 ): EvalScenario {
   if (!scenario.fixture) return scenario
 
-  const values = resolveBindings(scenario.fixture.bindings, manifest)
-  const prompt = interpolate(scenario.prompt, values)
+  const { strings, raw } = resolveBindings(scenario.fixture.bindings, manifest)
+  const prompt = interpolate(scenario.prompt, strings)
   const checkpoints = scenario.assertions.checkpoints.map((cp) => ({
     ...cp,
-    input: interpolateRecord(cp.input, values),
+    input: interpolateRecord(cp.input, strings, raw),
   }))
 
   return {
@@ -49,29 +53,40 @@ export function bindFixtureVariables(
   }
 }
 
+interface ResolvedBindings {
+  /** String representation of each binding value (for prompt/text interpolation). */
+  readonly strings: Readonly<Record<string, string>>
+  /** Raw manifest values (for checkpoint input fields that need native types). */
+  readonly raw: Readonly<Record<string, unknown>>
+}
+
 function resolveBindings(
   bindings: Readonly<Record<string, string>>,
   manifest: FixtureBindings,
-): Readonly<Record<string, string>> {
-  const values: Record<string, string> = {}
+): ResolvedBindings {
+  const strings: Record<string, string> = {}
+  const raw: Record<string, unknown> = {}
 
   for (const [key, path] of Object.entries(bindings)) {
     const value = getNestedValue(manifest.fixtures, path)
     if (value === undefined) {
       throw new Error(`Fixture binding "${key}" could not be resolved from path "${path}"`)
     }
-    values[key] = String(value)
+    strings[key] = String(value)
+    raw[key] = value
   }
 
   // Derive owner/repo_name from any "repo" binding
-  const repo = values["repo"]
+  const repo = strings["repo"]
   if (repo !== undefined && repo.includes("/")) {
     const slashIndex = repo.indexOf("/")
-    values["owner"] = repo.slice(0, slashIndex)
-    values["repo_name"] = repo.slice(slashIndex + 1)
+    strings["owner"] = repo.slice(0, slashIndex)
+    strings["repo_name"] = repo.slice(slashIndex + 1)
+    raw["owner"] = strings["owner"]
+    raw["repo_name"] = strings["repo_name"]
   }
 
-  return values
+  return { strings, raw }
 }
 
 function interpolate(template: string, values: Readonly<Record<string, string>>): string {
@@ -84,13 +99,29 @@ function interpolate(template: string, values: Readonly<Record<string, string>>)
   })
 }
 
+// Matches a string that is exactly a single {{variable}} with nothing else.
+const PURE_TEMPLATE_RE = /^\{\{(\w+)\}\}$/
+
 function interpolateRecord(
   record: Readonly<Record<string, unknown>>,
-  values: Readonly<Record<string, string>>,
+  strings: Readonly<Record<string, string>>,
+  raw: Readonly<Record<string, unknown>>,
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {}
   for (const [k, v] of Object.entries(record)) {
-    result[k] = typeof v === "string" ? interpolate(v, values) : v
+    if (typeof v === "string") {
+      // Pure single-variable substitution: preserve the original manifest type
+      // so numeric fields (e.g. prNumber: integer) pass JSON Schema validation.
+      const match = PURE_TEMPLATE_RE.exec(v)
+      if (match) {
+        const key = match[1]
+        result[k] = key !== undefined && key in raw ? raw[key] : interpolate(v, strings)
+      } else {
+        result[k] = interpolate(v, strings)
+      }
+    } else {
+      result[k] = v
+    }
   }
   return result
 }

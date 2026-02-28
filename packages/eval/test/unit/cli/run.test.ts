@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 // Mock all dependencies before importing the module under test
 vi.mock("node:fs/promises", () => ({
   readFile: vi.fn(),
+  mkdir: vi.fn().mockResolvedValue(undefined),
+  writeFile: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock("@eval/config/loader.js", () => ({
@@ -66,12 +68,23 @@ vi.mock("@eval/hooks/eval-hooks.js", () => ({
   createEvalHooks: vi.fn().mockReturnValue({}),
 }))
 
+vi.mock("@eval/report/generate.js", () => ({
+  generateEvalReport: vi.fn().mockResolvedValue("reports/run-001"),
+}))
+
 vi.mock("@ghx-dev/agent-profiler", () => ({
   runProfileSuite: vi.fn().mockResolvedValue({
     runId: "run-001",
     rows: [],
-    outputPath: "results/run-001.jsonl",
+    analysisResults: [],
+    outputJsonlPath: "results/run-001.jsonl",
+    durationMs: 0,
   }),
+  reasoningAnalyzer: { name: "reasoning", analyze: vi.fn() },
+  strategyAnalyzer: { name: "strategy", analyze: vi.fn() },
+  efficiencyAnalyzer: { name: "efficiency", analyze: vi.fn() },
+  toolPatternAnalyzer: { name: "tool-pattern", analyze: vi.fn() },
+  errorAnalyzer: { name: "error", analyze: vi.fn() },
 }))
 
 const MINIMAL_CONFIG = {

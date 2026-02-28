@@ -3,33 +3,45 @@ import { describe, expect, it } from "vitest"
 
 const builder = new TraceBuilder()
 
+// Helper to build a message in the actual OpenCode API shape:
+// { info: { role, time?, tokens? }, parts: [...] }
+function assistantMsg(
+  parts: unknown[],
+  opts?: { createdMs?: number; tokens?: Record<string, unknown> },
+): unknown {
+  return {
+    info: {
+      role: "assistant" as const,
+      ...(opts?.createdMs !== undefined ? { time: { created: opts.createdMs } } : {}),
+      ...(opts?.tokens !== undefined ? { tokens: opts.tokens } : {}),
+    },
+    parts,
+  }
+}
+
+function userMsg(parts: unknown[]): unknown {
+  return { info: { role: "user" as const }, parts }
+}
+
 describe("TraceBuilder.buildEvents", () => {
   it("returns empty array for empty messages", () => {
     expect(builder.buildEvents([])).toEqual([])
   })
 
   it("skips non-assistant messages", () => {
-    const messages = [{ role: "user", parts: [{ type: "text", text: "hello" }] }]
+    const messages = [userMsg([{ type: "text", text: "hello" }])]
     expect(builder.buildEvents(messages)).toEqual([])
   })
 
   it("emits turn_boundary for each assistant message", () => {
-    const messages = [
-      { role: "assistant", parts: [] },
-      { role: "assistant", parts: [] },
-    ]
+    const messages = [assistantMsg([]), assistantMsg([])]
     const events = builder.buildEvents(messages)
     const boundaries = events.filter((e) => e.type === "turn_boundary")
     expect(boundaries).toHaveLength(2)
   })
 
   it("converts reasoning parts to reasoning events", () => {
-    const messages = [
-      {
-        role: "assistant",
-        parts: [{ type: "reasoning", reasoning: "Let me think..." }],
-      },
-    ]
+    const messages = [assistantMsg([{ type: "reasoning", text: "Let me think..." }])]
     const events = builder.buildEvents(messages)
     const reasoningEvents = events.filter((e) => e.type === "reasoning")
     expect(reasoningEvents).toHaveLength(1)
@@ -38,19 +50,16 @@ describe("TraceBuilder.buildEvents", () => {
 
   it("converts tool parts to tool_call events", () => {
     const messages = [
-      {
-        role: "assistant",
-        parts: [
-          {
-            type: "tool",
-            state: {
-              name: "pr.view",
-              input: { owner: "o", repo: "r" },
-              output: { title: "Fix bug" },
-            },
+      assistantMsg([
+        {
+          type: "tool",
+          state: {
+            name: "pr.view",
+            input: { owner: "o", repo: "r" },
+            output: { title: "Fix bug" },
           },
-        ],
-      },
+        },
+      ]),
     ]
     const events = builder.buildEvents(messages)
     const toolEvents = events.filter((e) => e.type === "tool_call")
@@ -60,15 +69,7 @@ describe("TraceBuilder.buildEvents", () => {
 
   it("marks tool call as failed when state has error", () => {
     const messages = [
-      {
-        role: "assistant",
-        parts: [
-          {
-            type: "tool",
-            state: { name: "pr.view", input: {}, error: "Not found" },
-          },
-        ],
-      },
+      assistantMsg([{ type: "tool", state: { name: "pr.view", input: {}, error: "Not found" } }]),
     ]
     const events = builder.buildEvents(messages)
     const toolEvent = events.find((e) => e.type === "tool_call")
@@ -76,12 +77,7 @@ describe("TraceBuilder.buildEvents", () => {
   })
 
   it("converts text parts to text_output events", () => {
-    const messages = [
-      {
-        role: "assistant",
-        parts: [{ type: "text", text: "I completed the task." }],
-      },
-    ]
+    const messages = [assistantMsg([{ type: "text", text: "I completed the task." }])]
     const events = builder.buildEvents(messages)
     const textEvents = events.filter((e) => e.type === "text_output")
     expect(textEvents).toHaveLength(1)
@@ -90,13 +86,10 @@ describe("TraceBuilder.buildEvents", () => {
 
   it("skips step-finish parts", () => {
     const messages = [
-      {
-        role: "assistant",
-        parts: [
-          { type: "text", text: "Done" },
-          { type: "step-finish", reason: "stop" },
-        ],
-      },
+      assistantMsg([
+        { type: "text", text: "Done" },
+        { type: "step-finish", reason: "stop" },
+      ]),
     ]
     const events = builder.buildEvents(messages)
     expect(events.filter((e) => e.type === "text_output")).toHaveLength(1)
@@ -105,13 +98,10 @@ describe("TraceBuilder.buildEvents", () => {
 
   it("handles split reasoning blocks (consecutive reasoning parts)", () => {
     const messages = [
-      {
-        role: "assistant",
-        parts: [
-          { type: "reasoning", reasoning: "First part..." },
-          { type: "reasoning", reasoning: "Second part..." },
-        ],
-      },
+      assistantMsg([
+        { type: "reasoning", text: "First part..." },
+        { type: "reasoning", text: "Second part..." },
+      ]),
     ]
     const events = builder.buildEvents(messages)
     const reasoningEvents = events.filter((e) => e.type === "reasoning")
@@ -119,29 +109,23 @@ describe("TraceBuilder.buildEvents", () => {
   })
 
   it("handles messages without parts", () => {
-    const messages = [{ role: "assistant" }]
+    const messages = [{ info: { role: "assistant" } }]
     expect(() => builder.buildEvents(messages)).not.toThrow()
   })
 
-  it("uses time_created from message for turn_boundary timestamp", () => {
-    const messages = [
-      {
-        role: "assistant",
-        time_created: "2026-01-01T00:00:00Z",
-        parts: [],
-      },
-    ]
+  it("uses info.time.created for turn_boundary timestamp", () => {
+    const createdMs = new Date("2026-01-01T00:00:00.000Z").getTime()
+    const messages = [assistantMsg([], { createdMs })]
     const events = builder.buildEvents(messages)
     const boundary = events.find((e) => e.type === "turn_boundary")
-    expect(boundary).toMatchObject({ type: "turn_boundary", timestamp: "2026-01-01T00:00:00Z" })
+    expect(boundary).toMatchObject({
+      type: "turn_boundary",
+      timestamp: "2026-01-01T00:00:00.000Z",
+    })
   })
 
   it("assigns sequential turn numbers", () => {
-    const messages = [
-      { role: "assistant", parts: [] },
-      { role: "assistant", parts: [] },
-      { role: "assistant", parts: [] },
-    ]
+    const messages = [assistantMsg([]), assistantMsg([]), assistantMsg([])]
     const events = builder.buildEvents(messages)
     const boundaries = events.filter((e) => e.type === "turn_boundary")
     expect(boundaries[0]).toMatchObject({ type: "turn_boundary", turnNumber: 0 })
@@ -151,12 +135,7 @@ describe("TraceBuilder.buildEvents", () => {
 
   it("estimates token count for reasoning as ceil(length/4)", () => {
     const content = "1234" // 4 chars → 1 token
-    const messages = [
-      {
-        role: "assistant",
-        parts: [{ type: "reasoning", reasoning: content }],
-      },
-    ]
+    const messages = [assistantMsg([{ type: "reasoning", text: content }])]
     const events = builder.buildEvents(messages)
     const reasoningEvent = events.find((e) => e.type === "reasoning")
     expect(reasoningEvent).toMatchObject({ type: "reasoning", tokenCount: 1 })
@@ -164,36 +143,21 @@ describe("TraceBuilder.buildEvents", () => {
 
   it("estimates token count for text_output as ceil(length/4)", () => {
     const content = "12345" // 5 chars → 2 tokens (ceil(5/4))
-    const messages = [
-      {
-        role: "assistant",
-        parts: [{ type: "text", text: content }],
-      },
-    ]
+    const messages = [assistantMsg([{ type: "text", text: content }])]
     const events = builder.buildEvents(messages)
     const textEvent = events.find((e) => e.type === "text_output")
     expect(textEvent).toMatchObject({ type: "text_output", tokenCount: 2 })
   })
 
   it("returns null for unknown part types (no event emitted)", () => {
-    const messages = [
-      {
-        role: "assistant",
-        parts: [{ type: "unknown-future-type", someData: 42 }],
-      },
-    ]
+    const messages = [assistantMsg([{ type: "unknown-future-type", someData: 42 }])]
     const events = builder.buildEvents(messages)
     expect(events).toHaveLength(1)
     expect(events[0]?.type).toBe("turn_boundary")
   })
 
   it("handles tool part with missing state gracefully", () => {
-    const messages = [
-      {
-        role: "assistant",
-        parts: [{ type: "tool" }], // no state field
-      },
-    ]
+    const messages = [assistantMsg([{ type: "tool" }])] // no state field
     const events = builder.buildEvents(messages)
     const toolEvents = events.filter((e) => e.type === "tool_call")
     expect(toolEvents).toHaveLength(0)
@@ -206,12 +170,9 @@ describe("TraceBuilder.groupIntoTurns", () => {
   })
 
   it("groups events between turn boundaries", () => {
+    const createdMs = new Date("2026-01-01T00:00:00.000Z").getTime()
     const events = builder.buildEvents([
-      {
-        role: "assistant",
-        time_created: "2026-01-01T00:00:00Z",
-        parts: [{ type: "text", text: "Hello" }],
-      },
+      assistantMsg([{ type: "text", text: "Hello" }], { createdMs }),
     ])
     const turns = builder.groupIntoTurns(events)
     expect(turns).toHaveLength(1)
@@ -219,17 +180,11 @@ describe("TraceBuilder.groupIntoTurns", () => {
   })
 
   it("creates separate turns for separate assistant messages", () => {
+    const t1 = new Date("2026-01-01T00:00:00.000Z").getTime()
+    const t2 = new Date("2026-01-01T00:01:00.000Z").getTime()
     const events = builder.buildEvents([
-      {
-        role: "assistant",
-        time_created: "2026-01-01T00:00:00Z",
-        parts: [{ type: "text", text: "First" }],
-      },
-      {
-        role: "assistant",
-        time_created: "2026-01-01T00:01:00Z",
-        parts: [{ type: "text", text: "Second" }],
-      },
+      assistantMsg([{ type: "text", text: "First" }], { createdMs: t1 }),
+      assistantMsg([{ type: "text", text: "Second" }], { createdMs: t2 }),
     ])
     const turns = builder.groupIntoTurns(events)
     expect(turns).toHaveLength(2)
@@ -238,15 +193,12 @@ describe("TraceBuilder.groupIntoTurns", () => {
   })
 
   it("preserves turn start timestamp from boundary event", () => {
+    const createdMs = new Date("2026-03-15T12:00:00.000Z").getTime()
     const events = builder.buildEvents([
-      {
-        role: "assistant",
-        time_created: "2026-03-15T12:00:00Z",
-        parts: [{ type: "text", text: "Hello" }],
-      },
+      assistantMsg([{ type: "text", text: "Hello" }], { createdMs }),
     ])
     const turns = builder.groupIntoTurns(events)
-    expect(turns[0]?.startTimestamp).toBe("2026-03-15T12:00:00Z")
+    expect(turns[0]?.startTimestamp).toBe("2026-03-15T12:00:00.000Z")
   })
 
   it("returns empty array for events with no turn boundaries", () => {
@@ -257,9 +209,7 @@ describe("TraceBuilder.groupIntoTurns", () => {
   })
 
   it("sets durationMs to 0 on each turn", () => {
-    const events = builder.buildEvents([
-      { role: "assistant", parts: [{ type: "text", text: "Hi" }] },
-    ])
+    const events = builder.buildEvents([assistantMsg([{ type: "text", text: "Hi" }])])
     const turns = builder.groupIntoTurns(events)
     expect(turns[0]?.durationMs).toBe(0)
   })
@@ -279,8 +229,8 @@ describe("TraceBuilder.buildTrace", () => {
 
   it("summarizes total turns correctly", () => {
     const messages = [
-      { role: "assistant", parts: [{ type: "text", text: "First" }] },
-      { role: "assistant", parts: [{ type: "text", text: "Second" }] },
+      assistantMsg([{ type: "text", text: "First" }]),
+      assistantMsg([{ type: "text", text: "Second" }]),
     ]
     const trace = builder.buildTrace("ses_turns", messages)
     expect(trace.summary.totalTurns).toBe(2)
@@ -288,19 +238,10 @@ describe("TraceBuilder.buildTrace", () => {
 
   it("summarizes total tool calls correctly", () => {
     const messages = [
-      {
-        role: "assistant",
-        parts: [
-          {
-            type: "tool",
-            state: { name: "pr.view", input: {}, output: {} },
-          },
-          {
-            type: "tool",
-            state: { name: "issue.list", input: {}, output: {} },
-          },
-        ],
-      },
+      assistantMsg([
+        { type: "tool", state: { name: "pr.view", input: {}, output: {} } },
+        { type: "tool", state: { name: "issue.list", input: {}, output: {} } },
+      ]),
     ]
     const trace = builder.buildTrace("ses_tools", messages)
     expect(trace.summary.totalToolCalls).toBe(2)
@@ -324,36 +265,28 @@ describe("TraceBuilder.buildTrace", () => {
     expect(trace.summary.totalDuration).toBe(0)
   })
 
-  it("sums token counts from message.tokens", () => {
+  it("sums token counts from info.tokens across all assistant messages", () => {
     const messages = [
-      {
-        role: "assistant",
-        tokens: { input: 100, output: 50, cache_read: 20, cache_write: 10 },
-        parts: [],
-      },
-      {
-        role: "assistant",
-        tokens: { input: 200, output: 80 },
-        parts: [],
-      },
+      assistantMsg([], {
+        tokens: { input: 100, output: 50, reasoning: 30, cache: { read: 20, write: 10 } },
+      }),
+      assistantMsg([], {
+        tokens: { input: 200, output: 80, reasoning: 15 },
+      }),
     ]
     const trace = builder.buildTrace("ses_tok_sum", messages)
     expect(trace.summary.totalTokens.input).toBe(300)
     expect(trace.summary.totalTokens.output).toBe(130)
+    expect(trace.summary.totalTokens.reasoning).toBe(45)
     expect(trace.summary.totalTokens.cacheRead).toBe(20)
     expect(trace.summary.totalTokens.cacheWrite).toBe(10)
-    expect(trace.summary.totalTokens.total).toBe(460) // 300+130+20+10
-    expect(trace.summary.totalTokens.active).toBe(430) // 300+130+0 reasoning
+    expect(trace.summary.totalTokens.total).toBe(505) // 300+130+45+20+10
+    expect(trace.summary.totalTokens.active).toBe(475) // 300+130+45
   })
 
   it("returns non-negative totalDuration for non-empty messages", () => {
-    const messages = [
-      {
-        role: "assistant",
-        time_created: "2026-01-01T00:00:00.000Z",
-        parts: [{ type: "text", text: "Hello" }],
-      },
-    ]
+    const createdMs = new Date("2026-01-01T00:00:00.000Z").getTime()
+    const messages = [assistantMsg([{ type: "text", text: "Hello" }], { createdMs })]
     const trace = builder.buildTrace("ses_dur_pos", messages)
     expect(trace.summary.totalDuration).toBeGreaterThanOrEqual(0)
   })

@@ -61,7 +61,7 @@ describe("bindFixtureVariables", () => {
     expect(cp).toBeDefined()
     expect(cp?.input["owner"]).toBe("aryeko")
     expect(cp?.input["repo_name"]).toBe("ghx-bench-fixtures")
-    expect(cp?.input["pr_number"]).toBe("42")
+    expect(cp?.input["pr_number"]).toBe(42)
   })
 
   it("derives owner and repo_name from repo binding", () => {

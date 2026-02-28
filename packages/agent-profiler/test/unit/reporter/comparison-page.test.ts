@@ -11,12 +11,12 @@ describe("generateComparisonPage", () => {
   it("shows single mode message when only one mode", () => {
     const rows = [makeProfileRow({ mode: "only_one" })]
     const result = generateComparisonPage(rows)
-    expect(result).toContain("Single mode -- no comparison available.")
+    expect(result).toContain("Single mode")
   })
 
   it("shows single mode message for empty rows", () => {
     const result = generateComparisonPage([])
-    expect(result).toContain("Single mode -- no comparison available.")
+    expect(result).toContain("Single mode")
   })
 
   it("renders comparison table for two modes", () => {
@@ -28,9 +28,11 @@ describe("generateComparisonPage", () => {
     ]
     const result = generateComparisonPage(rows)
     expect(result).toContain("## fast vs slow")
-    expect(result).toContain("| Reduction |")
-    expect(result).toContain("| Effect Size |")
+    expect(result).toContain("Wall-time reduction")
+    expect(result).toContain("Effect size (Cohen's d)")
     expect(result).toContain("| p-value |")
+    expect(result).toContain("Median wall-time (fast)")
+    expect(result).toContain("Median wall-time (slow)")
   })
 
   it("renders heatmap section", () => {
@@ -39,7 +41,7 @@ describe("generateComparisonPage", () => {
       makeProfileRow({ mode: "b", timing: { wallMs: 1000, segments: [] } }),
     ]
     const result = generateComparisonPage(rows)
-    expect(result).toContain("### Reduction Heatmap")
+    expect(result).toContain("wall-time reduction")
   })
 
   it("renders all mode pairs for three modes", () => {

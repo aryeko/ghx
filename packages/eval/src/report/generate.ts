@@ -73,10 +73,12 @@ export async function generateEvalReport(options: GenerateReportOptions): Promis
 
   // Generate report (spread analysisResults only when non-empty to
   // satisfy exactOptionalPropertyTypes — the field cannot be undefined)
+  // Pass reportDir = outputDir so files land directly there instead of a timestamped subdir.
   const reportDir = await generateReport({
     runId,
     rows: allRows,
     reportsDir: options.outputDir,
+    reportDir: options.outputDir,
     ...(analysisResults.length > 0 ? { analysisResults } : {}),
   })
 

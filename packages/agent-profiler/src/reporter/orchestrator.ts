@@ -18,6 +18,13 @@ export interface ReportOptions {
   readonly rows: readonly ProfileRow[]
   /** Absolute path to the directory where report files will be written. */
   readonly reportsDir: string
+  /**
+   * When provided, report files are written directly to this directory instead of
+   * creating a timestamped subdirectory under `reportsDir`. Both `reportsDir` and
+   * `reportDir` may be specified; `reportDir` takes precedence for file placement
+   * while `reportsDir` is ignored.
+   */
+  readonly reportDir?: string
   /** Optional analysis bundles to include in the analysis page. */
   readonly analysisResults?: readonly SessionAnalysisBundle[]
   /** Optional logger for non-fatal page generation warnings. */
@@ -58,7 +65,7 @@ async function safeWrite(
 export async function generateReport(options: ReportOptions): Promise<string> {
   const { runId, rows, reportsDir, analysisResults, logger } = options
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
-  const reportDir = join(reportsDir, timestamp)
+  const reportDir = options.reportDir ?? join(reportsDir, timestamp)
   const scenariosDir = join(reportDir, "scenarios")
   const dataDir = join(reportDir, "data")
 

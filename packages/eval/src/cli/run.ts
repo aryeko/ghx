@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { GhxCollector } from "@eval/collector/ghx-collector.js"
 import { loadEvalConfig } from "@eval/config/loader.js"
@@ -8,11 +8,27 @@ import { loadFixtureManifest } from "@eval/fixture/manifest.js"
 import { createEvalHooks } from "@eval/hooks/eval-hooks.js"
 import { EvalModeResolver } from "@eval/mode/resolver.js"
 import { OpenCodeProvider } from "@eval/provider/opencode-provider.js"
+import { generateEvalReport } from "@eval/report/generate.js"
 import { loadEvalScenarios, loadScenarioSets } from "@eval/scenario/loader.js"
 import { CheckpointScorer } from "@eval/scorer/checkpoint-scorer.js"
-import type { BaseScenario } from "@ghx-dev/agent-profiler"
-import { runProfileSuite } from "@ghx-dev/agent-profiler"
+import type { BaseScenario, SessionAnalysisBundle } from "@ghx-dev/agent-profiler"
+import {
+  efficiencyAnalyzer,
+  errorAnalyzer,
+  reasoningAnalyzer,
+  runProfileSuite,
+  strategyAnalyzer,
+  toolPatternAnalyzer,
+} from "@ghx-dev/agent-profiler"
 import { hasFlag, parseFlag, parseFlagAll } from "./parse-flags.js"
+
+const BUILT_IN_ANALYZERS = [
+  reasoningAnalyzer,
+  strategyAnalyzer,
+  efficiencyAnalyzer,
+  toolPatternAnalyzer,
+  errorAnalyzer,
+]
 
 function applyFlagOverrides(config: EvalConfig, argv: readonly string[]): EvalConfig {
   let result: EvalConfig = config
@@ -101,6 +117,25 @@ async function resolveScenarioIds(
   return undefined
 }
 
+async function writeAnalysisBundles(
+  bundles: readonly SessionAnalysisBundle[],
+  reportsDir: string,
+): Promise<void> {
+  const iterCounters = new Map<string, number>()
+  for (const bundle of bundles) {
+    const key = `${bundle.scenarioId}:${bundle.mode}`
+    const iter = iterCounters.get(key) ?? 0
+    iterCounters.set(key, iter + 1)
+    const dir = join(reportsDir, "analysis", bundle.scenarioId)
+    await mkdir(dir, { recursive: true })
+    await writeFile(
+      join(dir, `${bundle.mode}-iter-${iter}-analysis.json`),
+      JSON.stringify(bundle, null, 2),
+      "utf-8",
+    )
+  }
+}
+
 export async function run(argv: readonly string[]): Promise<void> {
   const configPath = parseFlag(argv, "--config") ?? "eval.config.yaml"
   const yamlContent = await readFile(configPath, "utf-8")
@@ -134,9 +169,16 @@ export async function run(argv: readonly string[]): Promise<void> {
     throw new Error('Missing GitHub token: set GH_TOKEN or GITHUB_TOKEN to run "eval run"')
   }
 
+  const runId = `run_${Date.now()}`
+  // --output-jsonl specifies a direct file path; otherwise use {results_dir}/{runId}.jsonl
+  const outputJsonlOverride = parseFlag(argv, "--output-jsonl")
+  const outputJsonlPath = outputJsonlOverride ?? join(config.output.results_dir, `${runId}.jsonl`)
+  const reportsDir = join(config.output.reports_dir, runId)
+
   const hooks = createEvalHooks({
     fixtureManager,
     sessionExport: config.output.session_export,
+    reportsDir,
   })
 
   for (const model of config.models) {
@@ -145,22 +187,38 @@ export async function run(argv: readonly string[]): Promise<void> {
       model: model.id,
     })
 
-    await runProfileSuite({
+    const result = await runProfileSuite({
+      runId,
+      model: model.id,
       modes: config.modes,
       // EvalScenario extends BaseScenario structurally; cast required due to module boundary
       scenarios: scenarios as unknown as ReadonlyArray<BaseScenario>,
       repetitions: config.execution.repetitions,
       allowedRetries: 0,
-      outputJsonlPath: config.output.results_dir,
+      outputJsonlPath,
       warmup: config.execution.warmup,
       sessionExport: config.output.session_export,
       logLevel: config.output.log_level,
-      analyzers: [],
+      analyzers: BUILT_IN_ANALYZERS,
       provider,
       scorer: new CheckpointScorer(githubToken),
       modeResolver: new EvalModeResolver(),
       collectors: [new GhxCollector()],
       hooks,
     })
+
+    if (result.analysisResults.length > 0) {
+      await writeAnalysisBundles(result.analysisResults, reportsDir)
+    }
+
+    await generateEvalReport({
+      runDir: reportsDir,
+      resultsPaths: [outputJsonlPath],
+      outputDir: reportsDir,
+      format: "all",
+    })
+
+    console.log(`Run complete. Results: ${outputJsonlPath}`)
+    console.log(`Reports: ${reportsDir}/`)
   }
 }

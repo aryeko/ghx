@@ -5,7 +5,8 @@ import { generateEvalReport } from "@eval/report/generate.js"
 import { parseFlag, parseFlagAll } from "./parse-flags.js"
 
 export async function report(argv: readonly string[]): Promise<void> {
-  const runDir = parseFlag(argv, "--run-dir") ?? "results"
+  const runId = parseFlag(argv, "--run-id")
+  const runDir = runId ? join("reports", runId) : (parseFlag(argv, "--run-dir") ?? "results")
   const resultsPaths = parseFlagAll(argv, "--results")
   const VALID_FORMATS = ["all", "md", "csv", "json"] as const
   const rawFormat = parseFlag(argv, "--format") ?? "all"
@@ -13,10 +14,15 @@ export async function report(argv: readonly string[]): Promise<void> {
     throw new Error(`Invalid --format "${rawFormat}". Expected one of: ${VALID_FORMATS.join(", ")}`)
   }
   const format = rawFormat as (typeof VALID_FORMATS)[number]
-  const outputDir = parseFlag(argv, "--output-dir") ?? join(runDir, "reports")
+  const outputDir = parseFlag(argv, "--output-dir") ?? runDir
 
-  // Default results path if none specified
-  const paths = resultsPaths.length > 0 ? resultsPaths : [join(runDir, "results.jsonl")]
+  // Default results path: {results_dir}/{runId}.jsonl when --run-id given, else legacy fallback
+  const paths =
+    resultsPaths.length > 0
+      ? resultsPaths
+      : runId
+        ? [join("results", `${runId}.jsonl`)]
+        : [join(runDir, "results.jsonl")]
 
   console.log(`Generating report from ${paths.join(", ")}...`)
 

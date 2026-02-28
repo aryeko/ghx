@@ -42,6 +42,10 @@ export interface ProfileSuiteOptions {
   readonly outputJsonlPath: string
   /** Minimum severity level for log output during the suite run. */
   readonly logLevel: "debug" | "info" | "warn" | "error"
+  /** Optional run identifier; defaults to `run_<timestamp>` when omitted. */
+  readonly runId?: string
+  /** Model identifier for the run (e.g. `"openai/gpt-4o"`). Overrides any value from `providerOverrides`. */
+  readonly model?: string
 }
 
 /** Summary result returned after a complete profiling suite has finished. */
@@ -93,7 +97,7 @@ export async function runProfileSuite(options: ProfileSuiteOptions): Promise<Pro
     throw new Error(`allowedRetries must be >= 0, got ${allowedRetries}`)
   }
 
-  const runId = `run_${Date.now()}`
+  const runId = options.runId ?? `run_${Date.now()}`
   const logger = createLogger(logLevel)
   const suiteStart = Date.now()
   const rows: ProfileRow[] = []
@@ -141,7 +145,7 @@ export async function runProfileSuite(options: ProfileSuiteOptions): Promise<Pro
             hooks,
             scenario,
             mode,
-            model: (modeConfig.providerOverrides["model"] as string) ?? "",
+            model: options.model ?? (modeConfig.providerOverrides["model"] as string) ?? "",
             iteration: rep,
             runId,
             systemInstructions: modeConfig.systemInstructions,
