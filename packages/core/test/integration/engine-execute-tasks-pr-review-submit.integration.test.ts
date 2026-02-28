@@ -79,16 +79,12 @@ describe("executeTasks – pr.reviews.submit resolution (Phase 1 → Phase 2)", 
     expect(result.meta.failed).toBe(0)
     expect(result.results).toHaveLength(2)
 
-    // PR review step
+    // PR review step — mutation, raw GQL wrapper not surfaced in data
     expect(result.results[0]).toMatchObject({
       task: "pr.reviews.submit",
       ok: true,
-      data: {
-        addPullRequestReview: {
-          pullRequestReview: { state: "COMMENTED" },
-        },
-      },
     })
+    expect(result.results[0]).not.toHaveProperty("data")
 
     // Blocked-by step
     expect(result.results[1]).toMatchObject({

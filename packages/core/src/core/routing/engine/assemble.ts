@@ -87,9 +87,11 @@ export function assembleChainResult(input: AssembleInput): ChainResultEnvelope {
       }
     }
 
-    // Look up the alias in mutation or query raw result
+    // Look up the alias in mutation or query raw result.
+    // Mutations: do not surface the raw GQL wrapper (e.g. {addPullRequestReview: {...}})
+    // — it is not the normalized format agents expect.
     if (alias in mutationRawResult) {
-      return { task: req.task, ok: true, data: mutationRawResult[alias] }
+      return { task: req.task, ok: true }
     }
 
     if (alias in queryRawResult) {

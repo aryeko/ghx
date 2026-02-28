@@ -128,8 +128,11 @@ describe("assembleChainResult", () => {
     expect(result.meta.total).toBe(2)
     expect(result.meta.succeeded).toBe(2)
     expect(result.meta.failed).toBe(0)
-    expect(result.results[0]).toMatchObject({ ok: true, data: { id: 10 } })
-    expect(result.results[1]).toMatchObject({ ok: true, data: { id: 11 } })
+    // Mutation steps: raw GQL wrapper is not surfaced in data
+    expect(result.results[0]).toMatchObject({ ok: true })
+    expect(result.results[0]).not.toHaveProperty("data")
+    expect(result.results[1]).toMatchObject({ ok: true })
+    expect(result.results[1]).not.toHaveProperty("data")
   })
 
   it("all steps succeed via query raw result — status success", () => {
