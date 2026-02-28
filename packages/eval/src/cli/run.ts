@@ -4,6 +4,7 @@ import { GhxCollector } from "@eval/collector/ghx-collector.js"
 import { loadEvalConfig } from "@eval/config/loader.js"
 import type { EvalConfig } from "@eval/config/schema.js"
 import { FixtureManager } from "@eval/fixture/manager.js"
+import { loadFixtureManifest } from "@eval/fixture/manifest.js"
 import { createEvalHooks } from "@eval/hooks/eval-hooks.js"
 import { EvalModeResolver } from "@eval/mode/resolver.js"
 import { OpenCodeProvider } from "@eval/provider/opencode-provider.js"
@@ -108,17 +109,19 @@ export async function run(argv: readonly string[]): Promise<void> {
 
   const scenariosDir = join(process.cwd(), "scenarios")
 
+  const manifest = await loadFixtureManifest(config.fixtures.manifest)
+
   if (hasFlag(argv, "--dry-run")) {
     console.log("eval run --dry-run: resolved config:")
     console.log(JSON.stringify(config, null, 2))
     const resolvedIds = await resolveScenarioIds(scenariosDir, config.scenarios)
-    const scenarios = await loadEvalScenarios(scenariosDir, resolvedIds)
+    const scenarios = await loadEvalScenarios(scenariosDir, resolvedIds, manifest)
     console.log(`Scenarios: ${scenarios.length}`)
     return
   }
 
   const resolvedIds = await resolveScenarioIds(scenariosDir, config.scenarios)
-  const scenarios = await loadEvalScenarios(scenariosDir, resolvedIds)
+  const scenarios = await loadEvalScenarios(scenariosDir, resolvedIds, manifest)
 
   const fixtureManager = new FixtureManager({
     repo: config.fixtures.repo,

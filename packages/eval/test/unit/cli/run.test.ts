@@ -23,6 +23,15 @@ vi.mock("@eval/fixture/manager.js", () => ({
   })),
 }))
 
+vi.mock("@eval/fixture/manifest.js", () => ({
+  loadFixtureManifest: vi.fn().mockResolvedValue({
+    seedId: "test-seed",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    repo: "owner/repo",
+    fixtures: {},
+  }),
+}))
+
 vi.mock("@eval/provider/opencode-provider.js", () => ({
   OpenCodeProvider: vi.fn().mockImplementation(() => ({
     id: "opencode",
@@ -211,10 +220,11 @@ describe("run command", () => {
     await runFn(["--scenario-set", "smoke"])
 
     expect(loadScenarioSets).toHaveBeenCalled()
-    expect(loadEvalScenarios).toHaveBeenCalledWith(expect.any(String), [
-      "pr-fix-001",
-      "issue-close-001",
-    ])
+    expect(loadEvalScenarios).toHaveBeenCalledWith(
+      expect.any(String),
+      ["pr-fix-001", "issue-close-001"],
+      expect.any(Object),
+    )
   })
 
   it("--scenario-set throws when set name is not found", async () => {
