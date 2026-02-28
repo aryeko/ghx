@@ -8,7 +8,12 @@ vi.mock("@eval/fixture/manifest.js", () => ({
 
 vi.mock("@eval/fixture/seeders/index.js", () => ({
   getSeeder: vi.fn(),
+  hasSeeder: vi.fn().mockReturnValue(false),
   registerSeeder: vi.fn(),
+}))
+
+vi.mock("@eval/fixture/app-auth.js", () => ({
+  mintFixtureAppToken: vi.fn().mockResolvedValue(null),
 }))
 
 import { FixtureManager } from "@eval/fixture/manager.js"
@@ -28,7 +33,7 @@ const validManifest: FixtureManifest = {
       number: 42,
       repo: "aryeko/ghx-bench-fixtures",
       branch: "bench-fixture/pr-mixed-threads-42",
-      labels: ["bench-fixture"],
+      labels: ["@ghx-dev/eval"],
       metadata: { originalSha: "abc123def456" },
     },
     issue_for_triage: {
@@ -225,7 +230,7 @@ describe("FixtureManager.seed()", () => {
         number: 42,
         repo: "owner/repo",
         branch: "bench-fixture/pr_with_changes-123",
-        labels: ["bench-fixture"],
+        labels: ["@ghx-dev/eval"],
         metadata: { originalSha: "abc123" },
       }),
     }
@@ -236,6 +241,10 @@ describe("FixtureManager.seed()", () => {
       manifest: "fixtures/latest.json",
       seedId: "test-seed",
     })
+    vi.spyOn(
+      manager as unknown as { runGh: (args: string[]) => Promise<string> },
+      "runGh",
+    ).mockResolvedValue("")
 
     const scenarios = [
       {
@@ -287,6 +296,10 @@ describe("FixtureManager.seed()", () => {
       repo: "owner/repo",
       manifest: "fixtures/latest.json",
     })
+    vi.spyOn(
+      manager as unknown as { runGh: (args: string[]) => Promise<string> },
+      "runGh",
+    ).mockResolvedValue("")
 
     await manager.seed([
       {
@@ -336,6 +349,10 @@ describe("FixtureManager.seed()", () => {
     })
 
     const manager = new FixtureManager({ repo: "r", manifest: "m.json" })
+    vi.spyOn(
+      manager as unknown as { runGh: (args: string[]) => Promise<string> },
+      "runGh",
+    ).mockResolvedValue("")
     await manager.seed([
       {
         id: "sc-001",
@@ -360,7 +377,7 @@ describe("FixtureManager.seedOne()", () => {
       number: 500,
       repo: "owner/repo",
       branch: "bench-fixture/pr_with_changes-567",
-      labels: ["bench-fixture"],
+      labels: ["@ghx-dev/eval"],
       metadata: { originalSha: "deadbeef" },
     }
     const mockSeeder = {
@@ -370,13 +387,19 @@ describe("FixtureManager.seedOne()", () => {
     vi.mocked(getSeeder).mockReturnValue(mockSeeder)
 
     const manager = new FixtureManager({ repo: "owner/repo", manifest: "fixtures/latest.json" })
+    const runGhSpy = vi
+      .spyOn(manager as unknown as { runGh: (args: string[]) => Promise<string> }, "runGh")
+      .mockResolvedValue("")
     const resource = await manager.seedOne("pr_with_changes")
 
+    expect(runGhSpy).toHaveBeenCalledWith(
+      expect.arrayContaining(["label", "create", "@ghx-dev/eval", "--force"]),
+    )
     expect(getSeeder).toHaveBeenCalledWith("pr")
     expect(mockSeeder.seed).toHaveBeenCalledWith({
       repo: "owner/repo",
       name: "pr_with_changes",
-      labels: ["bench-fixture"],
+      labels: ["@ghx-dev/eval"],
     })
     expect(resource.number).toBe(500)
   })
@@ -391,6 +414,10 @@ describe("FixtureManager.seedOne()", () => {
     vi.mocked(getSeeder).mockReturnValue(mockSeeder)
 
     const manager = new FixtureManager({ repo: "owner/repo", manifest: "fixtures/latest.json" })
+    vi.spyOn(
+      manager as unknown as { runGh: (args: string[]) => Promise<string> },
+      "runGh",
+    ).mockResolvedValue("")
     await manager.seedOne("issue_for_triage")
 
     expect(getSeeder).toHaveBeenCalledWith("issue")

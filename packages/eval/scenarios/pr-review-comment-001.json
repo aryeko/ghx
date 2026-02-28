@@ -4,10 +4,10 @@
   "description": "Agent must review a PR diff, identify issues, and leave a constructive review comment.",
   "category": "pr",
   "difficulty": "basic",
-  "prompt": "Review the changes in PR #{{pr_number}} in {{repo}}. Examine the diff carefully and leave a review comment summarizing your findings -- mention any bugs, style issues, or improvements. Submit as a comment (not approval or request-changes).",
+  "prompt": "Review the changes in PR #{{pr_number}} in {{repo}}. Examine the diff carefully, identify any bugs, style issues, or improvements, and submit a review requesting changes. Leave detailed inline or summary comments explaining what needs to be fixed. Include the run ID '{{run_id}}' in your review body.",
   "timeoutMs": 120000,
   "allowedRetries": 1,
-  "tags": ["pr", "review", "comment"],
+  "tags": ["pr", "review", "request-changes"],
   "fixture": {
     "repo": "{{fixture_repo}}",
     "requires": ["pr_with_changes"],

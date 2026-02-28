@@ -36,14 +36,16 @@ import type { EvalScenario } from "./schema.js"
 export function bindFixtureVariables(
   scenario: EvalScenario,
   manifest: FixtureBindings,
+  extraVariables?: Readonly<Record<string, string>>,
 ): EvalScenario {
   if (!scenario.fixture) return scenario
 
   const { strings, raw } = resolveBindings(scenario.fixture.bindings, manifest)
-  const prompt = interpolate(scenario.prompt, strings)
+  const merged = extraVariables ? { ...strings, ...extraVariables } : strings
+  const prompt = interpolate(scenario.prompt, merged)
   const checkpoints = scenario.assertions.checkpoints.map((cp) => ({
     ...cp,
-    input: interpolateRecord(cp.input, strings, raw),
+    input: interpolateRecord(cp.input, merged, raw),
   }))
 
   return {

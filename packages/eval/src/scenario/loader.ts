@@ -28,6 +28,7 @@ export async function loadEvalScenarios(
   scenariosDir: string,
   ids?: readonly string[],
   manifest?: FixtureBindings,
+  extraVariables?: Readonly<Record<string, string>>,
 ): Promise<readonly EvalScenario[]> {
   const files = await readdir(scenariosDir)
   const jsonFiles = files.filter((f) => f.endsWith(".json") && f !== "scenario-sets.json")
@@ -45,7 +46,7 @@ export async function loadEvalScenarios(
       // Filter by requested IDs if provided
       if (ids !== undefined && !ids.includes(scenario.id)) continue
 
-      const bound = manifest ? bindFixtureVariables(scenario, manifest) : scenario
+      const bound = manifest ? bindFixtureVariables(scenario, manifest, extraVariables) : scenario
       scenarios.push(bound)
     } catch (error) {
       errors.push(`${file}: ${error instanceof Error ? error.message : String(error)}`)

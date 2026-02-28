@@ -1,4 +1,5 @@
 import { createIssueSeeder } from "./issue-seeder.js"
+import { createMixedThreadsSeeder } from "./mixed-threads-seeder.js"
 import { createPrSeeder } from "./pr-seeder.js"
 import type { FixtureSeeder } from "./types.js"
 
@@ -6,6 +7,10 @@ const registry = new Map<string, FixtureSeeder>()
 
 export function registerSeeder(seeder: FixtureSeeder): void {
   registry.set(seeder.type, seeder)
+}
+
+export function hasSeeder(type: string): boolean {
+  return registry.has(type)
 }
 
 export function getSeeder(type: string): FixtureSeeder {
@@ -19,5 +24,6 @@ export function getSeeder(type: string): FixtureSeeder {
 // Auto-register built-in seeders
 registerSeeder(createPrSeeder())
 registerSeeder(createIssueSeeder())
+registerSeeder(createMixedThreadsSeeder())
 
 export type { FixtureSeeder, SeedOptions } from "./types.js"

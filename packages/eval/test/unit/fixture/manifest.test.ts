@@ -18,7 +18,7 @@ const validManifest = {
       number: 42,
       repo: "aryeko/ghx-bench-fixtures",
       branch: "bench-fixture/pr-mixed-threads-42",
-      labels: ["bench-fixture"],
+      labels: ["@ghx-dev/eval"],
       metadata: {},
     },
   },

@@ -155,8 +155,10 @@ export async function run(argv: readonly string[]): Promise<void> {
     return
   }
 
+  const runId = `run_${Date.now()}`
+
   const resolvedIds = await resolveScenarioIds(scenariosDir, config.scenarios)
-  const scenarios = await loadEvalScenarios(scenariosDir, resolvedIds, manifest)
+  const scenarios = await loadEvalScenarios(scenariosDir, resolvedIds, manifest, { run_id: runId })
 
   // Load raw (unbound) scenarios for per-iteration rebinding when seedPerIteration is true.
   const rawScenariosList = await loadEvalScenarios(scenariosDir, resolvedIds)
@@ -172,8 +174,6 @@ export async function run(argv: readonly string[]): Promise<void> {
   if (githubToken === "") {
     throw new Error('Missing GitHub token: set GH_TOKEN or GITHUB_TOKEN to run "eval run"')
   }
-
-  const runId = `run_${Date.now()}`
   // --output-jsonl specifies a direct file path; otherwise use {results_dir}/{runId}.jsonl
   const outputJsonlOverride = parseFlag(argv, "--output-jsonl")
   const outputJsonlPath = outputJsonlOverride ?? join(config.output.results_dir, `${runId}.jsonl`)
@@ -188,6 +188,7 @@ export async function run(argv: readonly string[]): Promise<void> {
     reseedBetweenModes: config.fixtures.reseed_between_modes,
     fixtureRequires: allFixtureRequires,
     rawScenarios: rawScenariosMap,
+    runId,
   })
 
   for (const model of config.models) {

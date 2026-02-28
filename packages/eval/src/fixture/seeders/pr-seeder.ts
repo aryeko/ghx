@@ -1,57 +1,41 @@
-import { execFile, spawn } from "node:child_process"
-
 import type { FixtureResource } from "@eval/fixture/manifest.js"
 import type { FixtureSeeder, SeedOptions } from "@eval/fixture/seeders/types.js"
+import { runGh, runGhWithInput, runGhWithToken } from "./gh.js"
 
-function runGh(args: readonly string[]): Promise<string> {
-  return new Promise((resolve, reject) => {
-    execFile("gh", args as string[], (error, stdout) => {
-      if (error) {
-        reject(error)
-        return
-      }
-      resolve(stdout.trim())
-    })
-  })
+// A small TypeScript file with intentional bugs for the agent to review.
+const REVIEW_FILE_PATH = "src/utils/helpers.ts"
+const REVIEW_FILE_CONTENT = `// Helper utilities
+improt { readFileSync } from "fs"
+
+export function readConfig(path: string): string {
+  return readFileSync(path, "utf8")
 }
 
-function runGhWithInput(args: readonly string[], input: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn("gh", args as string[], { stdio: ["pipe", "pipe", "pipe"] })
-    let stdout = ""
-    let stderr = ""
-    proc.stdout.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString()
-    })
-    proc.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString()
-    })
-    proc.on("close", (code) => {
-      if (code !== 0) reject(new Error(stderr.trim() || `gh exited with code ${code}`))
-      else resolve(stdout.trim())
-    })
-    proc.stdin.write(input)
-    proc.stdin.end()
-  })
+export function divide(a: number, b: number): number {
+  return a / 0
 }
+
+export function waitForReady(): void {
+  while (true) {
+    // waiting for ready signal
+  }
+}
+`
 
 async function getDefaultBranch(repo: string): Promise<string> {
   const [owner, name] = repo.split("/")
-  const query =
-    "query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { defaultBranchRef { name } } }"
   const stdout = await runGh([
     "api",
     "graphql",
     "-f",
-    `query=${query}`,
+    `query=query($owner: String!, $name: String!) { repository(owner: $owner, name: $name) { defaultBranchRef { name } } }`,
     "-f",
     `owner=${owner}`,
     "-f",
     `name=${name}`,
   ])
-  const parsed: {
-    data: { repository: { defaultBranchRef: { name: string } } }
-  } = JSON.parse(stdout)
+  const parsed: { data: { repository: { defaultBranchRef: { name: string } } } } =
+    JSON.parse(stdout)
   return parsed.data.repository.defaultBranchRef.name
 }
 
@@ -66,6 +50,12 @@ async function createTree(repo: string, baseSha: string): Promise<string> {
     base_tree: baseSha,
     tree: [
       { path: ".eval-fixture", mode: "100644", type: "blob", content: "eval fixture placeholder" },
+      {
+        path: REVIEW_FILE_PATH,
+        mode: "100644",
+        type: "blob",
+        content: REVIEW_FILE_CONTENT,
+      },
     ],
   })
   const stdout = await runGhWithInput(
@@ -111,6 +101,7 @@ async function openPr(
   branchName: string,
   name: string,
   labels: readonly string[],
+  token?: string,
 ): Promise<void> {
   const args = [
     "pr",
@@ -127,7 +118,11 @@ async function openPr(
   for (const label of labels) {
     args.push("--label", label)
   }
-  await runGh(args)
+  if (token) {
+    await runGhWithToken(args, token)
+  } else {
+    await runGh(args)
+  }
 }
 
 async function getPrDetails(
@@ -152,7 +147,7 @@ export function createPrSeeder(): FixtureSeeder {
     type: "pr",
 
     async seed(options: SeedOptions): Promise<FixtureResource> {
-      const { repo, name, labels } = options
+      const { repo, name, labels, botToken } = options
       const branchName = `bench-fixture/${name}-${Date.now()}`
 
       const defaultBranch = await getDefaultBranch(repo)
@@ -160,7 +155,7 @@ export function createPrSeeder(): FixtureSeeder {
       const treeSha = await createTree(repo, headSha)
       const commitSha = await createCommit(repo, treeSha, headSha)
       await createBranchRef(repo, branchName, commitSha)
-      await openPr(repo, branchName, name, labels)
+      await openPr(repo, branchName, name, labels, botToken)
       const prDetails = await getPrDetails(repo, branchName)
 
       return {

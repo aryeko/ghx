@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import type { FixtureManager } from "@eval/fixture/manager.js"
+import type { FixtureResource } from "@eval/fixture/manifest.js"
 import { bindFixtureVariables } from "@eval/scenario/fixture-binder.js"
 import type { EvalScenario } from "@eval/scenario/schema.js"
 import type {
@@ -25,6 +26,8 @@ export interface EvalHooksOptions {
   readonly reseedBetweenModes?: boolean
   /** Fixture names to reset when `reseedBetweenModes` is true. */
   readonly fixtureRequires?: readonly string[]
+  /** Run ID injected as `{{run_id}}` in scenario prompts. */
+  readonly runId?: string
   /**
    * Map of scenario ID → raw (unbound) scenario template.
    *
@@ -67,6 +70,10 @@ export interface EvalHooksOptions {
  * ```
  */
 export function createEvalHooks(options: EvalHooksOptions): RunHooks {
+  // Tracks per-iteration seeded resources for cleanup in afterScenario.
+  // Key: `${scenarioId}:${mode}:${iteration}`
+  const iterationResources = new Map<string, readonly FixtureResource[]>()
+
   return {
     beforeRun: async (_ctx: RunContext) => {
       const status = await options.fixtureManager.status()
@@ -104,8 +111,12 @@ export function createEvalHooks(options: EvalHooksOptions): RunHooks {
           newFixtures[fixtureName] = resource as unknown as Record<string, unknown>
         }
 
+        const resources = Object.values(newFixtures) as FixtureResource[]
+        iterationResources.set(`${scenario.id}:${ctx.mode}:${ctx.iteration}`, resources)
+
         const miniManifest = { fixtures: newFixtures }
-        return bindFixtureVariables(rawScenario, miniManifest) as unknown as BaseScenario
+        const extraVars = options.runId ? { run_id: options.runId } : undefined
+        return bindFixtureVariables(rawScenario, miniManifest, extraVars) as unknown as BaseScenario
       }
     },
 
@@ -118,6 +129,19 @@ export function createEvalHooks(options: EvalHooksOptions): RunHooks {
           ctx.iteration,
           options.reportsDir ?? "reports",
         )
+      }
+
+      const key = `${ctx.scenario.id}:${ctx.mode}:${ctx.iteration}`
+      const resources = iterationResources.get(key)
+      if (resources) {
+        iterationResources.delete(key)
+        for (const resource of resources) {
+          try {
+            await options.fixtureManager.closeResource(resource)
+          } catch {
+            // best-effort: don't fail the run if cleanup fails
+          }
+        }
       }
     },
   }

@@ -237,6 +237,7 @@ describe("run command", () => {
       expect.any(String),
       ["pr-fix-001", "issue-close-001"],
       expect.any(Object),
+      expect.any(Object),
     )
   })
 

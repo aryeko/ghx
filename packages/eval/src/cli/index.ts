@@ -1,4 +1,15 @@
+import { resolve } from "node:path"
+
+function loadEnvLocal(): void {
+  try {
+    process.loadEnvFile(resolve(import.meta.dirname ?? ".", "../../.env.local"))
+  } catch {
+    // .env.local is optional
+  }
+}
+
 export async function main(argv: readonly string[]): Promise<void> {
+  loadEnvLocal()
   const command = argv[0]
 
   if (!command) {

@@ -25,10 +25,11 @@ function makeFixtureManager(
       number: 999,
       repo: "aryeko/ghx-bench-fixtures",
       branch: "bench-fixture/pr_with_changes-1234",
-      labels: ["bench-fixture"],
+      labels: ["@ghx-dev/eval"],
       metadata: { originalSha: "abc123" },
     }),
     cleanup: vi.fn().mockResolvedValue(undefined),
+    closeResource: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   } as unknown as FixtureManager
 }
@@ -223,7 +224,7 @@ describe("createEvalHooks", () => {
         id: "test-seed-001",
         name: "test",
         description: "test",
-        prompt: "Review PR #{{pr_number}} in {{repo}}",
+        prompt: "Review PR #{{pr_number}} in {{repo}} run={{run_id}}",
         timeoutMs: 60000,
         allowedRetries: 0,
         tags: [],
@@ -248,6 +249,7 @@ describe("createEvalHooks", () => {
         fixtureManager: manager,
         sessionExport: false,
         rawScenarios: rawScenariosMap,
+        runId: "run_test_42",
       })
 
       const result = await beforeScenario?.({
@@ -265,6 +267,7 @@ describe("createEvalHooks", () => {
       const reboundScenario = result as import("@ghx-dev/agent-profiler").BaseScenario
       expect(reboundScenario.prompt).toContain("999")
       expect(reboundScenario.prompt).not.toContain("372")
+      expect(reboundScenario.prompt).toContain("run_test_42")
     })
 
     it("does not seed when seedPerIteration is false", async () => {
@@ -304,6 +307,60 @@ describe("createEvalHooks", () => {
   })
 
   describe("afterScenario", () => {
+    it("closes seeded resources after a seedPerIteration iteration", async () => {
+      const manager = makeFixtureManager()
+      const rawScenario = {
+        id: "test-cleanup-001",
+        name: "test",
+        description: "test",
+        prompt: "Review PR #{{pr_number}} in {{repo}}",
+        timeoutMs: 60000,
+        allowedRetries: 0,
+        tags: [],
+        category: "pr" as const,
+        difficulty: "basic" as const,
+        fixture: {
+          repo: "aryeko/ghx-bench-fixtures",
+          requires: ["pr_with_changes"],
+          bindings: { pr_number: "pr_with_changes.number", repo: "pr_with_changes.repo" },
+          reseedPerIteration: false,
+          seedPerIteration: true,
+        },
+        assertions: { checkpoints: [] },
+      }
+      const rawScenariosMap = new Map([
+        [
+          "test-cleanup-001",
+          rawScenario as unknown as import("@eval/scenario/schema.js").EvalScenario,
+        ],
+      ])
+      const hooks = createEvalHooks({
+        fixtureManager: manager,
+        sessionExport: false,
+        rawScenarios: rawScenariosMap,
+      })
+
+      await hooks.beforeScenario?.({
+        scenario: rawScenario as unknown as import("@ghx-dev/agent-profiler").BaseScenario,
+        mode: "ghx",
+        model: "test-model",
+        iteration: 0,
+      })
+
+      await hooks.afterScenario?.({
+        scenario: { id: "test-cleanup-001" } as never,
+        mode: "ghx",
+        model: "test-model",
+        iteration: 0,
+        result: {} as never,
+        trace: null,
+      } as import("@ghx-dev/agent-profiler").AfterScenarioContext)
+
+      expect(manager.closeResource).toHaveBeenCalledWith(
+        expect.objectContaining({ number: 999, repo: "aryeko/ghx-bench-fixtures" }),
+      )
+    })
+
     it("exports session trace when sessionExport is true and trace is available", async () => {
       const { writeFile, mkdir } = await import("node:fs/promises")
       const manager = makeFixtureManager()

@@ -15,7 +15,8 @@
       "pr_number": "pr_with_mixed_threads.number",
       "repo": "pr_with_mixed_threads.repo"
     },
-    "reseedPerIteration": true
+    "reseedPerIteration": false,
+    "seedPerIteration": true
   },
   "assertions": {
     "checkpoints": [

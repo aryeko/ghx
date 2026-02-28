@@ -36,6 +36,8 @@ provider:
 models:
   - id: openai/gpt-5.3-codex
     label: Codex 5.3
+  # - id: openai/gpt-5.3-codex-spark
+    # label: Codex 5.3 Spark
   # - id: anthropic/claude-sonnet-4-6
   #   label: Claude Sonnet 4.6
 

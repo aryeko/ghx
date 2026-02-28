@@ -44,7 +44,7 @@ describe("createIssueSeeder", () => {
   })
 
   it("creates an issue and returns a FixtureResource", async () => {
-    const issueList = [{ number: 42, title: "[bench-fixture] open_issue" }]
+    const issueList = [{ number: 42, title: "[@ghx-dev/eval] open_issue" }]
 
     mockExecFileResults([
       { stdout: "", stderr: "" },
@@ -55,20 +55,20 @@ describe("createIssueSeeder", () => {
     const result = await seeder.seed({
       repo: "acme/sandbox",
       name: "open_issue",
-      labels: ["bench-fixture", "eval"],
+      labels: ["@ghx-dev/eval", "eval"],
     })
 
     expect(result).toEqual({
       type: "issue",
       number: 42,
       repo: "acme/sandbox",
-      labels: ["bench-fixture", "eval"],
+      labels: ["@ghx-dev/eval", "eval"],
       metadata: {},
     })
   })
 
   it("calls gh issue create with expected arguments", async () => {
-    const issueList = [{ number: 7, title: "[bench-fixture] labeled_issue" }]
+    const issueList = [{ number: 7, title: "[@ghx-dev/eval] labeled_issue" }]
 
     mockExecFileResults([
       { stdout: "", stderr: "" },
@@ -79,7 +79,7 @@ describe("createIssueSeeder", () => {
     await seeder.seed({
       repo: "acme/sandbox",
       name: "labeled_issue",
-      labels: ["bench-fixture"],
+      labels: ["@ghx-dev/eval"],
     })
 
     const calls = mockedExecFile.mock.calls
@@ -97,9 +97,9 @@ describe("createIssueSeeder", () => {
         "--repo",
         "acme/sandbox",
         "--title",
-        "[bench-fixture] labeled_issue",
+        "[@ghx-dev/eval] labeled_issue",
         "--label",
-        "bench-fixture",
+        "@ghx-dev/eval",
       ]),
     )
 
@@ -112,7 +112,7 @@ describe("createIssueSeeder", () => {
         "--repo",
         "acme/sandbox",
         "--label",
-        "bench-fixture",
+        "@ghx-dev/eval",
         "--json",
         "number,title",
       ]),
@@ -131,7 +131,7 @@ describe("createIssueSeeder", () => {
       seeder.seed({
         repo: "acme/sandbox",
         name: "ghost_issue",
-        labels: ["bench-fixture"],
+        labels: ["@ghx-dev/eval"],
       }),
     ).rejects.toThrow(/could not find.*ghost_issue/i)
   })

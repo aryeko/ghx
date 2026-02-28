@@ -113,4 +113,13 @@ describe("bindFixtureVariables", () => {
     bindFixtureVariables(baseScenario, manifest)
     expect(baseScenario.prompt).toBe(originalPrompt)
   })
+
+  it("resolves extraVariables in the prompt", () => {
+    const withRunId: EvalScenario = {
+      ...baseScenario,
+      prompt: "Review PR #{{pr_number}} in {{repo}} (run: {{run_id}})",
+    }
+    const bound = bindFixtureVariables(withRunId, manifest, { run_id: "run_12345" })
+    expect(bound.prompt).toBe("Review PR #42 in aryeko/ghx-bench-fixtures (run: run_12345)")
+  })
 })
