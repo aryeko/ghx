@@ -162,13 +162,14 @@ describe("profile-runner integration", () => {
     ])
   })
 
-  it("calls provider.shutdown after all iterations", async () => {
+  it("calls provider.shutdown once per mode", async () => {
     const provider = createMockProvider()
     const options = makeOptions({ provider })
 
     await runProfileSuite(options)
 
-    expect(provider.calls.shutdown?.length ?? 0).toBe(1)
+    // makeOptions uses 2 modes by default — shutdown is called once per mode
+    expect(provider.calls.shutdown?.length ?? 0).toBe(2)
   })
 
   it("calls analyzers and returns analysis bundles", async () => {

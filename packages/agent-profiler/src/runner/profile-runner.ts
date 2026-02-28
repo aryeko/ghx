@@ -107,27 +107,28 @@ export async function runProfileSuite(options: ProfileSuiteOptions): Promise<Pro
     await hooks.beforeRun({ runId, modes, scenarios, repetitions })
   }
 
-  await provider.init({
-    port: 0,
-    model: "",
-    mode: "",
-    permissions: { autoApprove: true, allowedTools: [] },
-    environment: {},
-    workdir: "",
-  })
+  let isFirstMode = true
 
-  try {
-    if (warmup && scenarios.length > 0 && modes.length > 0) {
-      const firstMode = modes[0]
-      const firstScenario = scenarios[0]
-      if (firstMode && firstScenario) {
-        const modeConfig = await modeResolver.resolve(firstMode)
-        await runWarmup(provider, firstScenario, modeConfig.systemInstructions, logger)
+  for (const mode of modes) {
+    const modeConfig = await modeResolver.resolve(mode)
+
+    await provider.init({
+      port: 0,
+      model: "",
+      mode,
+      permissions: { autoApprove: true, allowedTools: [] },
+      environment: modeConfig.environment,
+      workdir: "",
+    })
+
+    try {
+      if (warmup && isFirstMode && scenarios.length > 0) {
+        const firstScenario = scenarios[0]
+        if (firstScenario) {
+          await runWarmup(provider, firstScenario, modeConfig.systemInstructions, logger)
+        }
       }
-    }
-
-    for (const mode of modes) {
-      const modeConfig = await modeResolver.resolve(mode)
+      isFirstMode = false
 
       if (hooks.beforeMode) {
         await hooks.beforeMode(mode)
@@ -172,13 +173,13 @@ export async function runProfileSuite(options: ProfileSuiteOptions): Promise<Pro
       if (hooks.afterMode) {
         await hooks.afterMode(mode)
       }
+    } finally {
+      await provider.shutdown()
     }
+  }
 
-    if (hooks.afterRun) {
-      await hooks.afterRun({ runId, modes, scenarios, repetitions })
-    }
-  } finally {
-    await provider.shutdown()
+  if (hooks.afterRun) {
+    await hooks.afterRun({ runId, modes, scenarios, repetitions })
   }
 
   const durationMs = Date.now() - suiteStart
