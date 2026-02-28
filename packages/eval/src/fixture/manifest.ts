@@ -52,8 +52,32 @@ export type FixtureResource = z.infer<typeof FixtureResourceSchema>
  * console.log(manifest.seedId, manifest.repo)
  * ```
  */
+function exitMissingManifest(path: string): never {
+  console.error(
+    [
+      `Error: Fixture manifest not found at "${path}".`,
+      ``,
+      `Run the seed command to generate one:`,
+      `  pnpm eval seed`,
+      ``,
+      `Or create it manually — see the example at:`,
+      `  packages/eval/fixtures/latest.example.json`,
+      ``,
+      `For more information, see:`,
+      `  packages/eval/docs/guides/managing-fixtures.md`,
+    ].join("\n"),
+  )
+  process.exit(1)
+}
+
 export async function loadFixtureManifest(path: string): Promise<FixtureManifest> {
-  const content = await readFile(path, "utf-8")
+  let content: string
+  try {
+    content = await readFile(path, "utf-8")
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") exitMissingManifest(path)
+    else throw err
+  }
   return FixtureManifestSchema.parse(JSON.parse(content))
 }
 
