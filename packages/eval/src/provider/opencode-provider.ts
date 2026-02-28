@@ -170,6 +170,7 @@ export class OpenCodeProvider implements SessionProvider {
   }
   private configDir = ""
   private readonly traceBuilder = new TraceBuilder()
+  private readonly sessionInstructions = new Map<string, string>()
 
   constructor(private readonly options: OpenCodeProviderOptions) {}
 
@@ -203,13 +204,24 @@ export class OpenCodeProvider implements SessionProvider {
     }
 
     try {
+      const githubToken = process.env["GH_TOKEN"] ?? process.env["GITHUB_TOKEN"] ?? ""
+      const mcp = githubToken
+        ? {
+            github: {
+              type: "local" as const,
+              command: ["npx", "-y", "@modelcontextprotocol/server-github"],
+              environment: { GITHUB_PERSONAL_ACCESS_TOKEN: githubToken },
+            },
+          }
+        : {}
+
       const opencode = await createOpencode({
         port: config.port > 0 ? config.port : this.options.port,
         config: {
           model: this.options.model,
           instructions: [],
           plugin: [],
-          mcp: {},
+          mcp,
           agent: {},
           command: {},
           permission: {
@@ -231,13 +243,17 @@ export class OpenCodeProvider implements SessionProvider {
     }
   }
 
-  async createSession(_params: CreateSessionParams): Promise<SessionHandle> {
+  async createSession(params: CreateSessionParams): Promise<SessionHandle> {
     const sessionApi = getSessionApi(this.requireClient())
     const sessionResult = await sessionApi.create({
       url: "/session",
     })
 
     const sessionId = unwrapSessionId(sessionResult)
+
+    if (params.systemInstructions) {
+      this.sessionInstructions.set(sessionId, params.systemInstructions)
+    }
 
     return {
       sessionId,
@@ -250,10 +266,13 @@ export class OpenCodeProvider implements SessionProvider {
     const sessionApi = getSessionApi(this.requireClient())
     const startTime = Date.now()
 
+    const system = this.sessionInstructions.get(handle.sessionId)
+
     await sessionApi.promptAsync({
       url: "/session/{id}/prompt_async",
       path: { id: handle.sessionId },
       body: {
+        ...(system ? { system } : {}),
         parts: [{ type: "text", text }],
       },
     })
@@ -295,8 +314,8 @@ export class OpenCodeProvider implements SessionProvider {
     return this.traceBuilder.buildTrace(handle.sessionId, messages)
   }
 
-  async destroySession(_handle: SessionHandle): Promise<void> {
-    // Sessions are stateless on the server side — no-op
+  async destroySession(handle: SessionHandle): Promise<void> {
+    this.sessionInstructions.delete(handle.sessionId)
   }
 
   async shutdown(): Promise<void> {
