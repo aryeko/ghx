@@ -14,19 +14,19 @@ The manifest file tracks all seeded fixtures and their resource identifiers. It 
 
 ```typescript
 interface FixtureManifest {
-  readonly seedId: string                                   // Identifier for the seed run
-  readonly createdAt: string                                // ISO-8601 timestamp
-  readonly repo: string                                     // "owner/repo" format
-  readonly fixtures: Readonly<Record<string, FixtureResource>>
+  seedId: string                         // Identifier for the seed run
+  createdAt: string                      // ISO-8601 timestamp
+  repo: string                           // "owner/repo" format
+  fixtures: Record<string, FixtureResource>
 }
 
 interface FixtureResource {
-  readonly type: string                                     // e.g. "pr_with_changes"
-  readonly number: number                                   // PR or issue number
-  readonly repo: string                                     // Full "owner/repo" path
-  readonly branch?: string                                  // Branch name (for PRs)
-  readonly labels?: readonly string[]                       // Applied labels
-  readonly metadata: Readonly<Record<string, unknown>>      // e.g. { originalSha: "abc123" }
+  type: string                           // e.g. "pr_with_changes"
+  number: number                         // PR or issue number
+  repo: string                           // Full "owner/repo" path
+  branch?: string                        // Branch name (for PRs)
+  labels?: string[]                      // Applied labels
+  metadata: Record<string, unknown>      // e.g. { originalSha: "abc123" }. Default: {}
 }
 ```
 

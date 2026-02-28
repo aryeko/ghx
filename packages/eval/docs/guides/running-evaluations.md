@@ -22,7 +22,7 @@ pnpm --filter @ghx-dev/eval run eval <command> [options]
 
 Execute the full evaluation matrix (models x modes x scenarios x repetitions).
 
-```
+```text
 eval run [options]
 
 Options:
@@ -69,7 +69,7 @@ pnpm --filter @ghx-dev/eval run eval run \
 
 Run analyzers on exported session traces without generating reports. Useful when analysis is too expensive to run inline, or when re-analyzing with updated analyzer configurations.
 
-```
+```text
 eval analyze [options]
 
 Options:
@@ -90,7 +90,7 @@ pnpm --filter @ghx-dev/eval run eval analyze \
 
 Generate Markdown, CSV, and/or JSON reports from results data.
 
-```
+```text
 eval report [options]
 
 Options:
@@ -113,7 +113,7 @@ pnpm --filter @ghx-dev/eval run eval report \
 
 Validate configuration and scenario files without executing anything.
 
-```
+```text
 eval check [options]
 
 Options:
@@ -132,7 +132,7 @@ pnpm --filter @ghx-dev/eval run eval check --all
 
 Manage GitHub test fixtures. See [Managing Fixtures](./managing-fixtures.md) for full details.
 
-```
+```text
 eval fixture <command> [options]
 
 Commands:

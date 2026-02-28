@@ -29,7 +29,7 @@ This is the primary metric. `GhxCollector` classifies every tool call in a sessi
 
 | Category | Pattern | Example |
 |----------|---------|---------|
-| ghx | `ghx.*` or `ghx_*` prefix | `ghx run pr.reviews.list` |
+| ghx | `ghx.*` prefix (legacy traces may include `ghx_*`) | `ghx run pr.reviews.list` |
 | mcp | `github_*` or `mcp*` prefix | `github_create_review` |
 | gh_cli | bash tool containing `gh` command | `gh pr view 42 --json reviews` |
 | bash | bash/shell/terminal (non-gh) | `ls`, `cat`, `jq` |
