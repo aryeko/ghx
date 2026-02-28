@@ -19,6 +19,10 @@ export interface EvalHooksOptions {
   readonly sessionExport: boolean
   /** Directory for session trace exports. Defaults to `"reports"`. */
   readonly reportsDir?: string
+  /** When `true`, reset all fixtures to their original state before each mode begins. */
+  readonly reseedBetweenModes?: boolean
+  /** Fixture names to reset when `reseedBetweenModes` is true. */
+  readonly fixtureRequires?: readonly string[]
 }
 
 /**
@@ -27,6 +31,8 @@ export interface EvalHooksOptions {
  *
  * - **`beforeRun`** — asserts all required fixtures exist in the manifest;
  *   throws with a list of missing fixture names if any are absent.
+ * - **`beforeMode`** — resets all fixtures to their original state when
+ *   `reseedBetweenModes` is `true`.
  * - **`beforeScenario`** — resets fixtures to their original state when the
  *   scenario sets `fixture.reseedPerIteration = true`.
  * - **`afterScenario`** — persists the session trace to the output directory
@@ -57,6 +63,16 @@ export function createEvalHooks(options: EvalHooksOptions): RunHooks {
         throw new Error(
           `Missing fixtures before run: ${status.missing.join(", ")}. Run "eval fixture seed" first.`,
         )
+      }
+    },
+
+    beforeMode: async (_mode: string) => {
+      if (
+        options.reseedBetweenModes &&
+        options.fixtureRequires &&
+        options.fixtureRequires.length > 0
+      ) {
+        await options.fixtureManager.reset(options.fixtureRequires)
       }
     },
 

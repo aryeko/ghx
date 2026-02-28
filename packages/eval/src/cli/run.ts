@@ -175,10 +175,14 @@ export async function run(argv: readonly string[]): Promise<void> {
   const outputJsonlPath = outputJsonlOverride ?? join(config.output.results_dir, `${runId}.jsonl`)
   const reportsDir = join(config.output.reports_dir, runId)
 
+  const allFixtureRequires = [...new Set(scenarios.flatMap((s) => s.fixture?.requires ?? []))]
+
   const hooks = createEvalHooks({
     fixtureManager,
     sessionExport: config.output.session_export,
     reportsDir,
+    reseedBetweenModes: config.fixtures.reseed_between_modes,
+    fixtureRequires: allFixtureRequires,
   })
 
   for (const model of config.models) {

@@ -54,6 +54,63 @@ describe("createEvalHooks", () => {
     })
   })
 
+  describe("beforeMode", () => {
+    it("calls reset with fixtureRequires when reseedBetweenModes is true", async () => {
+      const manager = makeFixtureManager()
+      const { beforeMode } = createEvalHooks({
+        fixtureManager: manager,
+        sessionExport: false,
+        reseedBetweenModes: true,
+        fixtureRequires: ["pr_with_changes", "pr_with_mixed_threads"],
+      })
+
+      await beforeMode?.("ghx")
+
+      expect(manager.reset).toHaveBeenCalledWith(["pr_with_changes", "pr_with_mixed_threads"])
+    })
+
+    it("does not call reset when reseedBetweenModes is false", async () => {
+      const manager = makeFixtureManager()
+      const { beforeMode } = createEvalHooks({
+        fixtureManager: manager,
+        sessionExport: false,
+        reseedBetweenModes: false,
+        fixtureRequires: ["pr_with_changes"],
+      })
+
+      await beforeMode?.("ghx")
+
+      expect(manager.reset).not.toHaveBeenCalled()
+    })
+
+    it("does not call reset when fixtureRequires is empty", async () => {
+      const manager = makeFixtureManager()
+      const { beforeMode } = createEvalHooks({
+        fixtureManager: manager,
+        sessionExport: false,
+        reseedBetweenModes: true,
+        fixtureRequires: [],
+      })
+
+      await beforeMode?.("ghx")
+
+      expect(manager.reset).not.toHaveBeenCalled()
+    })
+
+    it("does not call reset when fixtureRequires is omitted", async () => {
+      const manager = makeFixtureManager()
+      const { beforeMode } = createEvalHooks({
+        fixtureManager: manager,
+        sessionExport: false,
+        reseedBetweenModes: true,
+      })
+
+      await beforeMode?.("ghx")
+
+      expect(manager.reset).not.toHaveBeenCalled()
+    })
+  })
+
   describe("beforeScenario", () => {
     it("calls reset when reseedPerIteration is true", async () => {
       const manager = makeFixtureManager()

@@ -121,6 +121,22 @@ describe("runProfileSuite", () => {
     expect(provider.calls.createSession?.length ?? 0).toBe(2)
   })
 
+  it("runs warmup once per mode when warmup flag is true", async () => {
+    const provider = createMockProvider()
+    const options = makeOptions({
+      provider,
+      warmup: true,
+      modes: ["mode_a", "mode_b"],
+      scenarios: [makeScenario()],
+      repetitions: 1,
+    })
+
+    await runProfileSuite(options)
+
+    // 2 modes × (warmup(1) + iteration(1)) = 4 createSession calls
+    expect(provider.calls.createSession?.length ?? 0).toBe(4)
+  })
+
   it("calls appendJsonlLine for each row", async () => {
     const { appendJsonlLine } = await import("@profiler/store/jsonl-store.js")
     vi.mocked(appendJsonlLine).mockClear()

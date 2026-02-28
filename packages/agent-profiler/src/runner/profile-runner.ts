@@ -107,8 +107,6 @@ export async function runProfileSuite(options: ProfileSuiteOptions): Promise<Pro
     await hooks.beforeRun({ runId, modes, scenarios, repetitions })
   }
 
-  let isFirstMode = true
-
   for (const mode of modes) {
     const modeConfig = await modeResolver.resolve(mode)
 
@@ -122,13 +120,12 @@ export async function runProfileSuite(options: ProfileSuiteOptions): Promise<Pro
     })
 
     try {
-      if (warmup && isFirstMode && scenarios.length > 0) {
+      if (warmup && scenarios.length > 0) {
         const firstScenario = scenarios[0]
         if (firstScenario) {
           await runWarmup(provider, firstScenario, modeConfig.systemInstructions, logger)
         }
       }
-      isFirstMode = false
 
       if (hooks.beforeMode) {
         await hooks.beforeMode(mode)

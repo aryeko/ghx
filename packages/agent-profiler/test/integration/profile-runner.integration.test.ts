@@ -114,9 +114,9 @@ describe("profile-runner integration", () => {
 
     const result = await runProfileSuite(options)
 
-    // warmup (1) + 8 iterations = 9 createSession calls
-    expect(provider.calls.createSession?.length ?? 0).toBe(9)
-    // but only 8 rows in results (warmup discarded)
+    // 2 modes × warmup(1) + 8 iterations = 10 createSession calls
+    expect(provider.calls.createSession?.length ?? 0).toBe(10)
+    // but only 8 rows in results (warmups discarded)
     expect(result.rows).toHaveLength(8)
   })
 

@@ -208,9 +208,9 @@ export class OpenCodeProvider implements SessionProvider {
       const mcp = githubToken
         ? {
             github: {
-              type: "local" as const,
-              command: ["npx", "-y", "@modelcontextprotocol/server-github"],
-              environment: { GITHUB_PERSONAL_ACCESS_TOKEN: githubToken },
+              type: "remote" as const,
+              url: "https://api.githubcopilot.com/mcp/",
+              headers: { Authorization: `Bearer ${githubToken}` },
             },
           }
         : {}
