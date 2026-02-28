@@ -13,12 +13,21 @@ function makeFixtureManager(
   overrides?: Partial<{
     status: () => Promise<{ ok: readonly string[]; missing: readonly string[] }>
     reset: (requires: readonly string[]) => Promise<void>
+    seedOne: (fixtureName: string) => Promise<unknown>
   }>,
 ): FixtureManager {
   return {
     status: vi.fn().mockResolvedValue({ ok: ["pr_with_mixed_threads"], missing: [] }),
     reset: vi.fn().mockResolvedValue(undefined),
     seed: vi.fn().mockResolvedValue(undefined),
+    seedOne: vi.fn().mockResolvedValue({
+      type: "pr",
+      number: 999,
+      repo: "aryeko/ghx-bench-fixtures",
+      branch: "bench-fixture/pr_with_changes-1234",
+      labels: ["bench-fixture"],
+      metadata: { originalSha: "abc123" },
+    }),
     cleanup: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   } as unknown as FixtureManager
@@ -206,6 +215,91 @@ describe("createEvalHooks", () => {
       })
 
       expect(manager.reset).not.toHaveBeenCalled()
+    })
+
+    it("seeds new fixture and returns rebound scenario when seedPerIteration is true", async () => {
+      const manager = makeFixtureManager()
+      const rawScenario = {
+        id: "test-seed-001",
+        name: "test",
+        description: "test",
+        prompt: "Review PR #{{pr_number}} in {{repo}}",
+        timeoutMs: 60000,
+        allowedRetries: 0,
+        tags: [],
+        category: "pr" as const,
+        difficulty: "basic" as const,
+        fixture: {
+          repo: "aryeko/ghx-bench-fixtures",
+          requires: ["pr_with_changes"],
+          bindings: { pr_number: "pr_with_changes.number", repo: "pr_with_changes.repo" },
+          reseedPerIteration: false,
+          seedPerIteration: true,
+        },
+        assertions: { checkpoints: [] },
+      }
+      const rawScenariosMap = new Map([
+        [
+          "test-seed-001",
+          rawScenario as unknown as import("@eval/scenario/schema.js").EvalScenario,
+        ],
+      ])
+      const { beforeScenario } = createEvalHooks({
+        fixtureManager: manager,
+        sessionExport: false,
+        rawScenarios: rawScenariosMap,
+      })
+
+      const result = await beforeScenario?.({
+        scenario: {
+          ...rawScenario,
+          prompt: "Review PR #372 in aryeko/ghx-bench-fixtures",
+        } as unknown as import("@ghx-dev/agent-profiler").BaseScenario,
+        mode: "ghx",
+        model: "test-model",
+        iteration: 0,
+      })
+
+      expect(manager.seedOne).toHaveBeenCalledWith("pr_with_changes")
+      expect(result).toBeDefined()
+      const reboundScenario = result as import("@ghx-dev/agent-profiler").BaseScenario
+      expect(reboundScenario.prompt).toContain("999")
+      expect(reboundScenario.prompt).not.toContain("372")
+    })
+
+    it("does not seed when seedPerIteration is false", async () => {
+      const manager = makeFixtureManager()
+      const { beforeScenario } = createEvalHooks({
+        fixtureManager: manager,
+        sessionExport: false,
+      })
+
+      await beforeScenario?.({
+        scenario: {
+          id: "test-001",
+          name: "test",
+          description: "test",
+          prompt: "test",
+          timeoutMs: 60000,
+          allowedRetries: 0,
+          tags: [],
+          category: "pr",
+          difficulty: "basic",
+          fixture: {
+            repo: "aryeko/ghx-bench-fixtures",
+            requires: ["pr_with_changes"],
+            bindings: {},
+            reseedPerIteration: false,
+            seedPerIteration: false,
+          },
+          assertions: { checkpoints: [] },
+        } as unknown as import("@ghx-dev/agent-profiler").BaseScenario,
+        mode: "ghx",
+        model: "test-model",
+        iteration: 0,
+      })
+
+      expect(manager.seedOne).not.toHaveBeenCalled()
     })
   })
 

@@ -95,6 +95,30 @@ describe("runIteration", () => {
     )
   })
 
+  it("uses scenario returned by beforeScenario for prompt and afterScenario", async () => {
+    const replacementScenario = makeScenario({
+      id: "test-scenario-001",
+      prompt: "Rebound prompt with PR #999",
+    })
+    const beforeScenario = vi.fn().mockResolvedValue(replacementScenario)
+    const afterScenario = vi.fn()
+    const provider = createMockProvider()
+    const hooks: RunHooks = { beforeScenario, afterScenario }
+    const params = makeParams({ hooks, provider })
+
+    await runIteration(params)
+
+    // provider.prompt should have been called with the rebound prompt
+    // calls.prompt entries are [handle, text, timeoutMs]
+    expect(provider.calls.prompt?.length).toBe(1)
+    expect(provider.calls.prompt?.[0]?.[1]).toBe("Rebound prompt with PR #999")
+
+    // afterScenario receives the replacement scenario
+    expect(afterScenario).toHaveBeenCalledWith(
+      expect.objectContaining({ scenario: replacementScenario }),
+    )
+  })
+
   it("calls destroySession in finally (even on error)", async () => {
     const provider = createMockProvider()
     provider.prompt = async () => {

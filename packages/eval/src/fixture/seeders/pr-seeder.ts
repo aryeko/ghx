@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process"
+import { execFile, spawn } from "node:child_process"
 
 import type { FixtureResource } from "@eval/fixture/manifest.js"
 import type { FixtureSeeder, SeedOptions } from "@eval/fixture/seeders/types.js"
@@ -12,6 +12,26 @@ function runGh(args: readonly string[]): Promise<string> {
       }
       resolve(stdout.trim())
     })
+  })
+}
+
+function runGhWithInput(args: readonly string[], input: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn("gh", args as string[], { stdio: ["pipe", "pipe", "pipe"] })
+    let stdout = ""
+    let stderr = ""
+    proc.stdout.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString()
+    })
+    proc.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString()
+    })
+    proc.on("close", (code) => {
+      if (code !== 0) reject(new Error(stderr.trim() || `gh exited with code ${code}`))
+      else resolve(stdout.trim())
+    })
+    proc.stdin.write(input)
+    proc.stdin.end()
   })
 }
 
@@ -42,18 +62,16 @@ async function getHeadSha(repo: string, branch: string): Promise<string> {
 }
 
 async function createTree(repo: string, baseSha: string): Promise<string> {
-  const stdout = await runGh([
-    "api",
-    `repos/${repo}/git/trees`,
-    "--method",
-    "POST",
-    "--input",
-    "-",
-    "--field",
-    `base_tree=${baseSha}`,
-    "--raw-field",
-    `tree=[{"path":".eval-fixture","mode":"100644","type":"blob","content":"eval fixture placeholder"}]`,
-  ])
+  const body = JSON.stringify({
+    base_tree: baseSha,
+    tree: [
+      { path: ".eval-fixture", mode: "100644", type: "blob", content: "eval fixture placeholder" },
+    ],
+  })
+  const stdout = await runGhWithInput(
+    ["api", `repos/${repo}/git/trees`, "--method", "POST", "--input", "-"],
+    body,
+  )
   const parsed: { sha: string } = JSON.parse(stdout)
   return parsed.sha
 }

@@ -137,6 +137,7 @@ describe("profile-runner integration", () => {
       }),
       beforeScenario: vi.fn(async () => {
         order.push("beforeScenario")
+        return undefined
       }),
       afterScenario: vi.fn(async () => {
         order.push("afterScenario")

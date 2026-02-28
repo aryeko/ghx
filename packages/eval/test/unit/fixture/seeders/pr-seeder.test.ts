@@ -1,12 +1,15 @@
-import { execFile } from "node:child_process"
+import { execFile, spawn } from "node:child_process"
+import { EventEmitter } from "node:events"
 import { createPrSeeder } from "@eval/fixture/seeders/pr-seeder.js"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("node:child_process", () => ({
   execFile: vi.fn(),
+  spawn: vi.fn(),
 }))
 
 const mockedExecFile = vi.mocked(execFile)
+const mockedSpawn = vi.mocked(spawn)
 
 const DEFAULT_BRANCH = "main"
 const HEAD_SHA = "abc123def456"
@@ -24,6 +27,28 @@ function mockGhCall(stdout: string) {
   })
 }
 
+function mockSpawnCall(stdout: string) {
+  mockedSpawn.mockImplementationOnce(() => {
+    const stdoutEmitter = new EventEmitter()
+    const stderrEmitter = new EventEmitter()
+    const proc = new EventEmitter()
+    const stdinMock = {
+      write: vi.fn(),
+      end: vi.fn(() => {
+        setImmediate(() => {
+          stdoutEmitter.emit("data", Buffer.from(stdout))
+          proc.emit("close", 0)
+        })
+      }),
+    }
+    return Object.assign(proc, {
+      stdout: stdoutEmitter,
+      stderr: stderrEmitter,
+      stdin: stdinMock,
+    }) as never
+  })
+}
+
 function setupHappyPath() {
   // 1. Get default branch via graphql
   mockGhCall(
@@ -37,8 +62,8 @@ function setupHappyPath() {
   // 2. Get HEAD sha of default branch
   mockGhCall(JSON.stringify({ object: { sha: HEAD_SHA } }))
 
-  // 3. Create tree
-  mockGhCall(JSON.stringify({ sha: TREE_SHA }))
+  // 3. Create tree (uses spawn + stdin)
+  mockSpawnCall(JSON.stringify({ sha: TREE_SHA }))
 
   // 4. Create commit
   mockGhCall(JSON.stringify({ sha: COMMIT_SHA }))
@@ -91,7 +116,9 @@ describe("createPrSeeder", () => {
       labels: LABELS,
     })
 
-    expect(mockedExecFile).toHaveBeenCalledTimes(7)
+    // createTree uses spawn; all others use execFile
+    expect(mockedExecFile).toHaveBeenCalledTimes(6)
+    expect(mockedSpawn).toHaveBeenCalledTimes(1)
 
     // 1. Get default branch
     const firstCallArgs = mockedExecFile.mock.calls[0]
@@ -105,29 +132,29 @@ describe("createPrSeeder", () => {
       expect.arrayContaining(["api", `repos/${REPO}/git/refs/heads/${DEFAULT_BRANCH}`]),
     )
 
-    // 3. Create tree
-    const thirdCallArgs = mockedExecFile.mock.calls[2]
-    expect(thirdCallArgs[0]).toBe("gh")
-    expect(thirdCallArgs[1]).toEqual(expect.arrayContaining(["api", `repos/${REPO}/git/trees`]))
+    // 3. Create tree (via spawn)
+    const spawnCallArgs = mockedSpawn.mock.calls[0]
+    expect(spawnCallArgs[0]).toBe("gh")
+    expect(spawnCallArgs[1]).toEqual(expect.arrayContaining(["api", `repos/${REPO}/git/trees`]))
 
     // 4. Create commit
-    const fourthCallArgs = mockedExecFile.mock.calls[3]
-    expect(fourthCallArgs[0]).toBe("gh")
-    expect(fourthCallArgs[1]).toEqual(expect.arrayContaining(["api", `repos/${REPO}/git/commits`]))
+    const thirdCallArgs = mockedExecFile.mock.calls[2]
+    expect(thirdCallArgs[0]).toBe("gh")
+    expect(thirdCallArgs[1]).toEqual(expect.arrayContaining(["api", `repos/${REPO}/git/commits`]))
 
     // 5. Create branch ref
-    const fifthCallArgs = mockedExecFile.mock.calls[4]
-    expect(fifthCallArgs[0]).toBe("gh")
-    expect(fifthCallArgs[1]).toEqual(expect.arrayContaining(["api", `repos/${REPO}/git/refs`]))
+    const fourthCallArgs = mockedExecFile.mock.calls[3]
+    expect(fourthCallArgs[0]).toBe("gh")
+    expect(fourthCallArgs[1]).toEqual(expect.arrayContaining(["api", `repos/${REPO}/git/refs`]))
 
     // 6. Open PR
-    const sixthCallArgs = mockedExecFile.mock.calls[5]
-    expect(sixthCallArgs[0]).toBe("gh")
-    expect(sixthCallArgs[1]).toEqual(expect.arrayContaining(["pr", "create"]))
+    const fifthCallArgs = mockedExecFile.mock.calls[4]
+    expect(fifthCallArgs[0]).toBe("gh")
+    expect(fifthCallArgs[1]).toEqual(expect.arrayContaining(["pr", "create"]))
 
     // 7. Get PR details
-    const seventhCallArgs = mockedExecFile.mock.calls[6]
-    expect(seventhCallArgs[0]).toBe("gh")
-    expect(seventhCallArgs[1]).toEqual(expect.arrayContaining(["pr", "view"]))
+    const sixthCallArgs = mockedExecFile.mock.calls[5]
+    expect(sixthCallArgs[0]).toBe("gh")
+    expect(sixthCallArgs[1]).toEqual(expect.arrayContaining(["pr", "view"]))
   })
 })

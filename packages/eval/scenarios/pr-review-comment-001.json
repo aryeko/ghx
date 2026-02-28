@@ -15,7 +15,8 @@
       "pr_number": "pr_with_changes.number",
       "repo": "pr_with_changes.repo"
     },
-    "reseedPerIteration": false
+    "reseedPerIteration": false,
+    "seedPerIteration": true
   },
   "assertions": {
     "checkpoints": [

@@ -158,6 +158,10 @@ export async function run(argv: readonly string[]): Promise<void> {
   const resolvedIds = await resolveScenarioIds(scenariosDir, config.scenarios)
   const scenarios = await loadEvalScenarios(scenariosDir, resolvedIds, manifest)
 
+  // Load raw (unbound) scenarios for per-iteration rebinding when seedPerIteration is true.
+  const rawScenariosList = await loadEvalScenarios(scenariosDir, resolvedIds)
+  const rawScenariosMap = new Map(rawScenariosList.map((s) => [s.id, s]))
+
   const fixtureManager = new FixtureManager({
     repo: config.fixtures.repo,
     manifest: config.fixtures.manifest,
@@ -183,6 +187,7 @@ export async function run(argv: readonly string[]): Promise<void> {
     reportsDir,
     reseedBetweenModes: config.fixtures.reseed_between_modes,
     fixtureRequires: allFixtureRequires,
+    rawScenarios: rawScenariosMap,
   })
 
   for (const model of config.models) {

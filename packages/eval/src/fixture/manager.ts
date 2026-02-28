@@ -17,7 +17,7 @@ export interface FixtureManagerOptions {
   readonly manifest: string
   /** When `true`, auto-seed fixtures if the manifest file is not found. */
   readonly seedIfMissing?: boolean
-  /** Identifier for the seed run; defaults to `"default"`. */
+  /** Identifier written into the manifest's `seedId` field. Defaults to `"default"`. */
   readonly seedId?: string
 }
 
@@ -84,29 +84,30 @@ export class FixtureManager {
     }
   }
 
+  /**
+   * Seeds all unique fixture names required by the given scenarios, writes a
+   * new manifest file, and returns the manifest.
+   *
+   * The seeder type is resolved from the fixture name prefix (e.g. `pr_*` → `pr`).
+   *
+   * @param scenarios - Array of objects with optional `fixture.requires` arrays
+   */
   async seed(
-    scenarios: readonly { readonly fixture?: { readonly requires: readonly string[] } }[],
-  ): Promise<void> {
-    const uniqueRequires = new Set<string>()
-    for (const s of scenarios) {
-      if (s.fixture) {
-        for (const r of s.fixture.requires) {
-          uniqueRequires.add(r)
-        }
+    scenarios: ReadonlyArray<{
+      fixture?: {
+        requires: readonly string[]
+        repo?: string
+        bindings?: Record<string, string>
+        reseedPerIteration?: boolean
       }
-    }
+    }>,
+  ): Promise<void> {
+    const uniqueNames = [...new Set(scenarios.flatMap((s) => s.fixture?.requires ?? []))]
 
     const fixtures: Record<string, FixtureResource> = {}
-
-    for (const name of uniqueRequires) {
-      const type = resolveFixtureType(name)
-      const seeder = getSeeder(type)
-      const resource = await seeder.seed({
-        repo: this.options.repo,
-        name,
-        labels: ["bench-fixture"],
-      })
-      fixtures[name] = resource
+    for (const fixtureName of uniqueNames) {
+      const resource = await this.seedOne(fixtureName)
+      fixtures[fixtureName] = resource
     }
 
     const manifest: FixtureManifest = {
@@ -117,6 +118,28 @@ export class FixtureManager {
     }
 
     await writeFixtureManifest(this.options.manifest, manifest)
+  }
+
+  /**
+   * Seeds a single fixture by name and returns the created {@link FixtureResource}.
+   *
+   * The seeder type is resolved from the fixture name prefix (e.g. `pr_*` → `pr`,
+   * `issue_*` → `issue`).
+   *
+   * Unlike {@link seed}, this method does **not** update the manifest file — it is
+   * intended for ephemeral per-iteration fixtures where the resource is used once
+   * and cleaned up automatically via the `bench-fixture` label.
+   *
+   * @param fixtureName - Fixture key name, e.g. `"pr_with_changes"`
+   */
+  async seedOne(fixtureName: string): Promise<FixtureResource> {
+    const type = fixtureName.split("_")[0] ?? "pr"
+    const seeder = getSeeder(type)
+    return seeder.seed({
+      repo: this.options.repo,
+      name: fixtureName,
+      labels: ["bench-fixture"],
+    })
   }
 
   async cleanup(options?: { all?: boolean }): Promise<void> {
@@ -247,11 +270,6 @@ export class FixtureManager {
     const { stdout } = await execFileAsync("gh", args as string[])
     return stdout.trim()
   }
-}
-
-function resolveFixtureType(name: string): string {
-  const idx = name.indexOf("_")
-  return idx === -1 ? name : name.slice(0, idx)
 }
 
 function sleep(ms: number): Promise<void> {

@@ -54,6 +54,8 @@ const FixtureRequirementsSchema = z.object({
   bindings: z.record(z.string(), z.string()),
   /** When `true`, reset fixture branches to their original SHAs before each iteration. */
   reseedPerIteration: z.boolean().default(false),
+  /** When `true`, create a fresh fixture PR before each iteration and rebind template variables. */
+  seedPerIteration: z.boolean().default(false),
 })
 
 const AssertionsSchema = z.object({

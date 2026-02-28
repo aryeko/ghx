@@ -1,9 +1,11 @@
 import { mkdir, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import type { FixtureManager } from "@eval/fixture/manager.js"
+import { bindFixtureVariables } from "@eval/scenario/fixture-binder.js"
 import type { EvalScenario } from "@eval/scenario/schema.js"
 import type {
   AfterScenarioContext,
+  BaseScenario,
   RunContext,
   RunHooks,
   SessionTrace,
@@ -23,6 +25,14 @@ export interface EvalHooksOptions {
   readonly reseedBetweenModes?: boolean
   /** Fixture names to reset when `reseedBetweenModes` is true. */
   readonly fixtureRequires?: readonly string[]
+  /**
+   * Map of scenario ID → raw (unbound) scenario template.
+   *
+   * Required to support `fixture.seedPerIteration = true`. When a fresh fixture is
+   * seeded before an iteration, the hook re-runs `bindFixtureVariables` against the
+   * raw template so the prompt and checkpoint inputs receive the new PR number.
+   */
+  readonly rawScenarios?: ReadonlyMap<string, EvalScenario>
 }
 
 /**
@@ -34,7 +44,8 @@ export interface EvalHooksOptions {
  * - **`beforeMode`** — resets all fixtures to their original state when
  *   `reseedBetweenModes` is `true`.
  * - **`beforeScenario`** — resets fixtures to their original state when the
- *   scenario sets `fixture.reseedPerIteration = true`.
+ *   scenario sets `fixture.reseedPerIteration = true`; seeds a fresh fixture PR
+ *   and returns a rebound scenario when `fixture.seedPerIteration = true`.
  * - **`afterScenario`** — persists the session trace to the output directory
  *   when `sessionExport` is enabled.
  *
@@ -76,10 +87,25 @@ export function createEvalHooks(options: EvalHooksOptions): RunHooks {
       }
     },
 
-    beforeScenario: async (ctx) => {
+    beforeScenario: async (ctx): Promise<BaseScenario | undefined> => {
       const scenario = ctx.scenario as unknown as EvalScenario
+
       if (scenario.fixture?.reseedPerIteration) {
         await options.fixtureManager.reset(scenario.fixture.requires)
+      }
+
+      if (scenario.fixture?.seedPerIteration) {
+        const rawScenario = options.rawScenarios?.get(scenario.id)
+        if (!rawScenario?.fixture) return
+
+        const newFixtures: Record<string, Record<string, unknown>> = {}
+        for (const fixtureName of rawScenario.fixture.requires) {
+          const resource = await options.fixtureManager.seedOne(fixtureName)
+          newFixtures[fixtureName] = resource as unknown as Record<string, unknown>
+        }
+
+        const miniManifest = { fixtures: newFixtures }
+        return bindFixtureVariables(rawScenario, miniManifest) as unknown as BaseScenario
       }
     },
 

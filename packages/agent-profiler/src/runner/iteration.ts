@@ -139,8 +139,12 @@ export async function runIteration(params: IterationParams): Promise<{
 
   const startedAt = new Date().toISOString()
 
+  // beforeScenario may return a replacement scenario (e.g. with a freshly-seeded PR number).
+  // Use the returned scenario for prompt and scoring; keep original scenario.id for the row.
+  let activeScenario = scenario
   if (hooks.beforeScenario) {
-    await hooks.beforeScenario({ scenario, mode, model, iteration })
+    const updated = await hooks.beforeScenario({ scenario, mode, model, iteration })
+    if (updated) activeScenario = updated
   }
 
   let handle = null as Awaited<ReturnType<SessionProvider["createSession"]>> | null
@@ -152,14 +156,14 @@ export async function runIteration(params: IterationParams): Promise<{
       try {
         handle = await provider.createSession({
           systemInstructions,
-          scenarioId: scenario.id,
+          scenarioId: activeScenario.id,
           iteration,
         })
-        const timeoutMs = scenario.timeoutMs ?? DEFAULT_TIMEOUT_MS
+        const timeoutMs = activeScenario.timeoutMs ?? DEFAULT_TIMEOUT_MS
         let timer: ReturnType<typeof setTimeout> | undefined
         // TODO: Pass AbortSignal to provider.prompt() for cooperative cancellation
         promptResult = await Promise.race([
-          provider.prompt(handle, scenario.prompt, timeoutMs),
+          provider.prompt(handle, activeScenario.prompt, timeoutMs),
           new Promise<never>((_, reject) => {
             timer = setTimeout(
               () => reject(new Error(`Prompt timed out after ${timeoutMs}ms`)),
@@ -203,19 +207,19 @@ export async function runIteration(params: IterationParams): Promise<{
 
     const allMetrics: CustomMetric[] = []
     for (const collector of collectors) {
-      const metrics = await collector.collect(result, scenario, mode, trace)
+      const metrics = await collector.collect(result, activeScenario, mode, trace)
       allMetrics.push(...metrics)
     }
 
     const iterationAnalysisResults: AnalysisResult[] = []
     if (trace) {
       for (const analyzer of analyzers) {
-        const analysisResult = await analyzer.analyze(trace, scenario, mode)
+        const analysisResult = await analyzer.analyze(trace, activeScenario, mode)
         iterationAnalysisResults.push(analysisResult)
       }
     }
 
-    const scorerResult: ScorerResult = await scorer.evaluate(scenario, {
+    const scorerResult: ScorerResult = await scorer.evaluate(activeScenario, {
       agentOutput: result.text,
       trace,
       mode,
@@ -251,7 +255,14 @@ export async function runIteration(params: IterationParams): Promise<{
     }
 
     if (hooks.afterScenario) {
-      await hooks.afterScenario({ scenario, mode, model, iteration, result: row, trace })
+      await hooks.afterScenario({
+        scenario: activeScenario,
+        mode,
+        model,
+        iteration,
+        result: row,
+        trace,
+      })
     }
 
     return { row, trace, analysisResults: iterationAnalysisResults }
@@ -262,7 +273,7 @@ export async function runIteration(params: IterationParams): Promise<{
 
     if (hooks.afterScenario) {
       await hooks.afterScenario({
-        scenario,
+        scenario: activeScenario,
         mode,
         model,
         iteration,

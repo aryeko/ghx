@@ -36,8 +36,14 @@ export interface RunContext {
 
 /** Lifecycle hooks invoked at key points during a profile suite run. */
 export type RunHooks = {
-  /** Called before each scenario iteration starts. */
-  readonly beforeScenario?: (ctx: BeforeScenarioContext) => Promise<void>
+  /**
+   * Called before each scenario iteration starts.
+   *
+   * May return a replacement `BaseScenario` to use for this iteration (e.g. with a freshly-seeded
+   * PR number substituted into the prompt). When the hook returns `void` or `undefined`, the
+   * original scenario is used unchanged.
+   */
+  readonly beforeScenario?: (ctx: BeforeScenarioContext) => Promise<BaseScenario | undefined>
   /** Called after each scenario iteration completes (success or failure). */
   readonly afterScenario?: (ctx: AfterScenarioContext) => Promise<void>
   /** Called before the first scenario iteration for a given mode. */

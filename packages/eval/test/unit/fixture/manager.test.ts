@@ -353,6 +353,50 @@ describe("FixtureManager.seed()", () => {
   })
 })
 
+describe("FixtureManager.seedOne()", () => {
+  it("seeds a single fixture using the registered seeder", async () => {
+    const mockResource = {
+      type: "pr",
+      number: 500,
+      repo: "owner/repo",
+      branch: "bench-fixture/pr_with_changes-567",
+      labels: ["bench-fixture"],
+      metadata: { originalSha: "deadbeef" },
+    }
+    const mockSeeder = {
+      type: "pr",
+      seed: vi.fn().mockResolvedValue(mockResource),
+    }
+    vi.mocked(getSeeder).mockReturnValue(mockSeeder)
+
+    const manager = new FixtureManager({ repo: "owner/repo", manifest: "fixtures/latest.json" })
+    const resource = await manager.seedOne("pr_with_changes")
+
+    expect(getSeeder).toHaveBeenCalledWith("pr")
+    expect(mockSeeder.seed).toHaveBeenCalledWith({
+      repo: "owner/repo",
+      name: "pr_with_changes",
+      labels: ["bench-fixture"],
+    })
+    expect(resource.number).toBe(500)
+  })
+
+  it("resolves seeder type from fixture name prefix for issues", async () => {
+    const mockSeeder = {
+      type: "issue",
+      seed: vi
+        .fn()
+        .mockResolvedValue({ type: "issue", number: 10, repo: "owner/repo", metadata: {} }),
+    }
+    vi.mocked(getSeeder).mockReturnValue(mockSeeder)
+
+    const manager = new FixtureManager({ repo: "owner/repo", manifest: "fixtures/latest.json" })
+    await manager.seedOne("issue_for_triage")
+
+    expect(getSeeder).toHaveBeenCalledWith("issue")
+  })
+})
+
 const cleanupManifest: FixtureManifest = {
   seedId: "cleanup-test",
   createdAt: "2026-02-27T12:00:00Z",
