@@ -34,7 +34,7 @@ reports/
 
 - **`results/`** -- raw JSONL files containing `ProfileRow` records. Each line is one iteration with metrics, scores, timing, and custom collector data. These files are the primary data artifact.
 - **`reports/`** -- generated reports in multiple formats. Each run creates a `run_{timestamp}` subdirectory named by the run ID.
-- **`reports/sessions/`** -- exported session traces organized by scenario. Available when `output.session_export: true` in config.
+- **`reports/{runId}/sessions/`** -- exported session traces organized by scenario. Available when `output.session_export: true` in config.
 - **`reports/{runId}/analysis/`** -- analysis bundles, one JSON file per iteration. Written automatically after each run by the built-in analyzers (reasoning, strategy, efficiency, tool pattern, error).
 
 ## Session Trace Export Format

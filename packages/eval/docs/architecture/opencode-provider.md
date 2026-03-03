@@ -114,8 +114,8 @@ The `exportSession()` method fetches all messages and passes them to `TraceBuild
 
 | OpenCode Part Type | Trace Event Type | Fields |
 |--------------------|------------------|--------|
-| `reasoning` | `reasoning` | content (from `part["text"]`), token count from message metadata |
-| `tool` | `tool_call` | name, input, output, success, error, category (via `classifyToolCall()`) |
+| `reasoning` | `reasoning` | content (from `part["text"]`), token count estimated as `ceil(length / 4)` |
+| `tool` | `tool_call` | name, input, output, success, error |
 | `text` | `text_output` | content, estimated token count |
 | message boundary | `turn_boundary` | turn number, timestamp |
 | `step-finish` | (ignored) | Signals completion, not traced |
