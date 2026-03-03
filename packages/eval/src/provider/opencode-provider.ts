@@ -205,15 +205,16 @@ export class OpenCodeProvider implements SessionProvider {
 
     try {
       const githubToken = process.env["GH_TOKEN"] ?? process.env["GITHUB_TOKEN"] ?? ""
-      const mcp = githubToken
-        ? {
-            github: {
-              type: "remote" as const,
-              url: "https://api.githubcopilot.com/mcp/",
-              headers: { Authorization: `Bearer ${githubToken}` },
-            },
-          }
-        : {}
+      const mcp =
+        config.mode === "mcp" && githubToken
+          ? {
+              github: {
+                type: "remote" as const,
+                url: "https://api.githubcopilot.com/mcp/",
+                headers: { Authorization: `Bearer ${githubToken}` },
+              },
+            }
+          : {}
 
       const opencode = await createOpencode({
         port: config.port > 0 ? config.port : this.options.port,
