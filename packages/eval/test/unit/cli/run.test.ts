@@ -249,4 +249,40 @@ describe("run command", () => {
       'Scenario set "nonexistent" not found',
     )
   })
+
+  it("throws when GH_TOKEN and GITHUB_TOKEN are both empty", async () => {
+    vi.unstubAllEnvs()
+    vi.stubEnv("GH_TOKEN", "")
+    vi.stubEnv("GITHUB_TOKEN", "")
+
+    await expect(runFn([])).rejects.toThrow("Missing GitHub token")
+  })
+
+  it("--scenario flag overrides scenario ids in config", async () => {
+    const { loadEvalScenarios } = await import("@eval/scenario/loader.js")
+    const { runProfileSuite } = await import("@ghx-dev/agent-profiler")
+
+    await runFn(["--scenario", "pr-fix-001", "--scenario", "issue-close-002"])
+
+    expect(loadEvalScenarios).toHaveBeenCalledWith(
+      expect.any(String),
+      ["pr-fix-001", "issue-close-002"],
+      expect.any(Object),
+      expect.any(Object),
+    )
+    expect(runProfileSuite).toHaveBeenCalledTimes(1)
+  })
+
+  it("--repetitions with invalid value logs warning and uses config default", async () => {
+    const { runProfileSuite } = await import("@ghx-dev/agent-profiler")
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined)
+
+    await runFn(["--repetitions", "notanumber"])
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("invalid --repetitions value"))
+    expect(runProfileSuite).toHaveBeenCalledTimes(1)
+    const call = vi.mocked(runProfileSuite).mock.calls[0]
+    expect((call as unknown[][])[0]).toMatchObject({ repetitions: 1 })
+    warnSpy.mockRestore()
+  })
 })
