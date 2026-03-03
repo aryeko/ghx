@@ -86,7 +86,7 @@ Add a handler in the appropriate domain module (e.g. `gql/domains/issue-mutation
 export function createIssuePinHandler(client: GithubClient) {
   return async (params: Record<string, unknown>) => {
     // The routing engine resolves issueId via the resolution config
-    const result = await client.mutate(IssuePinMutationDocument, {
+    const result = await client.query(IssuePinMutationDocument, {
       issueId: params.issueId as string,
     })
     return { id: result.pinIssue.issue.id }

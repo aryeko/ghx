@@ -110,7 +110,7 @@ ghx setup --scope <project|user> [--yes] [--verify]
 
 | Flag | Required | Description |
 |---|---|---|
-| `--scope` | Yes | `project` (writes to `.agents/skills/ghx/`) or `user` (writes to `~/.config/`) |
+| `--scope` | Yes | `project` (writes to `.agents/skills/ghx/SKILL.md`) or `user` (writes to `~/.agents/skills/ghx/SKILL.md`) |
 | `--yes` | No | Skip confirmation prompt |
 | `--verify` | No | Verify the installation is correct |
 

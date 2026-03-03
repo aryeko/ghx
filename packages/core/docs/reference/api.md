@@ -115,7 +115,7 @@ const client = createGithubClient({
 
 ### `createGraphqlClient(transport)`
 
-Create a lower-level `GraphqlClient` (query/mutate methods) from a transport.
+Create a lower-level `GraphqlClient` (`query` / `queryRaw` methods) from a transport.
 
 ```ts
 function createGraphqlClient(transport: GraphqlTransport): GraphqlClient
@@ -206,7 +206,7 @@ The `deps` object passed to `executeTask` / `executeTasks`:
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `githubClient` | `GithubClient` | Yes | Created via `createGithubClientFromToken` |
-| `githubToken` | `string` | Yes | Token for CLI fallback routes |
+| `githubToken` | `string \| null` | No | Token for CLI fallback routes |
 | `cliRunner` | `CliCommandRunner` | No | Custom CLI runner |
 | `ghCliAvailable` | `boolean` | No | Override CLI availability detection |
 | `ghAuthenticated` | `boolean` | No | Override CLI auth detection |

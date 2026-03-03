@@ -108,9 +108,12 @@ Every `ResultEnvelope.meta.reason` tells you *why* a route was chosen:
 |---|---|
 | `CARD_PREFERRED` | Used the card's preferred route |
 | `CARD_FALLBACK` | Preferred route failed, used a fallback |
-| `SUITABILITY_OVERRIDE` | A suitability rule overrode the preferred route |
+| `ENV_CONSTRAINT` | An environment suitability rule overrode the preferred route |
 | `CAPABILITY_LIMIT` | Capability only supports one route |
 | `DEFAULT_POLICY` | No card routing — used system default |
+| `INPUT_VALIDATION` | Route selected after input schema validation |
+| `OUTPUT_VALIDATION` | Route selected after output schema validation |
+| `PREFLIGHT_FAILED` | All preferred routes failed preflight; used fallback |
 
 ## Attempt History
 

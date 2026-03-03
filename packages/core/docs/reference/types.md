@@ -82,9 +82,12 @@ type RouteSource = "cli" | "rest" | "graphql"
 
 ```ts
 type RouteReasonCode =
+  | "INPUT_VALIDATION"
+  | "OUTPUT_VALIDATION"
   | "CARD_PREFERRED"
   | "CARD_FALLBACK"
-  | "SUITABILITY_OVERRIDE"
+  | "PREFLIGHT_FAILED"
+  | "ENV_CONSTRAINT"
   | "CAPABILITY_LIMIT"
   | "DEFAULT_POLICY"
 ```
@@ -215,8 +218,8 @@ interface GraphqlTransport {
 
 ```ts
 interface GraphqlClient {
-  query<TData>(document: string, variables?: Record<string, unknown>): Promise<TData>
-  mutate<TData>(document: string, variables?: Record<string, unknown>): Promise<TData>
+  query<TData>(query: string, variables?: Record<string, unknown>): Promise<TData>
+  queryRaw<TData>(query: string, variables?: Record<string, unknown>): Promise<GraphqlRawResult<TData>>
 }
 ```
 
@@ -269,7 +272,7 @@ interface ResolutionCache {
 
 ```ts
 interface ResolutionCacheOptions {
-  maxSize?: number
+  maxEntries?: number
   ttlMs?: number
 }
 ```
