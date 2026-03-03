@@ -64,13 +64,17 @@ describe("generateReportPage", () => {
       makeProfileRow({ mode: "b", timing: { wallMs: 2200, segments: [] } }),
     ]
     const result = generateReportPage(makeContext({ rows }))
-    expect(result).toContain("### Wall Time")
-    expect(result).toContain("### Active Tokens")
-    expect(result).toContain("### Tool Calls")
-    expect(result).toContain("a vs b")
+    expect(result).toContain("### a vs b")
+    expect(result).toContain("Wall Time")
+    expect(result).toContain("Active Tokens")
+    expect(result).toContain("Tool Calls")
     expect(result).toContain("Reduction")
     expect(result).toContain("Cohen's d")
     expect(result).toContain("p-value")
+    // Notes at section start
+    expect(result).toContain("> **Reduction:**")
+    expect(result).toContain("> **p-value:**")
+    expect(result).toContain("> **Cohen's d**")
   })
 
   it("shows single mode message for statistical comparison", () => {

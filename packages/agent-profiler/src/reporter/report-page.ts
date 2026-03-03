@@ -197,7 +197,16 @@ function renderStatisticalComparison(rows: readonly ProfileRow[]): readonly stri
     return ["## Statistical Comparison", "", "Single mode — no comparison available.", ""]
   }
 
-  const lines: string[] = ["## Statistical Comparison", ""]
+  const lines: string[] = [
+    "## Statistical Comparison",
+    "",
+    "> **Reduction:** A positive value means mode A used fewer resources than mode B. Negative means mode B was more efficient.",
+    "",
+    "> **p-value:** Values below 0.05 indicate the observed difference is unlikely due to random chance alone, suggesting a real performance difference between the modes.",
+    "",
+    "> **Cohen's d** quantifies how large the difference is in practice, independent of sample size. Values are classified as negligible (<0.2), small (0.2-0.5), medium (0.5-0.8), or large (>0.8). A large effect size means the distributions barely overlap. **95% CI** is a bootstrap confidence interval for the reduction percentage — if the interval excludes zero, the difference is robust.",
+    "",
+  ]
 
   const metricsToCompare: ReadonlyArray<{
     name: string
@@ -220,39 +229,55 @@ function renderStatisticalComparison(rows: readonly ProfileRow[]): readonly stri
     },
   ]
 
-  for (const { name, metric, extract, unit } of metricsToCompare) {
-    const comparisons = computePairwiseComparisons(rows, metric, extract)
-    if (comparisons.length === 0) continue
+  // Pre-compute all comparisons keyed by mode pair
+  const pairResults = new Map<
+    string,
+    ReadonlyArray<{
+      name: string
+      unit: string
+      comparison: (typeof metricsToCompare)[number] extends infer T ? T : never
+      result: ReturnType<typeof computePairwiseComparisons>[number]
+    }>
+  >()
 
-    lines.push(`### ${name}`, "")
-
-    for (const { modeA, modeB, comparison: result, statsA, statsB } of comparisons) {
-      const ci0 = result.ci95[0] ?? 0
-      const ci1 = result.ci95[1] ?? 0
-
-      lines.push(
-        `#### ${modeA} vs ${modeB}`,
-        "",
-        "| Metric | Value |",
-        "| --- | --- |",
-        `| Median (${modeA}) | ${fmtStat(statsA.median, unit)} |`,
-        `| Median (${modeB}) | ${fmtStat(statsB.median, unit)} |`,
-        `| Reduction | ${result.reductionPct.toFixed(1)}% |`,
-        `| 95% CI | [${ci0.toFixed(1)}%, ${ci1.toFixed(1)}%] |`,
-        `| Cohen's d | ${result.effectSize.toFixed(3)} (${result.effectMagnitude}) |`,
-        `| p-value | ${result.pValue.toFixed(4)} |`,
-        "",
-      )
+  for (const m of metricsToCompare) {
+    const comparisons = computePairwiseComparisons(rows, m.metric, m.extract)
+    for (const c of comparisons) {
+      const key = `${c.modeA} vs ${c.modeB}`
+      const existing = pairResults.get(key) ?? []
+      pairResults.set(key, [...existing, { name: m.name, unit: m.unit, comparison: m, result: c }])
     }
   }
 
-  lines.push(
-    "> **Reading the comparison:** A positive reduction means mode A used fewer resources.",
-    "> **p-value** < 0.05 suggests the difference is statistically significant.",
-    "> **Cohen's d** measures practical significance: small (<0.5), medium (0.5-0.8), large (>0.8).",
-    "> **95% CI** is a bootstrap confidence interval for the reduction percentage.",
-    "",
-  )
+  for (const [pairLabel, metrics] of pairResults) {
+    lines.push(`### ${pairLabel}`, "")
+
+    const first = metrics[0]
+    if (!first) continue
+
+    lines.push(
+      "| Metric | Median A | Median B | Reduction | 95% CI | Cohen's d | p-value |",
+      "| --- | --- | --- | --- | --- | --- | --- |",
+    )
+
+    for (const { name, unit, result: r } of metrics) {
+      const ci0 = r.comparison.ci95[0] ?? 0
+      const ci1 = r.comparison.ci95[1] ?? 0
+      lines.push(
+        [
+          `| ${name}`,
+          `| ${fmtStat(r.statsA.median, unit)}`,
+          `| ${fmtStat(r.statsB.median, unit)}`,
+          `| ${r.comparison.reductionPct.toFixed(1)}%`,
+          `| [${ci0.toFixed(1)}%, ${ci1.toFixed(1)}%]`,
+          `| ${r.comparison.effectSize.toFixed(3)} (${r.comparison.effectMagnitude})`,
+          `| ${r.comparison.pValue.toFixed(4)} |`,
+        ].join(" "),
+      )
+    }
+
+    lines.push("")
+  }
 
   return lines
 }
