@@ -188,7 +188,7 @@ describe("tool-pattern-analyzer", () => {
     const rTable = redundant as { type: "table"; rows: readonly (readonly string[])[] }
     expect(rTable.rows).toHaveLength(1)
     const rRow = rTable.rows[0] as readonly string[]
-    expect(rRow[0]).toBe("bash")
+    expect(rRow[0]).toBe("ls")
     expect(rRow[2]).toBe("3")
   })
 
@@ -237,7 +237,7 @@ describe("tool-pattern-analyzer", () => {
     expect(retried).toBeDefined()
     expect(retried).toHaveProperty("type", "table")
     const rtTable = retried as { type: "table"; rows: readonly (readonly string[])[] }
-    expect(rtTable.rows).toContainEqual(["bash", "1"])
+    expect(rtTable.rows).toContainEqual(["test", "1"])
     expect(rtTable.rows).toContainEqual(["read_file", "1"])
   })
 

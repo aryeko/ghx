@@ -95,12 +95,12 @@ export function createToolPatternAnalyzer(options?: ToolPatternAnalyzerOptions):
         ([pattern, count]) => [pattern, String(count)] as const,
       )
 
-      const redundant = computeRedundantCalls(toolCalls)
+      const redundant = computeRedundantCalls(toolCalls, resolve)
       const redundantRows = [...redundant.values()].map(
         (r) => [r.tool, r.inputHash, String(r.count)] as const,
       )
 
-      const failedRetried = computeFailedThenRetried(toolCalls)
+      const failedRetried = computeFailedThenRetried(toolCalls, resolve)
       const failedRetriedRows = [...failedRetried.entries()].map(
         ([tool, count]) => [tool, String(count)] as const,
       )
@@ -153,6 +153,7 @@ function computeBigrams(toolNames: readonly string[]): ReadonlyMap<string, numbe
 
 function computeRedundantCalls(
   toolCalls: readonly Extract<TraceEvent, { readonly type: "tool_call" }>[],
+  resolveToolName: (name: string, input: unknown) => string,
 ): ReadonlyMap<
   string,
   { readonly tool: string; readonly inputHash: string; readonly count: number }
@@ -162,13 +163,14 @@ function computeRedundantCalls(
     { readonly tool: string; readonly inputHash: string; count: number }
   >()
   for (const tc of toolCalls) {
+    const toolName = resolveToolName(tc.name, tc.input)
     const inputHash = JSON.stringify(tc.input)
-    const key = `${tc.name}::${inputHash}`
+    const key = `${toolName}::${inputHash}`
     const existing = seen.get(key)
     if (existing) {
       seen.set(key, { ...existing, count: existing.count + 1 })
     } else {
-      seen.set(key, { tool: tc.name, inputHash, count: 1 })
+      seen.set(key, { tool: toolName, inputHash, count: 1 })
     }
   }
   const result = new Map<
@@ -185,14 +187,17 @@ function computeRedundantCalls(
 
 function computeFailedThenRetried(
   toolCalls: readonly Extract<TraceEvent, { readonly type: "tool_call" }>[],
+  resolveToolName: (name: string, input: unknown) => string,
 ): ReadonlyMap<string, number> {
   const counts = new Map<string, number>()
   for (let i = 0; i < toolCalls.length - 1; i++) {
     const current = toolCalls[i]
     const next = toolCalls[i + 1]
     if (!current || !next) continue
-    if (!current.success && next.name === current.name) {
-      counts.set(current.name, (counts.get(current.name) ?? 0) + 1)
+    const currentName = resolveToolName(current.name, current.input)
+    const nextName = resolveToolName(next.name, next.input)
+    if (!current.success && nextName === currentName) {
+      counts.set(currentName, (counts.get(currentName) ?? 0) + 1)
     }
   }
   return counts

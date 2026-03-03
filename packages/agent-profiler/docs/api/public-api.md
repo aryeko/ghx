@@ -124,7 +124,7 @@ Utility functions exported for enriching bash-like tool call names. Used interna
 
 | Export | Purpose |
 |--------|---------|
-| `BASH_TOOL_NAMES` | `ReadonlySet<string>` of known bash-like tool names (`"bash"`, `"Bash"`, `"terminal"`, etc.) |
+| `BASH_TOOL_NAMES` | `ReadonlySet<string>` of canonical bash-like tool names (e.g., `"bash"`, `"shell"`, `"terminal"`). Case-insensitive matching is handled by `isBashLikeTool(name)`. |
 | `isBashLikeTool(name)` | Returns `true` if the tool name is in `BASH_TOOL_NAMES` |
 | `extractCommand(input)` | Extracts the command string from a tool call input object |
 | `resolveToolDisplayName(name, input)` | Enriches bash tool names with subcommand info (e.g., `"bash"` + `gh pr list` -> `"gh pr"`) |

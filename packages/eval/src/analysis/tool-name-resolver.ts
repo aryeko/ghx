@@ -15,7 +15,7 @@ export function resolveEvalToolName(name: string, input: unknown): string {
   if (!command) return name
 
   // ghx run <capability> -> ghx:<capability>
-  const ghxMatch = command.match(/ghx\s+run\s+(\S+)/)
+  const ghxMatch = command.match(/^\s*(?:\S+=\S+\s+)*ghx\s+run\s+([A-Za-z0-9._-]+)\b/)
   if (ghxMatch?.[1]) return `ghx:${ghxMatch[1]}`
 
   // Fall back to generic enrichment for everything else
