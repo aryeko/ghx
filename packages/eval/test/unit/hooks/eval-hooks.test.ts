@@ -304,6 +304,43 @@ describe("createEvalHooks", () => {
 
       expect(manager.seedOne).not.toHaveBeenCalled()
     })
+
+    it("returns undefined when seedPerIteration is true but rawScenarios has no entry for the scenario", async () => {
+      const manager = makeFixtureManager()
+      const { beforeScenario } = createEvalHooks({
+        fixtureManager: manager,
+        sessionExport: false,
+        rawScenarios: new Map(), // empty — no entry for "test-001"
+      })
+
+      const result = await beforeScenario?.({
+        scenario: {
+          id: "test-001",
+          name: "test",
+          description: "test",
+          prompt: "test",
+          timeoutMs: 60000,
+          allowedRetries: 0,
+          tags: [],
+          category: "pr",
+          difficulty: "basic",
+          fixture: {
+            repo: "aryeko/ghx-bench-fixtures",
+            requires: ["pr_with_changes"],
+            bindings: {},
+            reseedPerIteration: false,
+            seedPerIteration: true,
+          },
+          assertions: { checkpoints: [] },
+        } as unknown as import("@ghx-dev/agent-profiler").BaseScenario,
+        mode: "ghx",
+        model: "test-model",
+        iteration: 0,
+      })
+
+      expect(result).toBeUndefined()
+      expect(manager.seedOne).not.toHaveBeenCalled()
+    })
   })
 
   describe("afterScenario", () => {
@@ -423,6 +460,62 @@ describe("createEvalHooks", () => {
       } as AfterScenarioContext)
 
       expect(writeFile).not.toHaveBeenCalled()
+    })
+
+    it("does not throw when closeResource fails during cleanup (best-effort)", async () => {
+      const manager = makeFixtureManager()
+      vi.spyOn(manager, "closeResource").mockRejectedValue(new Error("gh: resource closed"))
+
+      const rawScenario = {
+        id: "cleanup-err-001",
+        name: "test",
+        description: "test",
+        prompt: "Review PR #{{pr_number}} in {{repo}}",
+        timeoutMs: 60000,
+        allowedRetries: 0,
+        tags: [],
+        category: "pr" as const,
+        difficulty: "basic" as const,
+        fixture: {
+          repo: "aryeko/ghx-bench-fixtures",
+          requires: ["pr_with_changes"],
+          bindings: { pr_number: "pr_with_changes.number", repo: "pr_with_changes.repo" },
+          reseedPerIteration: false,
+          seedPerIteration: true,
+        },
+        assertions: { checkpoints: [] },
+      }
+      const rawScenariosMap = new Map([
+        [
+          "cleanup-err-001",
+          rawScenario as unknown as import("@eval/scenario/schema.js").EvalScenario,
+        ],
+      ])
+      const hooks = createEvalHooks({
+        fixtureManager: manager,
+        sessionExport: false,
+        rawScenarios: rawScenariosMap,
+      })
+
+      // First run beforeScenario to seed the resource and store it in iterationResources
+      await hooks.beforeScenario?.({
+        scenario: rawScenario as unknown as import("@ghx-dev/agent-profiler").BaseScenario,
+        mode: "ghx",
+        model: "test-model",
+        iteration: 0,
+      })
+
+      // afterScenario should NOT throw even though closeResource throws
+      await expect(
+        hooks.afterScenario?.({
+          scenario: { id: "cleanup-err-001" } as never,
+          mode: "ghx",
+          model: "test-model",
+          iteration: 0,
+          result: {} as never,
+          trace: null,
+        } as import("@ghx-dev/agent-profiler").AfterScenarioContext),
+      ).resolves.toBeUndefined()
     })
   })
 })
