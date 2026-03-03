@@ -43,7 +43,7 @@ function setupHappyPathNoLabels(): void {
     .mockResolvedValueOnce(DEFAULT_BRANCH) // getDefaultBranch
     .mockResolvedValueOnce(HEAD_SHA_JSON) // getHeadSha base branch
     .mockResolvedValueOnce("") // createBranch
-    .mockRejectedValueOnce(new Error("not found")) // upsertFile check (file does not exist)
+    .mockRejectedValueOnce(new Error("404 Not Found")) // upsertFile check (file does not exist)
     .mockResolvedValueOnce("") // upsertFile PUT
     .mockResolvedValueOnce(PR_NUMBER) // openPr
     .mockResolvedValueOnce(HEAD_SHA_JSON) // getHeadSha for PR branch
@@ -56,7 +56,7 @@ function setupHappyPathWithLabels(): void {
     .mockResolvedValueOnce(DEFAULT_BRANCH) // getDefaultBranch
     .mockResolvedValueOnce(HEAD_SHA_JSON) // getHeadSha base branch
     .mockResolvedValueOnce("") // createBranch
-    .mockRejectedValueOnce(new Error("not found")) // upsertFile check (file does not exist)
+    .mockRejectedValueOnce(new Error("404 Not Found")) // upsertFile check (file does not exist)
     .mockResolvedValueOnce("") // upsertFile PUT
     .mockResolvedValueOnce(PR_NUMBER) // openPr
     .mockResolvedValueOnce("") // label assignment
@@ -214,7 +214,7 @@ describe("createMixedThreadsSeeder", () => {
       .mockResolvedValueOnce(DEFAULT_BRANCH) // getDefaultBranch
       .mockResolvedValueOnce(HEAD_SHA_JSON) // getHeadSha base branch
       .mockResolvedValueOnce("") // createBranch
-      .mockRejectedValueOnce(new Error("not found")) // upsertFile check (no file)
+      .mockRejectedValueOnce(new Error("404 Not Found")) // upsertFile check (no file)
       .mockResolvedValueOnce("") // upsertFile PUT
       .mockResolvedValueOnce(PR_NUMBER) // openPr
       .mockResolvedValueOnce(HEAD_SHA_JSON) // getHeadSha for PR branch
@@ -242,7 +242,7 @@ describe("createMixedThreadsSeeder", () => {
       .mockResolvedValueOnce(DEFAULT_BRANCH) // getDefaultBranch
       .mockResolvedValueOnce(HEAD_SHA_JSON) // getHeadSha base branch
       .mockResolvedValueOnce("") // createBranch
-      .mockRejectedValueOnce(new Error("not found")) // upsertFile check (no file)
+      .mockRejectedValueOnce(new Error("404 Not Found")) // upsertFile check (no file)
       .mockResolvedValueOnce("") // upsertFile PUT
       .mockResolvedValueOnce("not-a-number") // openPr returns bad value
 
@@ -250,5 +250,75 @@ describe("createMixedThreadsSeeder", () => {
     await expect(
       seeder.seed({ repo: REPO, name: FIXTURE_NAME, labels: [], botToken: BOT_TOKEN }),
     ).rejects.toThrow("Failed to create PR")
+  })
+
+  // Test 10: rethrows non-404 errors from the file probe with context (Fix 1)
+  it("rethrows non-404 errors from the file probe with context", async () => {
+    mockRunGh
+      .mockResolvedValueOnce(DEFAULT_BRANCH) // getDefaultBranch
+      .mockResolvedValueOnce(HEAD_SHA_JSON) // getHeadSha base branch
+      .mockResolvedValueOnce("") // createBranch
+      .mockRejectedValueOnce(new Error("403 Forbidden")) // upsertFile check (auth error)
+
+    const seeder = createMixedThreadsSeeder()
+    await expect(
+      seeder.seed({ repo: REPO, name: FIXTURE_NAME, labels: [], botToken: BOT_TOKEN }),
+    ).rejects.toThrow("Failed to inspect existing file")
+  })
+
+  // Test 11: 404 from the file probe is silently handled (Fix 1)
+  it("silently handles a 404 from the file probe and proceeds to create the file", async () => {
+    mockRunGh
+      .mockResolvedValueOnce(DEFAULT_BRANCH) // getDefaultBranch
+      .mockResolvedValueOnce(HEAD_SHA_JSON) // getHeadSha base branch
+      .mockResolvedValueOnce("") // createBranch
+      .mockRejectedValueOnce(new Error("404 Not Found")) // upsertFile check (file does not exist)
+      .mockResolvedValueOnce("") // upsertFile PUT
+      .mockResolvedValueOnce(PR_NUMBER) // openPr
+      .mockResolvedValueOnce(HEAD_SHA_JSON) // getHeadSha for PR branch
+      .mockResolvedValueOnce(SIX_THREADS_JSON) // getThreadIds
+    mockRunGhWithToken.mockResolvedValue("")
+
+    const seeder = createMixedThreadsSeeder()
+    const result = await seeder.seed({
+      repo: REPO,
+      name: FIXTURE_NAME,
+      labels: [],
+      botToken: BOT_TOKEN,
+    })
+
+    expect(result.type).toBe("pr")
+    // PUT call (index 4) should NOT contain a sha field since the file was new
+    const putCall = mockRunGh.mock.calls[4]
+    expect(putCall[0]).not.toContain("sha=")
+  })
+
+  // Test 12: openPr uses the resolved defaultBranch as base (Fix 2)
+  it("passes the resolved defaultBranch to openPr as the base branch", async () => {
+    const customDefault = "develop"
+    mockRunGh
+      .mockResolvedValueOnce(customDefault) // getDefaultBranch returns "develop"
+      .mockResolvedValueOnce(HEAD_SHA_JSON) // getHeadSha base branch
+      .mockResolvedValueOnce("") // createBranch
+      .mockRejectedValueOnce(new Error("404 Not Found")) // upsertFile check (file does not exist)
+      .mockResolvedValueOnce("") // upsertFile PUT
+      .mockResolvedValueOnce(PR_NUMBER) // openPr
+      .mockResolvedValueOnce(HEAD_SHA_JSON) // getHeadSha for PR branch
+      .mockResolvedValueOnce(SIX_THREADS_JSON) // getThreadIds
+    mockRunGhWithToken.mockResolvedValue("")
+
+    const seeder = createMixedThreadsSeeder()
+    await seeder.seed({
+      repo: REPO,
+      name: FIXTURE_NAME,
+      labels: [],
+      botToken: BOT_TOKEN,
+    })
+
+    // The openPr call (6th runGh call, index 5) should use base=develop
+    const allCalls = mockRunGh.mock.calls
+    const prCall = allCalls[5]
+    expect(prCall[0]).toContain(`base=${customDefault}`)
+    expect(prCall[0]).not.toContain("base=main")
   })
 })

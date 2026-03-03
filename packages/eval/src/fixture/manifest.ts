@@ -53,7 +53,7 @@ export type FixtureResource = z.infer<typeof FixtureResourceSchema>
  * ```
  */
 function exitMissingManifest(path: string): never {
-  console.error(
+  throw new Error(
     [
       `Error: Fixture manifest not found at "${path}".`,
       ``,
@@ -67,7 +67,6 @@ function exitMissingManifest(path: string): never {
       `  packages/eval/docs/guides/managing-fixtures.md`,
     ].join("\n"),
   )
-  process.exit(1)
 }
 
 export async function loadFixtureManifest(path: string): Promise<FixtureManifest> {

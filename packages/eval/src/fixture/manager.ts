@@ -86,8 +86,8 @@ export class FixtureManager {
   }
 
   /**
-   * Seeds all unique fixture names required by the given scenarios, writes a
-   * new manifest file, and returns the manifest.
+   * Seeds all unique fixture names required by the given scenarios and writes a
+   * new manifest file.
    *
    * The seeder type is resolved from the fixture name prefix (e.g. `pr_*` → `pr`).
    *
@@ -138,7 +138,7 @@ export class FixtureManager {
     // falling back to the name prefix (e.g. "pr" for "pr_with_changes").
     const type = hasSeeder(fixtureName) ? fixtureName : (fixtureName.split("_")[0] ?? "pr")
     const seeder = getSeeder(type)
-    const botToken = await mintFixtureAppToken()
+    const botToken = await mintFixtureAppToken(this.options.repo)
     await this.ensureLabel(this.options.repo, "@ghx-dev/eval")
     return seeder.seed({
       repo: this.options.repo,

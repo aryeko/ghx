@@ -1,6 +1,8 @@
 import { createSign } from "node:crypto"
 import { readFile } from "node:fs/promises"
 
+const REQUEST_TIMEOUT_MS = 10_000
+
 type AppAuthConfig = {
   clientId: string
   privateKey: string
@@ -51,24 +53,28 @@ function buildJwt(clientId: string, privateKey: string): string {
   return `${data}.${sig}`
 }
 
-async function discoverInstallationId(jwt: string): Promise<string> {
-  const res = await fetch("https://api.github.com/app/installations", {
+async function discoverInstallationId(jwt: string, owner: string, repo: string): Promise<string> {
+  const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/installation`, {
     headers: {
       Authorization: `Bearer ${jwt}`,
       Accept: "application/vnd.github+json",
       "User-Agent": "ghx-eval-fixtures",
     },
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   })
-  if (!res.ok) throw new Error(`Failed to list app installations (${res.status})`)
-  const list = (await res.json()) as Array<{ id?: unknown }>
-  const first = list[0]
-  if (!first || typeof first.id !== "number") throw new Error("No app installations found")
-  return String(first.id)
+  if (!res.ok)
+    throw new Error(`Failed to get app installation for ${owner}/${repo} (${res.status})`)
+  const data = (await res.json()) as { id?: unknown }
+  if (typeof data.id !== "number") throw new Error(`No installation found for ${owner}/${repo}`)
+  return String(data.id)
 }
 
-async function mintToken(config: AppAuthConfig): Promise<string> {
+async function mintToken(config: AppAuthConfig, repo: string): Promise<string> {
+  const [owner, repoName] = repo.split("/")
+  if (!owner || !repoName) throw new Error(`Invalid repo format: "${repo}" — expected "owner/repo"`)
+
   const jwt = buildJwt(config.clientId, config.privateKey)
-  const installationId = await discoverInstallationId(jwt)
+  const installationId = await discoverInstallationId(jwt, owner, repoName)
 
   const res = await fetch(
     `https://api.github.com/app/installations/${installationId}/access_tokens`,
@@ -79,6 +85,7 @@ async function mintToken(config: AppAuthConfig): Promise<string> {
         Accept: "application/vnd.github+json",
         "User-Agent": "ghx-eval-fixtures",
       },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     },
   )
   if (!res.ok) throw new Error(`Failed to mint fixture app token (${res.status})`)
@@ -96,9 +103,12 @@ async function mintToken(config: AppAuthConfig): Promise<string> {
  * - `BENCH_FIXTURE_GH_APP_PRIVATE_KEY_PATH` (or `BENCH_FIXTURE_GH_APP_PRIVATE_KEY` for inline PEM)
  *
  * Returns `null` when none of the env vars are set (app auth is unconfigured).
+ *
+ * @param repo - Full `"owner/repo"` string for the fixture repository. Used to look up the
+ *               app installation via `GET /repos/{owner}/{repo}/installation`.
  */
-export async function mintFixtureAppToken(): Promise<string | null> {
+export async function mintFixtureAppToken(repo: string): Promise<string | null> {
   const config = await resolveConfig()
   if (config === null) return null
-  return mintToken(config)
+  return mintToken(config, repo)
 }

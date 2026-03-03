@@ -6,7 +6,7 @@ import {
   loadFixtureManifest,
   writeFixtureManifest,
 } from "@eval/fixture/manifest.js"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 const validManifest = {
   seedId: "default",
@@ -116,17 +116,10 @@ describe("loadFixtureManifest", () => {
     expect(manifest.fixtures["pr_with_mixed_threads"]?.number).toBe(42)
   })
 
-  it("exits with an informative message when file not found", async () => {
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((() => {}) as () => never)
-    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
-    try {
-      await loadFixtureManifest(join(tmpDir, "nonexistent.json")).catch(() => {})
-      expect(exitSpy).toHaveBeenCalledWith(1)
-      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Fixture manifest not found"))
-    } finally {
-      exitSpy.mockRestore()
-      errorSpy.mockRestore()
-    }
+  it("throws with an informative message when file not found", async () => {
+    await expect(loadFixtureManifest(join(tmpDir, "nonexistent.json"))).rejects.toThrow(
+      "Fixture manifest not found",
+    )
   })
 
   it("throws when JSON is invalid", async () => {

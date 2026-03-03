@@ -82,8 +82,12 @@ async function upsertFile(
     const existing = await runGh(["api", `repos/${repo}/contents/${path}?ref=${branch}`])
     const parsed: { sha?: string } = JSON.parse(existing)
     if (typeof parsed.sha === "string") existingSha = parsed.sha
-  } catch {
-    // file doesn't exist yet — create it
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    if (!message.includes("404")) {
+      throw new Error(`Failed to inspect existing file "${path}" on ${repo}@${branch}: ${message}`)
+    }
+    // 404 = file does not exist yet
   }
 
   const args = [
@@ -107,6 +111,7 @@ async function upsertFile(
 async function openPr(
   repo: string,
   branchName: string,
+  baseBranch: string,
   name: string,
   labels: readonly string[],
 ): Promise<number> {
@@ -122,7 +127,7 @@ async function openPr(
     "-f",
     `head=${branchName}`,
     "-f",
-    "base=main",
+    `base=${baseBranch}`,
     "--jq",
     ".number",
   ])
@@ -236,7 +241,7 @@ export function createMixedThreadsSeeder(): FixtureSeeder {
       await createBranch(repo, branchName, baseSha)
       await upsertFile(repo, branchName, FILE_PATH, FILE_CONTENT, "feat: add mixed helpers")
 
-      const prNumber = await openPr(repo, branchName, name, labels)
+      const prNumber = await openPr(repo, branchName, defaultBranch, name, labels)
 
       // Get the head SHA after the file commit
       const headSha = await getHeadSha(repo, branchName)
