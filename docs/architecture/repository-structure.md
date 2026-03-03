@@ -15,7 +15,6 @@ ghx/
 │   └── workflows/              # CI/CD workflows
 ├── docs/
 │   ├── architecture/           # Architecture documentation (this section)
-│   ├── benchmark/              # Benchmark methodology & reporting
 │   ├── capabilities/           # Per-domain capability reference
 │   ├── contributing/           # Development setup, testing, CI, publishing
 │   ├── getting-started/        # Installation, first task, agent setup
@@ -238,7 +237,7 @@ ghx/
 
 ### Workspace + Build System
 
-- `package.json` - root scripts for build/format/lint/test/typecheck/benchmark
+- `package.json` - root scripts for build/format/lint/test/typecheck
 - `pnpm-workspace.yaml` - workspace discovery + pnpm catalog
 - `nx.json` - Nx task orchestration
 - `biome.json` - Biome formatter (2-space indent, 100-char width)

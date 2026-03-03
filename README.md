@@ -181,7 +181,6 @@ Full list: `ghx capabilities list` or [operation card registry](https://github.c
 ## Packages
 
 - `@ghx-dev/core` (`packages/core`) - public npm package, CLI + execution engine
-- `@ghx-dev/benchmark` (`packages/benchmark`) - private/internal benchmark harness for maintainers
 
 ## Documentation
 
@@ -191,7 +190,6 @@ Full documentation lives in [`docs/`](docs/README.md):
 - **[Capabilities Reference](docs/capabilities/README.md)** -- All 70 capabilities by domain
 - **[Guides](docs/guides/README.md)** -- CLI usage, library API, agent integration, error handling
 - **[Architecture](docs/architecture/README.md)** -- System design, routing engine, adapters
-- **[Benchmark](docs/benchmark/README.md)** -- Methodology, running benchmarks, scenario authoring
 - **[Contributing](docs/contributing/README.md)** -- Development setup, testing, CI, publishing
 - Branding assets: `assets/branding/README.md`
 

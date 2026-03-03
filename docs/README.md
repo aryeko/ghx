@@ -168,7 +168,6 @@ Benchmarked across 40 runs (4 scenarios, 5 iterations each) with Codex 5.3:
 
 Full report: [Codex 5.3 Benchmark](../reports/codex-5.3-benchmark/README.md)
 
-See [Benchmark Results](benchmark/README.md) for detailed methodology and findings.
 
 ## Next Steps
 
