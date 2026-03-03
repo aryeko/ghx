@@ -41,10 +41,21 @@ See the [full capability list](packages/core/docs/reference/capabilities.md) for
 
 ## What's Next
 
-- **MCP mode support** -- stub infrastructure exists; the core package needs adapter implementation to support it end-to-end. Lets agents in MCP-compatible environments (Claude Desktop, etc.) use ghx capabilities as native tools.
-- **REST adapter** -- a stub exists in the codebase; implementing it adds a third routing option. Covers endpoints not available via GraphQL, improving fallback coverage.
-- **Additional capability domains** -- discussions, gists, and code search are natural expansions. These cover the remaining high-frequency GitHub operations agents need.
-- **Performance improvements** -- response streaming and parallel execution for batch operations. Reduces latency for bulk workflows like mass label management or multi-PR review.
+### Evaluation and Benchmarking
+
+- **Broader scenario coverage** -- the eval harness currently has 2 PR-focused scenarios. Expanding to issues, workflows, releases, and projects across difficulty tiers (basic, intermediate, advanced) strengthens the empirical case for structured routing.
+- **Multi-model benchmarking** -- current data covers Codex 5.3 only. Adding Claude, GPT-4.1, and other models demonstrates that ghx gains are model-independent, not artifacts of one provider.
+- **Cost tracking** -- the `CostCollector` exists but returns $0 today. Wiring up actual per-model cost data (input/output/reasoning token pricing) makes benchmarks directly actionable for teams evaluating agent infrastructure spend.
+- **Custom checkpoint scorers** -- the `custom` checkpoint condition type is stubbed out. Enabling it lets scenario authors write arbitrary verification logic beyond the built-in field matchers.
+
+### Observability
+
+- **OpenTelemetry integration** -- add spans for route selection, adapter execution, retries, and fallbacks in the core engine. Lets teams using ghx in production agent pipelines trace routing decisions and diagnose failures through their existing observability stack.
+- **Structured route diagnostics** -- surface the attempt history (`meta.attempts`) and route reason codes in a way that agents can self-diagnose and report on routing behavior without parsing raw logs.
+
+### Capabilities
+
+- **Additional domains** -- discussions, gists, and code search cover the remaining high-frequency GitHub operations agents need.
 
 ## Non-goals
 
