@@ -1,0 +1,51 @@
+{
+  "version": 2,
+  "runId": "run_1772555729706",
+  "generatedAt": "2026-03-03T21:12:35.570Z",
+  "totalRows": 30,
+  "modes": ["baseline", "mcp", "ghx"],
+  "scenarios": ["pr-reply-threads-wf-001", "pr-review-comment-001"],
+  "successRate": 0.9666666666666667,
+  "modeBreakdowns": {
+    "baseline": {
+      "successRate": 0.9,
+      "count": 10,
+      "medians": {
+        "wallMs": 69821,
+        "activeTokens": 26705.5,
+        "toolCalls": 7.5,
+        "costUsd": 0
+      }
+    },
+    "mcp": {
+      "successRate": 1,
+      "count": 10,
+      "medians": {
+        "wallMs": 38921.5,
+        "activeTokens": 23603.5,
+        "toolCalls": 7,
+        "costUsd": 0
+      }
+    },
+    "ghx": {
+      "successRate": 1,
+      "count": 10,
+      "medians": {
+        "wallMs": 32378.5,
+        "activeTokens": 21757,
+        "toolCalls": 2,
+        "costUsd": 0
+      }
+    }
+  },
+  "scenarioBreakdowns": {
+    "pr-reply-threads-wf-001": {
+      "count": 15,
+      "successRate": 1
+    },
+    "pr-review-comment-001": {
+      "count": 15,
+      "successRate": 0.9333333333333333
+    }
+  }
+}
