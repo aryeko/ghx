@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 // Mock all dependencies before importing the module under test
 vi.mock("node:fs/promises", () => ({
   readFile: vi.fn(),
+  mkdir: vi.fn().mockResolvedValue(undefined),
+  writeFile: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock("@eval/config/loader.js", () => ({
@@ -21,6 +23,15 @@ vi.mock("@eval/fixture/manager.js", () => ({
     cleanup: vi.fn().mockResolvedValue(undefined),
     reset: vi.fn().mockResolvedValue(undefined),
   })),
+}))
+
+vi.mock("@eval/fixture/manifest.js", () => ({
+  loadFixtureManifest: vi.fn().mockResolvedValue({
+    seedId: "test-seed",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    repo: "owner/repo",
+    fixtures: {},
+  }),
 }))
 
 vi.mock("@eval/provider/opencode-provider.js", () => ({
@@ -57,12 +68,23 @@ vi.mock("@eval/hooks/eval-hooks.js", () => ({
   createEvalHooks: vi.fn().mockReturnValue({}),
 }))
 
+vi.mock("@eval/report/generate.js", () => ({
+  generateEvalReport: vi.fn().mockResolvedValue("reports/run-001"),
+}))
+
 vi.mock("@ghx-dev/agent-profiler", () => ({
   runProfileSuite: vi.fn().mockResolvedValue({
     runId: "run-001",
     rows: [],
-    outputPath: "results/run-001.jsonl",
+    analysisResults: [],
+    outputJsonlPath: "results/run-001.jsonl",
+    durationMs: 0,
   }),
+  reasoningAnalyzer: { name: "reasoning", analyze: vi.fn() },
+  strategyAnalyzer: { name: "strategy", analyze: vi.fn() },
+  efficiencyAnalyzer: { name: "efficiency", analyze: vi.fn() },
+  toolPatternAnalyzer: { name: "tool-pattern", analyze: vi.fn() },
+  errorAnalyzer: { name: "error", analyze: vi.fn() },
 }))
 
 const MINIMAL_CONFIG = {
@@ -211,10 +233,12 @@ describe("run command", () => {
     await runFn(["--scenario-set", "smoke"])
 
     expect(loadScenarioSets).toHaveBeenCalled()
-    expect(loadEvalScenarios).toHaveBeenCalledWith(expect.any(String), [
-      "pr-fix-001",
-      "issue-close-001",
-    ])
+    expect(loadEvalScenarios).toHaveBeenCalledWith(
+      expect.any(String),
+      ["pr-fix-001", "issue-close-001"],
+      expect.any(Object),
+      expect.any(Object),
+    )
   })
 
   it("--scenario-set throws when set name is not found", async () => {
@@ -224,5 +248,41 @@ describe("run command", () => {
     await expect(runFn(["--scenario-set", "nonexistent"])).rejects.toThrow(
       'Scenario set "nonexistent" not found',
     )
+  })
+
+  it("throws when GH_TOKEN and GITHUB_TOKEN are both empty", async () => {
+    vi.unstubAllEnvs()
+    vi.stubEnv("GH_TOKEN", "")
+    vi.stubEnv("GITHUB_TOKEN", "")
+
+    await expect(runFn([])).rejects.toThrow("Missing GitHub token")
+  })
+
+  it("--scenario flag overrides scenario ids in config", async () => {
+    const { loadEvalScenarios } = await import("@eval/scenario/loader.js")
+    const { runProfileSuite } = await import("@ghx-dev/agent-profiler")
+
+    await runFn(["--scenario", "pr-fix-001", "--scenario", "issue-close-002"])
+
+    expect(loadEvalScenarios).toHaveBeenCalledWith(
+      expect.any(String),
+      ["pr-fix-001", "issue-close-002"],
+      expect.any(Object),
+      expect.any(Object),
+    )
+    expect(runProfileSuite).toHaveBeenCalledTimes(1)
+  })
+
+  it("--repetitions with invalid value logs warning and uses config default", async () => {
+    const { runProfileSuite } = await import("@ghx-dev/agent-profiler")
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined)
+
+    await runFn(["--repetitions", "notanumber"])
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("invalid --repetitions value"))
+    expect(runProfileSuite).toHaveBeenCalledTimes(1)
+    const call = vi.mocked(runProfileSuite).mock.calls[0]
+    expect((call as unknown[][])[0]).toMatchObject({ repetitions: 1 })
+    warnSpy.mockRestore()
   })
 })

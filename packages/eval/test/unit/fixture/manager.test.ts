@@ -8,7 +8,12 @@ vi.mock("@eval/fixture/manifest.js", () => ({
 
 vi.mock("@eval/fixture/seeders/index.js", () => ({
   getSeeder: vi.fn(),
+  hasSeeder: vi.fn().mockReturnValue(false),
   registerSeeder: vi.fn(),
+}))
+
+vi.mock("@eval/fixture/app-auth.js", () => ({
+  mintFixtureAppToken: vi.fn().mockResolvedValue(null),
 }))
 
 import { FixtureManager } from "@eval/fixture/manager.js"
@@ -28,7 +33,7 @@ const validManifest: FixtureManifest = {
       number: 42,
       repo: "aryeko/ghx-bench-fixtures",
       branch: "bench-fixture/pr-mixed-threads-42",
-      labels: ["bench-fixture"],
+      labels: ["@ghx-dev/eval"],
       metadata: { originalSha: "abc123def456" },
     },
     issue_for_triage: {
@@ -214,6 +219,37 @@ describe("FixtureManager.reset()", () => {
       'Fixture reset for branch "bench-fixture/pr-mixed-threads-42" could not be verified after polling',
     )
   })
+
+  it("skips reset for fixture with branch but no originalSha", async () => {
+    const manifestNoSha: FixtureManifest = {
+      seedId: "test",
+      createdAt: "2026-02-27T12:00:00Z",
+      repo: "aryeko/ghx-bench-fixtures",
+      fixtures: {
+        pr_no_sha: {
+          type: "pr",
+          number: 10,
+          repo: "aryeko/ghx-bench-fixtures",
+          branch: "bench-fixture/pr-no-sha",
+          labels: ["@ghx-dev/eval"],
+          metadata: {}, // no originalSha
+        },
+      },
+    }
+    mockLoadManifest.mockResolvedValue(manifestNoSha)
+    const manager = new FixtureManager({
+      repo: "aryeko/ghx-bench-fixtures",
+      manifest: "fixtures/latest.json",
+    })
+    const runGhSpy = vi.spyOn(
+      manager as unknown as { runGh: (args: string[]) => Promise<string> },
+      "runGh",
+    )
+
+    await manager.reset(["pr_no_sha"])
+
+    expect(runGhSpy).not.toHaveBeenCalled()
+  })
 })
 
 describe("FixtureManager.seed()", () => {
@@ -225,7 +261,7 @@ describe("FixtureManager.seed()", () => {
         number: 42,
         repo: "owner/repo",
         branch: "bench-fixture/pr_with_changes-123",
-        labels: ["bench-fixture"],
+        labels: ["@ghx-dev/eval"],
         metadata: { originalSha: "abc123" },
       }),
     }
@@ -236,6 +272,10 @@ describe("FixtureManager.seed()", () => {
       manifest: "fixtures/latest.json",
       seedId: "test-seed",
     })
+    vi.spyOn(
+      manager as unknown as { runGh: (args: string[]) => Promise<string> },
+      "runGh",
+    ).mockResolvedValue("")
 
     const scenarios = [
       {
@@ -287,6 +327,10 @@ describe("FixtureManager.seed()", () => {
       repo: "owner/repo",
       manifest: "fixtures/latest.json",
     })
+    vi.spyOn(
+      manager as unknown as { runGh: (args: string[]) => Promise<string> },
+      "runGh",
+    ).mockResolvedValue("")
 
     await manager.seed([
       {
@@ -336,6 +380,10 @@ describe("FixtureManager.seed()", () => {
     })
 
     const manager = new FixtureManager({ repo: "r", manifest: "m.json" })
+    vi.spyOn(
+      manager as unknown as { runGh: (args: string[]) => Promise<string> },
+      "runGh",
+    ).mockResolvedValue("")
     await manager.seed([
       {
         id: "sc-001",
@@ -350,6 +398,104 @@ describe("FixtureManager.seed()", () => {
 
     expect(getSeeder).toHaveBeenCalledWith("pr")
     expect(getSeeder).toHaveBeenCalledWith("issue")
+  })
+})
+
+describe("FixtureManager.seedOne()", () => {
+  it("seeds a single fixture using the registered seeder", async () => {
+    const mockResource = {
+      type: "pr",
+      number: 500,
+      repo: "owner/repo",
+      branch: "bench-fixture/pr_with_changes-567",
+      labels: ["@ghx-dev/eval"],
+      metadata: { originalSha: "deadbeef" },
+    }
+    const mockSeeder = {
+      type: "pr",
+      seed: vi.fn().mockResolvedValue(mockResource),
+    }
+    vi.mocked(getSeeder).mockReturnValue(mockSeeder)
+
+    const manager = new FixtureManager({ repo: "owner/repo", manifest: "fixtures/latest.json" })
+    const runGhSpy = vi
+      .spyOn(manager as unknown as { runGh: (args: string[]) => Promise<string> }, "runGh")
+      .mockResolvedValue("")
+    const resource = await manager.seedOne("pr_with_changes")
+
+    expect(runGhSpy).toHaveBeenCalledWith(
+      expect.arrayContaining(["label", "create", "@ghx-dev/eval", "--force"]),
+    )
+    expect(getSeeder).toHaveBeenCalledWith("pr")
+    expect(mockSeeder.seed).toHaveBeenCalledWith({
+      repo: "owner/repo",
+      name: "pr_with_changes",
+      labels: ["@ghx-dev/eval"],
+    })
+    expect(resource.number).toBe(500)
+  })
+
+  it("resolves seeder type from fixture name prefix for issues", async () => {
+    const mockSeeder = {
+      type: "issue",
+      seed: vi
+        .fn()
+        .mockResolvedValue({ type: "issue", number: 10, repo: "owner/repo", metadata: {} }),
+    }
+    vi.mocked(getSeeder).mockReturnValue(mockSeeder)
+
+    const manager = new FixtureManager({ repo: "owner/repo", manifest: "fixtures/latest.json" })
+    vi.spyOn(
+      manager as unknown as { runGh: (args: string[]) => Promise<string> },
+      "runGh",
+    ).mockResolvedValue("")
+    await manager.seedOne("issue_for_triage")
+
+    expect(getSeeder).toHaveBeenCalledWith("issue")
+  })
+})
+
+describe("FixtureManager.closeResource()", () => {
+  it("closes a PR resource via gh pr close", async () => {
+    const manager = new FixtureManager({
+      repo: "owner/repo",
+      manifest: "fixtures/latest.json",
+    })
+    const runGhSpy = vi
+      .spyOn(manager as unknown as { runGh: (args: string[]) => Promise<string> }, "runGh")
+      .mockResolvedValue("")
+
+    await manager.closeResource({
+      type: "pr",
+      number: 42,
+      repo: "owner/repo",
+      metadata: {},
+    })
+
+    expect(runGhSpy).toHaveBeenCalledWith(
+      expect.arrayContaining(["pr", "close", "42", "--repo", "owner/repo"]),
+    )
+  })
+
+  it("closes an issue resource via gh issue close", async () => {
+    const manager = new FixtureManager({
+      repo: "owner/repo",
+      manifest: "fixtures/latest.json",
+    })
+    const runGhSpy = vi
+      .spyOn(manager as unknown as { runGh: (args: string[]) => Promise<string> }, "runGh")
+      .mockResolvedValue("")
+
+    await manager.closeResource({
+      type: "issue",
+      number: 7,
+      repo: "owner/repo",
+      metadata: {},
+    })
+
+    expect(runGhSpy).toHaveBeenCalledWith(
+      expect.arrayContaining(["issue", "close", "7", "--repo", "owner/repo"]),
+    )
   })
 })
 

@@ -114,9 +114,9 @@ describe("profile-runner integration", () => {
 
     const result = await runProfileSuite(options)
 
-    // warmup (1) + 8 iterations = 9 createSession calls
-    expect(provider.calls.createSession?.length ?? 0).toBe(9)
-    // but only 8 rows in results (warmup discarded)
+    // 2 modes × warmup(1) + 8 iterations = 10 createSession calls
+    expect(provider.calls.createSession?.length ?? 0).toBe(10)
+    // but only 8 rows in results (warmups discarded)
     expect(result.rows).toHaveLength(8)
   })
 
@@ -137,6 +137,7 @@ describe("profile-runner integration", () => {
       }),
       beforeScenario: vi.fn(async () => {
         order.push("beforeScenario")
+        return undefined
       }),
       afterScenario: vi.fn(async () => {
         order.push("afterScenario")
@@ -162,13 +163,14 @@ describe("profile-runner integration", () => {
     ])
   })
 
-  it("calls provider.shutdown after all iterations", async () => {
+  it("calls provider.shutdown once per mode", async () => {
     const provider = createMockProvider()
     const options = makeOptions({ provider })
 
     await runProfileSuite(options)
 
-    expect(provider.calls.shutdown?.length ?? 0).toBe(1)
+    // makeOptions uses 2 modes by default — shutdown is called once per mode
+    expect(provider.calls.shutdown?.length ?? 0).toBe(2)
   })
 
   it("calls analyzers and returns analysis bundles", async () => {

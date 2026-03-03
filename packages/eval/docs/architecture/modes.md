@@ -59,18 +59,7 @@ export class EvalModeResolver implements ModeResolver {
         return {
           environment: {},
           systemInstructions: MCP_INSTRUCTIONS,
-          providerOverrides: {
-            mcpServers: [
-              {
-                name: "github",
-                command: "npx",
-                args: ["-y", "@modelcontextprotocol/server-github"],
-                env: {
-                  GITHUB_PERSONAL_ACCESS_TOKEN: this.requireGitHubToken(),
-                },
-              },
-            ],
-          },
+          providerOverrides: {},
         }
 
       case "baseline":
@@ -97,7 +86,7 @@ export class EvalModeResolver implements ModeResolver {
 
 - **Environment:** No PATH changes -- the GitHub MCP server is configured as a provider override.
 - **System instructions:** Generic instructions describing available MCP tool categories (pull requests, issues, repositories, reviews, branches) and advising the agent to use the tool listing for discovery.
-- **Provider overrides:** Configures `@modelcontextprotocol/server-github` as an MCP server with the GitHub token passed via environment.
+- **Provider overrides:** None -- the MCP server connection is handled at the provider level. The agent accesses GitHub MCP tools without a local subprocess.
 
 ### baseline Mode
 
@@ -113,17 +102,23 @@ Each mode's system instructions are calibrated to give the agent the right level
 - **mcp:** Category-level guidance (PRs, issues, repos, reviews, branches) without specific tool names. The agent discovers available tools via the MCP tool listing protocol.
 - **baseline:** Command-level examples (`gh pr view`, `gh api`) with a hint to use `--json`. The agent must know CLI syntax and parse output.
 
-## Mode Execution Order
+## Mode Execution Order and Provider Lifecycle
 
-Modes run sequentially within a model. The OpenCode server is started once per model and reconfigured between modes:
+Modes run sequentially within a model. Each mode gets its own isolated provider lifecycle:
 
-1. For model M: start server with model M
-2. Run ghx mode -- configure PATH + SKILL.md, execute all scenarios x repetitions
-3. Run mcp mode -- reconfigure with MCP server, execute all scenarios x repetitions
-4. Run baseline mode -- reconfigure with baseline instructions, execute all scenarios x repetitions
-5. Shutdown server
+1. For model M, iterate over each mode:
+   - `provider.init(modeConfig)` -- starts a fresh OpenCode server with the mode's environment variables and configuration
+   - Run warmup canary (once per mode, absorbs per-mode startup overhead)
+   - Execute all scenarios × repetitions
+   - `provider.shutdown()` -- closes the server and cleans up temporary directories
+2. Repeat for the next mode with a fresh `init()`/`shutdown()` cycle
 
-The server is reused across modes when healthy, avoiding the 2--5 second startup cost per mode switch. Session isolation is maintained at the session level, not the server level -- each iteration creates a fresh session regardless of mode transitions.
+This per-mode isolation means:
+- Environment variables from one mode cannot bleed into another
+- Each mode's PATH changes, system instructions, and provider config are applied in a clean context
+- Warmup runs once per mode rather than once globally, ensuring startup costs are absorbed for every mode
+
+The `modeConfig.environment` from `EvalModeResolver.resolve()` is passed directly to `provider.init()`, which applies it before starting the OpenCode server.
 
 **Source:** `packages/eval/src/mode/resolver.ts`, `packages/eval/src/mode/definitions.ts`
 

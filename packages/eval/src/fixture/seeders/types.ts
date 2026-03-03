@@ -8,6 +8,13 @@ export interface SeedOptions {
   readonly name: string
   /** Labels to apply to the created resource. */
   readonly labels: readonly string[]
+  /**
+   * Optional GitHub token for a secondary identity (e.g. a bot account).
+   * Seeders use this for operations that must come from a different user,
+   * such as opening a PR as the bot so the main agent can request changes on it,
+   * or posting review comments as the bot.
+   */
+  readonly botToken?: string
 }
 
 /** Creates a specific type of GitHub fixture resource. */

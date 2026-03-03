@@ -43,7 +43,7 @@ Example manifest:
       "number": 43,
       "repo": "aryeko/ghx-bench-fixtures",
       "branch": "bench-fixture/pr-changes-43",
-      "labels": ["bench-fixture"],
+      "labels": ["@ghx-dev/eval"],
       "metadata": {
         "filesChanged": 3,
         "additions": 25,
@@ -65,7 +65,7 @@ pnpm --filter @ghx-dev/eval run eval fixture seed
 The seeder:
 1. Loads scenario files and collects all unique `fixture.requires` entries
 2. Creates branches, commits, PRs/issues as needed in the fixture repo
-3. Labels all resources with `"bench-fixture"` for discovery
+3. Labels all resources with `"@ghx-dev/eval"` for discovery
 4. Writes the manifest to `fixtures/latest.json`
 
 If `seed_if_missing: true` is set in config, `eval run` will auto-seed when the manifest is not found.
@@ -93,15 +93,28 @@ For scenarios with `reseedPerIteration: true`, fixtures are automatically reset 
 
 Reset overhead is approximately 3 seconds per fixture. For a run with 5 repetitions across 3 modes, that is ~45 seconds of fixture overhead per scenario with `reseedPerIteration: true`.
 
+## Per-Iteration Seeding
+
+For scenarios with `seedPerIteration: true`, a fresh fixture PR is created before each iteration instead of resetting an existing one. The lifecycle per iteration is:
+
+1. `seedOne()` creates a new PR in the fixture repository and labels it `@ghx-dev/eval`
+2. Template variables (`{{pr_number}}`, etc.) are rebound against the new PR's data
+3. The scenario prompt and checkpoint inputs are updated with the new values
+4. After the iteration completes, `closeResource()` closes the created PR
+
+This is the right choice when the scenario creates comment threads or reviews that would interfere with subsequent iterations -- a fresh PR per iteration guarantees a clean starting state.
+
+The `run_id` variable is automatically injected into the prompt as `{{run_id}}` when using per-iteration seeding, enabling scenarios to label their created artifacts for traceability.
+
 ## Cleanup
 
-Remove all bench-fixture resources from the target repository:
+Remove all @ghx-dev/eval resources from the target repository:
 
 ```bash
 # Remove fixtures listed in the manifest
 pnpm --filter @ghx-dev/eval run eval fixture cleanup
 
-# Discover and remove all bench-fixture labeled resources
+# Discover and remove all @ghx-dev/eval labeled resources
 pnpm --filter @ghx-dev/eval run eval fixture cleanup --all
 ```
 

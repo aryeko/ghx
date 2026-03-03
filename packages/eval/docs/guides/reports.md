@@ -8,10 +8,10 @@ After an evaluation run, results and reports are organized under the configured 
 
 ```text
 results/
-  run-001.jsonl                          # ProfileRow records (one per iteration)
+  run_1706000000000.jsonl                # ProfileRow records (one per iteration)
 
 reports/
-  2026-02-27T12-00-00/
+  run_1706000000000/
     report.md                            # Markdown summary report
     report.csv                           # CSV data for spreadsheet analysis
     report.json                          # Machine-readable JSON report
@@ -21,15 +21,21 @@ reports/
         ghx-iter-2.json
         baseline-iter-1.json
         mcp-iter-1.json
-      pr-fix-mixed-threads-wf-001/
+      pr-reply-threads-wf-001/
         ghx-iter-1.json
         baseline-iter-1.json
+        ...
+    analysis/
+      pr-review-comment-001/
+        ghx-iter-0-analysis.json         # Analysis bundle per iteration
+        baseline-iter-0-analysis.json
         ...
 ```
 
 - **`results/`** -- raw JSONL files containing `ProfileRow` records. Each line is one iteration with metrics, scores, timing, and custom collector data. These files are the primary data artifact.
-- **`reports/`** -- generated reports in multiple formats. Each run creates a timestamped subdirectory.
-- **`reports/sessions/`** -- exported session traces organized by scenario. Available when `output.session_export: true` in config.
+- **`reports/`** -- generated reports in multiple formats. Each run creates a `run_{timestamp}` subdirectory named by the run ID.
+- **`reports/{runId}/sessions/`** -- exported session traces organized by scenario. Available when `output.session_export: true` in config.
+- **`reports/{runId}/analysis/`** -- analysis bundles, one JSON file per iteration. Written automatically after each run by the built-in analyzers (reasoning, strategy, efficiency, tool pattern, error).
 
 ## Session Trace Export Format
 
@@ -61,7 +67,7 @@ Generate specific formats with the `--format` flag:
 
 ```bash
 pnpm --filter @ghx-dev/eval run eval report \
-  --results results/run-001.jsonl \
+  --results results/run_1706000000000.jsonl \
   --format md
 ```
 

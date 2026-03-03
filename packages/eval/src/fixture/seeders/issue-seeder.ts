@@ -20,7 +20,7 @@ export function createIssueSeeder(): FixtureSeeder {
     type: "issue",
 
     async seed(options: SeedOptions): Promise<FixtureResource> {
-      const title = `[bench-fixture] ${options.name}`
+      const title = `[@ghx-dev/eval] ${options.name}`
 
       const createArgs = [
         "issue",
@@ -41,7 +41,7 @@ export function createIssueSeeder(): FixtureSeeder {
         "--repo",
         options.repo,
         "--label",
-        "bench-fixture",
+        "@ghx-dev/eval",
         "--json",
         "number,title",
         "--limit",

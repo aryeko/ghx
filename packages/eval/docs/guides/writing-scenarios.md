@@ -45,8 +45,11 @@ The `fixture` block declares what GitHub resources the scenario needs:
 | `requires` | `string[]` | Resource types from the manifest (e.g. `["pr_with_changes"]`) |
 | `bindings` | `Record<string, string>` | Maps template variables to manifest paths |
 | `reseedPerIteration` | `boolean` | Reset fixtures between iterations (use for mutating scenarios) |
+| `seedPerIteration` | `boolean` | Create a fresh fixture PR before each iteration; closes after. Use for scenarios that need a clean, unique PR per run |
 
-Set `reseedPerIteration: true` when the agent modifies the fixture (pushes commits, merges PRs). Set it to `false` for read-only scenarios (reviewing, listing).
+- **`reseedPerIteration: true`** -- agent modifies an existing fixture (pushes commits, adds reviews). The fixture is force-pushed back to its original SHA and comments are deleted before each iteration.
+- **`seedPerIteration: true`** -- agent needs a completely fresh, unique PR each time (e.g., to avoid comment-thread noise from prior iterations). A new PR is created before each iteration and closed after. Template variables like `{{pr_number}}` are rebound to the new resource.
+- Both `false` -- read-only scenario; the fixture is shared across all iterations without reset.
 
 ## Step 5: Write Checkpoints
 
@@ -83,6 +86,7 @@ Fields:
 | `count_eq` | `value: number` | Result count equals value |
 | `field_equals` | `path`, `value` | `result[path]` strictly equals value |
 | `field_contains` | `path`, `value` | `result[path]` contains substring |
+| `field_gte` | `path`, `value: number` | `result[path]` (number) is >= value |
 | `custom` | `scorer: string` | Delegates to a named custom scorer (v2) |
 
 For full condition semantics, see [Checkpoint Conditions API](../api/checkpoint-conditions.md).
@@ -93,8 +97,8 @@ Register the scenario ID in `scenarios/scenario-sets.json`:
 
 ```json
 {
-  "default": ["pr-fix-mixed-threads-wf-001", "pr-review-comment-001"],
-  "pr-only": ["pr-fix-mixed-threads-wf-001", "pr-review-comment-001"]
+  "default": ["pr-reply-threads-wf-001", "pr-review-comment-001"],
+  "pr-only": ["pr-reply-threads-wf-001", "pr-review-comment-001"]
 }
 ```
 

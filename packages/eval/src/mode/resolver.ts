@@ -9,7 +9,7 @@ import { BASELINE_INSTRUCTIONS, GHX_SKILL_FALLBACK, MCP_INSTRUCTIONS } from "./d
  * | Mode       | What the agent gets                                         |
  * |------------|-------------------------------------------------------------|
  * | `ghx`      | ghx binary in PATH + SKILL.md injected as system prompt     |
- * | `mcp`      | GitHub MCP server configured via provider overrides         |
+ * | `mcp`      | GitHub MCP tools (always-on) + MCP_INSTRUCTIONS             |
  * | `baseline` | Plain `gh` CLI instructions only (control group)            |
  *
  * Implements `ModeResolver` from `@ghx-dev/agent-profiler`.
@@ -40,18 +40,7 @@ export class EvalModeResolver implements ModeResolver {
         return {
           environment: {},
           systemInstructions: MCP_INSTRUCTIONS,
-          providerOverrides: {
-            mcpServers: [
-              {
-                name: "github",
-                command: "npx",
-                args: ["-y", "@modelcontextprotocol/server-github"],
-                env: {
-                  GITHUB_PERSONAL_ACCESS_TOKEN: this.requireGitHubToken(),
-                },
-              },
-            ],
-          },
+          providerOverrides: {},
         }
 
       case "baseline":
@@ -66,14 +55,6 @@ export class EvalModeResolver implements ModeResolver {
     }
   }
 
-  private requireGitHubToken(): string {
-    const token = process.env["GH_TOKEN"] ?? process.env["GITHUB_TOKEN"]
-    if (!token) {
-      throw new Error("MCP mode requires GH_TOKEN or GITHUB_TOKEN environment variable")
-    }
-    return token
-  }
-
   private ghxBinDir(): string {
     return process.env["GHX_BIN_DIR"] ?? join(process.cwd(), "node_modules", ".bin")
   }
@@ -83,6 +64,18 @@ export class EvalModeResolver implements ModeResolver {
       process.env["GHX_SKILL_MD"],
       join(process.cwd(), "SKILL.md"),
       join(process.env["HOME"] ?? "", ".agents", "skills", "ghx", "SKILL.md"),
+      // SKILL.md shipped with the installed @ghx-dev/core package (adjacent to the ghx binary)
+      join(
+        this.ghxBinDir(),
+        "..",
+        "node_modules",
+        "@ghx-dev",
+        "core",
+        "skills",
+        "using-ghx",
+        "SKILL.md",
+      ),
+      join(this.ghxBinDir(), "..", "@ghx-dev", "core", "skills", "using-ghx", "SKILL.md"),
     ].filter((p): p is string => p !== undefined && p !== "")
 
     for (const path of candidates) {

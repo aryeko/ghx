@@ -51,6 +51,7 @@ interface EvalScenario {
 | `requires` | `string[]` | Yes | List of fixture names (keys in the manifest) this scenario depends on |
 | `bindings` | `Record<string, string>` | Yes | Map of template variable names to fixture manifest paths for `{{variable}}` substitution |
 | `reseedPerIteration` | `boolean` | No | Reset fixture branches to original SHAs before each iteration. Default: `false` |
+| `seedPerIteration` | `boolean` | No | Create a fresh fixture PR before each iteration and rebind template variables. Default: `false` |
 
 ### Assertions
 
@@ -88,7 +89,7 @@ Source: `packages/eval/src/scenario/schema.ts`
 
 ## Related Documentation
 
-- [Checkpoint Conditions](./checkpoint-conditions.md) -- all 7 condition types
+- [Checkpoint Conditions](./checkpoint-conditions.md) -- all 8 condition types
 - [Fixture Manifest](./fixture-manifest.md) -- manifest referenced by `fixture.requires`
 - [Writing Scenarios Guide](../guides/writing-scenarios.md)
 - [Architecture Overview](../architecture/overview.md)

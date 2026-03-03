@@ -3,7 +3,8 @@ import { runAnalyzers } from "@eval/analysis/run-analyzers.js"
 import { parseFlag } from "./parse-flags.js"
 
 export async function analyze(argv: readonly string[]): Promise<void> {
-  const runDir = parseFlag(argv, "--run-dir") ?? "results"
+  const runId = parseFlag(argv, "--run-id")
+  const runDir = runId ? join("reports", runId) : (parseFlag(argv, "--run-dir") ?? "results")
   const outputDir = parseFlag(argv, "--output") ?? join(runDir, "analysis")
 
   console.log(`Analyzing session traces in ${runDir}/sessions/...`)

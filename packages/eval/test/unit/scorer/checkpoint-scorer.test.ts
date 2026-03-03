@@ -270,6 +270,80 @@ describe("CheckpointScorer", () => {
     expect(result.passed).toBe(0)
   })
 
+  it("evaluates field_gte condition: passes when field is a number >= value", async () => {
+    mockExecuteTask.mockResolvedValue({
+      ok: true,
+      data: { count: 5 },
+      error: null,
+      meta: {},
+    })
+    const scenario = makeScenario([
+      {
+        id: "c",
+        description: "d",
+        task: "t",
+        input: {},
+        condition: { type: "field_gte", path: "count", value: 3 },
+      },
+    ])
+    const result = await scorer.evaluate(scenario, dummyContext)
+    expect(result.details[0]?.passed).toBe(true)
+  })
+
+  it("evaluates field_gte condition: fails when field is not a number", async () => {
+    mockExecuteTask.mockResolvedValue({
+      ok: true,
+      data: { count: "five" },
+      error: null,
+      meta: {},
+    })
+    const scenario = makeScenario([
+      {
+        id: "c",
+        description: "d",
+        task: "t",
+        input: {},
+        condition: { type: "field_gte", path: "count", value: 3 },
+      },
+    ])
+    const result = await scorer.evaluate(scenario, dummyContext)
+    expect(result.details[0]?.passed).toBe(false)
+  })
+
+  it("evaluates field_contains condition: fails when field is not a string", async () => {
+    mockExecuteTask.mockResolvedValue({
+      ok: true,
+      data: { body: 42 },
+      error: null,
+      meta: {},
+    })
+    const scenario = makeScenario([
+      {
+        id: "c",
+        description: "d",
+        task: "t",
+        input: {},
+        condition: { type: "field_contains", path: "body", value: "auth" },
+      },
+    ])
+    const result = await scorer.evaluate(scenario, dummyContext)
+    expect(result.details[0]?.passed).toBe(false)
+  })
+
+  it("uses fallback error message when result.error has no message property", async () => {
+    mockExecuteTask.mockResolvedValue({
+      ok: false,
+      data: null,
+      error: { code: "UNKNOWN" } as unknown as { message: string; code: string },
+      meta: {},
+    })
+    const scenario = makeScenario([
+      { id: "c", description: "d", task: "t", input: {}, condition: { type: "non_empty" } },
+    ])
+    const result = await scorer.evaluate(scenario, dummyContext)
+    expect(result.details[0]?.error).toBe("Task execution failed")
+  })
+
   it("passes githubToken when calling executeTask", async () => {
     mockExecuteTask.mockResolvedValue({ ok: true, data: [1], error: null, meta: {} })
 

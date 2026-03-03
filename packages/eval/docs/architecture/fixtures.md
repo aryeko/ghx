@@ -54,7 +54,7 @@ Example manifest:
       "number": 42,
       "repo": "ghx-dev/ghx-bench-fixtures",
       "branch": "fix/mixed-thread-types",
-      "labels": ["bench-fixture"],
+      "labels": ["@ghx-dev/eval"],
       "metadata": {
         "originalSha": "abc123def456",
         "baseBranch": "main"
@@ -64,7 +64,7 @@ Example manifest:
       "type": "issue",
       "number": 15,
       "repo": "ghx-dev/ghx-bench-fixtures",
-      "labels": ["bench-fixture", "bug", "priority:high"],
+      "labels": ["@ghx-dev/eval", "bug", "priority:high"],
       "metadata": {}
     }
   }
@@ -77,7 +77,7 @@ The `metadata.originalSha` field is critical for reset operations -- it records 
 
 ### Seeding
 
-Seeding creates fixtures in the benchmark repository. The process collects unique `fixture.requires` entries across all scenarios in the run, creates the corresponding GitHub resources (branches, PRs, issues), labels each with `bench-fixture` for identification, and writes the manifest to disk.
+Seeding creates fixtures in the benchmark repository. The process collects unique `fixture.requires` entries across all scenarios in the run, creates the corresponding GitHub resources (branches, PRs, issues), labels each with `@ghx-dev/eval` for identification, and writes the manifest to disk.
 
 Seeding is triggered manually via `eval fixture seed` or automatically when `--seed-if-missing` is passed to `eval run`. The seed command is idempotent -- it checks for existing resources before creating new ones.
 
@@ -99,6 +99,15 @@ The reset process for branch-based fixtures (PRs):
 
 **Performance:** A single reset takes approximately 3 seconds. For a scenario with 5 repetitions across 3 modes, that is 15 resets totaling roughly 45 seconds of overhead per scenario.
 
+### Per-Iteration Seeding
+
+When a scenario sets `fixture.seedPerIteration: true`, the lifecycle follows a different pattern per iteration:
+
+- **Before each iteration** -- `seedOne()` creates a fresh ephemeral fixture PR in the benchmark repository and labels it `@ghx-dev/eval`. Template variables (e.g. `{{pr_number}}`) are rebound against the new resource. The returned `BaseScenario` is used for that iteration in place of the original.
+- **After each iteration** -- `closeResource()` closes the PR created for that iteration.
+
+This variant is used when the agent needs a completely clean, unique PR per run -- for example, when the scenario involves replying to review threads that must not carry over between iterations. Unlike `reseedPerIteration`, no force-push is performed; the fixture is disposable.
+
 ### Cleanup
 
 After all iterations complete, cleanup closes the resources created during seeding:
@@ -106,10 +115,10 @@ After all iterations complete, cleanup closes the resources created during seedi
 - Close all open PRs in the fixture repository
 - Close all open issues in the fixture repository
 - Delete branches created for PR fixtures
-- Remove `bench-fixture` labels
+- Remove `@ghx-dev/eval` labels
 - Delete the manifest file
 
-The `cleanup({ all: true })` variant finds all resources labeled `bench-fixture` in the repository, regardless of whether they appear in the current manifest. This is useful for recovering from interrupted runs.
+The `cleanup({ all: true })` variant finds all resources labeled `@ghx-dev/eval` in the repository, regardless of whether they appear in the current manifest. This is useful for recovering from interrupted runs.
 
 ## Integration with RunHooks
 
@@ -127,10 +136,25 @@ export function createEvalHooks(options: EvalHooksOptions): RunHooks {
       }
     },
 
-    beforeScenario: async (ctx) => {
+    beforeMode: async (_mode: string) => {
+      if (options.reseedBetweenModes) {
+        // Reset all fixtures to their original state before each mode begins.
+        await options.fixtureManager.reset(options.fixtureRequires)
+      }
+    },
+
+    beforeScenario: async (ctx): Promise<BaseScenario | undefined> => {
       const scenario = ctx.scenario as unknown as EvalScenario
+
       if (scenario.fixture?.reseedPerIteration) {
         await options.fixtureManager.reset(scenario.fixture.requires)
+        return
+      }
+
+      if (scenario.fixture?.seedPerIteration) {
+        // Seed a fresh PR, rebind template variables, return updated scenario
+        const resource = await options.fixtureManager.seedOne(fixtureName)
+        return bindFixtureVariables(rawScenario, miniManifest, extraVars)
       }
     },
 

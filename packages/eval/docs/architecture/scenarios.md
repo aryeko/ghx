@@ -54,6 +54,7 @@ type CheckpointCondition =
   | { type: "count_eq"; value: number }
   | { type: "field_equals"; path: string; value: string | number | boolean | null }
   | { type: "field_contains"; path: string; value: string }
+  | { type: "field_gte"; path: string; value: number }
   | { type: "custom"; scorer: string }
 ```
 
@@ -81,6 +82,7 @@ The `fixture` section of a scenario declares its GitHub resource dependencies:
 - **requires** -- list of fixture names (keys in the manifest) this scenario depends on
 - **bindings** -- map of template variable names to manifest paths (e.g., `pr_number: pr_with_changes.number`)
 - **reseedPerIteration** -- when `true`, reset fixture branches to their original SHAs before each iteration
+- **seedPerIteration** -- when `true`, a fresh PR is seeded before each iteration via `seedOne()` and closed after via `closeResource()`. Template variables are rebound against the new resource.
 
 ## Template Variable Resolution
 
@@ -131,6 +133,7 @@ Each checkpoint specifies a ghx capability task to run after the agent session c
 | `count_eq` | Result array length equals `value` |
 | `field_equals` | Nested field at `path` strictly equals `value` (primitive) |
 | `field_contains` | Nested field at `path` (string) contains the `value` substring |
+| `field_gte` | Nested field at `path` (number) is >= `value` |
 | `custom` | Delegates to a named custom scorer function (v2 -- not yet implemented) |
 
 ## Example Scenarios
@@ -139,42 +142,77 @@ Each checkpoint specifies a ghx capability task to run after the agent session c
 
 ```json
 {
-  "id": "pr-fix-mixed-threads-wf-001",
-  "name": "Fix mixed review threads",
-  "description": "Agent must identify unresolved review threads on a PR and resolve them by pushing appropriate fixes.",
-  "prompt": "Review PR #{{pr_number}} in {{repo}}. Find all unresolved review threads and push fixes to resolve them.",
-  "timeoutMs": 300000,
-  "allowedRetries": 1,
-  "tags": ["pr", "reviews", "multi-step"],
+  "id": "pr-reply-threads-wf-001",
+  "name": "Reply to Unresolved Review Threads",
+  "description": "Agent must list unresolved review threads on a PR and reply to each with a concrete fix suggestion. No code changes or commits are expected — only GitHub API read/write calls.",
   "category": "pr",
-  "difficulty": "advanced",
+  "difficulty": "intermediate",
+  "prompt": "PR #{{pr_number}} in {{repo}} has unresolved review threads with code feedback. Please go through each unresolved thread and reply with a concrete fix suggestion. Only reply to unresolved threads — do not push any code changes.",
+  "timeoutMs": 120000,
+  "allowedRetries": 1,
+  "tags": ["pr", "review", "reply", "api-only"],
   "fixture": {
-    "repo": "ghx-dev/ghx-bench-fixtures",
-    "requires": ["pr_with_changes"],
+    "repo": "{{fixture_repo}}",
+    "requires": ["pr_with_mixed_threads"],
     "bindings": {
-      "pr_number": "pr_with_changes.number",
-      "repo": "pr_with_changes.repo"
+      "pr_number": "pr_with_mixed_threads.number",
+      "repo": "pr_with_mixed_threads.repo"
     },
-    "reseedPerIteration": true
+    "reseedPerIteration": false,
+    "seedPerIteration": true
   },
   "assertions": {
     "checkpoints": [
       {
-        "id": "threads-resolved",
-        "description": "All review threads should be resolved",
-        "task": "pr.reviews.list",
-        "input": { "owner": "{{owner}}", "repo": "{{repo_name}}", "pull_number": "{{pr_number}}" },
-        "condition": { "type": "non_empty" }
+        "id": "threads-still-unresolved",
+        "description": "All 3 unresolved threads remain unresolved — agent replied but did not mark them resolved",
+        "task": "pr.threads.list",
+        "input": {
+          "owner": "{{owner}}",
+          "name": "{{repo_name}}",
+          "prNumber": "{{pr_number}}",
+          "unresolvedOnly": true
+        },
+        "condition": { "type": "field_equals", "path": "items.length", "value": 3 }
       },
       {
-        "id": "commits-added",
-        "description": "At least one fix commit should be pushed",
-        "task": "pr.commits.list",
-        "input": { "owner": "{{owner}}", "repo": "{{repo_name}}", "pull_number": "{{pr_number}}" },
-        "condition": { "type": "count_gte", "value": 2 }
+        "id": "thread-0-has-reply",
+        "description": "First unresolved thread has a reply (original comment + agent reply = 2 comments)",
+        "task": "pr.threads.list",
+        "input": {
+          "owner": "{{owner}}",
+          "name": "{{repo_name}}",
+          "prNumber": "{{pr_number}}",
+          "unresolvedOnly": true
+        },
+        "condition": { "type": "field_equals", "path": "items.0.comments.length", "value": 2 }
+      },
+      {
+        "id": "thread-1-has-reply",
+        "description": "Second unresolved thread has a reply (original comment + agent reply = 2 comments)",
+        "task": "pr.threads.list",
+        "input": {
+          "owner": "{{owner}}",
+          "name": "{{repo_name}}",
+          "prNumber": "{{pr_number}}",
+          "unresolvedOnly": true
+        },
+        "condition": { "type": "field_equals", "path": "items.1.comments.length", "value": 2 }
+      },
+      {
+        "id": "thread-2-has-reply",
+        "description": "Third unresolved thread has a reply (original comment + agent reply = 2 comments)",
+        "task": "pr.threads.list",
+        "input": {
+          "owner": "{{owner}}",
+          "name": "{{repo_name}}",
+          "prNumber": "{{pr_number}}",
+          "unresolvedOnly": true
+        },
+        "condition": { "type": "field_equals", "path": "items.2.comments.length", "value": 2 }
       }
     ],
-    "expectedCapabilities": ["pr.reviews.list", "pr.commits.list"]
+    "expectedCapabilities": ["pr.view", "pr.threads.list", "pr.threads.reply"]
   }
 }
 ```
@@ -224,7 +262,7 @@ Named groupings in `scenario-sets.json` allow running predefined subsets of scen
   "smoke": ["pr-review-comment-001", "issue-label-assign-001"],
   "pr-full": [
     "pr-review-comment-001",
-    "pr-fix-mixed-threads-wf-001",
+    "pr-reply-threads-wf-001",
     "pr-merge-ready-check-001"
   ],
   "basic-only": [
@@ -254,7 +292,7 @@ Scenario IDs must match `^[a-z0-9]+(?:-[a-z0-9]+)*-\d{3}$`. The pattern is lower
 Examples:
 - `pr-review-comment-001`
 - `issue-label-assign-002`
-- `pr-fix-mixed-threads-wf-001`
+- `pr-reply-threads-wf-001`
 - `repo-branch-list-003`
 
 The trailing number enables multiple scenarios within the same domain to coexist without naming conflicts.

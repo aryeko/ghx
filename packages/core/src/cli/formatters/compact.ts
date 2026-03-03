@@ -5,7 +5,7 @@ export type CompactRunResult =
   | { ok: false; error: { code: string; message: string } }
 
 export type CompactChainStepResult =
-  | { task: string; ok: true }
+  | { task: string; ok: true; data?: unknown }
   | { task: string; ok: false; error: { code: string; message: string } }
 
 export type CompactChainResult = {
@@ -34,7 +34,9 @@ export function compactChainResult(envelope: ChainResultEnvelope): CompactChainR
     status: envelope.status,
     results: envelope.results.map((step) => {
       if (step.ok) {
-        return { task: step.task, ok: true as const }
+        return step.data !== undefined
+          ? { task: step.task, ok: true as const, data: step.data }
+          : { task: step.task, ok: true as const }
       }
       return {
         task: step.task,

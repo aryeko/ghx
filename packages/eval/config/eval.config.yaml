@@ -2,15 +2,15 @@
 
 # Execution modes to compare
 modes:
-  - ghx
   - baseline
   - mcp
+  - ghx
 
 # Scenario selection
 scenarios:
   set: default
   # ids:                    # Or explicit scenario IDs (overrides set)
-  #   - pr-fix-mixed-threads-wf-001
+  #   - pr-reply-threads-wf-001
 
 # Execution parameters
 execution:
@@ -36,6 +36,8 @@ provider:
 models:
   - id: openai/gpt-5.3-codex
     label: Codex 5.3
+  # - id: openai/gpt-5.3-codex-spark
+    # label: Codex 5.3 Spark
   # - id: anthropic/claude-sonnet-4-6
   #   label: Claude Sonnet 4.6
 
@@ -43,5 +45,5 @@ models:
 fixtures:
   repo: aryeko/ghx-bench-fixtures
   manifest: fixtures/latest.json
-  seed_if_missing: false
-  reseed_between_modes: false
+  seed_if_missing: true
+  reseed_between_modes: true

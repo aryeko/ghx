@@ -61,7 +61,7 @@ describe("bindFixtureVariables", () => {
     expect(cp).toBeDefined()
     expect(cp?.input["owner"]).toBe("aryeko")
     expect(cp?.input["repo_name"]).toBe("ghx-bench-fixtures")
-    expect(cp?.input["pr_number"]).toBe("42")
+    expect(cp?.input["pr_number"]).toBe(42)
   })
 
   it("derives owner and repo_name from repo binding", () => {
@@ -112,5 +112,63 @@ describe("bindFixtureVariables", () => {
     const originalPrompt = baseScenario.prompt
     bindFixtureVariables(baseScenario, manifest)
     expect(baseScenario.prompt).toBe(originalPrompt)
+  })
+
+  it("resolves extraVariables in the prompt", () => {
+    const withRunId: EvalScenario = {
+      ...baseScenario,
+      prompt: "Review PR #{{pr_number}} in {{repo}} (run: {{run_id}})",
+    }
+    const bound = bindFixtureVariables(withRunId, manifest, { run_id: "run_12345" })
+    expect(bound.prompt).toBe("Review PR #42 in aryeko/ghx-bench-fixtures (run: run_12345)")
+  })
+
+  it("throws when a binding path traverses through null", () => {
+    const manifestWithNull: FixtureBindings = {
+      fixtures: {
+        pr_with_mixed_threads: {
+          number: 42,
+          nested: null, // null at mid-path
+        },
+      },
+    }
+    const baseFixture = baseScenario.fixture ?? {
+      repo: "aryeko/ghx-bench-fixtures",
+      requires: ["pr_with_mixed_threads"],
+      bindings: {},
+      reseedPerIteration: false,
+    }
+    const scenarioWithDeepPath: EvalScenario = {
+      ...baseScenario,
+      fixture: {
+        ...baseFixture,
+        bindings: { pr_number: "pr_with_mixed_threads.nested.field" },
+      },
+    }
+    expect(() => bindFixtureVariables(scenarioWithDeepPath, manifestWithNull)).toThrow(
+      'Fixture binding "pr_number" could not be resolved',
+    )
+  })
+
+  it("uses string interpolation for pure template when key is only in extraVariables", () => {
+    // run_id is in extraVariables (strings) but NOT in raw (raw only has fixture bindings)
+    const scenarioWithPureVar: EvalScenario = {
+      ...baseScenario,
+      prompt: "run={{run_id}}",
+      assertions: {
+        checkpoints: [
+          {
+            id: "cp1",
+            description: "test",
+            task: "pr.view",
+            input: { run_id: "{{run_id}}" }, // pure template — key only in extraVariables
+            condition: { type: "non_empty" },
+          },
+        ],
+      },
+    }
+    const bound = bindFixtureVariables(scenarioWithPureVar, manifest, { run_id: "run_xyz" })
+    // key not in raw → falls back to interpolate() → returns the string "run_xyz"
+    expect(bound.assertions.checkpoints[0]?.input["run_id"]).toBe("run_xyz")
   })
 })
