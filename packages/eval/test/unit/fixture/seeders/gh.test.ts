@@ -13,6 +13,7 @@ const mockSpawn = vi.mocked(spawn)
 
 type DataHandler = (chunk: Buffer) => void
 type CloseHandler = (code: number) => void
+type ErrorHandler = (error: Error) => void
 
 function makeSpawnMock(stdout: string, exitCode = 0, stderr = ""): void {
   mockSpawn.mockImplementation(() => {
@@ -40,6 +41,25 @@ function makeSpawnMock(stdout: string, exitCode = 0, stderr = ""): void {
       },
       on: vi.fn((ev: string, cb: CloseHandler) => {
         if (ev === "close") closeHandlers.push(cb)
+      }),
+    } as unknown as ReturnType<typeof spawn>
+  })
+}
+
+function makeSpawnErrorMock(spawnError: Error): void {
+  mockSpawn.mockImplementation(() => {
+    const errorHandlers: ErrorHandler[] = []
+    return {
+      stdout: { on: vi.fn() },
+      stderr: { on: vi.fn() },
+      stdin: {
+        write: vi.fn(),
+        end: vi.fn(() => {
+          for (const cb of errorHandlers) cb(spawnError)
+        }),
+      },
+      on: vi.fn((ev: string, cb: ErrorHandler) => {
+        if (ev === "error") errorHandlers.push(cb)
       }),
     } as unknown as ReturnType<typeof spawn>
   })
@@ -135,6 +155,15 @@ describe("runGhWithInput", () => {
 
     await expect(runGhWithInput(["api", "--method", "POST"], "{}")).rejects.toThrow(
       "gh exited with code 2",
+    )
+  })
+
+  it("rejects with the spawn error when the process emits an error event", async () => {
+    const spawnError = new Error("spawn gh ENOENT")
+    makeSpawnErrorMock(spawnError)
+
+    await expect(runGhWithInput(["api", "--method", "POST"], "{}")).rejects.toThrow(
+      "spawn gh ENOENT",
     )
   })
 })

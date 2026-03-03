@@ -17,8 +17,25 @@ export function runGh(args: readonly string[]): Promise<string> {
 export function runGhWithInput(args: readonly string[], input: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const proc = spawn("gh", args as string[], { stdio: ["pipe", "pipe", "pipe"] })
+    let settled = false
     let stdout = ""
     let stderr = ""
+
+    const finishReject = (error: Error) => {
+      if (settled) return
+      settled = true
+      reject(error)
+    }
+    const finishResolve = (value: string) => {
+      if (settled) return
+      settled = true
+      resolve(value)
+    }
+
+    proc.on("error", (error) => {
+      finishReject(error instanceof Error ? error : new Error(String(error)))
+    })
+
     proc.stdout.on("data", (chunk: Buffer) => {
       stdout += chunk.toString()
     })
@@ -26,8 +43,11 @@ export function runGhWithInput(args: readonly string[], input: string): Promise<
       stderr += chunk.toString()
     })
     proc.on("close", (code) => {
-      if (code !== 0) reject(new Error(stderr.trim() || `gh exited with code ${code}`))
-      else resolve(stdout.trim())
+      if (code !== 0) {
+        finishReject(new Error(stderr.trim() || `gh exited with code ${code}`))
+      } else {
+        finishResolve(stdout.trim())
+      }
     })
     proc.stdin.write(input)
     proc.stdin.end()
