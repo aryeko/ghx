@@ -171,7 +171,7 @@ describe("compactChainResult", () => {
     expect(result.status).toBe("success")
   })
 
-  it("maps all-success steps: includes task and ok:true, strips data", () => {
+  it("maps all-success steps with data: includes task, ok:true, and data", () => {
     const envelope = makeChainEnvelope([
       { task: "task-a", ok: true, data: { id: 1 } },
       { task: "task-b", ok: true, data: { id: 2 } },
@@ -179,9 +179,9 @@ describe("compactChainResult", () => {
     const result = compactChainResult(envelope)
 
     expect(result.results).toHaveLength(2)
-    expect(result.results[0]).toEqual({ task: "task-a", ok: true })
-    expect(result.results[1]).toEqual({ task: "task-b", ok: true })
-    expect(result.results[0]).not.toHaveProperty("data")
+    expect(result.results[0]).toEqual({ task: "task-a", ok: true, data: { id: 1 } })
+    expect(result.results[1]).toEqual({ task: "task-b", ok: true, data: { id: 2 } })
+    expect(result.results[0]).toHaveProperty("data")
   })
 
   it("maps all-failed steps: includes task, ok:false, and error code+message", () => {
@@ -232,13 +232,13 @@ describe("compactChainResult", () => {
 
     expect(result.status).toBe("partial")
     expect(result.results).toHaveLength(3)
-    expect(result.results[0]).toEqual({ task: "task-a", ok: true })
+    expect(result.results[0]).toEqual({ task: "task-a", ok: true, data: { id: 1 } })
     expect(result.results[1]).toEqual({
       task: "task-b",
       ok: false,
       error: { code: "NOT_FOUND", message: "Not found" },
     })
-    expect(result.results[2]).toEqual({ task: "task-c", ok: true })
+    expect(result.results[2]).toEqual({ task: "task-c", ok: true, data: { id: 3 } })
   })
 
   it("strips meta from the compact chain result", () => {
@@ -264,11 +264,20 @@ describe("compactChainResult", () => {
     expect(result.results[0]).not.toHaveProperty("error.retryable")
   })
 
-  it("strips data from ok steps in chain result", () => {
-    const envelope = makeChainEnvelope([{ task: "task-a", ok: true, data: { sensitive: "value" } }])
+  it("includes data from ok steps when data is defined (query steps)", () => {
+    const envelope = makeChainEnvelope([{ task: "task-a", ok: true, data: { id: 42 } }])
+    const result = compactChainResult(envelope)
+
+    expect(result.results[0]).toHaveProperty("data")
+    expect(result.results[0]).toMatchObject({ task: "task-a", ok: true, data: { id: 42 } })
+  })
+
+  it("omits data key when step.data is undefined (mutation steps)", () => {
+    const envelope = makeChainEnvelope([{ task: "task-a", ok: true }])
     const result = compactChainResult(envelope)
 
     expect(result.results[0]).not.toHaveProperty("data")
+    expect(result.results[0]).toEqual({ task: "task-a", ok: true })
   })
 
   it("preserves the exact error code and message from failed steps", () => {

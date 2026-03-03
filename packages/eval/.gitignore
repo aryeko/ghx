@@ -1,5 +1,5 @@
 dist/
-fixtures/
 results/
 reports/
+fixtures/repo/
 test-report.junit.xml

@@ -95,6 +95,30 @@ describe("runIteration", () => {
     )
   })
 
+  it("uses scenario returned by beforeScenario for prompt and afterScenario", async () => {
+    const replacementScenario = makeScenario({
+      id: "test-scenario-001",
+      prompt: "Rebound prompt with PR #999",
+    })
+    const beforeScenario = vi.fn().mockResolvedValue(replacementScenario)
+    const afterScenario = vi.fn()
+    const provider = createMockProvider()
+    const hooks: RunHooks = { beforeScenario, afterScenario }
+    const params = makeParams({ hooks, provider })
+
+    await runIteration(params)
+
+    // provider.prompt should have been called with the rebound prompt
+    // calls.prompt entries are [handle, text, timeoutMs]
+    expect(provider.calls.prompt?.length).toBe(1)
+    expect(provider.calls.prompt?.[0]?.[1]).toBe("Rebound prompt with PR #999")
+
+    // afterScenario receives the replacement scenario
+    expect(afterScenario).toHaveBeenCalledWith(
+      expect.objectContaining({ scenario: replacementScenario }),
+    )
+  })
+
   it("calls destroySession in finally (even on error)", async () => {
     const provider = createMockProvider()
     provider.prompt = async () => {
@@ -277,5 +301,35 @@ describe("runIteration", () => {
     expect(row.success).toBe(true)
     // 2 failed attempts destroyed + 1 success destroyed in finally = 3 destroySession calls
     expect(provider.calls.destroySession?.length ?? 0).toBe(3)
+  })
+
+  it("logs warning when destroySession throws during retry cleanup", async () => {
+    const provider = createMockProvider()
+    let promptAttempts = 0
+    const originalPrompt = provider.prompt.bind(provider)
+    provider.prompt = async (handle, text, timeoutMs) => {
+      promptAttempts++
+      if (promptAttempts === 1) throw new Error("first attempt failed")
+      return originalPrompt(handle, text, timeoutMs)
+    }
+    // destroySession throws on first call (during retry cleanup)
+    let destroyCallCount = 0
+    const originalDestroy = provider.destroySession.bind(provider)
+    provider.destroySession = async (handle) => {
+      destroyCallCount++
+      if (destroyCallCount === 1) throw new Error("session already gone")
+      return originalDestroy(handle)
+    }
+    const logger = makeLogger()
+    const params = makeParams({ provider, allowedRetries: 1, logger })
+
+    const { row } = await runIteration(params)
+
+    // Iteration succeeds on the retry despite the destroySession failure
+    expect(row.success).toBe(true)
+    // logger.warn called with the destroy error
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to destroy session during retry cleanup"),
+    )
   })
 })

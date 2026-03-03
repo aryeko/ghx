@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 // Mock all dependencies before importing the module under test
 vi.mock("node:fs/promises", () => ({
   readFile: vi.fn(),
+  mkdir: vi.fn().mockResolvedValue(undefined),
+  writeFile: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock("@eval/config/loader.js", () => ({
@@ -21,6 +23,15 @@ vi.mock("@eval/fixture/manager.js", () => ({
     cleanup: vi.fn().mockResolvedValue(undefined),
     reset: vi.fn().mockResolvedValue(undefined),
   })),
+}))
+
+vi.mock("@eval/fixture/manifest.js", () => ({
+  loadFixtureManifest: vi.fn().mockResolvedValue({
+    seedId: "test-seed",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    repo: "owner/repo",
+    fixtures: {},
+  }),
 }))
 
 vi.mock("@eval/provider/opencode-provider.js", () => ({
@@ -57,12 +68,23 @@ vi.mock("@eval/hooks/eval-hooks.js", () => ({
   createEvalHooks: vi.fn().mockReturnValue({}),
 }))
 
+vi.mock("@eval/report/generate.js", () => ({
+  generateEvalReport: vi.fn().mockResolvedValue("reports/run-001"),
+}))
+
 vi.mock("@ghx-dev/agent-profiler", () => ({
   runProfileSuite: vi.fn().mockResolvedValue({
     runId: "run-001",
     rows: [],
-    outputPath: "results/run-001.jsonl",
+    analysisResults: [],
+    outputJsonlPath: "results/run-001.jsonl",
+    durationMs: 0,
   }),
+  reasoningAnalyzer: { name: "reasoning", analyze: vi.fn() },
+  strategyAnalyzer: { name: "strategy", analyze: vi.fn() },
+  efficiencyAnalyzer: { name: "efficiency", analyze: vi.fn() },
+  toolPatternAnalyzer: { name: "tool-pattern", analyze: vi.fn() },
+  errorAnalyzer: { name: "error", analyze: vi.fn() },
 }))
 
 const MINIMAL_CONFIG = {
@@ -110,10 +132,10 @@ describe("run command", () => {
     vi.unstubAllEnvs()
   })
 
-  it("reads config from default path eval.config.yaml when no --config flag", async () => {
+  it("reads config from default path config/eval.config.yaml when no --config flag", async () => {
     const { readFile: rf } = await import("node:fs/promises")
     await runFn([])
-    expect(rf).toHaveBeenCalledWith("eval.config.yaml", "utf-8")
+    expect(rf).toHaveBeenCalledWith("config/eval.config.yaml", "utf-8")
   })
 
   it("reads config from the specified --config path", async () => {
@@ -211,10 +233,12 @@ describe("run command", () => {
     await runFn(["--scenario-set", "smoke"])
 
     expect(loadScenarioSets).toHaveBeenCalled()
-    expect(loadEvalScenarios).toHaveBeenCalledWith(expect.any(String), [
-      "pr-fix-001",
-      "issue-close-001",
-    ])
+    expect(loadEvalScenarios).toHaveBeenCalledWith(
+      expect.any(String),
+      ["pr-fix-001", "issue-close-001"],
+      expect.any(Object),
+      expect.any(Object),
+    )
   })
 
   it("--scenario-set throws when set name is not found", async () => {
@@ -224,5 +248,89 @@ describe("run command", () => {
     await expect(runFn(["--scenario-set", "nonexistent"])).rejects.toThrow(
       'Scenario set "nonexistent" not found',
     )
+  })
+
+  it("--mode flag overrides modes in the resolved config", async () => {
+    const { runProfileSuite } = await import("@ghx-dev/agent-profiler")
+
+    await runFn(["--mode", "custom-mode"])
+
+    const call = vi.mocked(runProfileSuite).mock.calls[0]
+    expect(call).toBeDefined()
+    expect((call as unknown[][])[0]).toMatchObject({ modes: ["custom-mode"] })
+  })
+
+  it("--scenario flag filters scenarios by ID", async () => {
+    const { loadEvalScenarios } = await import("@eval/scenario/loader.js")
+
+    await runFn(["--scenario", "pr-fix-001"])
+
+    expect(loadEvalScenarios).toHaveBeenCalledWith(
+      expect.any(String),
+      ["pr-fix-001"],
+      expect.any(Object),
+      expect.any(Object),
+    )
+  })
+
+  it("--seed-if-missing sets seed_if_missing in fixtures config", async () => {
+    const { FixtureManager } = await import("@eval/fixture/manager.js")
+
+    await runFn(["--seed-if-missing"])
+
+    expect(FixtureManager).toHaveBeenCalledWith(expect.objectContaining({ seedIfMissing: true }))
+  })
+
+  it("throws when GH_TOKEN and GITHUB_TOKEN are both empty", async () => {
+    vi.unstubAllEnvs()
+    vi.stubEnv("GH_TOKEN", "")
+    vi.stubEnv("GITHUB_TOKEN", "")
+
+    await expect(runFn([])).rejects.toThrow("Missing GitHub token")
+  })
+
+  it("--scenario flag overrides scenario ids in config", async () => {
+    const { loadEvalScenarios } = await import("@eval/scenario/loader.js")
+    const { runProfileSuite } = await import("@ghx-dev/agent-profiler")
+
+    await runFn(["--scenario", "pr-fix-001", "--scenario", "issue-close-002"])
+
+    expect(loadEvalScenarios).toHaveBeenCalledWith(
+      expect.any(String),
+      ["pr-fix-001", "issue-close-002"],
+      expect.any(Object),
+      expect.any(Object),
+    )
+    expect(runProfileSuite).toHaveBeenCalledTimes(1)
+  })
+
+  it("--repetitions with invalid value throws an error", async () => {
+    await expect(runFn(["--repetitions", "notanumber"])).rejects.toThrow()
+  })
+
+  it("writes analysis bundles when runProfileSuite returns analysis results", async () => {
+    const { runProfileSuite } = await import("@ghx-dev/agent-profiler")
+    const { mkdir, writeFile } = await import("node:fs/promises")
+
+    vi.mocked(runProfileSuite).mockResolvedValueOnce({
+      runId: "run-001",
+      rows: [],
+      analysisResults: [
+        {
+          sessionId: "s1",
+          scenarioId: "scenario-1",
+          mode: "ghx",
+          model: "gpt-4o",
+          results: {},
+        },
+      ],
+      outputJsonlPath: "results/run-001.jsonl",
+      durationMs: 0,
+    })
+
+    await runFn([])
+
+    expect(mkdir).toHaveBeenCalled()
+    expect(writeFile).toHaveBeenCalled()
   })
 })

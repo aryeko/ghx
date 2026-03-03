@@ -10,6 +10,7 @@ import type {
   TokenBreakdown,
   ToolCallRecord,
 } from "@ghx-dev/agent-profiler"
+import { classifyToolCall } from "../collector/tool-classifier.js"
 import { TimeoutError } from "./event-listener.js"
 import { TraceBuilder } from "./trace-builder.js"
 
@@ -169,6 +170,7 @@ export class OpenCodeProvider implements SessionProvider {
   }
   private configDir = ""
   private readonly traceBuilder = new TraceBuilder()
+  private readonly sessionInstructions = new Map<string, string>()
 
   constructor(private readonly options: OpenCodeProviderOptions) {}
 
@@ -202,13 +204,24 @@ export class OpenCodeProvider implements SessionProvider {
     }
 
     try {
+      const githubToken = process.env["GH_TOKEN"] ?? process.env["GITHUB_TOKEN"] ?? ""
+      const mcp = githubToken
+        ? {
+            github: {
+              type: "remote" as const,
+              url: "https://api.githubcopilot.com/mcp/",
+              headers: { Authorization: `Bearer ${githubToken}` },
+            },
+          }
+        : {}
+
       const opencode = await createOpencode({
         port: config.port > 0 ? config.port : this.options.port,
         config: {
           model: this.options.model,
           instructions: [],
           plugin: [],
-          mcp: {},
+          mcp,
           agent: {},
           command: {},
           permission: {
@@ -230,13 +243,17 @@ export class OpenCodeProvider implements SessionProvider {
     }
   }
 
-  async createSession(_params: CreateSessionParams): Promise<SessionHandle> {
+  async createSession(params: CreateSessionParams): Promise<SessionHandle> {
     const sessionApi = getSessionApi(this.requireClient())
     const sessionResult = await sessionApi.create({
       url: "/session",
     })
 
     const sessionId = unwrapSessionId(sessionResult)
+
+    if (params.systemInstructions) {
+      this.sessionInstructions.set(sessionId, params.systemInstructions)
+    }
 
     return {
       sessionId,
@@ -249,10 +266,13 @@ export class OpenCodeProvider implements SessionProvider {
     const sessionApi = getSessionApi(this.requireClient())
     const startTime = Date.now()
 
+    const system = this.sessionInstructions.get(handle.sessionId)
+
     await sessionApi.promptAsync({
       url: "/session/{id}/prompt_async",
       path: { id: handle.sessionId },
       body: {
+        ...(system ? { system } : {}),
         parts: [{ type: "text", text }],
       },
     })
@@ -263,7 +283,7 @@ export class OpenCodeProvider implements SessionProvider {
     const wallMs = Date.now() - startTime
 
     const lastAssistant = this.findLastAssistantMessage(messages)
-    const tokens = this.extractTokens(lastAssistant)
+    const tokens = this.extractTokens(messages)
     const toolCalls = this.extractToolCallRecords(messages)
     const outputText = this.extractText(lastAssistant)
 
@@ -294,8 +314,8 @@ export class OpenCodeProvider implements SessionProvider {
     return this.traceBuilder.buildTrace(handle.sessionId, messages)
   }
 
-  async destroySession(_handle: SessionHandle): Promise<void> {
-    // Sessions are stateless on the server side — no-op
+  async destroySession(handle: SessionHandle): Promise<void> {
+    this.sessionInstructions.delete(handle.sessionId)
   }
 
   async shutdown(): Promise<void> {
@@ -362,7 +382,8 @@ export class OpenCodeProvider implements SessionProvider {
       const msg = messages[i]
       if (!msg || typeof msg !== "object") continue
       const m = msg as Record<string, unknown>
-      if (m["role"] === "assistant") return msg
+      const info = m["info"] as Record<string, unknown> | undefined
+      if (info?.["role"] === "assistant") return msg
     }
     return null
   }
@@ -379,27 +400,27 @@ export class OpenCodeProvider implements SessionProvider {
       .join("\n")
   }
 
-  private extractTokens(message: unknown): TokenBreakdown {
-    const zero: TokenBreakdown = {
-      input: 0,
-      output: 0,
-      reasoning: 0,
-      cacheRead: 0,
-      cacheWrite: 0,
-      total: 0,
-      active: 0,
+  private extractTokens(messages: unknown[]): TokenBreakdown {
+    let input = 0
+    let output = 0
+    let cacheRead = 0
+    let cacheWrite = 0
+    let reasoning = 0
+
+    for (const message of messages) {
+      if (!message || typeof message !== "object") continue
+      const msg = message as Record<string, unknown>
+      const info = msg["info"] as Record<string, unknown> | undefined
+      if (info?.["role"] !== "assistant") continue
+      const tokens = info["tokens"] as Record<string, unknown> | undefined
+      if (!tokens) continue
+      const cache = tokens["cache"] as Record<string, number> | undefined
+      input += (tokens["input"] as number) ?? 0
+      output += (tokens["output"] as number) ?? 0
+      cacheRead += cache?.["read"] ?? 0
+      cacheWrite += cache?.["write"] ?? 0
+      reasoning += (tokens["reasoning"] as number) ?? 0
     }
-
-    if (!message || typeof message !== "object") return zero
-
-    const msg = message as Record<string, unknown>
-    const tokens = msg["tokens"] as Record<string, number> | undefined
-
-    const input = tokens?.["input"] ?? 0
-    const output = tokens?.["output"] ?? 0
-    const cacheRead = tokens?.["cache_read"] ?? 0
-    const cacheWrite = tokens?.["cache_write"] ?? 0
-    const reasoning = tokens?.["reasoning"] ?? 0
 
     return {
       input,
@@ -418,7 +439,8 @@ export class OpenCodeProvider implements SessionProvider {
     for (const msg of messages) {
       if (!msg || typeof msg !== "object") continue
       const m = msg as Record<string, unknown>
-      if (m["role"] !== "assistant") continue
+      const info = m["info"] as Record<string, unknown> | undefined
+      if (info?.["role"] !== "assistant") continue
 
       const parts = m["parts"] as Array<Record<string, unknown>> | undefined
       if (!parts) continue
@@ -428,9 +450,10 @@ export class OpenCodeProvider implements SessionProvider {
         const state = part["state"] as Record<string, unknown> | undefined
         if (!state) continue
 
+        const name = (part["tool"] as string) ?? (state["name"] as string) ?? "unknown"
         toolCalls.push({
-          name: (state["name"] as string) ?? "unknown",
-          category: "unknown",
+          name,
+          category: classifyToolCall(name, state["input"]),
           success: state["error"] === undefined,
           durationMs: null,
           ...(state["error"] !== undefined ? { error: String(state["error"]) } : {}),

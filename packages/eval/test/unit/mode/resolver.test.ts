@@ -21,21 +21,14 @@ describe("EvalModeResolver", () => {
     expect(config.systemInstructions.length).toBeGreaterThan(0)
   })
 
-  it("resolves mcp mode with mcpServers config", async () => {
-    vi.stubEnv("GH_TOKEN", "test-token")
+  it("resolves mcp mode with empty providerOverrides (MCP is always-on in provider)", async () => {
     const config = await resolver.resolve("mcp")
-    const servers = config.providerOverrides["mcpServers"] as unknown[]
-    expect(servers).toHaveLength(1)
-    const server = servers[0] as Record<string, unknown>
-    expect(server["name"]).toBe("github")
-    expect(server["command"]).toBe("npx")
+    expect(config.providerOverrides).toEqual({})
   })
 
-  it("mcp mode uses GH_TOKEN for server env", async () => {
-    vi.stubEnv("GH_TOKEN", "test-token-123")
+  it("mcp mode system instructions reference MCP tools", async () => {
     const config = await resolver.resolve("mcp")
-    const servers = config.providerOverrides["mcpServers"] as Array<{ env: Record<string, string> }>
-    expect(servers[0]?.env["GITHUB_PERSONAL_ACCESS_TOKEN"]).toBe("test-token-123")
+    expect(config.systemInstructions).toContain("MCP")
   })
 
   it("resolves baseline mode with empty environment", async () => {

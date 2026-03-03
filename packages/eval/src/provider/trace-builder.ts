@@ -6,16 +6,22 @@ interface OpenCodeMessagePart {
   [key: string]: unknown
 }
 
-interface OpenCodeMessage {
-  role: "user" | "assistant"
-  parts?: readonly OpenCodeMessagePart[]
+interface OpenCodeMessageInfo {
+  role?: "user" | "assistant"
+  time?: { created?: number; completed?: number }
   tokens?: {
     input?: number
     output?: number
-    cache_read?: number
-    cache_write?: number
+    reasoning?: number
+    cache?: { read?: number; write?: number }
   }
-  time_created?: string
+}
+
+// Actual shape returned by the OpenCode messages API:
+// { info: { role, time, tokens }, parts: [...] }
+interface OpenCodeMessage {
+  info?: OpenCodeMessageInfo
+  parts?: readonly OpenCodeMessagePart[]
 }
 
 export class TraceBuilder {
@@ -29,12 +35,18 @@ export class TraceBuilder {
 
     for (const msg of messages) {
       const message = msg as OpenCodeMessage
-      if (message.role !== "assistant") continue
+      if (message.info?.role !== "assistant") continue
+
+      const created = message.info?.time?.created
+      const timestamp =
+        typeof created === "number" && Number.isFinite(created)
+          ? new Date(created).toISOString()
+          : new Date().toISOString()
 
       events.push({
         type: "turn_boundary",
         turnNumber,
-        timestamp: message.time_created ?? new Date().toISOString(),
+        timestamp,
       })
       turnNumber++
 
@@ -49,10 +61,15 @@ export class TraceBuilder {
     return events
   }
 
+  private toFiniteNumber(value: unknown): number {
+    return typeof value === "number" && Number.isFinite(value) ? value : 0
+  }
+
   private convertPart(part: OpenCodeMessagePart): TraceEvent | null {
     switch (part.type) {
       case "reasoning": {
-        const content = (part["reasoning"] as string) ?? ""
+        // OpenCode ReasoningPart stores the text in the "text" field, not "reasoning"
+        const content = (part["text"] as string) ?? ""
         return {
           type: "reasoning",
           content,
@@ -63,7 +80,8 @@ export class TraceBuilder {
       case "tool": {
         const state = part["state"] as Record<string, unknown> | undefined
         if (!state) return null
-        const name = (state["name"] as string) ?? "unknown"
+        // tool name is at part["tool"]; fall back to state["name"] for older API shapes
+        const name = (part["tool"] as string) ?? (state["name"] as string) ?? "unknown"
         const hasError = state["error"] !== undefined
         return {
           type: "tool_call",
@@ -143,23 +161,19 @@ export class TraceBuilder {
 
     let inputTokens = 0
     let outputTokens = 0
+    let reasoningTokens = 0
     let cacheReadTokens = 0
     let cacheWriteTokens = 0
 
     for (const msg of messages) {
       const message = msg as OpenCodeMessage
-      if (message.role !== "assistant" || !message.tokens) continue
-      inputTokens += message.tokens.input ?? 0
-      outputTokens += message.tokens.output ?? 0
-      cacheReadTokens += message.tokens.cache_read ?? 0
-      cacheWriteTokens += message.tokens.cache_write ?? 0
-    }
-
-    let reasoningTokens = 0
-    for (const event of events) {
-      if (event.type === "reasoning") {
-        reasoningTokens += event.tokenCount ?? 0
-      }
+      const info = message.info
+      if (info?.role !== "assistant" || !info.tokens) continue
+      inputTokens += this.toFiniteNumber(info.tokens.input)
+      outputTokens += this.toFiniteNumber(info.tokens.output)
+      reasoningTokens += this.toFiniteNumber(info.tokens.reasoning)
+      cacheReadTokens += this.toFiniteNumber(info.tokens.cache?.read)
+      cacheWriteTokens += this.toFiniteNumber(info.tokens.cache?.write)
     }
 
     const total = inputTokens + outputTokens + cacheReadTokens + cacheWriteTokens + reasoningTokens

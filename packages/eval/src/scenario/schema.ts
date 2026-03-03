@@ -12,6 +12,7 @@ import { z } from "zod"
  * - `count_eq`: Passes when the result count equals `value`.
  * - `field_equals`: Passes when `result[path]` strictly equals `value`. Value must be a primitive (string, number, boolean, or null).
  * - `field_contains`: Passes when `result[path]` contains the `value` substring.
+ * - `field_gte`: Passes when `result[path]` is a number >= `value`.
  * - `custom`: Delegates to a named custom scorer function (v2 — not yet implemented).
  */
 const CheckpointConditionSchema = z.discriminatedUnion("type", [
@@ -28,6 +29,11 @@ const CheckpointConditionSchema = z.discriminatedUnion("type", [
     type: z.literal("field_contains"),
     path: z.string(),
     value: z.string(),
+  }),
+  z.object({
+    type: z.literal("field_gte"),
+    path: z.string(),
+    value: z.number(),
   }),
   z.object({ type: z.literal("custom"), scorer: z.string() }),
 ])
@@ -54,6 +60,8 @@ const FixtureRequirementsSchema = z.object({
   bindings: z.record(z.string(), z.string()),
   /** When `true`, reset fixture branches to their original SHAs before each iteration. */
   reseedPerIteration: z.boolean().default(false),
+  /** When `true`, create a fresh fixture PR before each iteration and rebind template variables. */
+  seedPerIteration: z.boolean().default(false),
 })
 
 const AssertionsSchema = z.object({

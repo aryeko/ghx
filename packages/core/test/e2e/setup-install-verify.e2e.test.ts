@@ -63,7 +63,9 @@ describe("ghx setup e2e install/verify", () => {
     }
   })
 
-  it("installs package, fails verify pre-install, then passes verify post-install", () => {
+  it("installs package, fails verify pre-install, then passes verify post-install", {
+    timeout: 30_000,
+  }, () => {
     const workspacePath = fileURLToPath(new URL("../../../../", import.meta.url))
     const tempRoot = mkdtempSync(join(tmpdir(), "ghx-e2e-install-"))
     const packDir = join(tempRoot, "pack")

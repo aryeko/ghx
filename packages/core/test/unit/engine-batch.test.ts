@@ -468,9 +468,8 @@ describe("executeTasks — partial error handling", () => {
 
     expect(result.status).toBe("partial")
     expect(result.results[0]?.ok).toBe(true)
-    expect(result.results[0]?.data).toEqual({
-      createIssue: { issue: { id: "I1" } },
-    })
+    // Mutation steps: raw GQL wrapper is not surfaced in data
+    expect(result.results[0]?.data).toBeUndefined()
     expect(result.results[1]?.ok).toBe(false)
     expect(result.results[1]?.error?.message).toContain("Could not resolve repository")
   })

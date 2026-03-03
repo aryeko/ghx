@@ -1,6 +1,13 @@
 import { execFile } from "node:child_process"
 import { promisify } from "node:util"
-import { type FixtureManifest, type FixtureResource, loadFixtureManifest } from "./manifest.js"
+import { mintFixtureAppToken } from "./app-auth.js"
+import {
+  type FixtureManifest,
+  type FixtureResource,
+  loadFixtureManifest,
+  writeFixtureManifest,
+} from "./manifest.js"
+import { getSeeder, hasSeeder } from "./seeders/index.js"
 
 const execFileAsync = promisify(execFile)
 
@@ -11,6 +18,8 @@ export interface FixtureManagerOptions {
   readonly manifest: string
   /** When `true`, auto-seed fixtures if the manifest file is not found. */
   readonly seedIfMissing?: boolean
+  /** Identifier written into the manifest's `seedId` field. Defaults to `"default"`. */
+  readonly seedId?: string
 }
 
 export interface FixtureStatus {
@@ -76,8 +85,83 @@ export class FixtureManager {
     }
   }
 
-  async seed(_scenarioIds: readonly string[]): Promise<void> {
-    throw new Error("FixtureManager.seed(): not yet implemented — run eval fixture seed manually")
+  /**
+   * Seeds all unique fixture names required by the given scenarios and writes a
+   * new manifest file.
+   *
+   * The seeder type is resolved from the fixture name prefix (e.g. `pr_*` → `pr`).
+   *
+   * @param scenarios - Array of objects with optional `fixture.requires` arrays
+   */
+  async seed(
+    scenarios: ReadonlyArray<{
+      fixture?: {
+        requires: readonly string[]
+        repo?: string
+        bindings?: Record<string, string>
+        reseedPerIteration?: boolean
+      }
+    }>,
+  ): Promise<void> {
+    const uniqueNames = [...new Set(scenarios.flatMap((s) => s.fixture?.requires ?? []))]
+
+    const fixtures: Record<string, FixtureResource> = {}
+    for (const fixtureName of uniqueNames) {
+      const resource = await this.seedOne(fixtureName)
+      fixtures[fixtureName] = resource
+    }
+
+    const manifest: FixtureManifest = {
+      seedId: this.options.seedId ?? "default",
+      createdAt: new Date().toISOString(),
+      repo: this.options.repo,
+      fixtures,
+    }
+
+    await writeFixtureManifest(this.options.manifest, manifest)
+  }
+
+  /**
+   * Seeds a single fixture by name and returns the created {@link FixtureResource}.
+   *
+   * The seeder type is resolved from the fixture name prefix (e.g. `pr_*` → `pr`,
+   * `issue_*` → `issue`).
+   *
+   * Unlike {@link seed}, this method does **not** update the manifest file — it is
+   * intended for ephemeral per-iteration fixtures where the resource is used once
+   * and cleaned up automatically via the `@ghx-dev/eval` label.
+   *
+   * @param fixtureName - Fixture key name, e.g. `"pr_with_changes"`
+   */
+  async seedOne(fixtureName: string): Promise<FixtureResource> {
+    // Prefer a seeder registered under the full fixture name (e.g. "pr_with_mixed_threads"),
+    // falling back to the name prefix (e.g. "pr" for "pr_with_changes").
+    const type = hasSeeder(fixtureName) ? fixtureName : (fixtureName.split("_")[0] ?? "pr")
+    const seeder = getSeeder(type)
+    const botToken = await mintFixtureAppToken(this.options.repo)
+    await this.ensureLabel(this.options.repo, "@ghx-dev/eval")
+    return seeder.seed({
+      repo: this.options.repo,
+      name: fixtureName,
+      labels: ["@ghx-dev/eval"],
+      ...(botToken !== null ? { botToken } : {}),
+    })
+  }
+
+  /** Creates the label on GitHub if it does not already exist (idempotent via --force). */
+  private async ensureLabel(repo: string, label: string): Promise<void> {
+    await this.runGh(["label", "create", label, "--repo", repo, "--force"])
+  }
+
+  /**
+   * Closes a single fixture resource (PR or issue) on GitHub.
+   *
+   * Used by eval hooks to clean up per-iteration seeded fixtures after each
+   * scenario iteration completes.
+   */
+  async closeResource(resource: FixtureResource): Promise<void> {
+    const command = resource.type === "pr" ? "pr" : "issue"
+    await this.runGh([command, "close", String(resource.number), "--repo", resource.repo])
   }
 
   async cleanup(options?: { all?: boolean }): Promise<void> {
@@ -87,8 +171,8 @@ export class FixtureManager {
     }
 
     if (options?.all) {
-      const prs = await this.listLabeledResources("pr", "bench-fixture")
-      const issues = await this.listLabeledResources("issue", "bench-fixture")
+      const prs = await this.listLabeledResources("pr", "@ghx-dev/eval")
+      const issues = await this.listLabeledResources("issue", "@ghx-dev/eval")
 
       for (const pr of prs) {
         await this.runGh(["pr", "close", String(pr), "--repo", this.options.repo])

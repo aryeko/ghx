@@ -284,10 +284,11 @@ describe("chainCommand parsing", () => {
     expect(parsed).toHaveProperty("meta")
   })
 
-  it("chainCommand compact ok steps have shape { task, ok: true } — no data", async () => {
+  it("chainCommand compact ok steps have shape { task, ok: true } — no data for mutation steps", async () => {
     executeTasksMock.mockResolvedValue({
       status: "success",
-      results: [{ task: "issue.labels.remove", ok: true, data: { labelable: { id: "I_1" } } }],
+      // Mutation steps have no data (assemble.ts strips raw GQL wrapper for mutations)
+      results: [{ task: "issue.labels.remove", ok: true }],
       meta: { route_used: "graphql", total: 1, succeeded: 1, failed: 0 },
     })
 

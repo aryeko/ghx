@@ -1,0 +1,27 @@
+{
+  "seedId": "example-seed-id",
+  "createdAt": "2026-02-27T21:13:31.000Z",
+  "repo": "aryeko/ghx-bench-fixtures",
+  "fixtures": {
+    "pr_with_mixed_threads": {
+      "type": "pr",
+      "number": 367,
+      "repo": "aryeko/ghx-bench-fixtures",
+      "branch": "bench-mixed-seed-default",
+      "labels": ["bench-fixture"],
+      "metadata": {
+        "originalSha": "e414ad64e579507d0bfe8ef2ad4cd8762ddfae29"
+      }
+    },
+    "pr_with_changes": {
+      "type": "pr",
+      "number": 372,
+      "repo": "aryeko/ghx-bench-fixtures",
+      "branch": "bench-bugs-seed-default",
+      "labels": ["bench-fixture"],
+      "metadata": {
+        "originalSha": "30666382af4a879503dd7df2db5356dc4bd9500b"
+      }
+    }
+  }
+}

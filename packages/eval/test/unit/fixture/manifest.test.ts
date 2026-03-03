@@ -18,7 +18,7 @@ const validManifest = {
       number: 42,
       repo: "aryeko/ghx-bench-fixtures",
       branch: "bench-fixture/pr-mixed-threads-42",
-      labels: ["bench-fixture"],
+      labels: ["@ghx-dev/eval"],
       metadata: {},
     },
   },
@@ -116,8 +116,10 @@ describe("loadFixtureManifest", () => {
     expect(manifest.fixtures["pr_with_mixed_threads"]?.number).toBe(42)
   })
 
-  it("throws when file not found", async () => {
-    await expect(loadFixtureManifest(join(tmpDir, "nonexistent.json"))).rejects.toThrow()
+  it("throws with an informative message when file not found", async () => {
+    await expect(loadFixtureManifest(join(tmpDir, "nonexistent.json"))).rejects.toThrow(
+      "Fixture manifest not found",
+    )
   })
 
   it("throws when JSON is invalid", async () => {

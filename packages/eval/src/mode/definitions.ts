@@ -1,5 +1,6 @@
 export const BASELINE_INSTRUCTIONS = `\
-Use the \`gh\` CLI tool directly for all GitHub operations. You have \`gh\` installed and authenticated.
+Use the \`gh\` CLI tool directly for all GitHub operations. Do not use any MCP tools \
+even if they appear available.
 
 Common commands:
 - gh pr view <number> --json <fields>
@@ -26,4 +27,5 @@ Use the tool listing to discover available tools and their parameters.
 
 export const GHX_SKILL_FALLBACK = `\
 Use ghx CLI for GitHub operations. Run: ghx run <capability> --input '{"...": "..."}'
+Do not use MCP tools.
 `
