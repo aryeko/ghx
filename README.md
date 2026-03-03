@@ -14,7 +14,7 @@ sequenceDiagram
     participant ghx as ghx
     participant GH as GitHub API
 
-    Agent->>ghx: executeTask("pr.view", { owner, name, number })
+    Agent->>ghx: executeTask("pr.view", { owner, name, prNumber })
 
     Note over ghx: 1. Validate input schema<br/>2. Select optimal route (GraphQL/CLI)<br/>3. Run preflight checks
     ghx->>GH: typed GraphQL request

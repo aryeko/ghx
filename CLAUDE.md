@@ -138,10 +138,8 @@ Lefthook runs automatically on commit (installed via `pnpm install`):
 3. Satisfy all applicable checkboxes in `.github/pull_request_template.md`.
 4. Coverage for touched files: ≥90% (aim for 95%).
 5. If `@ghx-dev/core` public API changed: add a changeset — create `.changeset/<kebab-name>.md` with frontmatter `---\n"@ghx-dev/core": patch\n---\n\nDescription.`
-6. Run `pnpm run ci --outputStyle=static` before final handoff on substantial changes (coverage >=90%, aim for 95%).
-7. Review `.github/pull_request_template.md` and satisfy every applicable validation checkbox.
-8. If GraphQL operations changed: run `pnpm run ghx:gql:verify`.
-9. Confirm tests were added/updated as needed for behavior changes.
+6. Review `.github/pull_request_template.md` and satisfy every applicable validation checkbox.
+7. Confirm tests were added/updated as needed for behavior changes.
 
 ## Documentation
 

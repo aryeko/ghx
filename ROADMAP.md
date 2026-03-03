@@ -60,7 +60,7 @@ See the [full capability list](packages/core/docs/reference/capabilities.md) for
 ## Non-goals
 
 - **Not a GitHub client library.** ghx is an execution router for agents, not a general-purpose SDK like Octokit.
-- **Not a replacement for Octokit.** If you are building a traditional application (not an agent), use Octokit or the `gh` CLI directly.
+- **Use Octokit for traditional applications.** If you are building a non-agent application, use Octokit or the `gh` CLI directly -- ghx is not intended as a replacement.
 - **Not a general-purpose CLI wrapper.** ghx routes to `gh` and GraphQL as an implementation detail -- it does not wrap arbitrary shell commands.
 
 ## Contributing to the Roadmap

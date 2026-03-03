@@ -27,7 +27,7 @@ sequenceDiagram
     participant GH as GitHub API
 
     %% Agent requests a typed execution
-    Agent->>ghx: executeTask("pr.view", { owner, name, number })
+    Agent->>ghx: executeTask("pr.view", { owner, name, prNumber })
     
     %% ghx routing engine takes over
     Note over ghx: 1. Validate input schema<br/>2. Select optimal route (GraphQL/CLI)<br/>3. Run preflight checks
