@@ -129,28 +129,120 @@ describe("generateReportPage", () => {
     expect(result).toContain("No checkpoint data available")
   })
 
-  it("renders efficiency analysis from analysis bundles", () => {
+  it("renders cross-mode efficiency analysis with group headings", () => {
     const bundles: readonly SessionAnalysisBundle[] = [
       {
         sessionId: "ses_1",
         scenarioId: "s1",
-        mode: "fast",
+        mode: "baseline",
         model: "test-model",
         results: {
           efficiency: {
             analyzer: "efficiency",
-            summary: "Good efficiency",
+            summary: "Efficient",
             findings: {
-              "turn efficiency": { type: "number", value: 0.85, unit: "ratio" },
+              turn_efficiency: { type: "ratio", value: 1.0, label: "100%" },
+              backtracking_events: { type: "number", value: 7, unit: "count" },
+            },
+          },
+          reasoning: {
+            analyzer: "reasoning",
+            summary: "Good",
+            findings: {
+              reasoning_density: { type: "ratio", value: 0.006, label: "0.6%" },
+              reasoning_per_tool_call: { type: "number", value: 116, unit: "tokens" },
+            },
+          },
+        },
+      },
+      {
+        sessionId: "ses_2",
+        scenarioId: "s1",
+        mode: "ghx",
+        model: "test-model",
+        results: {
+          efficiency: {
+            analyzer: "efficiency",
+            summary: "Efficient",
+            findings: {
+              turn_efficiency: { type: "ratio", value: 1.0, label: "100%" },
+              backtracking_events: { type: "number", value: 1, unit: "count" },
+            },
+          },
+          reasoning: {
+            analyzer: "reasoning",
+            summary: "Good",
+            findings: {
+              reasoning_density: { type: "ratio", value: 0.006, label: "0.6%" },
+              reasoning_per_tool_call: { type: "number", value: 183, unit: "tokens" },
             },
           },
         },
       },
     ]
     const result = generateReportPage(makeContext({ analysisResults: bundles }))
-    expect(result).toContain("### fast")
-    expect(result).toContain("efficiency: turn efficiency")
-    expect(result).toContain("0.85")
+
+    // Cross-mode table with mode columns (not per-mode sections)
+    expect(result).toContain("| baseline")
+    expect(result).toContain("| ghx")
+
+    // Group headings
+    expect(result).toContain("### Behavioral Efficiency")
+    expect(result).toContain("### Reasoning Quality")
+
+    // Human-readable labels
+    expect(result).toContain("Backtracking Events")
+    expect(result).toContain("Reasoning / Tool Call")
+
+    // Filtered: turn_efficiency is the same (100%) across both modes, should be absent
+    expect(result).not.toContain("Turn Efficiency")
+
+    // Reasoning density same (1%) across both modes — filtered out
+    expect(result).not.toContain("Reasoning Density")
+  })
+
+  it("filters out rows where all modes have zero values", () => {
+    const bundles: readonly SessionAnalysisBundle[] = [
+      {
+        sessionId: "ses_1",
+        scenarioId: "s1",
+        mode: "a",
+        model: "test-model",
+        results: {
+          efficiency: {
+            analyzer: "efficiency",
+            summary: "Ok",
+            findings: {
+              information_redundancy: { type: "ratio", value: 0, label: "0%" },
+              backtracking_events: { type: "number", value: 3, unit: "count" },
+            },
+          },
+        },
+      },
+      {
+        sessionId: "ses_2",
+        scenarioId: "s1",
+        mode: "b",
+        model: "test-model",
+        results: {
+          efficiency: {
+            analyzer: "efficiency",
+            summary: "Ok",
+            findings: {
+              information_redundancy: { type: "ratio", value: 0, label: "0%" },
+              backtracking_events: { type: "number", value: 5, unit: "count" },
+            },
+          },
+        },
+      },
+    ]
+    const result = generateReportPage(makeContext({ analysisResults: bundles }))
+
+    // Zero across both modes — filtered out
+    expect(result).not.toContain("Redundant Calls")
+
+    // Different values — kept
+    expect(result).toContain("Backtracking Events")
   })
 
   it("shows no analysis message when no bundles", () => {

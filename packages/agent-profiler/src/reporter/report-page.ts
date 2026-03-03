@@ -517,6 +517,122 @@ function renderCheckpointDetail(
 
 // ── Section 7: Efficiency Analysis ──────────────────────────────────────────
 
+type MetricGroup = "behavioral" | "strategy" | "reasoning"
+
+interface EfficiencyMetric {
+  readonly analyzer: string
+  readonly finding: string
+  readonly label: string
+  readonly group: MetricGroup
+  readonly format: (finding: AnalysisFinding) => string
+}
+
+function formatRatioAsPercent(f: AnalysisFinding): string {
+  return f.type === "ratio" ? `${(f.value * 100).toFixed(1)}%` : ""
+}
+
+function formatNumberP50(f: AnalysisFinding): string {
+  return f.type === "number" ? fmtNum(f.value) : ""
+}
+
+function formatNumberWithTok(f: AnalysisFinding): string {
+  return f.type === "number" ? `${fmtNum(f.value)} tok` : ""
+}
+
+function formatString(f: AnalysisFinding): string {
+  return f.type === "string" ? f.value : ""
+}
+
+const EFFICIENCY_METRICS: readonly EfficiencyMetric[] = [
+  {
+    analyzer: "efficiency",
+    finding: "turn_efficiency",
+    label: "Turn Efficiency",
+    group: "behavioral",
+    format: formatRatioAsPercent,
+  },
+  {
+    analyzer: "efficiency",
+    finding: "backtracking_events",
+    label: "Backtracking Events",
+    group: "behavioral",
+    format: formatNumberP50,
+  },
+  {
+    analyzer: "efficiency",
+    finding: "information_redundancy",
+    label: "Redundant Calls",
+    group: "behavioral",
+    format: formatRatioAsPercent,
+  },
+  {
+    analyzer: "error",
+    finding: "errors_encountered",
+    label: "Errors Encountered",
+    group: "behavioral",
+    format: formatNumberP50,
+  },
+  {
+    analyzer: "error",
+    finding: "wasted_turns_from_errors",
+    label: "Wasted Turns (Errors)",
+    group: "behavioral",
+    format: formatNumberP50,
+  },
+  {
+    analyzer: "strategy",
+    finding: "strategy_summary",
+    label: "Strategy",
+    group: "strategy",
+    format: formatString,
+  },
+  {
+    analyzer: "tool-pattern",
+    finding: "unique_tools_used",
+    label: "Tool Diversity",
+    group: "strategy",
+    format: formatNumberP50,
+  },
+  {
+    analyzer: "reasoning",
+    finding: "reasoning_density",
+    label: "Reasoning Density",
+    group: "reasoning",
+    format: formatRatioAsPercent,
+  },
+  {
+    analyzer: "reasoning",
+    finding: "reasoning_per_tool_call",
+    label: "Reasoning / Tool Call",
+    group: "reasoning",
+    format: formatNumberWithTok,
+  },
+  {
+    analyzer: "reasoning",
+    finding: "planning_quality",
+    label: "Planning Quality",
+    group: "reasoning",
+    format: formatString,
+  },
+]
+
+const GROUP_HEADINGS: Record<MetricGroup, string> = {
+  behavioral: "Behavioral Efficiency",
+  strategy: "Strategy Profile",
+  reasoning: "Reasoning Quality",
+}
+
+const GROUP_ORDER: readonly MetricGroup[] = ["behavioral", "strategy", "reasoning"]
+
+const ZERO_VALUES = new Set(["0", "0%", "0.0%", "0 tok", "-"])
+
+function isDifferentiating(values: ReadonlyMap<string, string>, modes: readonly string[]): boolean {
+  const vals = modes.map((m) => values.get(m) ?? "-")
+  const allSame = vals.every((v) => v === vals[0])
+  const allZero = vals.every((v) => ZERO_VALUES.has(v))
+  return !allSame && !allZero
+}
+
 function renderEfficiencyAnalysis(
   analysisResults: readonly SessionAnalysisBundle[],
 ): readonly string[] {
@@ -527,97 +643,104 @@ function renderEfficiencyAnalysis(
   const modes = [...new Set(analysisResults.map((b) => b.mode))]
   const lines: string[] = ["## Efficiency Analysis", ""]
 
-  for (const mode of modes) {
-    const bundles = analysisResults.filter((b) => b.mode === mode)
-    lines.push(`### ${mode}`, "")
+  // Extract formatted values for each metric per mode
+  const metricValues = EFFICIENCY_METRICS.map((metric) => ({
+    metric,
+    values: extractMetricPerMode(analysisResults, metric, modes),
+  }))
 
-    const aggregated = aggregateAnalysis(bundles)
-    if (aggregated.length === 0) {
-      lines.push("No analysis findings for this mode.", "")
-      continue
+  for (const group of GROUP_ORDER) {
+    const groupMetrics = metricValues.filter(({ metric }) => metric.group === group)
+
+    // Filter out rows where all modes have the same value or all are zero/empty
+    const filteredMetrics = groupMetrics.filter(({ values }) => isDifferentiating(values, modes))
+
+    if (filteredMetrics.length === 0) continue
+
+    lines.push(`### ${GROUP_HEADINGS[group]}`, "")
+
+    const header = ["| Metric", ...modes.map((m) => `| ${m}`), "|"].join(" ")
+    const sep = ["| ---", ...modes.map(() => "| ---"), "|"].join(" ")
+    lines.push(header, sep)
+
+    for (const { metric, values } of filteredMetrics) {
+      const cells = modes.map((m) => `| ${values.get(m) ?? "-"}`)
+      lines.push(`| ${metric.label} ${cells.join(" ")} |`)
     }
 
-    lines.push("| Metric | p50 |", "| --- | --- |")
-    for (const { label, value } of aggregated) {
-      lines.push(`| ${label} | ${value} |`)
-    }
     lines.push("")
+  }
+
+  // If all groups were empty after filtering, show a message
+  const hasAnyRows = metricValues.some(({ values }) => isDifferentiating(values, modes))
+
+  if (!hasAnyRows) {
+    lines.push("No notable differences across modes.", "")
   }
 
   return lines
 }
 
-interface AggregatedFinding {
-  readonly label: string
-  readonly value: string
-}
-
-function aggregateAnalysis(
+/**
+ * Extract a single metric's formatted value per mode from the analysis bundles.
+ * For numeric/ratio findings: computes p50 across bundles, then formats.
+ * For string findings: picks the most common value across bundles.
+ */
+function extractMetricPerMode(
   bundles: readonly SessionAnalysisBundle[],
-): readonly AggregatedFinding[] {
-  const numericFindings = new Map<string, number[]>()
-  const stringFindings = new Map<string, string[]>()
+  metric: EfficiencyMetric,
+  modes: readonly string[],
+): ReadonlyMap<string, string> {
+  const result = new Map<string, string>()
 
-  for (const bundle of bundles) {
-    for (const [analyzerName, result] of Object.entries(bundle.results)) {
-      for (const [key, finding] of Object.entries(result.findings)) {
-        const label = `${analyzerName}: ${key}`
-        collectFinding(label, finding, numericFindings, stringFindings)
+  for (const mode of modes) {
+    const modeBundles = bundles.filter((b) => b.mode === mode)
+    const findings: AnalysisFinding[] = []
+
+    for (const bundle of modeBundles) {
+      const analyzerResult = bundle.results[metric.analyzer]
+      if (!analyzerResult) continue
+      const finding = analyzerResult.findings[metric.finding]
+      if (finding) findings.push(finding)
+    }
+
+    if (findings.length === 0) {
+      result.set(mode, "-")
+      continue
+    }
+
+    const first = findings[0]
+    if (!first) {
+      result.set(mode, "-")
+      continue
+    }
+
+    if (first.type === "number" || first.type === "ratio") {
+      const values = findings.map((f) => (f.type === "number" || f.type === "ratio" ? f.value : 0))
+      const stats = computeDescriptive(values)
+      // Create a synthetic finding with the p50 value for formatting
+      const medianFinding: AnalysisFinding =
+        first.type === "ratio"
+          ? { type: "ratio", value: stats.median, label: first.label }
+          : { type: "number", value: stats.median, unit: first.unit }
+      result.set(mode, metric.format(medianFinding))
+    } else if (first.type === "string") {
+      // Most common string value
+      const counts = new Map<string, number>()
+      for (const f of findings) {
+        if (f.type === "string") {
+          counts.set(f.value, (counts.get(f.value) ?? 0) + 1)
+        }
       }
+      const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1])
+      const top = sorted[0]
+      result.set(mode, top ? metric.format({ type: "string", value: top[0] }) : "-")
+    } else {
+      result.set(mode, "-")
     }
   }
 
-  const results: AggregatedFinding[] = []
-
-  for (const [label, values] of numericFindings) {
-    const stats = computeDescriptive(values)
-    results.push({ label, value: stats.median.toFixed(2) })
-  }
-
-  for (const [label, values] of stringFindings) {
-    // For string findings, show the most common value
-    const counts = new Map<string, number>()
-    for (const v of values) {
-      counts.set(v, (counts.get(v) ?? 0) + 1)
-    }
-    const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1])
-    const top = sorted[0]
-    if (top) {
-      results.push({ label, value: top[0] })
-    }
-  }
-
-  return results
-}
-
-function collectFinding(
-  label: string,
-  finding: AnalysisFinding,
-  numericFindings: Map<string, number[]>,
-  stringFindings: Map<string, string[]>,
-): void {
-  switch (finding.type) {
-    case "number": {
-      const arr = numericFindings.get(label) ?? []
-      arr.push(finding.value)
-      numericFindings.set(label, arr)
-      break
-    }
-    case "ratio": {
-      const arr = numericFindings.get(label) ?? []
-      arr.push(finding.value)
-      numericFindings.set(label, arr)
-      break
-    }
-    case "string": {
-      const arr = stringFindings.get(label) ?? []
-      arr.push(finding.value)
-      stringFindings.set(label, arr)
-      break
-    }
-    default:
-      break
-  }
+  return result
 }
 
 // ── Section 8: Failures & Anomalies ─────────────────────────────────────────
