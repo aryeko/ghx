@@ -49,9 +49,10 @@ describe("generateReport", () => {
     const writeFileMock = vi.mocked(writeFile)
     const writtenPaths = writeFileMock.mock.calls.map((c) => String(c[0]))
 
-    // 4 pages + 2 scenario pages + 3 data files = 9
-    expect(writtenPaths.length).toBe(9)
+    // 5 pages + 2 scenario pages + 3 data files = 10
+    expect(writtenPaths.length).toBe(10)
 
+    expect(writtenPaths.some((p) => p.endsWith("report.md"))).toBe(true)
     expect(writtenPaths.some((p) => p.endsWith("index.md"))).toBe(true)
     expect(writtenPaths.some((p) => p.endsWith("metrics.md"))).toBe(true)
     expect(writtenPaths.some((p) => p.endsWith("analysis.md"))).toBe(true)
@@ -80,8 +81,8 @@ describe("generateReport", () => {
     })
 
     const writeFileMock = vi.mocked(writeFile)
-    // 4 pages + 0 scenario pages + 3 data files = 7
-    expect(writeFileMock.mock.calls.length).toBe(7)
+    // 5 pages + 0 scenario pages + 3 data files = 8
+    expect(writeFileMock.mock.calls.length).toBe(8)
   })
 
   it("continues generating other pages when one page generator throws", async () => {

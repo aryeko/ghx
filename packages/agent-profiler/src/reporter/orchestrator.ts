@@ -7,6 +7,8 @@ import { generateComparisonPage } from "./comparison-page.js"
 import { exportCsv } from "./csv-exporter.js"
 import { exportResultsJson, exportSummaryJson } from "./json-exporter.js"
 import { generateMetricsPage } from "./metrics-page.js"
+import type { ScenarioMetadata } from "./report-page.js"
+import { generateReportPage } from "./report-page.js"
 import { generateScenarioPage } from "./scenario-page.js"
 import { generateSummaryPage } from "./summary-page.js"
 
@@ -27,6 +29,8 @@ export interface ReportOptions {
   readonly reportDir?: string
   /** Optional analysis bundles to include in the analysis page. */
   readonly analysisResults?: readonly SessionAnalysisBundle[]
+  /** Optional scenario metadata for enriching per-scenario sections in report.md. */
+  readonly scenarioMetadata?: readonly ScenarioMetadata[]
   /** Optional logger for non-fatal page generation warnings. */
   readonly logger?: { warn: (msg: string) => void }
 }
@@ -49,6 +53,7 @@ async function safeWrite(
  * Generate a complete multi-page Markdown report and data exports for a profiling run.
  *
  * Creates a timestamped subdirectory under `options.reportsDir` containing:
+ * - `report.md` — unified self-contained report
  * - `index.md` — summary page
  * - `metrics.md` — per-metric statistics
  * - `analysis.md` — analyzer findings
@@ -63,7 +68,7 @@ async function safeWrite(
  * @throws If the report directory cannot be created (mkdir failure).
  */
 export async function generateReport(options: ReportOptions): Promise<string> {
-  const { runId, rows, reportsDir, analysisResults, logger } = options
+  const { runId, rows, reportsDir, analysisResults, scenarioMetadata, logger } = options
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
   const reportDir = options.reportDir ?? join(reportsDir, timestamp)
   const scenariosDir = join(reportDir, "scenarios")
@@ -75,6 +80,17 @@ export async function generateReport(options: ReportOptions): Promise<string> {
   const scenarioIds = [...new Set(rows.map((r) => r.scenarioId))]
 
   await Promise.all([
+    safeWrite(
+      join(reportDir, "report.md"),
+      () =>
+        generateReportPage({
+          runId,
+          rows,
+          analysisResults: analysisResults ?? [],
+          ...(scenarioMetadata ? { scenarioMetadata } : {}),
+        }),
+      logger,
+    ),
     safeWrite(join(reportDir, "index.md"), () => generateSummaryPage(rows, runId), logger),
     safeWrite(join(reportDir, "metrics.md"), () => generateMetricsPage(rows), logger),
     safeWrite(
