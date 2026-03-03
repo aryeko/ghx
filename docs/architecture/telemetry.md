@@ -89,13 +89,13 @@ GHX_TELEMETRY_STDOUT=1 ghx run ... 2>&1 | jq -s '.' > telemetry.jsonl
 
 ### Integration
 
-The benchmark harness uses telemetry events to:
+Telemetry events support observability and profiling workflows:
 - Measure route planning time
 - Track retry and fallback patterns
 - Compute per-route success rates
 - Detect reliability issues
 
-See [docs/benchmark/methodology.md](../benchmark/methodology.md) for benchmark use of telemetry.
+The agent-profiler package can consume these events for the same purposes. See the [agent-profiler documentation](../../packages/agent-profiler/docs/README.md) for details.
 
 ## Benchmarking and Observability
 
@@ -106,10 +106,10 @@ Telemetry events support metrics collection and observability:
 - **Timing analysis** — measure `context.duration_ms` to profile slow routes
 - **Error propagation** — correlate `route.attempt` success/failure with endpoint errors
 
-These metrics feed the benchmark verification gates (see [docs/benchmark/efficiency-criteria.md](../benchmark/efficiency-criteria.md)).
+These metrics support route reliability analysis and performance optimization.
 
 ## Related Documentation
 
 - [system-design.md](system-design.md) — design overview including telemetry role
 - [routing-engine.md](routing-engine.md) — route planning that emits events
-- [docs/benchmark/harness-design.md](../benchmark/harness-design.md) — benchmark use of telemetry
+- [Agent Profiler overview](../../packages/agent-profiler/docs/architecture/overview.md) — profiler architecture and telemetry consumption

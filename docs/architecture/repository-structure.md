@@ -4,7 +4,7 @@ This document provides a comprehensive overview of the ghx repository layout, mo
 
 ## Workspace Structure
 
-`ghx` is an Nx + pnpm monorepo with two packages plus supporting tooling:
+`ghx` is an Nx + pnpm monorepo with three packages plus supporting tooling:
 
 ```text
 ghx/
@@ -52,6 +52,24 @@ ghx/
 │       │   ├── stats/          # Statistics engine (descriptive, bootstrap, comparison)
 │       │   ├── store/          # JSONL store & run manifests
 │       │   └── types/          # Core type definitions
+│       ├── docs/               # Package documentation
+│       ├── test/               # Tests (unit + integration)
+│       └── tsup.config.ts      # Build config
+│   └── eval/                   # @ghx-dev/eval (private)
+│       ├── src/
+│       │   ├── analysis/       # Result analysis
+│       │   ├── cli/            # CLI commands (run, analyze, report, check, fixture)
+│       │   ├── collector/      # Tool call classification (GhxCollector)
+│       │   ├── config/         # Zod config schema & YAML loader
+│       │   ├── fixture/        # Fixture management & seeders
+│       │   ├── hooks/          # Lifecycle hooks for profiler
+│       │   ├── mode/           # Evaluation modes (ghx, mcp, baseline)
+│       │   ├── provider/       # OpenCode SDK integration & tracing
+│       │   ├── report/         # Report generation (Markdown, CSV, JSON)
+│       │   ├── scenario/       # Scenario schema, loading, fixture binding
+│       │   └── scorer/         # Checkpoint-based result verification
+│       ├── scenarios/          # Evaluation scenario definitions (JSON)
+│       ├── fixtures/           # Fixture manifests
 │       ├── docs/               # Package documentation
 │       ├── test/               # Tests (unit + integration)
 │       └── tsup.config.ts      # Build config
@@ -233,6 +251,39 @@ ghx/
 | `config/schema.ts` | Zod config validation | `ProfilerConfigSchema`, `ProfilerConfig` |
 | `config/loader.ts` | YAML config loading | `loadConfig()`, `parseProfilerFlags()` |
 
+## Eval Package Modules
+
+`packages/eval/src` implements the agent-profiler plugin contracts for ghx-specific evaluation:
+
+### Plugin Implementations
+
+| Module | Purpose | Key Exports |
+|--------|---------|-------------|
+| `provider/opencode-provider.ts` | SessionProvider via OpenCode SDK | `OpenCodeProvider` |
+| `mode/resolver.ts` | Mode resolution (ghx, mcp, baseline) | `EvalModeResolver` |
+| `scorer/checkpoint-scorer.ts` | Checkpoint-based verification | `CheckpointScorer` |
+| `collector/ghx-collector.ts` | Tool call classification | `GhxCollector` |
+| `hooks/eval-hooks.ts` | Lifecycle hooks (fixture reset) | `createEvalHooks()` |
+
+### Scenarios & Fixtures
+
+| Module | Purpose | Key Exports |
+|--------|---------|-------------|
+| `scenario/schema.ts` | Scenario Zod schema | `EvalScenarioSchema`, `EvalScenario` |
+| `scenario/loader.ts` | Scenario loading & binding | `loadEvalScenarios()`, `bindFixtureVariables()` |
+| `fixture/manager.ts` | Fixture lifecycle management | `FixtureManager` |
+| `fixture/seeders/*.ts` | Data seeders (PR, issue, mixed) | `getSeeder()`, `registerSeeder()` |
+
+### CLI & Reporting
+
+| Module | Purpose | Key Exports |
+|--------|---------|-------------|
+| `cli/index.ts` | CLI command router | 5 commands: run, analyze, report, check, fixture |
+| `config/schema.ts` | Zod config validation | `EvalConfigSchema`, `EvalConfig` |
+| `config/loader.ts` | YAML config loading | `loadEvalConfig()` |
+| `analysis/analyzers.ts` | Result analysis | `runAnalyzers()` |
+| `report/generator.ts` | Report generation | `generateEvalReport()` |
+
 ## Key Files by Concern
 
 ### Workspace + Build System
@@ -278,12 +329,22 @@ ghx/
 - `packages/agent-profiler/src/stats/comparison.ts` - cross-mode comparison
 - `packages/agent-profiler/src/reporter/orchestrator.ts` - report generation
 
+### Eval Harness
+
+- `packages/eval/src/cli/index.ts` - CLI entrypoint
+- `packages/eval/src/provider/opencode-provider.ts` - OpenCode SDK session provider
+- `packages/eval/src/scorer/checkpoint-scorer.ts` - checkpoint-based verification
+- `packages/eval/src/fixture/manager.ts` - fixture lifecycle management
+- `packages/eval/src/scenario/loader.ts` - scenario loading and binding
+
 ### Tests
 
 - `packages/core/test/unit/*.test.ts` - unit tests
 - `packages/core/test/integration/*.integration.test.ts` - integration tests
 - `packages/agent-profiler/test/unit/*.test.ts` - profiler unit tests
 - `packages/agent-profiler/test/integration/*.integration.test.ts` - profiler integration tests
+- `packages/eval/test/unit/*.test.ts` - eval unit tests
+- `packages/eval/test/integration/*.integration.test.ts` - eval integration tests
 
 ## Package Boundaries
 
@@ -317,6 +378,20 @@ graph TB
         ProfileRunner --> Stats
         Stats --> Reporter
     end
+
+    subgraph Eval["@ghx-dev/eval"]
+        direction TB
+        EvalCLI["CLI (run, analyze, report, check, fixture)"]
+        Plugins["Plugin Implementations"]
+        Scenarios["Scenarios & Fixtures"]
+        EvalReport["Report Generation"]
+        EvalCLI --> Plugins
+        EvalCLI --> Scenarios
+        Plugins --> EvalReport
+    end
+
+    Eval --> Profiler
+    Eval --> NPM
 ```
 
 ## Navigation Shortcuts
@@ -333,6 +408,9 @@ Use these paths when debugging common concerns:
 | Profiler suite configuration | `packages/agent-profiler/src/config/schema.ts` |
 | Profiler iteration failure | `packages/agent-profiler/src/runner/iteration.ts` |
 | Report generation | `packages/agent-profiler/src/reporter/orchestrator.ts` |
+| Eval scenario loading | `packages/eval/src/scenario/loader.ts` |
+| Eval fixture management | `packages/eval/src/fixture/manager.ts` |
+| Eval checkpoint scoring | `packages/eval/src/scorer/checkpoint-scorer.ts` |
 
 ## Suggested Reading Paths
 
@@ -374,5 +452,6 @@ Use these paths when debugging common concerns:
 
 - [docs/architecture/](.) — All architecture docs
 - [packages/agent-profiler/docs/](../../packages/agent-profiler/docs/) — Agent profiler documentation
+- [packages/eval/docs/](../../packages/eval/docs/) — Eval harness documentation
 - [docs/guides/](../guides/) — CLI usage, library API, agent integration, error handling
 - [docs/contributing/](../contributing/) — Development setup, testing, CI, publishing

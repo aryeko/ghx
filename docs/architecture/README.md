@@ -92,10 +92,12 @@ flowchart TB
 - **Library Consumer** — `packages/core/src/index.ts`
 - **Agent Tools** — `packages/core/src/index.ts` (exports `createExecuteTool`, `listCapabilities`, `explainCapability`)
 - **CLI User** — `packages/core/src/cli/index.ts` (executable: `ghx`)
-- **Benchmark** — `packages/benchmark/src/cli/benchmark.ts`
+- **Agent Profiler** — `packages/agent-profiler/src/runner/profile-runner.ts`
+- **Eval Harness** — `packages/eval/src/cli/index.ts`
 
 ## Related Documentation
 
-- **[docs/benchmark/](../benchmark/)** — methodology, harness design, metrics, and reporting
+- **[Agent Profiler docs](../../packages/agent-profiler/docs/README.md)** — profiler architecture, guides, API reference
+- **[Eval Harness docs](../../packages/eval/docs/README.md)** — evaluation methodology, scenarios, fixtures
 - **[docs/guides/](../guides/)** — CLI usage, library API, agent integration, error handling
 - **[docs/contributing/](../contributing/)** — development setup, testing, publishing

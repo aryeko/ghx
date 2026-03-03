@@ -9,12 +9,13 @@ envelope so agents stop wasting tokens re-discovering GitHub API surfaces.
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#4A90D9', 'primaryTextColor': '#fff', 'primaryBorderColor': '#2E6BA4', 'lineColor': '#666', 'fontSize': '13px'}}}%%
 graph TD
-  A["📚 Documentation Hub<br/>START HERE"]
+  A["Documentation Hub<br/>START HERE"]
 
-  A --> B["🚀 Getting Started"]
-  A --> C["🔧 Architecture & Design"]
-  A --> D["📊 Agent Profiling"]
-  A --> E["🤝 Contributing"]
+  A --> B["Getting Started"]
+  A --> C["Architecture & Design"]
+  A --> D["Agent Profiling"]
+  A --> F["Evaluation"]
+  A --> E["Contributing"]
 
   B --> B1["Installation"]
   B --> B2["First Task Tutorial"]
@@ -31,6 +32,10 @@ graph TD
   D --> D2["Architecture"]
   D --> D3["Guides"]
 
+  F --> F1["Scenarios"]
+  F --> F2["Fixtures"]
+  F --> F3["Reports"]
+
   E --> E1["Code Style & Patterns"]
   E --> E2["Repository Structure"]
   E --> E3["Testing Guide"]
@@ -39,6 +44,7 @@ graph TD
   style B fill:#4A90D9,color:#fff
   style C fill:#9C27B0,color:#fff
   style D fill:#F5A623,color:#fff
+  style F fill:#E91E63,color:#fff
   style E fill:#7ED321,color:#000
 ```
 
@@ -75,6 +81,15 @@ Check: **[Agent Profiler Documentation](../packages/agent-profiler/docs/README.m
 - [Getting started](../packages/agent-profiler/docs/getting-started/README.md) -- Installation, quick start, core concepts
 - [Architecture](../packages/agent-profiler/docs/architecture/README.md) -- System design, plugin contracts, statistics
 - [Guides](../packages/agent-profiler/docs/guides/README.md) -- Implementing providers, scorers, custom plugins
+
+### I want to evaluate ghx performance
+
+Check: **[Eval Harness Documentation](../packages/eval/docs/README.md)**
+
+- [Getting started](../packages/eval/docs/getting-started/README.md) -- Installation, quick start, core concepts
+- [Architecture](../packages/eval/docs/architecture/README.md) -- System design, modes, fixtures, scenarios
+- [Methodology](../packages/eval/docs/methodology/README.md) -- Evaluation thesis, metrics, interpreting results
+- [Guides](../packages/eval/docs/guides/README.md) -- Running evaluations, writing scenarios, configuration
 
 ## Key Facts
 
@@ -166,7 +181,7 @@ Benchmarked across 40 runs (4 scenarios, 5 iterations each) with Codex 5.3:
 | Latency | -57% (PR review), -26% (thread resolution) |
 | Success rate | 100% both modes |
 
-Full report: [Codex 5.3 Benchmark](../reports/codex-5.3-benchmark/README.md)
+Early benchmark data: [Codex 5.3 Benchmark Report](../reports/codex-5.3-benchmark/README.md)
 
 
 ## Next Steps

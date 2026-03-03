@@ -4,10 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-`ghx` is a GitHub execution router for AI agents — a monorepo (`pnpm` + `Nx`) with two packages:
+`ghx` is a GitHub execution router for AI agents — a monorepo (`pnpm` + `Nx`) with three packages:
 
 - `@ghx-dev/core` (`packages/core`) — public npm package; CLI + capability routing engine
 - `@ghx-dev/agent-profiler` (`packages/agent-profiler`) — private; generic AI agent session profiler (latency, tokens, tool calls, cost, behavioral analysis)
+- `@ghx-dev/eval` (`packages/eval`) — private; evaluation harness for ghx benchmarking (scenarios, fixtures, checkpoint scoring)
 
 **Runtime:** Node.js `>=22`. **Language:** TypeScript strict, ESM (`module`/`moduleResolution` = `NodeNext`).
 
@@ -97,6 +98,10 @@ User/Agent → CLI (packages/core/src/cli/) → executeTask() [core/routing/engi
 
 **6 plugin contracts:** SessionProvider, Scorer, Collector, Analyzer, ModeResolver, RunHooks. **4 built-in collectors:** Token, Latency, Cost, ToolCall. **5 built-in analyzers:** Reasoning, Strategy, Efficiency, ToolPattern, Error. See `packages/agent-profiler/docs/` for full documentation.
 
+### Eval Flow
+
+`packages/eval/` implements the agent-profiler plugin contracts to benchmark ghx routing vs. raw `gh` CLI vs. GitHub MCP server. The eval CLI (`run`, `analyze`, `report`, `check`, `fixture`) drives scenario-based evaluations with fixture seeding, checkpoint scoring, and statistical reporting. See `packages/eval/docs/` for methodology and scenario authoring.
+
 ## Code Style
 
 - **Formatter:** Biome (`biome.json`). Double quotes, no semicolons, trailing commas, 2-space indent, 100-char line width. Do not introduce Prettier or other formatters.
@@ -134,6 +139,7 @@ Documentation hub: `docs/README.md`. Key sections:
 - `docs/getting-started/` — installation, first-task, setup-for-agents, how-it-works
 - `docs/guides/` — CLI usage, library API, agent integration, result envelope, error handling, routing explained
 - `packages/agent-profiler/docs/` — profiler architecture, guides, API reference, contributing
+- `packages/eval/docs/` — eval methodology, scenarios, fixtures, reports
 - `docs/contributing/` — development setup, testing, code style, adding capabilities, CI, publishing
 
 If architecture, module, or file layout changes, update `docs/architecture/repository-structure.md`.

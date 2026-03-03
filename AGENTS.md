@@ -6,7 +6,8 @@ Operational guide for coding agents working in `ghx`.
 - Monorepo: `pnpm` + `Nx`.
 - Packages:
   - `@ghx-dev/core` (`packages/core`) - CLI-first GitHub execution router.
-  - `@ghx-dev/benchmark` (`packages/benchmark`) - benchmark harness/reporting.
+  - `@ghx-dev/agent-profiler` (`packages/agent-profiler`) - generic AI agent session profiler.
+  - `@ghx-dev/eval` (`packages/eval`) - evaluation harness for ghx benchmarking.
 - Runtime: Node.js `>=22`.
 - Language: TypeScript (`strict`) with ESM (`module`/`moduleResolution` = `NodeNext`).
 
@@ -64,12 +65,10 @@ Useful extras:
 
 ```bash
 pnpm run ghx:gql:verify
-pnpm run benchmark
-pnpm run benchmark:verify:pr
-pnpm run benchmark:verify:release
-pnpm --filter @ghx-dev/benchmark run check:scenarios
-pnpm --filter @ghx-dev/benchmark run report
-pnpm --filter @ghx-dev/benchmark run report:gate
+pnpm --filter @ghx-dev/agent-profiler run test
+pnpm --filter @ghx-dev/agent-profiler run test:coverage
+pnpm --filter @ghx-dev/eval run test
+pnpm --filter @ghx-dev/eval run test:coverage
 ```
 
 ## Single-Test Workflows (Vitest)
@@ -80,14 +79,16 @@ Run one test file:
 ```bash
 pnpm --filter @ghx-dev/core exec vitest run test/unit/engine.test.ts
 pnpm --filter @ghx-dev/core exec vitest run test/integration/engine-issue-view.integration.test.ts
-pnpm --filter @ghx-dev/benchmark exec vitest run test/unit/cli-main.test.ts
+pnpm --filter @ghx-dev/agent-profiler exec vitest run test/unit/runner/profile-runner.test.ts
+pnpm --filter @ghx-dev/eval exec vitest run test/unit/scorer/checkpoint-scorer.test.ts
 ```
 
 Run by test name:
 
 ```bash
 pnpm --filter @ghx-dev/core exec vitest run -t "executeTask"
-pnpm --filter @ghx-dev/benchmark exec vitest run -t "benchmark cli mains"
+pnpm --filter @ghx-dev/agent-profiler exec vitest run -t "runProfileSuite"
+pnpm --filter @ghx-dev/eval exec vitest run -t "CheckpointScorer"
 ```
 
 Run one file and one test name:
@@ -120,7 +121,8 @@ pnpm --filter @ghx-dev/core exec vitest run test/unit/run-command.test.ts -t "pa
 - Keep public contracts explicit and stable.
 - Validate untrusted input at boundaries:
   - core: AJV + JSON schema
-  - benchmark: Zod schemas
+  - agent-profiler: Zod schemas
+  - eval: Zod schemas
 - Preserve core result envelope shape: `{ ok, data, error, meta }`.
 
 ### Naming Conventions
