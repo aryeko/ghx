@@ -37,7 +37,7 @@ sequenceDiagram
   Provider->>Provider: Cleanup temp dirs
 ```
 
-The runner calls `init()` once per (mode, model) group to start the OpenCode server. For each iteration, it creates a session, sends the prompt, waits for completion, optionally exports the session trace, then destroys the session. After all iterations for a mode complete, the runner calls `shutdown()` to close the server and clean up temporary directories.
+The runner calls `init(modeConfig)` once per mode to start the OpenCode server. Each mode receives its own isolated provider instance -- when the mode changes, the current server is shut down and a fresh one is started with the new mode's environment configuration. The `modeConfig.environment` variables are applied before server start. For each iteration, it creates a session, sends the prompt, waits for completion, optionally exports the session trace, then destroys the session. After all iterations for a mode complete, the runner calls `shutdown()` to close the server and clean up temporary directories.
 
 ## Completion Detection
 
@@ -114,8 +114,8 @@ The `exportSession()` method fetches all messages and passes them to `TraceBuild
 
 | OpenCode Part Type | Trace Event Type | Fields |
 |--------------------|------------------|--------|
-| `reasoning` | `reasoning` | content, estimated token count |
-| `tool` | `tool_call` | name, input, output, success, error |
+| `reasoning` | `reasoning` | content (from `part["text"]`), token count from message metadata |
+| `tool` | `tool_call` | name, input, output, success, error, category (via `classifyToolCall()`) |
 | `text` | `text_output` | content, estimated token count |
 | message boundary | `turn_boundary` | turn number, timestamp |
 | `step-finish` | (ignored) | Signals completion, not traced |
@@ -155,7 +155,7 @@ The server lifecycle is tied to the provider instance:
 
 2. **Reuse** -- between iterations, the server stays running. The `createSession()` and `prompt()` calls use the existing SDK client. No restart is needed when the mode does not change.
 
-3. **Reconfigure** -- when the mode changes, the profiler calls `shutdown()` on the current provider and `init()` on a new one (or the same one after shutdown). The new `init()` starts a fresh server with the updated environment.
+3. **Reconfigure** -- when the mode changes, `shutdown()` is called on the current provider, then `init(modeConfig)` is called with the new mode's configuration. Each mode transition starts a completely fresh server with the updated environment variables and provider overrides.
 
 4. **Shutdown** -- `shutdown()` closes the server, nulls the client reference, removes the temp config directory, and restores the original environment variables from the snapshot taken during `init()`.
 

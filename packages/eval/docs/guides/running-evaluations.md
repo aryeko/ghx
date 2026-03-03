@@ -73,6 +73,7 @@ Run analyzers on exported session traces without generating reports. Useful when
 eval analyze [options]
 
 Options:
+  --run-id <id>            Run ID to resolve paths automatically (e.g. run_1706000000000)
   --run-dir <path>         Path to report folder with exported sessions
   --results <path>         Path to results JSONL file
   --output <path>          Output analysis report path
@@ -82,8 +83,7 @@ Example:
 
 ```bash
 pnpm --filter @ghx-dev/eval run eval analyze \
-  --run-dir reports/2026-02-27T12-00-00 \
-  --results results/run-001.jsonl
+  --run-id run_1706000000000
 ```
 
 ## `eval report`
@@ -94,6 +94,7 @@ Generate Markdown, CSV, and/or JSON reports from results data.
 eval report [options]
 
 Options:
+  --run-id <id>            Run ID to resolve paths automatically
   --run-dir <path>         Path to existing results
   --results <path>         Path to results JSONL (repeatable)
   --format <fmt>           Output: all | md | csv | json (default: all)
@@ -104,7 +105,7 @@ Example:
 
 ```bash
 pnpm --filter @ghx-dev/eval run eval report \
-  --results results/run-001.jsonl \
+  --results results/run_1706000000000.jsonl \
   --format md \
   --output-dir reports/latest
 ```
@@ -158,16 +159,16 @@ pnpm --filter @ghx-dev/eval run eval run
 #   [model: openai/gpt-5.3-codex]
 #     [mode: ghx]
 #       pr-review-comment-001: iter 1/5 PASS (8.2s) ... iter 5/5 PASS (7.1s)
-#       pr-fix-mixed-threads-wf-001: iter 1/5 PASS (22.4s) ... iter 5/5 PASS (19.8s)
+#       pr-reply-threads-wf-001: iter 1/5 PASS (22.4s) ... iter 5/5 PASS (19.8s)
 #     [mode: baseline]
 #       ...
 #     [mode: mcp]
 #       ...
-#   Results: results/run-001.jsonl (30 rows)
-#   Reports: reports/2026-02-27T12-00-00/
+#   Results: results/run_1706000000000.jsonl
+#   Reports: reports/run_1706000000000/
 ```
 
-Results are written to JSONL (one `ProfileRow` per iteration). Reports are generated automatically unless `--dry-run` is specified.
+Results are written to `results/{runId}.jsonl` (one `ProfileRow` per iteration). Reports are generated automatically to `reports/{runId}/` unless `--dry-run` is specified. Session traces land in `reports/{runId}/sessions/` and analysis bundles in `reports/{runId}/analysis/`.
 
 Source: `packages/eval/src/cli/parse-flags.ts`
 

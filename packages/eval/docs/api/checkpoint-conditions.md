@@ -66,6 +66,16 @@ Passes when `result[path]` contains the `value` substring. The field must be a s
 
 Example: `{ type: "field_contains", path: "body", value: "fix applied" }` -- the `body` field contains `"fix applied"`.
 
+### `field_gte`
+
+Passes when `result[path]` is a number greater than or equal to `value`. Supports dot-notation for nested fields.
+
+```typescript
+{ type: "field_gte", path: string, value: number }
+```
+
+Example: `{ type: "field_gte", path: "items.length", value: 3 }` -- the `items.length` field is at least 3.
+
 ### `custom`
 
 Delegates to a named custom scorer function. Reserved for v2 -- not yet implemented.
@@ -85,7 +95,7 @@ The `CheckpointScorer` processes each checkpoint in `scenario.assertions.checkpo
 
 ## Dot-Notation Field Access
 
-The `field_equals` and `field_contains` conditions use dot-notation to access nested fields:
+The `field_equals`, `field_contains`, and `field_gte` conditions use dot-notation to access nested fields:
 
 ```typescript
 // Given result: { data: { pr: { title: "Fix bug" } } }
