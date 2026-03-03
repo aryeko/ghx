@@ -29,8 +29,11 @@ function isDifferentiating(values: ReadonlyMap<string, string>, modes: readonly 
 
 function formatScalar(finding: AnalysisFinding): string {
   switch (finding.type) {
-    case "number":
-      return `${finding.value} ${finding.unit}`
+    case "number": {
+      const rounded =
+        finding.value >= 10 ? Math.round(finding.value) : Number(finding.value.toFixed(1))
+      return `${rounded} ${finding.unit}`
+    }
     case "ratio":
       return `${(finding.value * 100).toFixed(1)}%`
     case "string":
@@ -282,7 +285,7 @@ function renderAnalyzerSection(
   for (const { key, values } of listBlocks) {
     lines.push("<details>", `<summary>${key}</summary>`, "")
     for (const mode of modes) {
-      const items = values.get(mode) ?? []
+      const items = (values.get(mode) ?? []).filter((item) => item.trim().length > 0)
       if (items.length > 0) {
         lines.push(`**${mode}:** ${items.join(", ")}`)
       }

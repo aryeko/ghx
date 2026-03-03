@@ -142,16 +142,9 @@ export async function generateEvalReport(options: GenerateReportOptions): Promis
       await rm(join(reportDir, "data", "summary.json"), { force: true })
     }
     if (options.format !== "md") {
-      for (const mdFile of [
-        "report.md",
-        "index.md",
-        "metrics.md",
-        "analysis.md",
-        "comparison.md",
-      ]) {
+      for (const mdFile of ["report.md", "analysis.md"]) {
         await rm(join(reportDir, mdFile), { force: true })
       }
-      await rm(join(reportDir, "scenarios"), { recursive: true, force: true })
     }
   }
 
