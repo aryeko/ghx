@@ -83,8 +83,13 @@ vi.mock("@ghx-dev/agent-profiler", () => ({
   reasoningAnalyzer: { name: "reasoning", analyze: vi.fn() },
   strategyAnalyzer: { name: "strategy", analyze: vi.fn() },
   efficiencyAnalyzer: { name: "efficiency", analyze: vi.fn() },
-  toolPatternAnalyzer: { name: "tool-pattern", analyze: vi.fn() },
+  createToolPatternAnalyzer: vi.fn().mockReturnValue({ name: "tool-pattern", analyze: vi.fn() }),
+  resolveToolDisplayName: vi.fn((name: string) => name),
   errorAnalyzer: { name: "error", analyze: vi.fn() },
+}))
+
+vi.mock("@eval/analysis/tool-name-resolver.js", () => ({
+  resolveEvalToolName: vi.fn((name: string) => name),
 }))
 
 const MINIMAL_CONFIG = {

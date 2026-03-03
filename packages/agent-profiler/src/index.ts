@@ -5,7 +5,12 @@ export { efficiencyAnalyzer } from "./analyzer/efficiency-analyzer.js"
 export { errorAnalyzer } from "./analyzer/error-analyzer.js"
 export { reasoningAnalyzer } from "./analyzer/reasoning-analyzer.js"
 export { strategyAnalyzer } from "./analyzer/strategy-analyzer.js"
-export { toolPatternAnalyzer } from "./analyzer/tool-pattern-analyzer.js"
+export type { ToolPatternAnalyzerOptions } from "./analyzer/tool-pattern-analyzer.js"
+export {
+  createToolPatternAnalyzer,
+  resolveToolDisplayName,
+  toolPatternAnalyzer,
+} from "./analyzer/tool-pattern-analyzer.js"
 // ── Collectors ─────────────────────────────────────────────────────────────
 export { CostCollector } from "./collector/cost-collector.js"
 export { LatencyCollector } from "./collector/latency-collector.js"
