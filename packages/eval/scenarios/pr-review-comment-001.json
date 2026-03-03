@@ -29,7 +29,7 @@
           "name": "{{repo_name}}",
           "prNumber": "{{pr_number}}"
         },
-        "condition": { "type": "field_equals", "path": "items.0.state", "value": "REQUEST_CHANGES" }
+        "condition": { "type": "field_equals", "path": "items.0.state", "value": "CHANGES_REQUESTED" }
       },
       {
         "id": "inline-comments-exist",
