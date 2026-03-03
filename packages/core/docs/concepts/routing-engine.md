@@ -69,7 +69,7 @@ Rule types:
 
 After suitability evaluation, the engine builds an ordered **route plan**:
 
-```
+```text
 [effective_preferred, ...card.routing.fallbacks]
 ```
 

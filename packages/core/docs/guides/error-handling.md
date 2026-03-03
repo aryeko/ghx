@@ -61,10 +61,9 @@ if (result.ok) {
 async function withRetry(request: TaskRequest, deps: ExecutionDeps, maxRetries = 2) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const result = await executeTask(request, deps)
-    if (result.ok || !result.error.retryable) return result
+    if (result.ok || !result.error.retryable || attempt === maxRetries) return result
     await new Promise((r) => setTimeout(r, 1000 * (attempt + 1))) // backoff
   }
-  return executeTask(request, deps) // final attempt
 }
 ```
 

@@ -1,6 +1,6 @@
 # Types Reference
 
-Full type definitions for all exported interfaces and types from `@ghx-dev/core`.
+Reference definitions for key exported interfaces and types from `@ghx-dev/core`.
 
 ## Core Contracts
 
