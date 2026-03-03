@@ -39,7 +39,9 @@ export class TraceBuilder {
 
       const created = message.info?.time?.created
       const timestamp =
-        created !== undefined ? new Date(created).toISOString() : new Date().toISOString()
+        typeof created === "number" && Number.isFinite(created)
+          ? new Date(created).toISOString()
+          : new Date().toISOString()
 
       events.push({
         type: "turn_boundary",

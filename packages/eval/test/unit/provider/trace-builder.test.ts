@@ -124,6 +124,19 @@ describe("TraceBuilder.buildEvents", () => {
     })
   })
 
+  it("does not throw and falls back to current time when info.time.created is NaN", () => {
+    const before = Date.now()
+    const messages = [{ info: { role: "assistant", time: { created: NaN } }, parts: [] }]
+    const events = builder.buildEvents(messages)
+    const after = Date.now()
+    const boundary = events.find((e) => e.type === "turn_boundary")
+    expect(boundary).toBeDefined()
+    const ts = new Date((boundary as Record<string, unknown>)["timestamp"] as string).getTime()
+    expect(Number.isFinite(ts)).toBe(true)
+    expect(ts).toBeGreaterThanOrEqual(before)
+    expect(ts).toBeLessThanOrEqual(after)
+  })
+
   it("assigns sequential turn numbers", () => {
     const messages = [assistantMsg([]), assistantMsg([]), assistantMsg([])]
     const events = builder.buildEvents(messages)
