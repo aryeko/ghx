@@ -9,12 +9,19 @@
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#4A90D9', 'primaryTextColor': '#fff', 'primaryBorderColor': '#2E6BA4', 'lineColor': '#666', 'fontSize': '13px'}}}%%
-flowchart LR
-    Agent["AI Agent"] --> GHX["ghx"]
-    GHX --> CLI["gh CLI"]
-    GHX --> GQL["GraphQL API"]
-    CLI --> GH["GitHub"]
-    GQL --> GH
+sequenceDiagram
+    participant Agent
+    participant ghx as ghx
+    participant GH as GitHub API
+
+    Agent->>ghx: executeTask("pr.view", { owner, name, number })
+
+    Note over ghx: 1. Validate input schema<br/>2. Select optimal route (GraphQL/CLI)<br/>3. Run preflight checks
+    ghx->>GH: typed GraphQL request
+    GH-->>ghx: response
+    Note over ghx: normalize errors & structure
+
+    ghx-->>Agent: ResultEnvelope { ok: true, data: { ... } }
 ```
 
 [![CI (main)](https://github.com/aryeko/ghx/actions/workflows/ci-main.yml/badge.svg)](https://github.com/aryeko/ghx/actions/workflows/ci-main.yml)
@@ -23,6 +30,37 @@ flowchart LR
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 `ghx` helps agents execute GitHub tasks without re-discovering API surfaces on every run. Agents call stable capabilities like `repo.view` or `pr.merge`; ghx handles route choice, retries, fallbacks, and normalized output.
+
+## 30-Second Quick Start
+
+Requirements: Node.js `22+`, `gh` CLI authenticated, `GITHUB_TOKEN` or `GH_TOKEN` in env.
+
+```bash
+npx @ghx-dev/core capabilities list
+npx @ghx-dev/core capabilities explain repo.view
+npx @ghx-dev/core run repo.view --input '{"owner":"aryeko","name":"ghx"}'
+```
+
+Or install globally:
+
+```bash
+npm i -g @ghx-dev/core
+ghx capabilities list
+ghx run repo.view --input '{"owner":"aryeko","name":"ghx"}'
+```
+
+Agent onboarding (Claude Code skill):
+
+```bash
+npx @ghx-dev/core setup --scope project --yes
+npx @ghx-dev/core setup --scope project --verify
+```
+
+## Who is this for?
+
+- **Claude Code users** -- install with `ghx setup --scope project` and get deterministic GitHub operations
+- **Cursor / Windsurf users** -- point your agent at `ghx capabilities list` for structured tool use
+- **Custom agent builders** -- import `createExecuteTool()` for typed GitHub access in your own agent framework
 
 ## The Problem
 
@@ -82,31 +120,6 @@ Three-mode comparison (baseline vs MCP vs ghx) across 30 runs (2 scenarios, 5 it
 
 Full methodology, per-iteration data, and statistical analysis: [Evaluation Report](docs/eval-report.md)
 
-## 30-Second Quick Start
-
-Requirements: Node.js `22+`, `gh` CLI authenticated, `GITHUB_TOKEN` or `GH_TOKEN` in env.
-
-```bash
-npx @ghx-dev/core capabilities list
-npx @ghx-dev/core capabilities explain repo.view
-npx @ghx-dev/core run repo.view --input '{"owner":"aryeko","name":"ghx"}'
-```
-
-Or install globally:
-
-```bash
-npm i -g @ghx-dev/core
-ghx capabilities list
-ghx run repo.view --input '{"owner":"aryeko","name":"ghx"}'
-```
-
-Agent onboarding (Claude Code skill):
-
-```bash
-npx @ghx-dev/core setup --scope project --yes
-npx @ghx-dev/core setup --scope project --verify
-```
-
 ## Chain: Batch Operations
 
 `ghx chain` batches multiple operations into a single tool call. One command, batched execution, three operations:
@@ -154,28 +167,9 @@ ghx run pr.checks.list --input '{"owner":"acme","name":"repo","prNumber":14}'
 ghx run pr.merge --input '{"owner":"acme","name":"repo","prNumber":14,"method":"squash"}'
 ```
 
-## Why Not Direct `gh` + GraphQL Calls?
+## Capabilities
 
-| Concern | Direct Calls | `ghx` |
-| --- | --- | --- |
-| Route selection | Manual per operation | Deterministic policy per capability |
-| Output shape | Varies by endpoint/tool | Stable `{ ok, data, error, meta }` envelope |
-| Validation | Caller-owned | Runtime schema validation from operation cards |
-| Retries/fallbacks | Caller-owned | Built-in orchestration |
-| Capability discovery | Ad-hoc docs lookup | `capabilities list` and `capabilities explain` |
-
-## 70 Capabilities
-
-| Domain | Count | Examples |
-| --- | --- | --- |
-| Repository | 3 | `repo.view`, `repo.labels.list` |
-| Issues | 23 | create/update/close, labels, assignees, milestones, relations |
-| Pull Requests | 21 | diff, threads, reviews, checks, merge, branch update |
-| Workflows and CI | 11 | runs, jobs, logs, dispatch, rerun, cancel, artifacts |
-| Releases | 5 | view, list, create, update, publish |
-| Projects v2 | 7 | items, fields, add/remove issues |
-
-Full list: `ghx capabilities list` or [operation card registry](https://github.com/aryeko/ghx/tree/main/packages/core/src/core/registry/cards).
+70+ capabilities across 6 domains ([full list](packages/core/docs/reference/capabilities.md)).
 
 ## Security and Permissions
 

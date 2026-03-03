@@ -39,6 +39,17 @@ Thank you for your interest in contributing to ghx. This document provides guide
    pnpm run build
    ```
 
+## Your First Contribution
+
+Look for issues labeled [`good-first-issue`](https://github.com/aryeko/ghx/labels/good-first-issue) -- these are scoped tasks with clear acceptance criteria, ideal for getting familiar with the codebase.
+
+To run a single capability end-to-end for manual testing:
+
+```bash
+pnpm run build
+node packages/core/dist/cli/index.js run repo.view --input '{"owner":"aryeko","name":"ghx"}'
+```
+
 ## Running Tests
 
 - Run all tests: `pnpm run test`

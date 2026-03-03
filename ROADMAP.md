@@ -41,10 +41,16 @@ See the [full capability list](packages/core/docs/reference/capabilities.md) for
 
 ## What's Next
 
-- **MCP mode support** -- stub infrastructure exists; the core package needs adapter implementation to support it end-to-end
-- **REST adapter** -- a stub exists in the codebase; implementing it adds a third routing option and improves fallback coverage
-- **Additional capability domains** -- discussions, gists, and code search are natural expansions
-- **Performance improvements** -- response streaming and parallel execution for batch operations
+- **MCP mode support** -- stub infrastructure exists; the core package needs adapter implementation to support it end-to-end. Lets agents in MCP-compatible environments (Claude Desktop, etc.) use ghx capabilities as native tools.
+- **REST adapter** -- a stub exists in the codebase; implementing it adds a third routing option. Covers endpoints not available via GraphQL, improving fallback coverage.
+- **Additional capability domains** -- discussions, gists, and code search are natural expansions. These cover the remaining high-frequency GitHub operations agents need.
+- **Performance improvements** -- response streaming and parallel execution for batch operations. Reduces latency for bulk workflows like mass label management or multi-PR review.
+
+## Non-goals
+
+- **Not a GitHub client library.** ghx is an execution router for agents, not a general-purpose SDK like Octokit.
+- **Not a replacement for Octokit.** If you are building a traditional application (not an agent), use Octokit or the `gh` CLI directly.
+- **Not a general-purpose CLI wrapper.** ghx routes to `gh` and GraphQL as an implementation detail -- it does not wrap arbitrary shell commands.
 
 ## Contributing to the Roadmap
 
