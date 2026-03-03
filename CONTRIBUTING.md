@@ -43,7 +43,7 @@ Thank you for your interest in contributing to ghx. This document provides guide
 
 - Run all tests: `pnpm run test`
 - Run tests with coverage: `pnpm run test:coverage`
-- Run tests for a specific package: `pnpm --filter @ghx-dev/core run test` or `pnpm --filter @ghx-dev/benchmark run test`
+- Run tests for a specific package: `pnpm --filter @ghx-dev/core run test`
 
 ## Formatting, Linting, and Type Checking
 
@@ -67,7 +67,6 @@ Hooks are installed automatically by `pnpm install`.
 
 - GraphQL codegen drift (offline): `pnpm run ghx:gql:verify`
 - GraphQL schema refresh (on-demand, requires `GITHUB_TOKEN` or `GH_TOKEN`): `pnpm --filter @ghx-dev/core run gql:schema:refresh`
-- Benchmark scenario validation: `pnpm --filter @ghx-dev/benchmark run check:scenarios`
 
 ## Branch Naming
 
@@ -83,7 +82,6 @@ Use conventional prefixes:
 Prefer [Conventional Commits](https://www.conventionalcommits.org/):
 
 - `feat(core): add capability X`
-- `fix(benchmark): correct scenario validation`
 - `docs: update README quickstart`
 
 For changes that affect the public API or release notes, add a [Changeset](https://github.com/changesets/changesets):

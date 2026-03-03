@@ -25,7 +25,6 @@ See the [full capability list](docs/capabilities/README.md) for details on every
 - Normalized result envelope contract (`ok`, `data`, `error`, `meta`)
 - Structured error taxonomy with deterministic error codes
 - `ghx setup` onboarding and `ghx capabilities list`/`explain` discovery commands
-- Benchmark harness comparing agent_direct vs ghx execution
 
 ### v0.2.0
 
@@ -42,7 +41,7 @@ See the [full capability list](docs/capabilities/README.md) for details on every
 
 ## What's Next
 
-- **MCP mode support** -- the benchmark harness already exercises an MCP execution mode; the core package needs adapter implementation to support it end-to-end
+- **MCP mode support** -- stub infrastructure exists; the core package needs adapter implementation to support it end-to-end
 - **REST adapter** -- a stub exists in the codebase; implementing it adds a third routing option and improves fallback coverage
 - **Additional capability domains** -- discussions, gists, and code search are natural expansions
 - **Performance improvements** -- response streaming and parallel execution for batch operations
