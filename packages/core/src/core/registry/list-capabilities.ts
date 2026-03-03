@@ -1,6 +1,7 @@
 import { listOperationCards } from "./index.js"
 import { extractOptionalInputs, extractRequiredInputs } from "./schema-utils.js"
 
+/** Summary of a capability, returned by {@link listCapabilities}. */
 export type CapabilityListItem = {
   capability_id: string
   description: string
@@ -9,6 +10,11 @@ export type CapabilityListItem = {
   optional_inputs_detail: Record<string, unknown>
 }
 
+/**
+ * List all available capabilities, optionally filtered by domain.
+ *
+ * @param domain - Filter by top-level domain (e.g. `"pr"`, `"issue"`, `"workflow"`).
+ */
 export function listCapabilities(domain?: string): CapabilityListItem[] {
   let cards = listOperationCards()
   if (domain) {

@@ -96,6 +96,14 @@ import type {
   ReviewThreadMutationInput,
 } from "./types.js"
 
+/**
+ * High-level GitHub API client with 50+ typed methods.
+ *
+ * Extends {@link GraphqlClient} with domain-specific helpers for issues, PRs,
+ * releases, projects, and repos. Domain modules are lazy-loaded on first use.
+ *
+ * Create via {@link createGithubClientFromToken} or {@link createGithubClient}.
+ */
 export interface GithubClient extends GraphqlClient {
   fetchRepoView(input: RepoViewInput): Promise<RepoViewData>
   fetchIssueCommentsList(input: IssueCommentsListInput): Promise<IssueCommentsListData>
@@ -153,6 +161,14 @@ export interface GithubClient extends GraphqlClient {
   ): Promise<ProjectV2ItemFieldUpdateData>
 }
 
+/**
+ * Create a {@link GithubClient} from a token (string or options object).
+ *
+ * Uses the default `fetch`-based transport. For custom transports, use
+ * {@link createGithubClient} instead.
+ *
+ * @throws If the token is empty.
+ */
 export function createGithubClientFromToken(
   tokenOrOptions: string | TokenClientOptions,
 ): GithubClient {
@@ -166,6 +182,11 @@ export function createGithubClientFromToken(
   return createGithubClient(createTokenTransport(token, graphqlUrl))
 }
 
+/**
+ * Create a {@link GithubClient} from a custom {@link GraphqlTransport}.
+ *
+ * Use this for enterprise endpoints, proxies, or test mocking.
+ */
 export function createGithubClient(transport: GraphqlTransport): GithubClient {
   const graphqlClient = createGraphqlClient(transport)
 
