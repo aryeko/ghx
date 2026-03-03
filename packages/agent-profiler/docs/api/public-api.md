@@ -58,7 +58,7 @@ Result returned by `runProfileSuite`, containing the collected rows and any post
 function generateReport(options: ReportOptions): Promise<string>
 ```
 
-Generate a multi-page Markdown report from profiling results. Writes report files to the configured output directory and returns the directory path.
+Generate a Markdown report from profiling results. Writes `report.md`, `analysis.md`, and data exports (`results.csv`, `results.json`, `summary.json`) to the configured output directory and returns the directory path.
 
 **Parameters:**
 
@@ -107,23 +107,51 @@ const result = await runProfileSuite({
 
 ## Analyzers
 
-Analyzer instances implement the `Analyzer` contract and perform post-iteration or post-suite analysis. They are pre-instantiated singletons.
+Analyzer instances implement the `Analyzer` contract and perform post-iteration or post-suite analysis. Most are pre-instantiated singletons; `toolPatternAnalyzer` can also be created via a factory for custom tool name resolution.
 
-| Instance | Purpose |
+| Instance / Factory | Purpose |
 |----------|---------|
 | `reasoningAnalyzer` | Analyzes reasoning token patterns and efficiency |
 | `strategyAnalyzer` | Classifies agent strategy from tool call sequences |
 | `efficiencyAnalyzer` | Measures token-to-outcome efficiency ratios |
-| `toolPatternAnalyzer` | Detects tool usage patterns and anti-patterns |
+| `toolPatternAnalyzer` | Default tool pattern analyzer (uses built-in tool name resolution) |
+| `createToolPatternAnalyzer(options?)` | Factory to create a tool pattern analyzer with custom `resolveToolName` |
 | `errorAnalyzer` | Categorizes errors by type and frequency |
+
+### Tool Name Resolution Helpers
+
+Utility functions exported for enriching bash-like tool call names. Used internally by `toolPatternAnalyzer` and available for consumers building custom resolvers.
+
+| Export | Purpose |
+|--------|---------|
+| `BASH_TOOL_NAMES` | `ReadonlySet<string>` of known bash-like tool names (`"bash"`, `"Bash"`, `"terminal"`, etc.) |
+| `isBashLikeTool(name)` | Returns `true` if the tool name is in `BASH_TOOL_NAMES` |
+| `extractCommand(input)` | Extracts the command string from a tool call input object |
+| `resolveToolDisplayName(name, input)` | Enriches bash tool names with subcommand info (e.g., `"bash"` + `gh pr list` -> `"gh pr"`) |
 
 ### Usage Example
 
 ```typescript
-import { reasoningAnalyzer, efficiencyAnalyzer } from "@ghx-dev/agent-profiler"
+import {
+  reasoningAnalyzer,
+  efficiencyAnalyzer,
+  createToolPatternAnalyzer,
+  isBashLikeTool,
+  extractCommand,
+} from "@ghx-dev/agent-profiler"
 
 const reasoning = reasoningAnalyzer.analyze(profileRow)
 const efficiency = efficiencyAnalyzer.analyze(profileRow)
+
+// Custom tool pattern analyzer with domain-specific name resolution
+const customAnalyzer = createToolPatternAnalyzer({
+  resolveToolName: (name, input) => {
+    if (!isBashLikeTool(name)) return name
+    const cmd = extractCommand(input)
+    if (cmd?.startsWith("myapp")) return "myapp"
+    return name
+  },
+})
 ```
 
 ## Statistics Functions

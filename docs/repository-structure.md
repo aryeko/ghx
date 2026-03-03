@@ -226,7 +226,7 @@ ghx/
 | `analyzer/reasoning-analyzer.ts` | Reasoning analysis | `reasoningAnalyzer` |
 | `analyzer/strategy-analyzer.ts` | Strategy classification | `strategyAnalyzer` |
 | `analyzer/efficiency-analyzer.ts` | Efficiency measurement | `efficiencyAnalyzer` |
-| `analyzer/tool-pattern-analyzer.ts` | Tool pattern detection | `toolPatternAnalyzer` |
+| `analyzer/tool-pattern-analyzer.ts` | Tool pattern detection | `toolPatternAnalyzer`, `createToolPatternAnalyzer()`, `BASH_TOOL_NAMES`, `isBashLikeTool`, `extractCommand`, `resolveToolDisplayName` |
 | `analyzer/error-analyzer.ts` | Error categorization | `errorAnalyzer` |
 
 ### Statistics & Reporting (`stats`, `reporter`, `store`)
@@ -277,8 +277,9 @@ ghx/
 | `cli/index.ts` | CLI command router | 5 commands: run, analyze, report, check, fixture |
 | `config/schema.ts` | Zod config validation | `EvalConfigSchema`, `EvalConfig` |
 | `config/loader.ts` | YAML config loading | `loadEvalConfig()` |
-| `analysis/analyzers.ts` | Result analysis | `runAnalyzers()` |
-| `report/generator.ts` | Report generation | `generateEvalReport()` |
+| `analysis/run-analyzers.ts` | Result analysis | `runAnalyzers()` |
+| `analysis/tool-name-resolver.ts` | Eval-specific tool name resolution | `resolveEvalToolName()` |
+| `report/generate.ts` | Report generation | `generateEvalReport()` |
 
 ## Key Files by Concern
 
