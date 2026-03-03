@@ -20,7 +20,7 @@ import {
   strategyAnalyzer,
   toolPatternAnalyzer,
 } from "@ghx-dev/agent-profiler"
-import { Command } from "commander"
+import { Command, InvalidArgumentError } from "commander"
 
 const BUILT_IN_ANALYZERS = [
   reasoningAnalyzer,
@@ -76,11 +76,7 @@ function applyOptsOverrides(config: EvalConfig, opts: RunOpts): EvalConfig {
   }
 
   if (opts.repetitions !== undefined) {
-    if (Number.isNaN(opts.repetitions)) {
-      console.warn(`Warning: invalid --repetitions value, using config default`)
-    } else {
-      result = { ...result, execution: { ...result.execution, repetitions: opts.repetitions } }
-    }
+    result = { ...result, execution: { ...result.execution, repetitions: opts.repetitions } }
   }
 
   if (opts.skipWarmup) {
@@ -140,13 +136,17 @@ async function writeAnalysisBundles(
 export function makeRunCommand(): Command {
   return new Command("run")
     .description("Execute an evaluation run against configured models and scenarios")
-    .option("--config <path>", "config file path", "eval.config.yaml")
+    .option("--config <path>", "config file path", "config/eval.config.yaml")
     .option("--dry-run", "log resolved config and scenario count; skip execution")
     .option("--model <id>", "override model (repeatable)", collect, [] as string[])
     .option("--mode <name>", "override eval mode (repeatable)", collect, [] as string[])
     .option("--scenario <id>", "filter scenarios by ID (repeatable)", collect, [] as string[])
     .option("--scenario-set <name>", "select a pre-defined scenario set")
-    .option("--repetitions <n>", "override repetition count", parseInt)
+    .option("--repetitions <n>", "override repetition count", (value: string) => {
+      const n = parseInt(value, 10)
+      if (Number.isNaN(n)) throw new InvalidArgumentError("Not a number.")
+      return n
+    })
     .option("--skip-warmup", "disable warmup iterations")
     .option("--seed-if-missing", "auto-seed missing fixtures before run")
     .option("--output-jsonl <path>", "override results output file path")

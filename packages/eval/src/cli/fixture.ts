@@ -1,7 +1,9 @@
 import { readFile } from "node:fs/promises"
+import { join } from "node:path"
 import { loadEvalConfig } from "@eval/config/loader.js"
+import type { EvalConfig } from "@eval/config/schema.js"
 import { FixtureManager } from "@eval/fixture/manager.js"
-import { loadEvalScenarios } from "@eval/scenario/loader.js"
+import { loadEvalScenarios, loadScenarioSets } from "@eval/scenario/loader.js"
 import { Command } from "commander"
 
 function makeSeedCommand(): Command {
@@ -31,8 +33,9 @@ function makeSeedCommand(): Command {
         })
         const yamlContent = await readFile(opts.config, "utf-8")
         const config = loadEvalConfig(yamlContent)
-        const scenarioIds = config.scenarios.ids ?? undefined
-        const scenarios = await loadEvalScenarios("scenarios", scenarioIds)
+        const scenariosDir = join(process.cwd(), "scenarios")
+        const resolvedIds = await resolveScenarioIds(scenariosDir, config.scenarios)
+        const scenarios = await loadEvalScenarios("scenarios", resolvedIds)
 
         if (opts.dryRun) {
           const uniqueRequires = new Set<string>()
@@ -98,6 +101,24 @@ function makeCleanupCommand(): Command {
       await manager.cleanup({ all: opts.all ?? false })
       console.log("Fixture cleanup complete.")
     })
+}
+
+async function resolveScenarioIds(
+  scenariosDir: string,
+  scenarios: EvalConfig["scenarios"],
+): Promise<readonly string[] | undefined> {
+  if (scenarios.ids !== undefined && scenarios.ids.length > 0) {
+    return scenarios.ids
+  }
+  if (scenarios.set !== undefined) {
+    const sets = await loadScenarioSets(scenariosDir)
+    const ids = sets[scenarios.set]
+    if (ids === undefined) {
+      throw new Error(`Scenario set "${scenarios.set}" not found in scenario-sets.json`)
+    }
+    return ids
+  }
+  return undefined
 }
 
 export function makeFixtureCommand(): Command {

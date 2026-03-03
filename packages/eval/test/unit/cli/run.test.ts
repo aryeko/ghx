@@ -132,10 +132,10 @@ describe("run command", () => {
     vi.unstubAllEnvs()
   })
 
-  it("reads config from default path eval.config.yaml when no --config flag", async () => {
+  it("reads config from default path config/eval.config.yaml when no --config flag", async () => {
     const { readFile: rf } = await import("node:fs/promises")
     await runFn([])
-    expect(rf).toHaveBeenCalledWith("eval.config.yaml", "utf-8")
+    expect(rf).toHaveBeenCalledWith("config/eval.config.yaml", "utf-8")
   })
 
   it("reads config from the specified --config path", async () => {
@@ -304,17 +304,8 @@ describe("run command", () => {
     expect(runProfileSuite).toHaveBeenCalledTimes(1)
   })
 
-  it("--repetitions with invalid value logs warning and uses config default", async () => {
-    const { runProfileSuite } = await import("@ghx-dev/agent-profiler")
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined)
-
-    await runFn(["--repetitions", "notanumber"])
-
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("invalid --repetitions value"))
-    expect(runProfileSuite).toHaveBeenCalledTimes(1)
-    const call = vi.mocked(runProfileSuite).mock.calls[0]
-    expect((call as unknown[][])[0]).toMatchObject({ repetitions: 1 })
-    warnSpy.mockRestore()
+  it("--repetitions with invalid value throws an error", async () => {
+    await expect(runFn(["--repetitions", "notanumber"])).rejects.toThrow()
   })
 
   it("writes analysis bundles when runProfileSuite returns analysis results", async () => {
