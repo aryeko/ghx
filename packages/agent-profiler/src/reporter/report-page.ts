@@ -1,7 +1,8 @@
 import { computeDescriptive } from "@profiler/stats/descriptive.js"
 import type { ProfileRow } from "@profiler/types/profile-row.js"
 import type { AnalysisFinding, SessionAnalysisBundle } from "@profiler/types/trace.js"
-import { computePairwiseComparisons } from "./comparison-page.js"
+import { computePairwiseComparisons } from "./pairwise-comparison.js"
+import { isDifferentiating } from "./report-utils.js"
 
 /** Metadata for a scenario, optionally provided by the eval layer. */
 export interface ScenarioMetadata {
@@ -50,6 +51,12 @@ function renderRunSummary(rows: readonly ProfileRow[], runId: string): readonly 
   const models = [...new Set(rows.map((r) => r.model))]
   const providers = [...new Set(rows.map((r) => r.provider))]
   const iterations = rows.length > 0 ? Math.max(...rows.map((r) => r.iteration)) + 1 : 0
+  const firstRow = rows[0]
+  const date = firstRow
+    ? rows
+        .reduce((min, r) => (r.startedAt < min ? r.startedAt : min), firstRow.startedAt)
+        .split("T")[0]
+    : "unknown"
 
   return [
     "# Eval Report",
@@ -59,7 +66,7 @@ function renderRunSummary(rows: readonly ProfileRow[], runId: string): readonly 
     "| Property | Value |",
     "| --- | --- |",
     `| Run ID | \`${runId}\` |`,
-    `| Date | ${new Date().toISOString().split("T")[0]} |`,
+    `| Date | ${date} |`,
     `| Model | ${models.join(", ")} |`,
     `| Provider | ${providers.join(", ")} |`,
     `| Modes | ${modes.join(", ")} |`,
@@ -458,13 +465,20 @@ function aggregateCheckpoints(
     for (const row of scenarioRows) {
       for (const cp of row.checkpointDetails) {
         const existing = checkpointMap.get(cp.id)
-        const passRates = existing ? { ...existing.passRates } : {}
-        const modeEntry = passRates[row.mode] ?? { passed: 0, total: 0 }
-        passRates[row.mode] = {
-          passed: modeEntry.passed + (cp.passed ? 1 : 0),
-          total: modeEntry.total + 1,
+        const prevRates = existing?.passRates ?? {}
+        const modeEntry = prevRates[row.mode] ?? { passed: 0, total: 0 }
+        const updatedPassRates: Record<string, { passed: number; total: number }> = {
+          ...prevRates,
+          [row.mode]: {
+            passed: modeEntry.passed + (cp.passed ? 1 : 0),
+            total: modeEntry.total + 1,
+          },
         }
-        checkpointMap.set(cp.id, { id: cp.id, description: cp.description, passRates })
+        checkpointMap.set(cp.id, {
+          id: cp.id,
+          description: cp.description,
+          passRates: updatedPassRates,
+        })
       }
     }
 
@@ -623,15 +637,6 @@ const GROUP_HEADINGS: Record<MetricGroup, string> = {
 }
 
 const GROUP_ORDER: readonly MetricGroup[] = ["behavioral", "strategy", "reasoning"]
-
-const ZERO_VALUES = new Set(["0", "0%", "0.0%", "0 tok", "-"])
-
-function isDifferentiating(values: ReadonlyMap<string, string>, modes: readonly string[]): boolean {
-  const vals = modes.map((m) => values.get(m) ?? "-")
-  const allSame = vals.every((v) => v === vals[0])
-  const allZero = vals.every((v) => ZERO_VALUES.has(v))
-  return !allSame && !allZero
-}
 
 function renderEfficiencyAnalysis(
   analysisResults: readonly SessionAnalysisBundle[],

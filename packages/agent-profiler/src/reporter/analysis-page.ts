@@ -1,6 +1,7 @@
 import { computeDescriptive } from "@profiler/stats/descriptive.js"
 import type { AnalysisFinding, SessionAnalysisBundle } from "@profiler/types/trace.js"
 import type { ScenarioMetadata } from "./report-page.js"
+import { isDifferentiating } from "./report-utils.js"
 
 const ANALYZER_ORDER: readonly string[] = [
   "efficiency",
@@ -16,15 +17,6 @@ const ANALYZER_DISPLAY_NAMES: Readonly<Record<string, string>> = {
   strategy: "Strategy",
   reasoning: "Reasoning",
   error: "Errors",
-}
-
-const ZERO_VALUES = new Set(["0", "0%", "0.0%", "0 tok", "-", ""])
-
-function isDifferentiating(values: ReadonlyMap<string, string>, modes: readonly string[]): boolean {
-  const vals = modes.map((m) => values.get(m) ?? "-")
-  const allSame = vals.every((v) => v === vals[0])
-  const allZero = vals.every((v) => ZERO_VALUES.has(v))
-  return !allSame && !allZero
 }
 
 function formatScalar(finding: AnalysisFinding): string {

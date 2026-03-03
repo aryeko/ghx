@@ -7,7 +7,10 @@ export { reasoningAnalyzer } from "./analyzer/reasoning-analyzer.js"
 export { strategyAnalyzer } from "./analyzer/strategy-analyzer.js"
 export type { ToolPatternAnalyzerOptions } from "./analyzer/tool-pattern-analyzer.js"
 export {
+  BASH_TOOL_NAMES,
   createToolPatternAnalyzer,
+  extractCommand,
+  isBashLikeTool,
   resolveToolDisplayName,
   toolPatternAnalyzer,
 } from "./analyzer/tool-pattern-analyzer.js"

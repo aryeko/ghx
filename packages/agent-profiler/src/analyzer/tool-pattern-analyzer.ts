@@ -3,15 +3,21 @@ import type { BaseScenario } from "@profiler/types/scenario.js"
 import type { AnalysisResult, SessionTrace, TraceEvent } from "@profiler/types/trace.js"
 import { isToolCall } from "./utils.js"
 
-const BASH_TOOL_NAMES = new Set(["bash", "shell", "terminal", "execute_command", "run_command"])
+export const BASH_TOOL_NAMES: ReadonlySet<string> = new Set([
+  "bash",
+  "shell",
+  "terminal",
+  "execute_command",
+  "run_command",
+])
 
 const SUBCOMMAND_PROGRAMS = new Set(["gh", "ghx", "git", "docker", "kubectl", "npm", "npx", "pnpm"])
 
-function isBashLikeTool(name: string): boolean {
+export function isBashLikeTool(name: string): boolean {
   return BASH_TOOL_NAMES.has(name.toLowerCase())
 }
 
-function extractCommand(input: unknown): string | undefined {
+export function extractCommand(input: unknown): string | undefined {
   if (typeof input === "string") return input
   if (typeof input !== "object" || input === null) return undefined
   const record = input as Record<string, unknown>
@@ -24,6 +30,7 @@ function extractProgram(command: string): string | undefined {
   if (trimmed === "") return undefined
 
   // Strip leading env vars (FOO=bar BAR=baz gh ...)
+  // Note: \S+=\S+ does not handle values containing spaces (e.g. FOO="bar baz")
   const withoutEnvVars = trimmed.replace(/^(?:\S+=\S+\s+)+/, "")
 
   // Split into tokens

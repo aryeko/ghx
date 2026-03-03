@@ -340,4 +340,247 @@ describe("generateReportPage", () => {
     expect(result).toContain("shell")
     expect(result).toContain("file")
   })
+
+  it("renders tool usage from extension keys when present", () => {
+    const rows = [
+      makeProfileRow({
+        mode: "a",
+        extensions: {
+          "ghx.capabilities_used": 5,
+          "ghx.gh_cli_commands": 3,
+          "ghx.bash_commands": 2,
+          "ghx.mcp_tools_invoked": 0,
+          "ghx.file_ops": 1,
+          "ghx.other_tools": 0,
+        },
+      }),
+    ]
+    const result = generateReportPage(makeContext({ rows }))
+    expect(result).toContain("GHX Capabilities")
+    expect(result).toContain("GH CLI Commands")
+    expect(result).toContain("Description")
+  })
+
+  it("shows no tool category data when byCategory is empty", () => {
+    const rows = [
+      makeProfileRow({
+        mode: "a",
+        toolCalls: {
+          total: 0,
+          byCategory: {},
+          failed: 0,
+          retried: 0,
+          errorRate: 0,
+          records: [],
+        },
+      }),
+    ]
+    const result = generateReportPage(makeContext({ rows }))
+    expect(result).toContain("No tool category data available")
+  })
+
+  it("uses startedAt from rows for date instead of current date", () => {
+    const rows = [
+      makeProfileRow({ startedAt: "2025-06-15T10:00:00.000Z" }),
+      makeProfileRow({ startedAt: "2025-06-14T08:00:00.000Z" }),
+    ]
+    const result = generateReportPage(makeContext({ rows }))
+    expect(result).toContain("2025-06-14")
+    expect(result).not.toContain("unknown")
+  })
+
+  it("shows unknown date when rows are empty", () => {
+    const result = generateReportPage(makeContext({ rows: [] }))
+    expect(result).toContain("unknown")
+  })
+
+  it("renders yellow warning indicator for medium success rate", () => {
+    const rows = [
+      makeProfileRow({ mode: "warn", success: true }),
+      makeProfileRow({ mode: "warn", success: true }),
+      makeProfileRow({ mode: "warn", success: true }),
+      makeProfileRow({ mode: "warn", success: false }),
+    ]
+    const result = generateReportPage(makeContext({ rows }))
+    // 75% success -> yellow warning
+    expect(result).toContain("\u{1F7E1} 75%")
+  })
+
+  it("renders yellow warning indicator for failed calls between 1-3", () => {
+    const rows = [
+      makeProfileRow({
+        mode: "a",
+        toolCalls: {
+          total: 5,
+          byCategory: {},
+          failed: 2,
+          retried: 0,
+          errorRate: 0.4,
+          records: [],
+        },
+      }),
+    ]
+    const result = generateReportPage(makeContext({ rows }))
+    expect(result).toContain("\u{1F7E1} 2")
+  })
+
+  it("renders red indicator for more than 3 failed calls", () => {
+    const rows = [
+      makeProfileRow({
+        mode: "a",
+        toolCalls: {
+          total: 10,
+          byCategory: {},
+          failed: 5,
+          retried: 0,
+          errorRate: 0.5,
+          records: [],
+        },
+      }),
+    ]
+    const result = generateReportPage(makeContext({ rows }))
+    expect(result).toContain("\u{1F534} 5")
+  })
+
+  it("aggregates checkpoints across multiple modes", () => {
+    const rows = [
+      makeProfileRow({
+        mode: "a",
+        scenarioId: "s1",
+        checkpointDetails: [{ id: "cp1", description: "Issue exists", passed: true }],
+      }),
+      makeProfileRow({
+        mode: "b",
+        scenarioId: "s1",
+        checkpointDetails: [{ id: "cp1", description: "Issue exists", passed: false }],
+      }),
+    ]
+    const result = generateReportPage(makeContext({ rows }))
+    expect(result).toContain("`cp1`")
+    expect(result).toContain("100%")
+    expect(result).toContain("0%")
+  })
+
+  it("renders checkpoint yellow indicator for 50% pass rate", () => {
+    const rows = [
+      makeProfileRow({
+        mode: "a",
+        scenarioId: "s1",
+        checkpointDetails: [{ id: "cp1", description: "Check", passed: true }],
+      }),
+      makeProfileRow({
+        mode: "a",
+        scenarioId: "s1",
+        checkpointDetails: [{ id: "cp1", description: "Check", passed: false }],
+      }),
+    ]
+    const result = generateReportPage(makeContext({ rows }))
+    expect(result).toContain("\u{1F7E1} 50%")
+  })
+
+  it("renders error details with error message", () => {
+    const rows = [
+      makeProfileRow({
+        success: false,
+        error: "Token limit exceeded",
+      }),
+    ]
+    const result = generateReportPage(makeContext({ rows }))
+    expect(result).toContain("Error: Token limit exceeded")
+  })
+
+  it("formats large numbers with k suffix in glance table", () => {
+    const rows = [
+      makeProfileRow({
+        mode: "a",
+        tokens: {
+          input: 5000,
+          output: 3000,
+          reasoning: 1000,
+          cacheRead: 500,
+          cacheWrite: 200,
+          total: 9000,
+          active: 8000,
+        },
+      }),
+    ]
+    const result = generateReportPage(makeContext({ rows }))
+    expect(result).toContain("8.0k")
+  })
+
+  it("renders no notable differences when all efficiency metrics are the same", () => {
+    const bundles: readonly SessionAnalysisBundle[] = [
+      {
+        sessionId: "ses_1",
+        scenarioId: "s1",
+        mode: "a",
+        model: "test-model",
+        results: {
+          efficiency: {
+            analyzer: "efficiency",
+            summary: "Ok",
+            findings: {
+              turn_efficiency: { type: "ratio", value: 1.0, label: "100%" },
+            },
+          },
+        },
+      },
+      {
+        sessionId: "ses_2",
+        scenarioId: "s1",
+        mode: "b",
+        model: "test-model",
+        results: {
+          efficiency: {
+            analyzer: "efficiency",
+            summary: "Ok",
+            findings: {
+              turn_efficiency: { type: "ratio", value: 1.0, label: "100%" },
+            },
+          },
+        },
+      },
+    ]
+    const result = generateReportPage(makeContext({ analysisResults: bundles }))
+    expect(result).toContain("No notable differences across modes")
+  })
+
+  it("renders strategy group with string findings", () => {
+    const bundles: readonly SessionAnalysisBundle[] = [
+      {
+        sessionId: "ses_1",
+        scenarioId: "s1",
+        mode: "a",
+        model: "test-model",
+        results: {
+          strategy: {
+            analyzer: "strategy",
+            summary: "Methodical",
+            findings: {
+              strategy_summary: { type: "string", value: "methodical" },
+            },
+          },
+        },
+      },
+      {
+        sessionId: "ses_2",
+        scenarioId: "s1",
+        mode: "b",
+        model: "test-model",
+        results: {
+          strategy: {
+            analyzer: "strategy",
+            summary: "Exploratory",
+            findings: {
+              strategy_summary: { type: "string", value: "exploratory" },
+            },
+          },
+        },
+      },
+    ]
+    const result = generateReportPage(makeContext({ analysisResults: bundles }))
+    expect(result).toContain("Strategy Profile")
+    expect(result).toContain("methodical")
+    expect(result).toContain("exploratory")
+  })
 })

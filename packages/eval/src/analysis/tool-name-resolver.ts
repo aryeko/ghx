@@ -1,18 +1,4 @@
-import { resolveToolDisplayName } from "@ghx-dev/agent-profiler"
-
-const BASH_TOOL_NAMES = new Set(["bash", "shell", "terminal", "execute_command", "run_command"])
-
-function isBashLikeTool(name: string): boolean {
-  return BASH_TOOL_NAMES.has(name.toLowerCase())
-}
-
-function extractCommand(input: unknown): string | undefined {
-  if (typeof input === "string") return input
-  if (typeof input !== "object" || input === null) return undefined
-  const record = input as Record<string, unknown>
-  const raw = record["command"] ?? record["cmd"] ?? record["input"]
-  return typeof raw === "string" ? raw : undefined
-}
+import { extractCommand, isBashLikeTool, resolveToolDisplayName } from "@ghx-dev/agent-profiler"
 
 /**
  * Eval-specific tool name resolver that enriches bash tool calls with

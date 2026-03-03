@@ -5,7 +5,13 @@ vi.mock("node:fs/promises", () => ({
   writeFile: vi.fn().mockResolvedValue(undefined),
 }))
 
+vi.mock("@profiler/reporter/analysis-page.js", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@profiler/reporter/analysis-page.js")>()
+  return { ...original, generateAnalysisPage: vi.fn(original.generateAnalysisPage) }
+})
+
 import { mkdir, writeFile } from "node:fs/promises"
+import { generateAnalysisPage } from "@profiler/reporter/analysis-page.js"
 import { generateReport } from "@profiler/reporter/orchestrator.js"
 import { makeProfileRow } from "./_make-profile-row.js"
 
@@ -90,6 +96,39 @@ describe("generateReport", () => {
     // Other pages should still be written
     const writtenPaths = writeFileMock.mock.calls.map((c) => String(c[0]))
     expect(writtenPaths.some((p) => p.endsWith("results.csv"))).toBe(true)
+  })
+
+  it("continues writing report and data exports when analysis page generator throws", async () => {
+    const analysisMock = vi.mocked(generateAnalysisPage)
+    analysisMock.mockImplementation(() => {
+      throw new Error("analysis generation failed")
+    })
+
+    const logger = { warn: vi.fn() }
+    const rows = [makeProfileRow()]
+    const result = await generateReport({
+      runId: "run_1",
+      rows,
+      reportsDir: "/tmp/reports",
+      logger,
+    })
+
+    expect(result).toBeDefined()
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("analysis generation failed"))
+
+    const writeFileMock = vi.mocked(writeFile)
+    const writtenPaths = writeFileMock.mock.calls.map((c) => String(c[0]))
+
+    // report.md and data exports should still be written
+    expect(writtenPaths.some((p) => p.endsWith("report.md"))).toBe(true)
+    expect(writtenPaths.some((p) => p.endsWith("results.csv"))).toBe(true)
+    expect(writtenPaths.some((p) => p.endsWith("results.json"))).toBe(true)
+    expect(writtenPaths.some((p) => p.endsWith("summary.json"))).toBe(true)
+
+    // analysis.md should NOT be written since the generator threw
+    expect(writtenPaths.some((p) => p.endsWith("analysis.md"))).toBe(false)
+
+    analysisMock.mockRestore()
   })
 
   it("passes analysis results to analysis page", async () => {
