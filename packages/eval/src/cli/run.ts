@@ -76,7 +76,11 @@ function applyOptsOverrides(config: EvalConfig, opts: RunOpts): EvalConfig {
   }
 
   if (opts.repetitions !== undefined) {
-    result = { ...result, execution: { ...result.execution, repetitions: opts.repetitions } }
+    if (Number.isNaN(opts.repetitions)) {
+      console.warn(`Warning: invalid --repetitions value, using config default`)
+    } else {
+      result = { ...result, execution: { ...result.execution, repetitions: opts.repetitions } }
+    }
   }
 
   if (opts.skipWarmup) {

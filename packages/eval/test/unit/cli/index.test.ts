@@ -1,4 +1,8 @@
+import { fileURLToPath } from "node:url"
 import { afterEach, describe, expect, it, vi } from "vitest"
+
+// Absolute path to the CLI entry point — must match import.meta.url inside index.ts
+const INDEX_PATH = fileURLToPath(new URL("../../../src/cli/index.ts", import.meta.url))
 
 describe("CLI program structure", () => {
   it("registers all expected subcommands", async () => {
@@ -44,7 +48,7 @@ describe("direct run initialization", () => {
 
   it("calls parseAsync and reports error when run directly as index script", async () => {
     const origArgv1 = process.argv[1] as string | undefined
-    process.argv[1] = "/usr/local/lib/eval/cli/index.ts"
+    process.argv[1] = INDEX_PATH
 
     const mockParseAsync = vi.fn().mockRejectedValue(new Error("startup-error"))
     const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
@@ -83,7 +87,7 @@ describe("direct run initialization", () => {
 
   it("formats non-Error rejection with String() when run directly", async () => {
     const origArgv1 = process.argv[1] as string | undefined
-    process.argv[1] = "/usr/local/lib/eval/cli/index.ts"
+    process.argv[1] = INDEX_PATH
 
     const mockParseAsync = vi.fn().mockRejectedValue("plain-string-error")
     const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
