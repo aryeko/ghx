@@ -10,6 +10,7 @@ import {
   strategyAnalyzer,
   efficiencyAnalyzer,
   toolPatternAnalyzer,
+  createToolPatternAnalyzer,
   errorAnalyzer,
 } from "@ghx-dev/agent-profiler"
 ```
@@ -22,7 +23,7 @@ flowchart TD
     Trace["SessionTrace"] --> R["reasoningAnalyzer"]
     Trace --> S["strategyAnalyzer"]
     Trace --> E["efficiencyAnalyzer"]
-    Trace --> T["toolPatternAnalyzer"]
+    Trace --> T["toolPatternAnalyzer / createToolPatternAnalyzer()"]
     Trace --> Er["errorAnalyzer"]
     R --> Bundle["SessionAnalysisBundle"]
     S --> Bundle
@@ -95,12 +96,13 @@ Measures turn-level productivity and information redundancy within a session.
 | `information_redundancy` | number | ratio | Duplicate tool calls (same tool + same input) divided by total tool calls |
 | `backtracking_events` | number | events | Instances where the agent revisited a previously completed step |
 
-## toolPatternAnalyzer
+## toolPatternAnalyzer / createToolPatternAnalyzer
 
-Identifies sequential tool usage patterns, redundant invocations, and retry behavior.
+Identifies sequential tool usage patterns, redundant invocations, and retry behavior. The default `toolPatternAnalyzer` singleton uses built-in tool name resolution (enriching bash tool calls with subcommand names like `gh pr`, `git commit`). Use `createToolPatternAnalyzer({ resolveToolName })` to provide custom tool name resolution logic.
 
 - **name:** `"tool-pattern"`
 - **Source:** `packages/agent-profiler/src/analyzer/tool-pattern-analyzer.ts`
+- **Exports:** `toolPatternAnalyzer` (default instance), `createToolPatternAnalyzer(options?)` (factory), `BASH_TOOL_NAMES`, `isBashLikeTool`, `extractCommand`, `resolveToolDisplayName`
 
 ### Findings
 

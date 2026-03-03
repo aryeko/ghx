@@ -8,12 +8,13 @@ import type {
   SessionTrace,
 } from "@ghx-dev/agent-profiler"
 import {
+  createToolPatternAnalyzer,
   efficiencyAnalyzer,
   errorAnalyzer,
   reasoningAnalyzer,
   strategyAnalyzer,
-  toolPatternAnalyzer,
 } from "@ghx-dev/agent-profiler"
+import { resolveEvalToolName } from "./tool-name-resolver.js"
 
 export interface RunAnalyzersOptions {
   readonly runDir: string
@@ -24,7 +25,7 @@ const BUILT_IN_ANALYZERS: readonly Analyzer[] = [
   reasoningAnalyzer,
   strategyAnalyzer,
   efficiencyAnalyzer,
-  toolPatternAnalyzer,
+  createToolPatternAnalyzer({ resolveToolName: resolveEvalToolName }),
   errorAnalyzer,
 ]
 

@@ -1,5 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { join } from "node:path"
+import { resolveEvalToolName } from "@eval/analysis/tool-name-resolver.js"
 import { GhxCollector } from "@eval/collector/ghx-collector.js"
 import { loadEvalConfig } from "@eval/config/loader.js"
 import type { EvalConfig } from "@eval/config/schema.js"
@@ -13,12 +14,12 @@ import { loadEvalScenarios, loadScenarioSets } from "@eval/scenario/loader.js"
 import { CheckpointScorer } from "@eval/scorer/checkpoint-scorer.js"
 import type { BaseScenario, SessionAnalysisBundle } from "@ghx-dev/agent-profiler"
 import {
+  createToolPatternAnalyzer,
   efficiencyAnalyzer,
   errorAnalyzer,
   reasoningAnalyzer,
   runProfileSuite,
   strategyAnalyzer,
-  toolPatternAnalyzer,
 } from "@ghx-dev/agent-profiler"
 import { Command, InvalidArgumentError } from "commander"
 
@@ -26,7 +27,7 @@ const BUILT_IN_ANALYZERS = [
   reasoningAnalyzer,
   strategyAnalyzer,
   efficiencyAnalyzer,
-  toolPatternAnalyzer,
+  createToolPatternAnalyzer({ resolveToolName: resolveEvalToolName }),
   errorAnalyzer,
 ]
 

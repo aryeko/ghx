@@ -5,16 +5,13 @@ vi.mock("node:fs/promises", () => ({
   writeFile: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock("@profiler/reporter/metrics-page.js", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@profiler/reporter/metrics-page.js")>()
-  return {
-    ...original,
-    generateMetricsPage: vi.fn(original.generateMetricsPage),
-  }
+vi.mock("@profiler/reporter/analysis-page.js", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@profiler/reporter/analysis-page.js")>()
+  return { ...original, generateAnalysisPage: vi.fn(original.generateAnalysisPage) }
 })
 
 import { mkdir, writeFile } from "node:fs/promises"
-import { generateMetricsPage } from "@profiler/reporter/metrics-page.js"
+import { generateAnalysisPage } from "@profiler/reporter/analysis-page.js"
 import { generateReport } from "@profiler/reporter/orchestrator.js"
 import { makeProfileRow } from "./_make-profile-row.js"
 
@@ -23,19 +20,17 @@ describe("generateReport", () => {
     vi.clearAllMocks()
   })
 
-  it("creates report directories", async () => {
+  it("creates data directory", async () => {
     const rows = [makeProfileRow()]
     await generateReport({
       runId: "run_1",
       rows,
       reportsDir: "/tmp/reports",
     })
-    expect(mkdir).toHaveBeenCalledTimes(2)
+    expect(mkdir).toHaveBeenCalledTimes(1)
     const mkdirMock = vi.mocked(mkdir)
     const firstCall = mkdirMock.mock.calls[0]
-    const secondCall = mkdirMock.mock.calls[1]
-    expect(firstCall?.[0]).toMatch(/scenarios$/)
-    expect(secondCall?.[0]).toMatch(/data$/)
+    expect(firstCall?.[0]).toMatch(/data$/)
   })
 
   it("writes all expected files", async () => {
@@ -49,15 +44,11 @@ describe("generateReport", () => {
     const writeFileMock = vi.mocked(writeFile)
     const writtenPaths = writeFileMock.mock.calls.map((c) => String(c[0]))
 
-    // 4 pages + 2 scenario pages + 3 data files = 9
-    expect(writtenPaths.length).toBe(9)
+    // 2 pages (report.md + analysis.md) + 3 data files = 5
+    expect(writtenPaths.length).toBe(5)
 
-    expect(writtenPaths.some((p) => p.endsWith("index.md"))).toBe(true)
-    expect(writtenPaths.some((p) => p.endsWith("metrics.md"))).toBe(true)
+    expect(writtenPaths.some((p) => p.endsWith("report.md"))).toBe(true)
     expect(writtenPaths.some((p) => p.endsWith("analysis.md"))).toBe(true)
-    expect(writtenPaths.some((p) => p.endsWith("comparison.md"))).toBe(true)
-    expect(writtenPaths.some((p) => p.endsWith("s1.md"))).toBe(true)
-    expect(writtenPaths.some((p) => p.endsWith("s2.md"))).toBe(true)
     expect(writtenPaths.some((p) => p.endsWith("results.csv"))).toBe(true)
     expect(writtenPaths.some((p) => p.endsWith("results.json"))).toBe(true)
     expect(writtenPaths.some((p) => p.endsWith("summary.json"))).toBe(true)
@@ -80,38 +71,8 @@ describe("generateReport", () => {
     })
 
     const writeFileMock = vi.mocked(writeFile)
-    // 4 pages + 0 scenario pages + 3 data files = 7
-    expect(writeFileMock.mock.calls.length).toBe(7)
-  })
-
-  it("continues generating other pages when one page generator throws", async () => {
-    vi.mocked(generateMetricsPage).mockImplementationOnce(() => {
-      throw new Error("metrics kaboom")
-    })
-
-    const logger = { warn: vi.fn() }
-    const rows = [makeProfileRow()]
-    const result = await generateReport({
-      runId: "run_1",
-      rows,
-      reportsDir: "/tmp/reports",
-      logger,
-    })
-
-    expect(result).toBeDefined()
-
-    // logger.warn should have been called with the error
-    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("metrics kaboom"))
-
-    // Other pages should still be written (all except metrics.md)
-    const writeFileMock = vi.mocked(writeFile)
-    const writtenPaths = writeFileMock.mock.calls.map((c) => String(c[0]))
-
-    expect(writtenPaths.some((p) => p.endsWith("index.md"))).toBe(true)
-    expect(writtenPaths.some((p) => p.endsWith("comparison.md"))).toBe(true)
-    expect(writtenPaths.some((p) => p.endsWith("results.csv"))).toBe(true)
-    // metrics.md should NOT have been written since the generator threw
-    expect(writtenPaths.some((p) => p.endsWith("metrics.md"))).toBe(false)
+    // 2 pages (report.md + analysis.md) + 3 data files = 5
+    expect(writeFileMock.mock.calls.length).toBe(5)
   })
 
   it("logs warning and continues when writeFile rejects for a single page", async () => {
@@ -134,8 +95,40 @@ describe("generateReport", () => {
 
     // Other pages should still be written
     const writtenPaths = writeFileMock.mock.calls.map((c) => String(c[0]))
-    expect(writtenPaths.some((p) => p.endsWith("metrics.md"))).toBe(true)
     expect(writtenPaths.some((p) => p.endsWith("results.csv"))).toBe(true)
+  })
+
+  it("continues writing report and data exports when analysis page generator throws", async () => {
+    const analysisMock = vi.mocked(generateAnalysisPage)
+    analysisMock.mockImplementation(() => {
+      throw new Error("analysis generation failed")
+    })
+
+    const logger = { warn: vi.fn() }
+    const rows = [makeProfileRow()]
+    const result = await generateReport({
+      runId: "run_1",
+      rows,
+      reportsDir: "/tmp/reports",
+      logger,
+    })
+
+    expect(result).toBeDefined()
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("analysis generation failed"))
+
+    const writeFileMock = vi.mocked(writeFile)
+    const writtenPaths = writeFileMock.mock.calls.map((c) => String(c[0]))
+
+    // report.md and data exports should still be written
+    expect(writtenPaths.some((p) => p.endsWith("report.md"))).toBe(true)
+    expect(writtenPaths.some((p) => p.endsWith("results.csv"))).toBe(true)
+    expect(writtenPaths.some((p) => p.endsWith("results.json"))).toBe(true)
+    expect(writtenPaths.some((p) => p.endsWith("summary.json"))).toBe(true)
+
+    // analysis.md should NOT be written since the generator threw
+    expect(writtenPaths.some((p) => p.endsWith("analysis.md"))).toBe(false)
+
+    analysisMock.mockRestore()
   })
 
   it("passes analysis results to analysis page", async () => {

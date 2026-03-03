@@ -35,63 +35,31 @@ Each report generates a timestamped directory with the following layout:
 
 ```text
 reports/<timestamp>/
-  index.md          -- summary page
-  metrics.md        -- per-metric descriptive statistics
-  analysis.md       -- analyzer findings
-  comparison.md     -- cross-mode comparison tables
-  scenarios/
-    <id>.md         -- per-scenario detail page
+  report.md         -- unified report page
+  analysis.md       -- analyzer findings (cross-mode comparison)
   data/
     results.csv     -- raw CSV export
     results.json    -- raw JSON export
     summary.json    -- aggregated summary
 ```
 
-## Reading the Summary Page (index.md)
+## Reading the Report Page (report.md)
 
-The summary page provides a high-level overview of the profiling run.
+The unified report page combines run summary, per-scenario results, metrics, and pairwise comparisons into a single document.
 
 Contents include:
 
-- **Run ID** -- unique identifier for traceability
-- **Mode/scenario matrix** -- which modes and scenarios were profiled, with iteration counts
-- **Overall success rates** -- percentage of iterations where the scorer returned `success: true`, broken down by mode
-- **Timing overview** -- total suite duration and average iteration duration per mode
-- **Configuration snapshot** -- key settings (repetitions, warmup, timeout, retries)
+- **Run summary** -- run ID, date (derived from earliest row timestamp), mode/scenario matrix, iteration counts, configuration snapshot
+- **Per-scenario sections** -- each scenario gets a collapsible section with:
+  - Scenario metadata (name, description)
+  - Metrics tables grouped by category (tokens, latency, cost, tool calls, custom) with per-mode median values and indicator columns
+  - Checkpoint pass rates per mode
+  - Error details when present
+- **Pairwise comparison** -- for runs with 2+ modes, cross-mode statistical comparisons including reduction percentage, bootstrap 95% CI, Cohen's d effect size, and permutation test p-value
 
-This page answers the question: "did the profiling run complete, and what did it cover?"
-
-## Reading the Metrics Page (metrics.md)
-
-The metrics page presents descriptive statistics for every numeric metric collected during the run, grouped by mode and scenario.
-
-For each metric, the page displays:
-
-| Statistic | Description |
-|-----------|-------------|
-| `mean` | Arithmetic mean across repetitions |
-| `median` | 50th percentile (middle value) |
-| `p90` | 90th percentile |
-| `p95` | 95th percentile |
-| `stddev` | Standard deviation |
-| `CV` | Coefficient of variation (stddev / mean), measures relative variability |
-| `IQR` | Interquartile range (p75 - p25), robust measure of spread |
-
-Metrics include both built-in values (tokens, timing, cost, tool calls) and any custom metrics produced by registered collectors.
-
-A low CV (below 0.1) indicates stable, reproducible measurements. A high CV (above 0.3) suggests high variability that may warrant more repetitions or investigation into what causes the variance.
-
-## Reading the Comparison Page (comparison.md)
-
-The comparison page presents cross-mode statistical comparisons. For each metric where two modes have measurements, the page includes:
-
-| Column | Description |
-|--------|-------------|
-| `reductionPct` | Percentage reduction from mode A to mode B. Positive means mode A is better (lower value). |
-| `95% CI` | Bootstrap 95% confidence interval for the reduction percentage. |
-| `Cohen's d` | Standardized effect size measuring the practical difference between groups. |
-| `Effect Magnitude` | Qualitative classification of Cohen's d. |
-| `p-value` | Permutation test p-value for statistical significance. |
+Indicator columns use color markers to highlight notable differences:
+- Yellow indicators flag metrics where one mode is notably higher
+- Red indicators flag failed tool calls or errors
 
 ### Interpreting Comparison Results
 
@@ -112,28 +80,22 @@ The comparison page presents cross-mode statistical comparisons. For each metric
 
 ## Reading the Analysis Page (analysis.md)
 
-The analysis page presents findings from all registered analyzers, grouped by analyzer name.
+The analysis page presents cross-mode comparison of analyzer findings, grouped by scenario and analyzer name. Only differentiating findings (where modes show different values) are displayed.
 
 Each analyzer section contains:
 
-- **Summary** -- the human-readable summary from the `AnalysisResult`
-- **Findings** -- each named finding rendered according to its type:
-  - Number findings display as `value unit` (e.g., "342 ms")
-  - String findings display as prose
-  - List findings display as bullet points
-  - Table findings display as Markdown tables
-  - Ratio findings display as percentage labels (e.g., "85% tool success rate")
+- **Scalar findings** -- rendered as a comparison table with one column per mode showing aggregated median values
+- **List findings** -- rendered in collapsible details blocks per mode
+- **Table findings** -- rendered in collapsible details blocks with per-mode tables
+
+Finding types:
+- Number findings display as `value unit` (e.g., "342 ms")
+- Ratio findings display as percentages (e.g., "85.0%")
+- String findings display the most common value across iterations
+- List findings display the union of values across iterations
+- Table findings display deduplicated rows across iterations
 
 The `SessionAnalysisBundle` groups results across iterations, so the analysis page shows patterns across the full dataset rather than a single iteration.
-
-## Per-Scenario Detail Pages (scenarios/<id>.md)
-
-Each scenario gets a dedicated detail page containing:
-
-- Scenario metadata (name, description, tags, timeout, retries)
-- Per-mode results with all metrics
-- Scorer results (pass/fail, individual check details)
-- Iteration-level data for identifying outliers
 
 ## Data Exports
 
@@ -150,6 +112,11 @@ These files enable downstream processing in spreadsheets, notebooks, or custom a
 ## Source Reference
 
 - Report orchestrator: `packages/agent-profiler/src/reporter/orchestrator.ts`
+- Unified report page: `packages/agent-profiler/src/reporter/report-page.ts`
+- Analysis page: `packages/agent-profiler/src/reporter/analysis-page.ts`
+- Pairwise comparison: `packages/agent-profiler/src/reporter/pairwise-comparison.ts`
+- Shared utilities: `packages/agent-profiler/src/reporter/report-utils.ts`
+- Data exporters: `packages/agent-profiler/src/reporter/csv-exporter.ts`, `json-exporter.ts`
 - Statistics engine: `packages/agent-profiler/src/stats/`
 - JSONL store: `packages/agent-profiler/src/store/`
 

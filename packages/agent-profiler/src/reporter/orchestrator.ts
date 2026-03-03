@@ -3,12 +3,10 @@ import { join } from "node:path"
 import type { ProfileRow } from "@profiler/types/profile-row.js"
 import type { SessionAnalysisBundle } from "@profiler/types/trace.js"
 import { generateAnalysisPage } from "./analysis-page.js"
-import { generateComparisonPage } from "./comparison-page.js"
 import { exportCsv } from "./csv-exporter.js"
 import { exportResultsJson, exportSummaryJson } from "./json-exporter.js"
-import { generateMetricsPage } from "./metrics-page.js"
-import { generateScenarioPage } from "./scenario-page.js"
-import { generateSummaryPage } from "./summary-page.js"
+import type { ScenarioMetadata } from "./report-page.js"
+import { generateReportPage } from "./report-page.js"
 
 /** Options for generating a full profiler report from completed run data. */
 export interface ReportOptions {
@@ -27,6 +25,8 @@ export interface ReportOptions {
   readonly reportDir?: string
   /** Optional analysis bundles to include in the analysis page. */
   readonly analysisResults?: readonly SessionAnalysisBundle[]
+  /** Optional scenario metadata for enriching per-scenario sections in report.md. */
+  readonly scenarioMetadata?: readonly ScenarioMetadata[]
   /** Optional logger for non-fatal page generation warnings. */
   readonly logger?: { warn: (msg: string) => void }
 }
@@ -46,14 +46,11 @@ async function safeWrite(
 }
 
 /**
- * Generate a complete multi-page Markdown report and data exports for a profiling run.
+ * Generate a report and data exports for a profiling run.
  *
  * Creates a timestamped subdirectory under `options.reportsDir` containing:
- * - `index.md` — summary page
- * - `metrics.md` — per-metric statistics
+ * - `report.md` — unified self-contained report
  * - `analysis.md` — analyzer findings
- * - `comparison.md` — cross-mode comparison tables
- * - `scenarios/<id>.md` — per-scenario detail pages
  * - `data/results.csv` — raw CSV export
  * - `data/results.json` — raw JSON export
  * - `data/summary.json` — aggregated summary JSON
@@ -63,36 +60,29 @@ async function safeWrite(
  * @throws If the report directory cannot be created (mkdir failure).
  */
 export async function generateReport(options: ReportOptions): Promise<string> {
-  const { runId, rows, reportsDir, analysisResults, logger } = options
+  const { runId, rows, reportsDir, analysisResults, scenarioMetadata, logger } = options
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-")
   const reportDir = options.reportDir ?? join(reportsDir, timestamp)
-  const scenariosDir = join(reportDir, "scenarios")
   const dataDir = join(reportDir, "data")
 
-  await mkdir(scenariosDir, { recursive: true })
   await mkdir(dataDir, { recursive: true })
 
-  const scenarioIds = [...new Set(rows.map((r) => r.scenarioId))]
-
   await Promise.all([
-    safeWrite(join(reportDir, "index.md"), () => generateSummaryPage(rows, runId), logger),
-    safeWrite(join(reportDir, "metrics.md"), () => generateMetricsPage(rows), logger),
     safeWrite(
-      join(reportDir, "analysis.md"),
-      () => generateAnalysisPage(rows, analysisResults ?? []),
+      join(reportDir, "report.md"),
+      () =>
+        generateReportPage({
+          runId,
+          rows,
+          analysisResults: analysisResults ?? [],
+          ...(scenarioMetadata ? { scenarioMetadata } : {}),
+        }),
       logger,
     ),
-    safeWrite(join(reportDir, "comparison.md"), () => generateComparisonPage(rows), logger),
-    ...scenarioIds.map((id) =>
-      safeWrite(
-        join(scenariosDir, `${id}.md`),
-        () =>
-          generateScenarioPage(
-            rows.filter((r) => r.scenarioId === id),
-            id,
-          ),
-        logger,
-      ),
+    safeWrite(
+      join(reportDir, "analysis.md"),
+      () => generateAnalysisPage(analysisResults ?? [], scenarioMetadata),
+      logger,
     ),
     safeWrite(join(dataDir, "results.csv"), () => exportCsv(rows), logger),
     safeWrite(join(dataDir, "results.json"), () => exportResultsJson(rows), logger),

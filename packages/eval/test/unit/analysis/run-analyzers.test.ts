@@ -21,10 +21,15 @@ vi.mock("@ghx-dev/agent-profiler", () => {
     reasoningAnalyzer: mockAnalyzer("reasoning"),
     strategyAnalyzer: mockAnalyzer("strategy"),
     efficiencyAnalyzer: mockAnalyzer("efficiency"),
-    toolPatternAnalyzer: mockAnalyzer("toolPattern"),
+    createToolPatternAnalyzer: vi.fn().mockReturnValue(mockAnalyzer("tool-pattern")),
+    resolveToolDisplayName: vi.fn((name: string) => name),
     errorAnalyzer: mockAnalyzer("error"),
   }
 })
+
+vi.mock("@eval/analysis/tool-name-resolver.js", () => ({
+  resolveEvalToolName: vi.fn((name: string) => name),
+}))
 
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises"
 import { runAnalyzers } from "@eval/analysis/run-analyzers.js"
@@ -69,7 +74,7 @@ describe("runAnalyzers", () => {
     expect(result[0].results).toHaveProperty("reasoning")
     expect(result[0].results).toHaveProperty("strategy")
     expect(result[0].results).toHaveProperty("efficiency")
-    expect(result[0].results).toHaveProperty("toolPattern")
+    expect(result[0].results).toHaveProperty("tool-pattern")
     expect(result[0].results).toHaveProperty("error")
     expect(writeFile).toHaveBeenCalled()
   })

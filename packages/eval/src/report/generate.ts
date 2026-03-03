@@ -11,6 +11,12 @@ export interface GenerateReportOptions {
   readonly format: "all" | "md" | "csv" | "json"
 }
 
+interface ScenarioMetadataEntry {
+  readonly id: string
+  readonly name?: string
+  readonly description?: string
+}
+
 async function loadAnalysisBundles(runDir: string): Promise<readonly SessionAnalysisBundle[]> {
   const analysisDir = join(runDir, "analysis")
   let scenarioDirs: string[]
@@ -49,6 +55,45 @@ async function loadAnalysisBundles(runDir: string): Promise<readonly SessionAnal
 }
 
 /**
+ * Attempt to load scenario metadata (name, description) from scenario JSON files.
+ * Looks in `./scenarios/` relative to CWD. Failures are silently ignored since
+ * scenario metadata is optional enrichment.
+ */
+async function loadScenarioMetadata(
+  scenarioIds: readonly string[],
+): Promise<readonly ScenarioMetadataEntry[]> {
+  const scenariosDir = join(process.cwd(), "scenarios")
+  let files: string[]
+
+  try {
+    files = (await readdir(scenariosDir, { encoding: "utf-8" })).filter((f) => f.endsWith(".json"))
+  } catch {
+    return []
+  }
+
+  const metadata: ScenarioMetadataEntry[] = []
+  const wantedIds = new Set(scenarioIds)
+
+  for (const file of files) {
+    try {
+      const content = await readFile(join(scenariosDir, file), "utf-8")
+      const parsed = JSON.parse(content) as { id?: string; name?: string; description?: string }
+      if (typeof parsed.id === "string" && wantedIds.has(parsed.id)) {
+        metadata.push({
+          id: parsed.id,
+          ...(typeof parsed.name === "string" ? { name: parsed.name } : {}),
+          ...(typeof parsed.description === "string" ? { description: parsed.description } : {}),
+        })
+      }
+    } catch {
+      continue
+    }
+  }
+
+  return metadata
+}
+
+/**
  * Loads JSONL result rows and optional analysis bundles, then generates
  * a full report via agent-profiler's generateReport().
  */
@@ -68,11 +113,15 @@ export async function generateEvalReport(options: GenerateReportOptions): Promis
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const runId = allRows[0]!.runId
 
-  // Try to load analysis bundles
-  const analysisResults = await loadAnalysisBundles(options.runDir)
+  // Load analysis bundles and scenario metadata in parallel
+  const scenarioIds = [...new Set(allRows.map((r) => r.scenarioId))]
+  const [analysisResults, scenarioMetadata] = await Promise.all([
+    loadAnalysisBundles(options.runDir),
+    loadScenarioMetadata(scenarioIds),
+  ])
 
-  // Generate report (spread analysisResults only when non-empty to
-  // satisfy exactOptionalPropertyTypes — the field cannot be undefined)
+  // Generate report (spread optional fields only when non-empty to
+  // satisfy exactOptionalPropertyTypes — the fields cannot be undefined)
   // Pass reportDir = outputDir so files land directly there instead of a timestamped subdir.
   const reportDir = await generateReport({
     runId,
@@ -80,6 +129,7 @@ export async function generateEvalReport(options: GenerateReportOptions): Promis
     reportsDir: options.outputDir,
     reportDir: options.outputDir,
     ...(analysisResults.length > 0 ? { analysisResults } : {}),
+    ...(scenarioMetadata.length > 0 ? { scenarioMetadata } : {}),
   })
 
   // Format filtering: remove unwanted output files
@@ -92,10 +142,9 @@ export async function generateEvalReport(options: GenerateReportOptions): Promis
       await rm(join(reportDir, "data", "summary.json"), { force: true })
     }
     if (options.format !== "md") {
-      for (const mdFile of ["index.md", "metrics.md", "analysis.md", "comparison.md"]) {
+      for (const mdFile of ["report.md", "analysis.md"]) {
         await rm(join(reportDir, mdFile), { force: true })
       }
-      await rm(join(reportDir, "scenarios"), { recursive: true, force: true })
     }
   }
 
