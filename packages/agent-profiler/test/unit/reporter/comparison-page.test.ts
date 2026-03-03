@@ -44,6 +44,24 @@ describe("generateComparisonPage", () => {
     expect(result).toContain("wall-time reduction")
   })
 
+  it("renders dot for regression (negative reductionPct) instead of a bar", () => {
+    // mode "slow" has higher wall-time than mode "fast", so slow vs fast → negative reduction
+    const rows = [
+      makeProfileRow({ mode: "slow", timing: { wallMs: 2000, segments: [] } }),
+      makeProfileRow({ mode: "slow", timing: { wallMs: 2200, segments: [] } }),
+      makeProfileRow({ mode: "fast", timing: { wallMs: 1000, segments: [] } }),
+      makeProfileRow({ mode: "fast", timing: { wallMs: 1100, segments: [] } }),
+    ]
+    const result = generateComparisonPage(rows)
+    // The heatBar line is inside a code block: `. -XX.X% wall-time reduction`
+    // A regression produces a negative reductionPct which should clamp to 0 → "."
+    const heatBarLine = result
+      .split("\n")
+      .find((line) => line.includes("wall-time reduction") && !line.includes("|"))
+    expect(heatBarLine).toBeDefined()
+    expect(heatBarLine?.trimStart()).toMatch(/^\. /)
+  })
+
   it("renders all mode pairs for three modes", () => {
     const rows = [
       makeProfileRow({ mode: "x", timing: { wallMs: 100, segments: [] } }),

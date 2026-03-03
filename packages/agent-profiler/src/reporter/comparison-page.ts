@@ -4,7 +4,7 @@ import type { ProfileRow } from "@profiler/types/profile-row.js"
 
 /** Render a simple ASCII bar scaled to 20 chars max. */
 function heatBar(reductionPct: number): string {
-  const clamped = Math.max(0, Math.min(100, Math.abs(reductionPct)))
+  const clamped = Math.max(0, Math.min(100, reductionPct))
   const count = Math.round((clamped / 100) * 20)
   return count > 0 ? "#".repeat(count) : "."
 }
