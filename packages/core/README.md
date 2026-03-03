@@ -18,7 +18,7 @@
 
 When AI agents use the `gh` CLI directly, they waste thousands of tokens on research, trial-and-error formatting, and guessing JSON parsing paths. **ghx eliminates this waste** by providing a stable, structured execution layer.
 
-> **100% success rate, 88% fewer active tokens, 55% fewer tool calls** compared to raw CLI usage (measured across 40 runs on standard PR workflows).
+> **100% success rate, 73% fewer tool calls, 18% fewer active tokens, 54% lower latency** compared to raw CLI usage ([measured across 30 runs](https://github.com/aryeko/ghx/blob/main/docs/eval-report.md) on standard PR workflows with Codex 5.3).
 
 ```mermaid
 sequenceDiagram

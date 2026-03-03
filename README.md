@@ -80,7 +80,7 @@ Three-mode comparison (baseline vs MCP vs ghx) across 30 runs (2 scenarios, 5 it
 | Reply to unresolved review threads | **-73%** | **-18%** | **-54%** |
 | Review and comment on PR | **-71%** | **-18%** | **-54%** |
 
-Full methodology, per-iteration data, and statistical analysis: [Evaluation Results](docs/eval-results.md)
+Full methodology, per-iteration data, and statistical analysis: [Evaluation Report](docs/eval-report.md)
 
 ## 30-Second Quick Start
 

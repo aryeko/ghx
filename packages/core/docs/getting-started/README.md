@@ -35,14 +35,14 @@ sequenceDiagram
 
 ### Benchmarked Results
 
-Across 40 runs on standard PR and issue workflows:
+Three-mode comparison (baseline `gh` CLI vs GitHub MCP vs ghx) across [30 runs](https://github.com/aryeko/ghx/blob/main/docs/eval-report.md) with Codex 5.3. All differences statistically significant (p < 0.05, Cohen's d > 0.8).
 
-| Metric | Improvement |
+| Metric | ghx vs baseline |
 |---|---|
-| Tool calls | **-55%** (PR review), **-47%** (issue triage) |
-| Active tokens | **-88%** (PR review), **-41%** (thread resolution) |
-| Latency | **-57%** (PR review), **-26%** (thread resolution) |
-| Success rate | **100%** both modes |
+| Tool calls | **-73%** |
+| Active tokens | **-18%** |
+| Latency | **-54%** |
+| Success rate | **100%** (baseline 90%) |
 
 ## Prerequisites
 
