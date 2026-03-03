@@ -302,4 +302,34 @@ describe("runIteration", () => {
     // 2 failed attempts destroyed + 1 success destroyed in finally = 3 destroySession calls
     expect(provider.calls.destroySession?.length ?? 0).toBe(3)
   })
+
+  it("logs warning when destroySession throws during retry cleanup", async () => {
+    const provider = createMockProvider()
+    let promptAttempts = 0
+    const originalPrompt = provider.prompt.bind(provider)
+    provider.prompt = async (handle, text, timeoutMs) => {
+      promptAttempts++
+      if (promptAttempts === 1) throw new Error("first attempt failed")
+      return originalPrompt(handle, text, timeoutMs)
+    }
+    // destroySession throws on first call (during retry cleanup)
+    let destroyCallCount = 0
+    const originalDestroy = provider.destroySession.bind(provider)
+    provider.destroySession = async (handle) => {
+      destroyCallCount++
+      if (destroyCallCount === 1) throw new Error("session already gone")
+      return originalDestroy(handle)
+    }
+    const logger = makeLogger()
+    const params = makeParams({ provider, allowedRetries: 1, logger })
+
+    const { row } = await runIteration(params)
+
+    // Iteration succeeds on the retry despite the destroySession failure
+    expect(row.success).toBe(true)
+    // logger.warn called with the destroy error
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to destroy session during retry cleanup"),
+    )
+  })
 })
