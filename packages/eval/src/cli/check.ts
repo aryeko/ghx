@@ -2,8 +2,8 @@ import { readdir, readFile } from "node:fs/promises"
 import { join } from "node:path"
 import { EvalConfigSchema } from "@eval/config/schema.js"
 import { EvalScenarioSchema } from "@eval/scenario/schema.js"
+import { Command } from "commander"
 import { parse as parseYaml } from "yaml"
-import { parseFlag } from "./parse-flags.js"
 
 async function checkConfig(configPath: string): Promise<boolean> {
   try {
@@ -27,7 +27,6 @@ async function checkScenarios(scenariosDir: string): Promise<boolean> {
     const entries = await readdir(scenariosDir)
     files = entries.filter((f) => f.endsWith(".json") && f !== "scenario-sets.json")
   } catch {
-    // If directory doesn't exist, nothing to check
     return true
   }
 
@@ -48,34 +47,44 @@ async function checkScenarios(scenariosDir: string): Promise<boolean> {
   return allValid
 }
 
+export function makeCheckCommand(): Command {
+  return new Command("check")
+    .description("Validate config and scenario files")
+    .option("--config [path]", "validate config file (default: eval.config.yaml)")
+    .option("--scenarios", "validate scenario files in ./scenarios/")
+    .option("--all", "validate both config and scenarios")
+    .action(async (opts: { config?: string | true; scenarios?: boolean; all?: boolean }) => {
+      const hasConfig = opts.config !== undefined
+      const hasScenarios = opts.scenarios === true
+      const hasAll = opts.all === true
+
+      if (!hasConfig && !hasScenarios && !hasAll) {
+        console.error("Usage: eval check [--config [path]] [--scenarios] [--all]")
+        process.exit(1)
+      }
+
+      let allValid = true
+
+      if (hasConfig || hasAll) {
+        const configPath = typeof opts.config === "string" ? opts.config : "eval.config.yaml"
+        console.log("Checking config:")
+        const valid = await checkConfig(configPath)
+        if (!valid) allValid = false
+      }
+
+      if (hasScenarios || hasAll) {
+        const scenariosDir = join(process.cwd(), "scenarios")
+        console.log("Checking scenarios:")
+        const valid = await checkScenarios(scenariosDir)
+        if (!valid) allValid = false
+      }
+
+      if (!allValid) {
+        process.exit(1)
+      }
+    })
+}
+
 export async function check(argv: readonly string[]): Promise<void> {
-  const hasConfig = argv.includes("--config")
-  const hasScenarios = argv.includes("--scenarios")
-  const hasAll = argv.includes("--all")
-
-  if (!hasConfig && !hasScenarios && !hasAll) {
-    console.error("Usage: eval check [--config [path]] [--scenarios] [--all]")
-    process.exit(1)
-  }
-
-  let allValid = true
-
-  if (hasConfig || hasAll) {
-    const configPathValue = parseFlag(argv, "--config")
-    const configPath = configPathValue !== null ? configPathValue : "eval.config.yaml"
-    console.log("Checking config:")
-    const valid = await checkConfig(configPath)
-    if (!valid) allValid = false
-  }
-
-  if (hasScenarios || hasAll) {
-    const scenariosDir = join(process.cwd(), "scenarios")
-    console.log("Checking scenarios:")
-    const valid = await checkScenarios(scenariosDir)
-    if (!valid) allValid = false
-  }
-
-  if (!allValid) {
-    process.exit(1)
-  }
+  await makeCheckCommand().parseAsync([...argv], { from: "user" })
 }

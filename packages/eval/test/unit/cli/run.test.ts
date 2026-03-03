@@ -250,6 +250,37 @@ describe("run command", () => {
     )
   })
 
+  it("--mode flag overrides modes in the resolved config", async () => {
+    const { runProfileSuite } = await import("@ghx-dev/agent-profiler")
+
+    await runFn(["--mode", "custom-mode"])
+
+    const call = vi.mocked(runProfileSuite).mock.calls[0]
+    expect(call).toBeDefined()
+    expect((call as unknown[][])[0]).toMatchObject({ modes: ["custom-mode"] })
+  })
+
+  it("--scenario flag filters scenarios by ID", async () => {
+    const { loadEvalScenarios } = await import("@eval/scenario/loader.js")
+
+    await runFn(["--scenario", "pr-fix-001"])
+
+    expect(loadEvalScenarios).toHaveBeenCalledWith(
+      expect.any(String),
+      ["pr-fix-001"],
+      expect.any(Object),
+      expect.any(Object),
+    )
+  })
+
+  it("--seed-if-missing sets seed_if_missing in fixtures config", async () => {
+    const { FixtureManager } = await import("@eval/fixture/manager.js")
+
+    await runFn(["--seed-if-missing"])
+
+    expect(FixtureManager).toHaveBeenCalledWith(expect.objectContaining({ seedIfMissing: true }))
+  })
+
   it("throws when GH_TOKEN and GITHUB_TOKEN are both empty", async () => {
     vi.unstubAllEnvs()
     vi.stubEnv("GH_TOKEN", "")
@@ -284,5 +315,31 @@ describe("run command", () => {
     const call = vi.mocked(runProfileSuite).mock.calls[0]
     expect((call as unknown[][])[0]).toMatchObject({ repetitions: 1 })
     warnSpy.mockRestore()
+  })
+
+  it("writes analysis bundles when runProfileSuite returns analysis results", async () => {
+    const { runProfileSuite } = await import("@ghx-dev/agent-profiler")
+    const { mkdir, writeFile } = await import("node:fs/promises")
+
+    vi.mocked(runProfileSuite).mockResolvedValueOnce({
+      runId: "run-001",
+      rows: [],
+      analysisResults: [
+        {
+          sessionId: "s1",
+          scenarioId: "scenario-1",
+          mode: "ghx",
+          model: "gpt-4o",
+          results: {},
+        },
+      ],
+      outputJsonlPath: "results/run-001.jsonl",
+      durationMs: 0,
+    })
+
+    await runFn([])
+
+    expect(mkdir).toHaveBeenCalled()
+    expect(writeFile).toHaveBeenCalled()
   })
 })

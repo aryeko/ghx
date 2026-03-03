@@ -2,78 +2,119 @@ import { readFile } from "node:fs/promises"
 import { loadEvalConfig } from "@eval/config/loader.js"
 import { FixtureManager } from "@eval/fixture/manager.js"
 import { loadEvalScenarios } from "@eval/scenario/loader.js"
-import { hasFlag, parseFlag } from "./parse-flags.js"
+import { Command } from "commander"
+
+function makeSeedCommand(): Command {
+  return new Command("seed")
+    .description("Seed fixtures required by scenarios")
+    .option("--repo <owner/name>", "repository to seed", process.env["EVAL_FIXTURE_REPO"] ?? "")
+    .option(
+      "--manifest <path>",
+      "fixture manifest path",
+      process.env["EVAL_FIXTURE_MANIFEST"] ?? "fixtures/latest.json",
+    )
+    .option("--seed-id <id>", "seed identifier", "default")
+    .option("--config <path>", "eval config path", "config/eval.config.yaml")
+    .option("--dry-run", "print fixture requirements without seeding")
+    .action(
+      async (opts: {
+        repo: string
+        manifest: string
+        seedId: string
+        config: string
+        dryRun: boolean
+      }) => {
+        const manager = new FixtureManager({
+          repo: opts.repo,
+          manifest: opts.manifest,
+          seedId: opts.seedId,
+        })
+        const yamlContent = await readFile(opts.config, "utf-8")
+        const config = loadEvalConfig(yamlContent)
+        const scenarioIds = config.scenarios.ids ?? undefined
+        const scenarios = await loadEvalScenarios("scenarios", scenarioIds)
+
+        if (opts.dryRun) {
+          const uniqueRequires = new Set<string>()
+          for (const s of scenarios) {
+            if (s.fixture) {
+              for (const r of s.fixture.requires) {
+                uniqueRequires.add(r)
+              }
+            }
+          }
+          console.log("Dry-run: fixture requirements collected from scenarios:")
+          for (const req of uniqueRequires) {
+            console.log(`  - ${req}`)
+          }
+          return
+        }
+
+        await manager.seed(
+          scenarios as readonly { readonly fixture?: { readonly requires: readonly string[] } }[],
+        )
+        console.log("Fixture seeding complete.")
+      },
+    )
+}
+
+function makeStatusCommand(): Command {
+  return new Command("status")
+    .description("Show fixture status")
+    .option("--repo <owner/name>", "repository", process.env["EVAL_FIXTURE_REPO"] ?? "")
+    .option(
+      "--manifest <path>",
+      "fixture manifest path",
+      process.env["EVAL_FIXTURE_MANIFEST"] ?? "fixtures/latest.json",
+    )
+    .action(async (opts: { repo: string; manifest: string }) => {
+      const manager = new FixtureManager({ repo: opts.repo, manifest: opts.manifest })
+      const status = await manager.status()
+      console.log("Fixture status:")
+      if (status.ok.length > 0) {
+        console.log(`  ok: ${status.ok.join(", ")}`)
+      }
+      if (status.missing.length > 0) {
+        console.log(`  missing: ${status.missing.join(", ")}`)
+      }
+      if (status.ok.length === 0 && status.missing.length === 0) {
+        console.log("  no fixtures found")
+      }
+    })
+}
+
+function makeCleanupCommand(): Command {
+  return new Command("cleanup")
+    .description("Clean up fixtures")
+    .option("--repo <owner/name>", "repository", process.env["EVAL_FIXTURE_REPO"] ?? "")
+    .option(
+      "--manifest <path>",
+      "fixture manifest path",
+      process.env["EVAL_FIXTURE_MANIFEST"] ?? "fixtures/latest.json",
+    )
+    .option("--all", "clean up all fixtures")
+    .action(async (opts: { repo: string; manifest: string; all?: boolean }) => {
+      const manager = new FixtureManager({ repo: opts.repo, manifest: opts.manifest })
+      await manager.cleanup({ all: opts.all ?? false })
+      console.log("Fixture cleanup complete.")
+    })
+}
+
+export function makeFixtureCommand(): Command {
+  const cmd = new Command("fixture").description("Manage test fixtures")
+
+  cmd.addCommand(makeSeedCommand())
+  cmd.addCommand(makeStatusCommand())
+  cmd.addCommand(makeCleanupCommand())
+
+  cmd.action(() => {
+    console.error("Usage: eval fixture <seed|status|cleanup> [options]")
+    process.exit(1)
+  })
+
+  return cmd
+}
 
 export async function fixture(argv: readonly string[]): Promise<void> {
-  const subcommand = argv[0]
-
-  if (!subcommand || !["seed", "status", "cleanup"].includes(subcommand)) {
-    console.error(
-      "Usage: eval fixture <seed|status|cleanup> [--repo <owner/name>] [--manifest <path>] [--seed-id <id>] [--config <path>] [--dry-run] [--all]",
-    )
-    process.exit(1)
-  }
-
-  const repo = parseFlag(argv, "--repo") ?? process.env["EVAL_FIXTURE_REPO"] ?? ""
-
-  const manifest =
-    parseFlag(argv, "--manifest") ?? process.env["EVAL_FIXTURE_MANIFEST"] ?? "fixtures/latest.json"
-
-  const seedId = parseFlag(argv, "--seed-id") ?? "default"
-  const dryRun = hasFlag(argv, "--dry-run")
-
-  const manager = new FixtureManager({ repo, manifest, seedId })
-
-  if (subcommand === "seed") {
-    const configPath = parseFlag(argv, "--config") ?? "config/eval.config.yaml"
-    const yamlContent = await readFile(configPath, "utf-8")
-    const config = loadEvalConfig(yamlContent)
-
-    const scenarioIds = config.scenarios.ids ?? undefined
-    const scenarios = await loadEvalScenarios("scenarios", scenarioIds)
-
-    if (dryRun) {
-      const uniqueRequires = new Set<string>()
-      for (const s of scenarios) {
-        if (s.fixture) {
-          for (const r of s.fixture.requires) {
-            uniqueRequires.add(r)
-          }
-        }
-      }
-      console.log("Dry-run: fixture requirements collected from scenarios:")
-      for (const req of uniqueRequires) {
-        console.log(`  - ${req}`)
-      }
-      return
-    }
-
-    await manager.seed(
-      scenarios as readonly { readonly fixture?: { readonly requires: readonly string[] } }[],
-    )
-    console.log("Fixture seeding complete.")
-    return
-  }
-
-  if (subcommand === "status") {
-    const status = await manager.status()
-    console.log(`Fixture status:`)
-    if (status.ok.length > 0) {
-      console.log(`  ok: ${status.ok.join(", ")}`)
-    }
-    if (status.missing.length > 0) {
-      console.log(`  missing: ${status.missing.join(", ")}`)
-    }
-    if (status.ok.length === 0 && status.missing.length === 0) {
-      console.log("  no fixtures found")
-    }
-    return
-  }
-
-  if (subcommand === "cleanup") {
-    const all = argv.includes("--all")
-    await manager.cleanup({ all })
-    console.log("Fixture cleanup complete.")
-    return
-  }
+  await makeFixtureCommand().parseAsync([...argv], { from: "user" })
 }

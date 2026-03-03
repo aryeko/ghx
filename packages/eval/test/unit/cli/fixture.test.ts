@@ -153,6 +153,42 @@ describe("fixture command", () => {
       const calls = consoleLogSpy.mock.calls.flat().join(" ")
       expect(calls).toContain("pr-fixture")
     })
+
+    it("prints missing fixtures when status has missing items", async () => {
+      const { FixtureManager } = await import("@eval/fixture/manager.js")
+      vi.mocked(FixtureManager).mockImplementationOnce(
+        () =>
+          ({
+            seed: vi.fn().mockResolvedValue(undefined),
+            status: vi.fn().mockResolvedValue({ ok: [], missing: ["missing-fixture"] }),
+            cleanup: vi.fn().mockResolvedValue(undefined),
+            reset: vi.fn().mockResolvedValue(undefined),
+          }) as never,
+      )
+
+      await fixtureFn(["status"])
+
+      const calls = consoleLogSpy.mock.calls.flat().join(" ")
+      expect(calls).toContain("missing-fixture")
+    })
+
+    it("prints no fixtures found when status is empty", async () => {
+      const { FixtureManager } = await import("@eval/fixture/manager.js")
+      vi.mocked(FixtureManager).mockImplementationOnce(
+        () =>
+          ({
+            seed: vi.fn().mockResolvedValue(undefined),
+            status: vi.fn().mockResolvedValue({ ok: [], missing: [] }),
+            cleanup: vi.fn().mockResolvedValue(undefined),
+            reset: vi.fn().mockResolvedValue(undefined),
+          }) as never,
+      )
+
+      await fixtureFn(["status"])
+
+      const calls = consoleLogSpy.mock.calls.flat().join(" ")
+      expect(calls).toContain("no fixtures found")
+    })
   })
 
   describe("cleanup subcommand", () => {
@@ -206,10 +242,8 @@ describe("fixture command", () => {
   })
 
   describe("unknown subcommand", () => {
-    it("prints usage and exits 1 on unknown subcommand", async () => {
-      await expect(fixtureFn(["unknown"])).rejects.toThrow("process.exit(1)")
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("Usage"))
+    it("exits 1 on unknown subcommand", async () => {
+      await expect(fixtureFn(["unknown"])).rejects.toThrow()
       expect(processExitSpy).toHaveBeenCalledWith(1)
     })
 
