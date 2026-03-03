@@ -95,7 +95,7 @@ export async function generateReport(options: ReportOptions): Promise<string> {
     safeWrite(join(reportDir, "metrics.md"), () => generateMetricsPage(rows), logger),
     safeWrite(
       join(reportDir, "analysis.md"),
-      () => generateAnalysisPage(rows, analysisResults ?? []),
+      () => generateAnalysisPage(analysisResults ?? [], scenarioMetadata),
       logger,
     ),
     safeWrite(join(reportDir, "comparison.md"), () => generateComparisonPage(rows), logger),
