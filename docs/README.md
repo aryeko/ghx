@@ -33,6 +33,7 @@ graph TD
 
 ## Repo-Wide Documentation
 
+- [Evaluation Results](eval-results.md) -- Benchmark data, statistical analysis, and methodology
 - [Repository Structure](repository-structure.md) -- Monorepo layout and module organization
 - [Contributing](../CONTRIBUTING.md) -- Development setup, testing, CI, publishing
 - [Roadmap](../ROADMAP.md) -- Current priorities and capability batches
