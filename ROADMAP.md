@@ -13,7 +13,7 @@ ghx ships **70 capabilities** across 6 domains:
 | Repositories | 3 |
 | Projects v2 | 7 |
 
-See the [full capability list](docs/capabilities/README.md) for details on every operation.
+See the [full capability list](packages/core/docs/reference/capabilities.md) for details on every operation.
 
 ## Delivered
 

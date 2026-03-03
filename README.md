@@ -7,6 +7,16 @@
 > GitHub execution router for AI agents.
 > One typed capability interface over `gh` CLI + GraphQL.
 
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#4A90D9', 'primaryTextColor': '#fff', 'primaryBorderColor': '#2E6BA4', 'lineColor': '#666', 'fontSize': '13px'}}}%%
+flowchart LR
+    Agent["AI Agent"] --> GHX["ghx"]
+    GHX --> CLI["gh CLI"]
+    GHX --> GQL["GraphQL API"]
+    CLI --> GH["GitHub"]
+    GQL --> GH
+```
+
 [![CI (main)](https://github.com/aryeko/ghx/actions/workflows/ci-main.yml/badge.svg)](https://github.com/aryeko/ghx/actions/workflows/ci-main.yml)
 [![codecov](https://codecov.io/gh/aryeko/ghx/graph/badge.svg?token=KBIGR138V7)](https://codecov.io/gh/aryeko/ghx)
 [![npm version](https://img.shields.io/npm/v/%40ghx-dev%2Fcore)](https://www.npmjs.com/package/@ghx-dev/core)
@@ -65,7 +75,7 @@ EOF
 
 ## Benchmarked Performance
 
-Tested across 40 runs (4 scenarios, 5 iterations each) with `gpt-5.3-codex`. Both modes achieved 100% success rate.
+Tested across 40 runs (4 scenarios, 5 iterations each) with Codex 5.3. Both modes achieved 100% success rate.
 
 | Scenario | Tool calls | Active tokens | Latency |
 | --- | --- | --- | --- |
@@ -180,17 +190,19 @@ Full list: `ghx capabilities list` or [operation card registry](https://github.c
 
 ## Packages
 
-- `@ghx-dev/core` (`packages/core`) - public npm package, CLI + execution engine
+- `@ghx-dev/core` (`packages/core`) -- public npm package; CLI + execution engine
+- `@ghx-dev/agent-profiler` (`packages/agent-profiler`) -- private; generic AI agent session profiler
+- `@ghx-dev/eval` (`packages/eval`) -- private; evaluation harness for ghx benchmarking
 
 ## Documentation
 
 Full documentation lives in [`docs/`](docs/README.md):
 
-- **[Getting Started](docs/getting-started/README.md)** -- Installation, first task, agent setup
-- **[Capabilities Reference](docs/capabilities/README.md)** -- All 70 capabilities by domain
-- **[Guides](docs/guides/README.md)** -- CLI usage, library API, agent integration, error handling
-- **[Architecture](docs/architecture/README.md)** -- System design, routing engine, adapters
-- **[Contributing](docs/contributing/README.md)** -- Development setup, testing, CI, publishing
+- **[Core Documentation](packages/core/docs/README.md)** -- Getting started, architecture, capabilities, guides
+- **[Agent Profiler](packages/agent-profiler/docs/README.md)** -- Profiler architecture, guides, API reference
+- **[Eval Harness](packages/eval/docs/README.md)** -- Evaluation methodology, scenarios, fixtures
+- **[Contributing](CONTRIBUTING.md)** -- Development setup, testing, CI, publishing
+- **[Repository Structure](docs/repository-structure.md)** -- Monorepo layout and module organization
 - Branding assets: `assets/branding/README.md`
 
 ## Roadmap

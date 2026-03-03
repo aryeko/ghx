@@ -1,182 +1,38 @@
 # ghx Documentation
 
-Welcome to the ghx documentation hub. ghx is a **typed GitHub execution router for AI agents** —
-deterministic routing across CLI and GraphQL, runtime schema validation, and a stable result
-envelope so agents stop wasting tokens re-discovering GitHub API surfaces.
-
-## Quick Navigation
+Navigation hub for the ghx monorepo. Each package maintains its own documentation.
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#4A90D9', 'primaryTextColor': '#fff', 'primaryBorderColor': '#2E6BA4', 'lineColor': '#666', 'fontSize': '13px'}}}%%
 graph TD
-  A["📚 Documentation Hub<br/>START HERE"]
+  Hub["Documentation Hub"]
 
-  A --> B["🚀 Getting Started"]
-  A --> C["🔧 Architecture & Design"]
-  A --> D["📊 Agent Profiling"]
-  A --> E["🤝 Contributing"]
+  Hub --> Core["@ghx-dev/core"]
+  Hub --> Profiler["@ghx-dev/agent-profiler"]
+  Hub --> Eval["@ghx-dev/eval"]
+  Hub --> Repo["Repo-Wide"]
 
-  B --> B1["Installation"]
-  B --> B2["First Task Tutorial"]
-  B --> B3["Agent Setup Guide"]
-  B --> B4["How ghx Works"]
+  click Core "../packages/core/docs/README.md"
+  click Profiler "../packages/agent-profiler/docs/README.md"
+  click Eval "../packages/eval/docs/README.md"
 
-  C --> C1["System Design"]
-  C --> C2["Operation Cards"]
-  C --> C3["Routing Engine"]
-  C --> C4["Adapters"]
-  C --> C5["Agent Interface"]
-
-  D --> D1["Getting Started"]
-  D --> D2["Architecture"]
-  D --> D3["Guides"]
-
-  E --> E1["Code Style & Patterns"]
-  E --> E2["Repository Structure"]
-  E --> E3["Testing Guide"]
-
-  style A fill:#4A90D9,color:#fff
-  style B fill:#4A90D9,color:#fff
-  style C fill:#9C27B0,color:#fff
-  style D fill:#F5A623,color:#fff
-  style E fill:#7ED321,color:#000
+  style Hub fill:#4A90D9,color:#fff
+  style Core fill:#9C27B0,color:#fff
+  style Profiler fill:#F5A623,color:#fff
+  style Eval fill:#E91E63,color:#fff
+  style Repo fill:#7ED321,color:#000
 ```
 
-## By Use Case
+## Packages
 
-### I want to use ghx in my project
+| Package | Description | Docs |
+|---------|-------------|------|
+| `@ghx-dev/core` | Public npm package -- CLI + capability routing engine | [packages/core/docs/](../packages/core/docs/README.md) |
+| `@ghx-dev/agent-profiler` | Generic AI agent session profiler | [packages/agent-profiler/docs/](../packages/agent-profiler/docs/README.md) |
+| `@ghx-dev/eval` | Evaluation harness for ghx benchmarking | [packages/eval/docs/](../packages/eval/docs/README.md) |
 
-Start here: **[Getting Started](getting-started/README.md)**
+## Repo-Wide Documentation
 
-- [Installation guide](getting-started/installation.md) — Prerequisites and package installation
-- [First task tutorial](getting-started/first-task.md) — Run your first capability
-- [Agent setup guide](getting-started/setup-for-agents.md) — Configure ghx for coding agents
-
-### I want to understand how ghx works
-
-Read: **[Architecture Documentation](architecture/README.md)**
-
-- [System Design](architecture/system-design.md) — Core concepts and execution flow
-- [Operation Cards](architecture/operation-cards.md) — Capability definitions and schemas
-- [Routing Engine](architecture/routing-engine.md) — How ghx routes requests
-- [Adapters](architecture/adapters.md) — Execution adapters (CLI, GraphQL, REST)
-
-### I want to contribute or customize ghx
-
-See: **[Contributing Guide](contributing/README.md)**
-
-- [Code repository structure](architecture/repository-structure.md)
-- [Adding a capability](contributing/adding-a-capability.md) — Step-by-step guide
-
-### I want to profile agent performance
-
-Check: **[Agent Profiler Documentation](../packages/agent-profiler/docs/README.md)**
-
-- [Getting started](../packages/agent-profiler/docs/getting-started/README.md) -- Installation, quick start, core concepts
-- [Architecture](../packages/agent-profiler/docs/architecture/README.md) -- System design, plugin contracts, statistics
-- [Guides](../packages/agent-profiler/docs/guides/README.md) -- Implementing providers, scorers, custom plugins
-
-## Key Facts
-
-**70 Capabilities** organized by domain:
-
-| Domain | Count | Examples |
-|--------|-------|----------|
-| Issues | 23 | Create, update, close, assign labels, manage relations |
-| Pull Requests | 21 | View, comment, approve, merge, rerun checks |
-| Workflows | 11 | List, dispatch, rerun, cancel, retrieve logs |
-| Releases | 5 | List, create, publish, update drafts |
-| Projects v2 | 7 | View, list items, update fields |
-| Repositories | 3 | View, list labels, list issue types |
-
-**Three Execution Routes:**
-
-- **CLI** (`gh` + `gh api`) — Fast, lightweight, excellent for simple operations
-- **GraphQL** — Typed, powerful for complex queries and batch operations
-- **REST** — Planned; stub implementation ready
-
-**Stable Result Envelope:**
-
-Every capability returns:
-
-```json
-{
-  "ok": true,
-  "data": { /* capability-specific output */ },
-  "error": null,
-  "meta": {
-    "capability_id": "repo.view",
-    "route_used": "cli",
-    "reason": "CARD_PREFERRED"
-  }
-}
-```
-
-**Prerequisites:**
-
-- Node.js `22+`
-- `gh` CLI installed and authenticated (`gh auth status`)
-- `GITHUB_TOKEN` or `GH_TOKEN` environment variable (optional for `gh` auth)
-
-## Commands at a Glance
-
-```bash
-# List all capabilities
-npx @ghx-dev/core capabilities list
-
-# Explain a capability's input/output contract
-npx @ghx-dev/core capabilities explain repo.view
-
-# Run a capability from the CLI
-npx @ghx-dev/core run repo.view --input '{"owner":"aryeko","name":"ghx"}'
-
-# Install ghx skill for coding agents
-npx @ghx-dev/core setup --scope project --yes
-
-# Use in your Node.js code
-import { executeTask, createGithubClientFromToken } from "@ghx-dev/core"
-```
-
-## Published Package
-
-**npm:** [`@ghx-dev/core`](https://www.npmjs.com/package/@ghx-dev/core)
-
-**Latest version:** Check [npm registry](https://www.npmjs.com/package/@ghx-dev/core)
-
-**Repository:** [github.com/aryeko/ghx](https://github.com/aryeko/ghx)
-
-## Design Philosophy
-
-ghx is built on three core principles:
-
-1. **Typed Capabilities** — JSON schemas for every input and output; no guessing
-2. **Deterministic Routing** — Predictable behavior across execution modes; no surprises
-3. **Stable Envelope** — Consistent `{ ok, data, error, meta }` shape across all calls
-
-This means agents can discover, understand, and execute GitHub operations without trial-and-error.
-
-## Performance Impact
-
-Benchmarked across 40 runs (4 scenarios, 5 iterations each) with Codex 5.3:
-
-| Metric | Improvement |
-|--------|-------------|
-| Tool calls | -55% (PR review), -47% (issue triage) |
-| Active tokens | -88% (PR review), -41% (thread resolution) |
-| Latency | -57% (PR review), -26% (thread resolution) |
-| Success rate | 100% both modes |
-
-Full report: [Codex 5.3 Benchmark](../reports/codex-5.3-benchmark/README.md)
-
-
-## Next Steps
-
-- **New to ghx?** → Start with [Getting Started](getting-started/README.md)
-- **Building agents?** → Read [Agent Setup Guide](getting-started/setup-for-agents.md)
-- **Need API docs?** → Check [Operation Cards](architecture/operation-cards.md)
-- **Contributing?** → See [Contributing Guide](contributing/README.md)
-
----
-
-**Questions?** Open an issue on [GitHub](https://github.com/aryeko/ghx/issues) or check
-the [Contributing Guide](contributing/README.md).
+- [Repository Structure](repository-structure.md) -- Monorepo layout and module organization
+- [Contributing](../CONTRIBUTING.md) -- Development setup, testing, CI, publishing
+- [Roadmap](../ROADMAP.md) -- Current priorities and capability batches
