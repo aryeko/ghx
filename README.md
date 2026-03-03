@@ -32,8 +32,6 @@ Agents instructed to "use `gh` CLI" for GitHub operations waste significant toke
 - **API surface re-discovery every session.** Each new session, the agent figures out which `gh` subcommands exist, what `--json` fields are available, and how to format GraphQL queries from scratch.
 - **Output shapes vary by endpoint.** REST, GraphQL, and `gh` CLI each return different structures. The agent spends tokens parsing and normalizing before it can reason about results.
 
-> MCP mode benchmark coming soon.
-
 ## Before / After
 
 **WITHOUT ghx** -- agent submitting a PR review with inline comments (15 tool calls, 126s):
@@ -75,16 +73,14 @@ EOF
 
 ## Benchmarked Performance
 
-Tested across 40 runs (4 scenarios, 5 iterations each) with Codex 5.3. Both modes achieved 100% success rate.
+Three-mode comparison (baseline vs MCP vs ghx) across 30 runs (2 scenarios, 5 iterations each, 3 modes) with Codex 5.3. ghx achieved 100% success rate.
 
 | Scenario | Tool calls | Active tokens | Latency |
 | --- | --- | --- | --- |
-| PR review with inline comments | **-55%** | **-88%** | **-57%** |
-| Issue triage (labels + comment) | **-47%** | neutral | **-1%** |
-| PR thread resolution (7 threads) | **-29%** | **-41%** | **-26%** |
-| CI diagnosis and rerun | **-22%** | **-78%** | **-20%** |
+| Reply to unresolved review threads | **-73%** | **-18%** | **-54%** |
+| Review and comment on PR | **-71%** | **-18%** | **-54%** |
 
-Full methodology and per-iteration data: [Codex 5.3 Benchmark Report](reports/codex-5.3-benchmark/README.md)
+Full methodology, per-iteration data, and statistical analysis: [Evaluation Report](docs/eval-report.md)
 
 ## 30-Second Quick Start
 

@@ -33,6 +33,7 @@ graph TD
 
 ## Repo-Wide Documentation
 
+- [Evaluation Report](eval-report.md) -- Empirical evaluation, statistical analysis, and bundled raw data
 - [Repository Structure](repository-structure.md) -- Monorepo layout and module organization
 - [Contributing](../CONTRIBUTING.md) -- Development setup, testing, CI, publishing
 - [Roadmap](../ROADMAP.md) -- Current priorities and capability batches

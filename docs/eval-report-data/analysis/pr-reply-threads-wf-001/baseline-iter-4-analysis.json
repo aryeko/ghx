@@ -1,0 +1,188 @@
+{
+  "sessionId": "ses_34b6ad353ffer2T3QRYsTJi7qE",
+  "scenarioId": "pr-reply-threads-wf-001",
+  "mode": "baseline",
+  "model": "",
+  "results": {
+    "reasoning": {
+      "analyzer": "reasoning",
+      "findings": {
+        "reasoning_density": {
+          "type": "ratio",
+          "value": 0.005077508472709921,
+          "label": "reasoning tokens / total tokens"
+        },
+        "reasoning_per_tool_call": {
+          "type": "number",
+          "value": 75.45454545454545,
+          "unit": "tokens/tool_call"
+        },
+        "planning_quality": {
+          "type": "string",
+          "value": "mixed"
+        },
+        "key_decisions": {
+          "type": "list",
+          "values": [
+            "**Planning GitHub PR review replies**",
+            "**Planning PR file fetch**",
+            "**Planning raw file retrieval**",
+            "**Checking file presence in PR diff**",
+            "**Planning parallel comment replies**",
+            "**Clarifying reply endpoint usage**",
+            "**Checking unresolved threads**",
+            "**Confirming replies to unresolved threads**"
+          ]
+        },
+        "confusion_signals": {
+          "type": "list",
+          "values": []
+        }
+      },
+      "summary": "Reasoning density: 0.5%, 8 reasoning events, 0 confusion signals"
+    },
+    "strategy": {
+      "analyzer": "strategy",
+      "findings": {
+        "strategy_summary": {
+          "type": "string",
+          "value": "iterative"
+        },
+        "strategy_steps": {
+          "type": "list",
+          "values": [
+            "reasoning phase (1 events)",
+            "tool execution phase (1 calls)",
+            "reasoning phase (1 events)",
+            "tool execution phase (1 calls)",
+            "reasoning phase (1 events)",
+            "tool execution phase (1 calls)",
+            "reasoning phase (1 events)",
+            "tool execution phase (1 calls)",
+            "reasoning phase (1 events)",
+            "tool execution phase (3 calls)",
+            "reasoning phase (1 events)",
+            "tool execution phase (3 calls)",
+            "reasoning phase (1 events)",
+            "tool execution phase (1 calls)",
+            "reasoning phase (1 events)"
+          ]
+        },
+        "optimality_notes": {
+          "type": "list",
+          "values": []
+        }
+      },
+      "summary": "Strategy: iterative, 15 phases, 0 notes"
+    },
+    "efficiency": {
+      "analyzer": "efficiency",
+      "findings": {
+        "total_turns": {
+          "type": "number",
+          "value": 8,
+          "unit": "turns"
+        },
+        "productive_turns": {
+          "type": "number",
+          "value": 8,
+          "unit": "turns"
+        },
+        "wasted_turns": {
+          "type": "number",
+          "value": 0,
+          "unit": "turns"
+        },
+        "turn_efficiency": {
+          "type": "ratio",
+          "value": 1,
+          "label": "productive / total turns"
+        },
+        "information_redundancy": {
+          "type": "ratio",
+          "value": 0,
+          "label": "duplicate / total tool calls"
+        },
+        "backtracking_events": {
+          "type": "number",
+          "value": 10,
+          "unit": "events"
+        }
+      },
+      "summary": "8/8 productive turns (100.0% efficiency), 10 backtracking events"
+    },
+    "tool-pattern": {
+      "analyzer": "tool-pattern",
+      "findings": {
+        "tool_sequence": {
+          "type": "list",
+          "values": [
+            "gh api",
+            "gh pr",
+            "gh api",
+            "gh pr",
+            "gh api",
+            "gh api",
+            "gh api",
+            "gh api",
+            "gh api",
+            "gh api",
+            "gh api"
+          ]
+        },
+        "unique_tools_used": {
+          "type": "number",
+          "value": 2,
+          "unit": "tools"
+        },
+        "tool_call_patterns": {
+          "type": "table",
+          "headers": ["pattern", "count"],
+          "rows": [["gh api -> gh pr", "2"], ["gh pr -> gh api", "2"], ["gh api -> gh api", "6"]]
+        },
+        "redundant_calls": {
+          "type": "table",
+          "headers": ["tool", "input_hash", "count"],
+          "rows": []
+        },
+        "failed_then_retried": {
+          "type": "table",
+          "headers": ["tool", "occurrences"],
+          "rows": []
+        }
+      },
+      "summary": "11 tool calls, 2 unique tools, 0 redundant patterns, 0 retry patterns"
+    },
+    "error": {
+      "analyzer": "error",
+      "findings": {
+        "errors_encountered": {
+          "type": "number",
+          "value": 0,
+          "unit": "errors"
+        },
+        "error_types": {
+          "type": "table",
+          "headers": ["type", "count"],
+          "rows": []
+        },
+        "recovery_patterns": {
+          "type": "table",
+          "headers": ["pattern", "count"],
+          "rows": []
+        },
+        "error_cascades": {
+          "type": "number",
+          "value": 0,
+          "unit": "cascades"
+        },
+        "wasted_turns_from_errors": {
+          "type": "number",
+          "value": 0,
+          "unit": "turns"
+        }
+      },
+      "summary": "0 errors, 0 cascades, 0 wasted turns"
+    }
+  }
+}

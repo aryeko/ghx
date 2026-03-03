@@ -1,0 +1,183 @@
+{
+  "sessionId": "ses_34b5d2c22ffehfdwW7Ng10rTTz",
+  "scenarioId": "pr-review-comment-001",
+  "mode": "mcp",
+  "model": "",
+  "results": {
+    "reasoning": {
+      "analyzer": "reasoning",
+      "findings": {
+        "reasoning_density": {
+          "type": "ratio",
+          "value": 0.004119814395990614,
+          "label": "reasoning tokens / total tokens"
+        },
+        "reasoning_per_tool_call": {
+          "type": "number",
+          "value": 43.111111111111114,
+          "unit": "tokens/tool_call"
+        },
+        "planning_quality": {
+          "type": "string",
+          "value": "mixed"
+        },
+        "key_decisions": {
+          "type": "list",
+          "values": [
+            "**Planning PR review workflow**",
+            "**Planning pending review with detailed comments**",
+            "**Adding detailed inline comments**",
+            "**Requesting detailed change summary**",
+            ""
+          ]
+        },
+        "confusion_signals": {
+          "type": "list",
+          "values": []
+        }
+      },
+      "summary": "Reasoning density: 0.4%, 5 reasoning events, 0 confusion signals"
+    },
+    "strategy": {
+      "analyzer": "strategy",
+      "findings": {
+        "strategy_summary": {
+          "type": "string",
+          "value": "iterative"
+        },
+        "strategy_steps": {
+          "type": "list",
+          "values": [
+            "reasoning phase (1 events)",
+            "tool execution phase (3 calls)",
+            "reasoning phase (1 events)",
+            "tool execution phase (1 calls)",
+            "reasoning phase (1 events)",
+            "tool execution phase (4 calls)",
+            "reasoning phase (1 events)",
+            "tool execution phase (1 calls)",
+            "reasoning phase (1 events)"
+          ]
+        },
+        "optimality_notes": {
+          "type": "list",
+          "values": []
+        }
+      },
+      "summary": "Strategy: iterative, 9 phases, 0 notes"
+    },
+    "efficiency": {
+      "analyzer": "efficiency",
+      "findings": {
+        "total_turns": {
+          "type": "number",
+          "value": 5,
+          "unit": "turns"
+        },
+        "productive_turns": {
+          "type": "number",
+          "value": 5,
+          "unit": "turns"
+        },
+        "wasted_turns": {
+          "type": "number",
+          "value": 0,
+          "unit": "turns"
+        },
+        "turn_efficiency": {
+          "type": "ratio",
+          "value": 1,
+          "label": "productive / total turns"
+        },
+        "information_redundancy": {
+          "type": "ratio",
+          "value": 0,
+          "label": "duplicate / total tool calls"
+        },
+        "backtracking_events": {
+          "type": "number",
+          "value": 6,
+          "unit": "events"
+        }
+      },
+      "summary": "5/5 productive turns (100.0% efficiency), 6 backtracking events"
+    },
+    "tool-pattern": {
+      "analyzer": "tool-pattern",
+      "findings": {
+        "tool_sequence": {
+          "type": "list",
+          "values": [
+            "github_pull_request_read",
+            "github_pull_request_read",
+            "github_pull_request_read",
+            "github_pull_request_review_write",
+            "github_add_comment_to_pending_review",
+            "github_add_comment_to_pending_review",
+            "github_add_comment_to_pending_review",
+            "github_add_comment_to_pending_review",
+            "github_pull_request_review_write"
+          ]
+        },
+        "unique_tools_used": {
+          "type": "number",
+          "value": 3,
+          "unit": "tools"
+        },
+        "tool_call_patterns": {
+          "type": "table",
+          "headers": ["pattern", "count"],
+          "rows": [
+            ["github_pull_request_read -> github_pull_request_read", "2"],
+            ["github_pull_request_read -> github_pull_request_review_write", "1"],
+            ["github_pull_request_review_write -> github_add_comment_to_pending_review", "1"],
+            ["github_add_comment_to_pending_review -> github_add_comment_to_pending_review", "3"],
+            ["github_add_comment_to_pending_review -> github_pull_request_review_write", "1"]
+          ]
+        },
+        "redundant_calls": {
+          "type": "table",
+          "headers": ["tool", "input_hash", "count"],
+          "rows": []
+        },
+        "failed_then_retried": {
+          "type": "table",
+          "headers": ["tool", "occurrences"],
+          "rows": []
+        }
+      },
+      "summary": "9 tool calls, 3 unique tools, 0 redundant patterns, 0 retry patterns"
+    },
+    "error": {
+      "analyzer": "error",
+      "findings": {
+        "errors_encountered": {
+          "type": "number",
+          "value": 0,
+          "unit": "errors"
+        },
+        "error_types": {
+          "type": "table",
+          "headers": ["type", "count"],
+          "rows": []
+        },
+        "recovery_patterns": {
+          "type": "table",
+          "headers": ["pattern", "count"],
+          "rows": []
+        },
+        "error_cascades": {
+          "type": "number",
+          "value": 0,
+          "unit": "cascades"
+        },
+        "wasted_turns_from_errors": {
+          "type": "number",
+          "value": 0,
+          "unit": "turns"
+        }
+      },
+      "summary": "0 errors, 0 cascades, 0 wasted turns"
+    }
+  }
+}
