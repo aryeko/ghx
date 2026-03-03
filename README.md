@@ -198,13 +198,11 @@ Full list: `ghx capabilities list` or [operation card registry](https://github.c
 
 Full documentation lives in [`docs/`](docs/README.md):
 
-- **[Getting Started](docs/getting-started/README.md)** -- Installation, first task, agent setup
-- **[Capabilities Reference](docs/capabilities/README.md)** -- All 70 capabilities by domain
-- **[Guides](docs/guides/README.md)** -- CLI usage, library API, agent integration, error handling
-- **[Architecture](docs/architecture/README.md)** -- System design, routing engine, adapters
+- **[Core Documentation](packages/core/docs/README.md)** -- Getting started, architecture, capabilities, guides
 - **[Agent Profiler](packages/agent-profiler/docs/README.md)** -- Profiler architecture, guides, API reference
 - **[Eval Harness](packages/eval/docs/README.md)** -- Evaluation methodology, scenarios, fixtures
-- **[Contributing](docs/contributing/README.md)** -- Development setup, testing, CI, publishing
+- **[Contributing](CONTRIBUTING.md)** -- Development setup, testing, CI, publishing
+- **[Repository Structure](docs/repository-structure.md)** -- Monorepo layout and module organization
 - Branding assets: `assets/branding/README.md`
 
 ## Roadmap

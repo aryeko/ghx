@@ -14,11 +14,7 @@ ghx/
 │   ├── dependabot.yml          # Automated dependency updates
 │   └── workflows/              # CI/CD workflows
 ├── docs/
-│   ├── architecture/           # Architecture documentation (this section)
-│   ├── capabilities/           # Per-domain capability reference
-│   ├── contributing/           # Development setup, testing, CI, publishing
-│   ├── getting-started/        # Installation, first task, agent setup
-│   ├── guides/                 # CLI usage, library API, error handling
+│   ├── repository-structure.md # Monorepo layout (this file)
 │   └── plans/                  # Design docs and implementation plans
 ├── packages/
 │   ├── core/                   # @ghx-dev/core (public npm package)
@@ -416,30 +412,30 @@ Use these paths when debugging common concerns:
 
 ### New Contributor
 
-1. [docs/architecture/system-design.md](system-design.md) — understand design goals
-2. [docs/architecture/repository-structure.md](repository-structure.md) (this file) — map the codebase
-3. [docs/architecture/routing-engine.md](routing-engine.md) — understand route selection
-4. [docs/architecture/operation-cards.md](operation-cards.md) — understand capabilities
+1. [Core architecture overview](../packages/core/docs/architecture/README.md) — understand design goals
+2. [Repository structure](repository-structure.md) (this file) — map the codebase
+3. [Routing engine](../packages/core/docs/concepts/routing-engine.md) — understand route selection
+4. [Operation cards](../packages/core/docs/concepts/operation-cards.md) — understand capabilities
 
 ### Router Internals
 
-1. [docs/architecture/routing-engine.md](routing-engine.md) — route planning
-2. [packages/core/src/core/routing/engine.ts](../../packages/core/src/core/routing/engine.ts) — implementation
-3. [docs/architecture/adapters.md](adapters.md) — adapter execution
-4. [docs/guides/error-handling.md](../guides/error-handling.md) — error handling
+1. [Routing engine](../packages/core/docs/concepts/routing-engine.md) — route planning
+2. [packages/core/src/core/routing/engine.ts](../packages/core/src/core/routing/engine.ts) — implementation
+3. [Adapters](../packages/core/docs/architecture/adapters.md) — adapter execution
+4. [Error handling](../packages/core/docs/guides/error-handling.md) — error handling
 
 ### Adding a Capability
 
-1. [docs/architecture/operation-cards.md](operation-cards.md) — card structure
-2. [packages/core/src/core/registry/cards/](../../packages/core/src/core/registry/cards/) — examples
-3. [docs/architecture/adapters.md](adapters.md) — adapter support
-4. [docs/architecture/routing-engine.md](routing-engine.md) — routing policy
+1. [Operation cards](../packages/core/docs/concepts/operation-cards.md) — card structure
+2. [packages/core/src/core/registry/cards/](../packages/core/src/core/registry/cards/) — examples
+3. [Adapters](../packages/core/docs/architecture/adapters.md) — adapter support
+4. [Routing engine](../packages/core/docs/concepts/routing-engine.md) — routing policy
 
 ### Agent Profiler Internals
 
-1. [packages/agent-profiler/docs/architecture/overview.md](../../packages/agent-profiler/docs/architecture/overview.md)
-2. [packages/agent-profiler/src/runner/profile-runner.ts](../../packages/agent-profiler/src/runner/profile-runner.ts)
-3. [packages/agent-profiler/docs/architecture/statistics.md](../../packages/agent-profiler/docs/architecture/statistics.md)
+1. [packages/agent-profiler/docs/architecture/overview.md](../packages/agent-profiler/docs/architecture/overview.md)
+2. [packages/agent-profiler/src/runner/profile-runner.ts](../packages/agent-profiler/src/runner/profile-runner.ts)
+3. [packages/agent-profiler/docs/architecture/statistics.md](../packages/agent-profiler/docs/architecture/statistics.md)
 
 ## External Integration Points
 
@@ -450,8 +446,7 @@ Use these paths when debugging common concerns:
 
 ## Related Documentation
 
-- [docs/architecture/](.) — All architecture docs
-- [packages/agent-profiler/docs/](../../packages/agent-profiler/docs/) — Agent profiler documentation
-- [packages/eval/docs/](../../packages/eval/docs/) — Eval harness documentation
-- [docs/guides/](../guides/) — CLI usage, library API, agent integration, error handling
-- [docs/contributing/](../contributing/) — Development setup, testing, CI, publishing
+- [Core documentation](../packages/core/docs/README.md) — Architecture, capabilities, getting started, guides
+- [Agent profiler documentation](../packages/agent-profiler/docs/README.md) — Profiler architecture, guides, API reference
+- [Eval harness documentation](../packages/eval/docs/README.md) — Evaluation methodology, scenarios, fixtures
+- [Contributing](../CONTRIBUTING.md) — Development setup, testing, CI, publishing

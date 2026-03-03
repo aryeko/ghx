@@ -134,12 +134,9 @@ Lefthook runs automatically on commit (installed via `pnpm install`):
 ## Documentation
 
 Documentation hub: `docs/README.md`. Key sections:
-- `docs/architecture/` — system-design, routing-engine, operation-cards, adapters, repository-structure, telemetry
-- `docs/capabilities/` — per-domain capability reference (issues, PRs, workflows, releases, etc.)
-- `docs/getting-started/` — installation, first-task, setup-for-agents, how-it-works
-- `docs/guides/` — CLI usage, library API, agent integration, result envelope, error handling, routing explained
+- `packages/core/docs/` — architecture, capabilities, getting started, guides
 - `packages/agent-profiler/docs/` — profiler architecture, guides, API reference, contributing
 - `packages/eval/docs/` — eval methodology, scenarios, fixtures, reports
-- `docs/contributing/` — development setup, testing, code style, adding capabilities, CI, publishing
+- `docs/repository-structure.md` — monorepo layout and module organization
 
-If architecture, module, or file layout changes, update `docs/architecture/repository-structure.md`.
+If architecture, module, or file layout changes, update `docs/repository-structure.md`.

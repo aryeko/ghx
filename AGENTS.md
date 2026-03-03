@@ -173,7 +173,7 @@ pnpm --filter @ghx-dev/core exec vitest run test/unit/run-command.test.ts -t "pa
 - `.npmrc` enforces `strict-peer-dependencies=true` and `auto-install-peers=false`.
 
 ### Documentation Updates
-- If architecture/module/file layout changes, update `docs/architecture/repository-structure.md`.
+- If architecture/module/file layout changes, update `docs/repository-structure.md`.
 
 ## Agent Pre-Handoff Checklist
 Before final handoff on substantial changes, run:

@@ -98,16 +98,11 @@ pnpm run changeset
 4. Open a PR with a clear description
 5. Address review feedback
 
-## Detailed Documentation
+## Additional Resources
 
-For comprehensive contributor guides, see [`docs/contributing/`](docs/contributing/README.md):
-
-- [Development Setup](docs/contributing/development-setup.md) — Extended setup and tooling guide
-- [Testing Guide](docs/contributing/testing-guide.md) — Test patterns and coverage expectations
-- [Code Style](docs/contributing/code-style.md) — Biome, import conventions, type discipline
-- [Adding a Capability](docs/contributing/adding-a-capability.md) — Step-by-step guide for new capabilities
-- [CI Workflows](docs/contributing/ci-workflows.md) — GitHub Actions pipeline details
-- [Publishing](docs/contributing/publishing.md) — Changesets, versioning, and npm publishing
+- [Adding a Capability](packages/core/docs/guides/adding-a-capability.md) — Step-by-step guide for new capabilities
+- [Repository Structure](docs/repository-structure.md) — Monorepo layout and module organization
+- [Core Documentation](packages/core/docs/README.md) — Architecture, guides, and reference
 
 ## Questions
 
