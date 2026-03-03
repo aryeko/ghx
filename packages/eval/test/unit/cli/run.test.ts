@@ -132,10 +132,10 @@ describe("run command", () => {
     vi.unstubAllEnvs()
   })
 
-  it("reads config from default path eval.config.yaml when no --config flag", async () => {
+  it("reads config from default path config/eval.config.yaml when no --config flag", async () => {
     const { readFile: rf } = await import("node:fs/promises")
     await runFn([])
-    expect(rf).toHaveBeenCalledWith("eval.config.yaml", "utf-8")
+    expect(rf).toHaveBeenCalledWith("config/eval.config.yaml", "utf-8")
   })
 
   it("reads config from the specified --config path", async () => {
@@ -250,6 +250,37 @@ describe("run command", () => {
     )
   })
 
+  it("--mode flag overrides modes in the resolved config", async () => {
+    const { runProfileSuite } = await import("@ghx-dev/agent-profiler")
+
+    await runFn(["--mode", "custom-mode"])
+
+    const call = vi.mocked(runProfileSuite).mock.calls[0]
+    expect(call).toBeDefined()
+    expect((call as unknown[][])[0]).toMatchObject({ modes: ["custom-mode"] })
+  })
+
+  it("--scenario flag filters scenarios by ID", async () => {
+    const { loadEvalScenarios } = await import("@eval/scenario/loader.js")
+
+    await runFn(["--scenario", "pr-fix-001"])
+
+    expect(loadEvalScenarios).toHaveBeenCalledWith(
+      expect.any(String),
+      ["pr-fix-001"],
+      expect.any(Object),
+      expect.any(Object),
+    )
+  })
+
+  it("--seed-if-missing sets seed_if_missing in fixtures config", async () => {
+    const { FixtureManager } = await import("@eval/fixture/manager.js")
+
+    await runFn(["--seed-if-missing"])
+
+    expect(FixtureManager).toHaveBeenCalledWith(expect.objectContaining({ seedIfMissing: true }))
+  })
+
   it("throws when GH_TOKEN and GITHUB_TOKEN are both empty", async () => {
     vi.unstubAllEnvs()
     vi.stubEnv("GH_TOKEN", "")
@@ -273,16 +304,33 @@ describe("run command", () => {
     expect(runProfileSuite).toHaveBeenCalledTimes(1)
   })
 
-  it("--repetitions with invalid value logs warning and uses config default", async () => {
+  it("--repetitions with invalid value throws an error", async () => {
+    await expect(runFn(["--repetitions", "notanumber"])).rejects.toThrow()
+  })
+
+  it("writes analysis bundles when runProfileSuite returns analysis results", async () => {
     const { runProfileSuite } = await import("@ghx-dev/agent-profiler")
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined)
+    const { mkdir, writeFile } = await import("node:fs/promises")
 
-    await runFn(["--repetitions", "notanumber"])
+    vi.mocked(runProfileSuite).mockResolvedValueOnce({
+      runId: "run-001",
+      rows: [],
+      analysisResults: [
+        {
+          sessionId: "s1",
+          scenarioId: "scenario-1",
+          mode: "ghx",
+          model: "gpt-4o",
+          results: {},
+        },
+      ],
+      outputJsonlPath: "results/run-001.jsonl",
+      durationMs: 0,
+    })
 
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("invalid --repetitions value"))
-    expect(runProfileSuite).toHaveBeenCalledTimes(1)
-    const call = vi.mocked(runProfileSuite).mock.calls[0]
-    expect((call as unknown[][])[0]).toMatchObject({ repetitions: 1 })
-    warnSpy.mockRestore()
+    await runFn([])
+
+    expect(mkdir).toHaveBeenCalled()
+    expect(writeFile).toHaveBeenCalled()
   })
 })

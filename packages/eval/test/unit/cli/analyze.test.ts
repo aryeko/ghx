@@ -55,4 +55,12 @@ describe("analyze command", () => {
     const output = consoleLogSpy.mock.calls.flat().join(" ")
     expect(output).toContain("1 session(s) analyzed")
   })
+
+  it("derives run-dir from --run-id flag", async () => {
+    await analyzeFn(["--run-id", "run-abc"])
+
+    expect(runAnalyzers).toHaveBeenCalledWith(
+      expect.objectContaining({ runDir: "reports/run-abc" }),
+    )
+  })
 })

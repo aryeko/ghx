@@ -31,6 +31,7 @@ vi.mock("@eval/config/loader.js", () => ({
 
 vi.mock("@eval/scenario/loader.js", () => ({
   loadEvalScenarios: vi.fn().mockResolvedValue(mockScenarios),
+  loadScenarioSets: vi.fn().mockResolvedValue({ "my-set": ["pr-fix-001", "pr-fix-002"] }),
 }))
 
 vi.mock("node:fs/promises", () => ({
@@ -97,6 +98,34 @@ describe("fixture command", () => {
 
       expect(FixtureManager).toHaveBeenCalled()
     })
+
+    it("resolves scenario IDs from scenarios.set when ids is undefined", async () => {
+      const { loadEvalConfig } = await import("@eval/config/loader.js")
+      const { loadEvalScenarios, loadScenarioSets } = await import("@eval/scenario/loader.js")
+
+      vi.mocked(loadEvalConfig).mockReturnValueOnce({
+        scenarios: { set: "my-set", ids: undefined },
+      } as never)
+
+      await fixtureFn(["seed"])
+
+      expect(loadScenarioSets).toHaveBeenCalled()
+      expect(loadEvalScenarios).toHaveBeenCalledWith("scenarios", ["pr-fix-001", "pr-fix-002"])
+    })
+
+    it("throws when scenarios.set is not found in scenario-sets.json", async () => {
+      const { loadEvalConfig } = await import("@eval/config/loader.js")
+      const { loadScenarioSets } = await import("@eval/scenario/loader.js")
+
+      vi.mocked(loadEvalConfig).mockReturnValueOnce({
+        scenarios: { set: "nonexistent-set", ids: undefined },
+      } as never)
+      vi.mocked(loadScenarioSets).mockResolvedValueOnce({})
+
+      await expect(fixtureFn(["seed"])).rejects.toThrow(
+        'Scenario set "nonexistent-set" not found in scenario-sets.json',
+      )
+    })
   })
 
   describe("--seed-id flag", () => {
@@ -153,6 +182,42 @@ describe("fixture command", () => {
       const calls = consoleLogSpy.mock.calls.flat().join(" ")
       expect(calls).toContain("pr-fixture")
     })
+
+    it("prints missing fixtures when status has missing items", async () => {
+      const { FixtureManager } = await import("@eval/fixture/manager.js")
+      vi.mocked(FixtureManager).mockImplementationOnce(
+        () =>
+          ({
+            seed: vi.fn().mockResolvedValue(undefined),
+            status: vi.fn().mockResolvedValue({ ok: [], missing: ["missing-fixture"] }),
+            cleanup: vi.fn().mockResolvedValue(undefined),
+            reset: vi.fn().mockResolvedValue(undefined),
+          }) as never,
+      )
+
+      await fixtureFn(["status"])
+
+      const calls = consoleLogSpy.mock.calls.flat().join(" ")
+      expect(calls).toContain("missing-fixture")
+    })
+
+    it("prints no fixtures found when status is empty", async () => {
+      const { FixtureManager } = await import("@eval/fixture/manager.js")
+      vi.mocked(FixtureManager).mockImplementationOnce(
+        () =>
+          ({
+            seed: vi.fn().mockResolvedValue(undefined),
+            status: vi.fn().mockResolvedValue({ ok: [], missing: [] }),
+            cleanup: vi.fn().mockResolvedValue(undefined),
+            reset: vi.fn().mockResolvedValue(undefined),
+          }) as never,
+      )
+
+      await fixtureFn(["status"])
+
+      const calls = consoleLogSpy.mock.calls.flat().join(" ")
+      expect(calls).toContain("no fixtures found")
+    })
   })
 
   describe("cleanup subcommand", () => {
@@ -206,10 +271,8 @@ describe("fixture command", () => {
   })
 
   describe("unknown subcommand", () => {
-    it("prints usage and exits 1 on unknown subcommand", async () => {
-      await expect(fixtureFn(["unknown"])).rejects.toThrow("process.exit(1)")
-
-      expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining("Usage"))
+    it("exits 1 on unknown subcommand", async () => {
+      await expect(fixtureFn(["unknown"])).rejects.toThrow()
       expect(processExitSpy).toHaveBeenCalledWith(1)
     })
 

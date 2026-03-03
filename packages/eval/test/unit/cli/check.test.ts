@@ -124,6 +124,15 @@ describe("check command", () => {
 
       expect(processExitSpy).not.toHaveBeenCalled()
     })
+
+    it("succeeds silently when scenarios directory does not exist", async () => {
+      const { readdir } = await import("node:fs/promises")
+      vi.mocked(readdir).mockRejectedValue(new Error("ENOENT: no such file or directory"))
+
+      await checkFn(["--scenarios"])
+
+      expect(processExitSpy).not.toHaveBeenCalled()
+    })
   })
 
   describe("--all flag", () => {
