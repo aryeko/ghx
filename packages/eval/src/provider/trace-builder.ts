@@ -61,6 +61,10 @@ export class TraceBuilder {
     return events
   }
 
+  private toFiniteNumber(value: unknown): number {
+    return typeof value === "number" && Number.isFinite(value) ? value : 0
+  }
+
   private convertPart(part: OpenCodeMessagePart): TraceEvent | null {
     switch (part.type) {
       case "reasoning": {
@@ -165,11 +169,11 @@ export class TraceBuilder {
       const message = msg as OpenCodeMessage
       const info = message.info
       if (info?.role !== "assistant" || !info.tokens) continue
-      inputTokens += info.tokens.input ?? 0
-      outputTokens += info.tokens.output ?? 0
-      reasoningTokens += info.tokens.reasoning ?? 0
-      cacheReadTokens += info.tokens.cache?.read ?? 0
-      cacheWriteTokens += info.tokens.cache?.write ?? 0
+      inputTokens += this.toFiniteNumber(info.tokens.input)
+      outputTokens += this.toFiniteNumber(info.tokens.output)
+      reasoningTokens += this.toFiniteNumber(info.tokens.reasoning)
+      cacheReadTokens += this.toFiniteNumber(info.tokens.cache?.read)
+      cacheWriteTokens += this.toFiniteNumber(info.tokens.cache?.write)
     }
 
     const total = inputTokens + outputTokens + cacheReadTokens + cacheWriteTokens + reasoningTokens

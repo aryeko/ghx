@@ -333,4 +333,22 @@ describe("TraceBuilder.buildTrace", () => {
     const trace = builder.buildTrace("ses_dur_multi", messages)
     expect(trace.summary.totalDuration).toBeGreaterThan(0)
   })
+
+  it("guards token accumulators against NaN, non-finite, and non-numeric values", () => {
+    const messages = [
+      assistantMsg([], {
+        tokens: { input: NaN, output: "bad" as unknown as number, reasoning: Infinity },
+      }),
+    ]
+    const trace = builder.buildTrace("ses_nan_guard", messages)
+    expect(trace.summary.totalTokens).toEqual({
+      input: 0,
+      output: 0,
+      reasoning: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      total: 0,
+      active: 0,
+    })
+  })
 })
