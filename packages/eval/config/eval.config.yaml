@@ -2,9 +2,9 @@
 
 # Execution modes to compare
 modes:
-  - ghx
   - baseline
   - mcp
+  - ghx
 
 # Scenario selection
 scenarios:
