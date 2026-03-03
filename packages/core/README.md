@@ -1,8 +1,18 @@
 <h1 align="center">@ghx-dev/core</h1>
 
 <p align="center">
+  <img src="https://raw.githubusercontent.com/aryeko/ghx/main/assets/branding/social/ghx-social-dark-1280x640.png" alt="ghx social preview" width="480">
+</p>
+
+<p align="center">
   A typed GitHub execution router that gives AI agents deterministic, token-efficient access to the GitHub API.
 </p>
+
+[![npm version](https://img.shields.io/npm/v/%40ghx-dev%2Fcore)](https://www.npmjs.com/package/@ghx-dev/core)
+[![npm downloads](https://img.shields.io/npm/dm/%40ghx-dev%2Fcore)](https://www.npmjs.com/package/@ghx-dev/core)
+[![CI (main)](https://github.com/aryeko/ghx/actions/workflows/ci-main.yml/badge.svg)](https://github.com/aryeko/ghx/actions/workflows/ci-main.yml)
+[![codecov](https://codecov.io/gh/aryeko/ghx/graph/badge.svg?token=KBIGR138V7)](https://codecov.io/gh/aryeko/ghx)
+[![License](https://img.shields.io/npm/l/%40ghx-dev%2Fcore)](https://github.com/aryeko/ghx/blob/main/LICENSE)
 
 ## Why ghx?
 
