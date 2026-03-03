@@ -120,6 +120,10 @@ function evaluateCondition(condition: CheckpointCondition, data: unknown): boole
       const fieldValue = getNestedField(data, condition.path)
       return typeof fieldValue === "string" && fieldValue.includes(condition.value)
     }
+    case "field_gte": {
+      const fieldValue = getNestedField(data, condition.path)
+      return typeof fieldValue === "number" && fieldValue >= condition.value
+    }
     case "custom":
       // Custom scorers not implemented in v1
       return false
@@ -150,6 +154,8 @@ function describeCondition(condition: CheckpointCondition): string {
       return `${condition.path} == ${JSON.stringify(condition.value)}`
     case "field_contains":
       return `${condition.path} contains "${condition.value}"`
+    case "field_gte":
+      return `${condition.path} >= ${condition.value}`
     case "custom":
       return `custom scorer: ${condition.scorer}`
   }

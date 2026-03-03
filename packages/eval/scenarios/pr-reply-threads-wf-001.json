@@ -1,0 +1,74 @@
+{
+  "id": "pr-reply-threads-wf-001",
+  "name": "Reply to Unresolved Review Threads",
+  "description": "Agent must list unresolved review threads on a PR and reply to each with a concrete fix suggestion. No code changes or commits are expected — only GitHub API read/write calls.",
+  "category": "pr",
+  "difficulty": "intermediate",
+  "prompt": "PR #{{pr_number}} in {{repo}} has unresolved review threads with code feedback. Please go through each unresolved thread and reply with a concrete fix suggestion. Only reply to unresolved threads — do not push any code changes.",
+  "timeoutMs": 120000,
+  "allowedRetries": 1,
+  "tags": ["pr", "review", "reply", "api-only"],
+  "fixture": {
+    "repo": "{{fixture_repo}}",
+    "requires": ["pr_with_mixed_threads"],
+    "bindings": {
+      "pr_number": "pr_with_mixed_threads.number",
+      "repo": "pr_with_mixed_threads.repo"
+    },
+    "reseedPerIteration": false,
+    "seedPerIteration": true
+  },
+  "assertions": {
+    "checkpoints": [
+      {
+        "id": "threads-still-unresolved",
+        "description": "All 3 unresolved threads remain unresolved — agent replied but did not mark them resolved",
+        "task": "pr.threads.list",
+        "input": {
+          "owner": "{{owner}}",
+          "name": "{{repo_name}}",
+          "prNumber": "{{pr_number}}",
+          "unresolvedOnly": true
+        },
+        "condition": { "type": "field_equals", "path": "items.length", "value": 3 }
+      },
+      {
+        "id": "thread-0-has-reply",
+        "description": "First unresolved thread has a reply (original comment + agent reply = 2 comments)",
+        "task": "pr.threads.list",
+        "input": {
+          "owner": "{{owner}}",
+          "name": "{{repo_name}}",
+          "prNumber": "{{pr_number}}",
+          "unresolvedOnly": true
+        },
+        "condition": { "type": "field_equals", "path": "items.0.comments.length", "value": 2 }
+      },
+      {
+        "id": "thread-1-has-reply",
+        "description": "Second unresolved thread has a reply (original comment + agent reply = 2 comments)",
+        "task": "pr.threads.list",
+        "input": {
+          "owner": "{{owner}}",
+          "name": "{{repo_name}}",
+          "prNumber": "{{pr_number}}",
+          "unresolvedOnly": true
+        },
+        "condition": { "type": "field_equals", "path": "items.1.comments.length", "value": 2 }
+      },
+      {
+        "id": "thread-2-has-reply",
+        "description": "Third unresolved thread has a reply (original comment + agent reply = 2 comments)",
+        "task": "pr.threads.list",
+        "input": {
+          "owner": "{{owner}}",
+          "name": "{{repo_name}}",
+          "prNumber": "{{pr_number}}",
+          "unresolvedOnly": true
+        },
+        "condition": { "type": "field_equals", "path": "items.2.comments.length", "value": 2 }
+      }
+    ],
+    "expectedCapabilities": ["pr.view", "pr.threads.list", "pr.threads.reply"]
+  }
+}

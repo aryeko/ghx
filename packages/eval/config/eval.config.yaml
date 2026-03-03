@@ -10,7 +10,7 @@ modes:
 scenarios:
   set: default
   # ids:                    # Or explicit scenario IDs (overrides set)
-  #   - pr-fix-mixed-threads-wf-001
+  #   - pr-reply-threads-wf-001
 
 # Execution parameters
 execution:
