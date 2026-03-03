@@ -162,6 +162,25 @@ describe("TraceBuilder.buildEvents", () => {
     const toolEvents = events.filter((e) => e.type === "tool_call")
     expect(toolEvents).toHaveLength(0)
   })
+
+  it("uses part['tool'] field for tool name when present, ignoring state['name']", () => {
+    const messages = [
+      assistantMsg([
+        {
+          type: "tool",
+          tool: "ghx.pr.view", // part["tool"] is set — should take priority
+          state: {
+            name: "old-name", // should be ignored
+            input: { owner: "o" },
+            output: { number: 1 },
+          },
+        },
+      ]),
+    ]
+    const events = builder.buildEvents(messages)
+    const toolEvent = events.find((e) => e.type === "tool_call")
+    expect(toolEvent).toMatchObject({ name: "ghx.pr.view" })
+  })
 })
 
 describe("TraceBuilder.groupIntoTurns", () => {
@@ -289,5 +308,16 @@ describe("TraceBuilder.buildTrace", () => {
     const messages = [assistantMsg([{ type: "text", text: "Hello" }], { createdMs })]
     const trace = builder.buildTrace("ses_dur_pos", messages)
     expect(trace.summary.totalDuration).toBeGreaterThanOrEqual(0)
+  })
+
+  it("computes positive totalDuration for two turns with different timestamps", () => {
+    const t1 = new Date("2026-01-01T00:00:00.000Z").getTime()
+    const t2 = new Date("2026-01-01T00:01:00.000Z").getTime()
+    const messages = [
+      assistantMsg([{ type: "text", text: "First" }], { createdMs: t1 }),
+      assistantMsg([{ type: "text", text: "Second" }], { createdMs: t2 }),
+    ]
+    const trace = builder.buildTrace("ses_dur_multi", messages)
+    expect(trace.summary.totalDuration).toBeGreaterThan(0)
   })
 })
