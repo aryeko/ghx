@@ -20,7 +20,7 @@ export function generateComparisonPage(rows: readonly ProfileRow[]): string {
     "# Mode Comparison",
     "",
     "Pairwise statistical comparison of **wall-clock latency (ms)** across modes.",
-    "A positive reduction means mode A completed faster than mode B on the same scenarios.",
+    "A positive reduction means mode A completed faster than mode B across all iterations.",
     "",
   ]
 
