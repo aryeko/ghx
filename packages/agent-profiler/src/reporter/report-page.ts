@@ -147,10 +147,10 @@ function renderGlanceRow(rows: readonly ProfileRow[], mode: string): string {
 
   return [
     `| ${mode}`,
-    `| ${successRate.toFixed(0)}%`,
+    `| ${successIndicator(successRate)} ${successRate.toFixed(0)}%`,
     `| ${fmtMs(wall.median)}`,
     `| ${fmtMs(wall.p90)}`,
-    `| ${wall.cv.toFixed(2)}`,
+    `| ${cvIndicator(wall.cv)} ${wall.cv.toFixed(2)}`,
     `| ${fmtNum(active.median)}`,
     `| ${fmtNum(cacheRead.median)}`,
     `| ${cacheRatio.toFixed(0)}%`,
@@ -158,7 +158,7 @@ function renderGlanceRow(rows: readonly ProfileRow[], mode: string): string {
     `| ${fmtNum(reasoning.median)}`,
     `| ${fmtNum(tools.median)}`,
     `| ${maxTools}`,
-    `| ${totalFailed}`,
+    `| ${failedCallsIndicator(totalFailed)} ${totalFailed}`,
     `| ${fmtNum(turns.median)}`,
     `| $${cost.median.toFixed(4)} |`,
   ].join(" ")
@@ -204,7 +204,9 @@ function renderStatisticalComparison(rows: readonly ProfileRow[]): readonly stri
     "",
     "> **p-value:** Values below 0.05 indicate the observed difference is unlikely due to random chance alone, suggesting a real performance difference between the modes.",
     "",
-    "> **Cohen's d** quantifies how large the difference is in practice, independent of sample size. Values are classified as negligible (<0.2), small (0.2-0.5), medium (0.5-0.8), or large (>0.8). A large effect size means the distributions barely overlap. **95% CI** is a bootstrap confidence interval for the reduction percentage — if the interval excludes zero, the difference is robust.",
+    "> **Cohen's d** quantifies how large the difference is in practice, independent of sample size. Values are classified as negligible (<0.2), small (0.2-0.5), medium (0.5-0.8), or large (>0.8). A large effect size means the distributions barely overlap.",
+    "",
+    "> **95% CI** is a bootstrap confidence interval for the reduction percentage — if the interval excludes zero, the difference is robust.",
     "",
   ]
 
@@ -269,9 +271,9 @@ function renderStatisticalComparison(rows: readonly ProfileRow[]): readonly stri
           `| ${fmtStat(r.statsA.median, unit)}`,
           `| ${fmtStat(r.statsB.median, unit)}`,
           `| ${r.comparison.reductionPct.toFixed(1)}%`,
-          `| [${ci0.toFixed(1)}%, ${ci1.toFixed(1)}%]`,
-          `| ${r.comparison.effectSize.toFixed(3)} (${r.comparison.effectMagnitude})`,
-          `| ${r.comparison.pValue.toFixed(4)} |`,
+          `| ${ciIndicator(ci0, ci1)} [${ci0.toFixed(1)}%, ${ci1.toFixed(1)}%]`,
+          `| ${effectIndicator(r.comparison.effectMagnitude)} ${r.comparison.effectSize.toFixed(3)} (${r.comparison.effectMagnitude})`,
+          `| ${pValueIndicator(r.comparison.pValue)} ${r.comparison.pValue.toFixed(4)} |`,
         ].join(" "),
       )
     }
@@ -400,7 +402,7 @@ function renderPerScenarioResults(
 
     lines.push(
       `- **Checkpoints:** ${checkpointCount}`,
-      `- **Success rate:** ${successRate.toFixed(0)}% (${successCount}/${scenarioRows.length})`,
+      `- **Success rate:** ${successIndicator(successRate)} ${successRate.toFixed(0)}% (${successCount}/${scenarioRows.length})`,
       "",
     )
 
@@ -418,7 +420,7 @@ function renderPerScenarioResults(
         [
           `| ${r.iteration}`,
           `| ${r.mode}`,
-          `| ${r.success ? "pass" : "FAIL"}`,
+          `| ${r.success ? `${GOOD} pass` : `${BAD} FAIL`}`,
           `| ${fmtMs(r.timing.wallMs)}`,
           `| ${fmtNum(r.tokens.active)}`,
           `| ${fmtNum(r.tokens.cacheRead)}`,
@@ -502,7 +504,7 @@ function renderCheckpointDetail(
         const entry = cp.passRates[mode]
         if (!entry) return "| -"
         const rate = entry.total === 0 ? 0 : (entry.passed / entry.total) * 100
-        return `| ${rate.toFixed(0)}%`
+        return `| ${checkpointRateIndicator(rate)} ${rate.toFixed(0)}%`
       })
       lines.push(`| \`${cp.id}\` | ${cp.description} ${cells.join(" ")} |`)
     }
@@ -705,4 +707,51 @@ function fmtStat(value: number, unit: string): string {
   if (unit === "ms") return `${value.toFixed(0)} ms`
   if (unit === "tokens") return fmtNum(value)
   return value.toFixed(1)
+}
+
+// ── Color indicators ────────────────────────────────────────────────────────
+
+const GOOD = "\u{1F7E2}" // green circle
+const WARN = "\u{1F7E1}" // yellow circle
+const BAD = "\u{1F534}" // red circle
+
+function successIndicator(rate: number): string {
+  if (rate >= 90) return GOOD
+  if (rate >= 70) return WARN
+  return BAD
+}
+
+function cvIndicator(cv: number): string {
+  if (cv <= 0.2) return GOOD
+  if (cv <= 0.4) return WARN
+  return BAD
+}
+
+function pValueIndicator(p: number): string {
+  if (p < 0.05) return GOOD
+  if (p < 0.1) return WARN
+  return BAD
+}
+
+function effectIndicator(magnitude: string): string {
+  if (magnitude === "large") return GOOD
+  if (magnitude === "medium") return WARN
+  return BAD
+}
+
+function checkpointRateIndicator(rate: number): string {
+  if (rate >= 100) return GOOD
+  if (rate >= 50) return WARN
+  return BAD
+}
+
+function ciIndicator(low: number, high: number): string {
+  if ((low > 0 && high > 0) || (low < 0 && high < 0)) return GOOD
+  return BAD
+}
+
+function failedCallsIndicator(count: number): string {
+  if (count === 0) return GOOD
+  if (count <= 3) return WARN
+  return BAD
 }

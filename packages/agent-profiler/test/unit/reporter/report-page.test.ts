@@ -195,6 +195,40 @@ describe("generateReportPage", () => {
     expect(result).toContain("No data available")
   })
 
+  it("includes color indicators in glance table", () => {
+    const rows = [
+      makeProfileRow({ mode: "good", success: true }),
+      makeProfileRow({ mode: "bad", success: false }),
+    ]
+    const result = generateReportPage(makeContext({ rows }))
+    // Green circle for 100% success
+    expect(result).toContain("\u{1F7E2} 100%")
+    // Red circle for 0% success
+    expect(result).toContain("\u{1F534} 0%")
+  })
+
+  it("includes color indicators in per-scenario pass/fail", () => {
+    const rows = [
+      makeProfileRow({ scenarioId: "s1", iteration: 0, success: true }),
+      makeProfileRow({ scenarioId: "s1", iteration: 1, success: false }),
+    ]
+    const result = generateReportPage(makeContext({ rows }))
+    expect(result).toContain("\u{1F7E2} pass")
+    expect(result).toContain("\u{1F534} FAIL")
+  })
+
+  it("includes color indicators in checkpoint pass rates", () => {
+    const rows = [
+      makeProfileRow({
+        mode: "a",
+        scenarioId: "s1",
+        checkpointDetails: [{ id: "cp1", description: "All pass", passed: true }],
+      }),
+    ]
+    const result = generateReportPage(makeContext({ rows }))
+    expect(result).toContain("\u{1F7E2} 100%")
+  })
+
   it("renders tool usage from byCategory data", () => {
     const rows = [
       makeProfileRow({
