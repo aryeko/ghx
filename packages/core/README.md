@@ -27,7 +27,7 @@ sequenceDiagram
     participant GH as GitHub API
 
     %% Agent requests a typed execution
-    Agent->>ghx: executeTask("pr.view", { owner, name, number })
+    Agent->>ghx: executeTask("pr.view", { owner, name, prNumber })
     
     %% ghx routing engine takes over
     Note over ghx: 1. Validate input schema<br/>2. Select optimal route (GraphQL/CLI)<br/>3. Run preflight checks
@@ -51,13 +51,13 @@ sequenceDiagram
 
 Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 
-- 🏎️ **[Getting Started](./docs/getting-started/README.md)** — Installation, why ghx, and use case diagrams.
+- **[Getting Started](./docs/getting-started/README.md)** — Installation, why ghx, and use case diagrams.
   - [Library Quickstart](./docs/getting-started/library-quickstart.md)
   - [CLI Quickstart](./docs/getting-started/cli-quickstart.md)
   - [Agent Setup](./docs/getting-started/agent-setup.md)
-- 🧠 **[Concepts](./docs/concepts/README.md)** — How ghx works internally (Routing Engine, Operation Cards, Result Envelope, Chaining).
-- 🏗️ **[Architecture](./docs/architecture/README.md)** — System design, execution pipeline, formatters, and GraphQL layer.
-- 📚 **[Reference](./docs/reference/README.md)** — API exports, error codes, and a complete table of all 70+ capabilities.
+- **[Concepts](./docs/concepts/README.md)** — How ghx works internally (Routing Engine, Operation Cards, Result Envelope, Chaining).
+- **[Architecture](./docs/architecture/README.md)** — System design, execution pipeline, formatters, and GraphQL layer.
+- **[Reference](./docs/reference/README.md)** — API exports, error codes, and a complete table of all 70+ capabilities.
 
 ## Quick Start (Library)
 

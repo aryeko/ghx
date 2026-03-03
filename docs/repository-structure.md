@@ -1,5 +1,15 @@
 # Repository Structure
 
+## TL;DR
+
+- **3 packages:** `@ghx-dev/core` (public CLI + routing engine), `@ghx-dev/agent-profiler` (private profiling framework), `@ghx-dev/eval` (private benchmarking harness)
+- **5 key files:**
+  - `packages/core/src/core/routing/engine.ts` -- route selection and preflight
+  - `packages/core/src/core/execute/execute.ts` -- route attempts, retry, validation
+  - `packages/core/src/core/registry/cards/*.yaml` -- capability definitions (70+ operation cards)
+  - `packages/core/src/cli/index.ts` -- CLI entrypoint
+  - `packages/core/src/index.ts` -- public npm package API
+
 This document provides a comprehensive overview of the ghx repository layout, module organization, and key files.
 
 ## Workspace Structure

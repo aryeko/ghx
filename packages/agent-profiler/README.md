@@ -1,5 +1,7 @@
 # @ghx-dev/agent-profiler
 
+> **Internal package** -- this package is private and not published to npm. It is used for ghx development and evaluation.
+
 A generic TypeScript framework for profiling AI agent session performance -- measuring latency, tokens, tool calls, cost, and behavioral patterns across execution modes.
 
 ## Why Agent Profiler?

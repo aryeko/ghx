@@ -14,6 +14,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Worktrees:** Feature branches may have isolated worktrees at `.worktrees/<branch-name>/`. Check there before assuming the main checkout is the active workspace.
 
+## Additional Rules Files
+
+Currently absent but treat as required policy inputs if added:
+- `.cursor/rules/`
+- `.cursorrules`
+- `.github/copilot-instructions.md`
+
 ## Commands
 
 ### Setup
@@ -113,6 +120,7 @@ User/Agent → CLI (packages/core/src/cli/) → executeTask() [core/routing/engi
 - **Files:** kebab-case. Tests: `*.test.ts` (unit), `*.integration.test.ts` (integration). Types: PascalCase. Constants: `UPPER_SNAKE_CASE`.
 - **`exactOptionalPropertyTypes: true`** is set in tsconfig. Zod's `.optional()` infers `T | undefined`, which conflicts with TypeScript's strict optional semantics. When returning Zod-parsed values where the declared return type uses optional fields (`field?: T`), cast the result (e.g. `as Promise<ProfileRow[]>`).
 - **Generated code:** Never edit manually — `packages/core/src/gql/generated/**` and `packages/core/src/gql/operations/*.generated.ts`. Regenerate via codegen script.
+- **Dependency management:** Shared devDependencies are pinned in `pnpm-workspace.yaml` via pnpm catalog — use `"catalog:"` in package.json instead of version ranges for: `typescript`, `@types/node`, `tsup`, `tsx`, `vitest`, `@vitest/coverage-v8`. Dependabot is configured (`.github/dependabot.yml`) for weekly npm and GitHub Actions updates. `.npmrc` enforces `strict-peer-dependencies=true` and `auto-install-peers=false`.
 
 ## Pre-commit Hooks
 
@@ -130,6 +138,8 @@ Lefthook runs automatically on commit (installed via `pnpm install`):
 3. Satisfy all applicable checkboxes in `.github/pull_request_template.md`.
 4. Coverage for touched files: ≥90% (aim for 95%).
 5. If `@ghx-dev/core` public API changed: add a changeset — create `.changeset/<kebab-name>.md` with frontmatter `---\n"@ghx-dev/core": patch\n---\n\nDescription.`
+6. Review `.github/pull_request_template.md` and satisfy every applicable validation checkbox.
+7. Confirm tests were added/updated as needed for behavior changes.
 
 ## Documentation
 

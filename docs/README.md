@@ -1,6 +1,8 @@
 # ghx Documentation
 
-Navigation hub for the ghx monorepo. Each package maintains its own documentation.
+ghx is a GitHub execution router for AI agents -- one typed capability interface over `gh` CLI and GraphQL. It validates input, selects the optimal route, handles retries, and returns a stable `ResultEnvelope`.
+
+> **Start here:** [Root README](../README.md) for quick start and overview, or [Core Getting Started](../packages/core/docs/getting-started/README.md) for detailed setup.
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'primaryColor': '#4A90D9', 'primaryTextColor': '#fff', 'primaryBorderColor': '#2E6BA4', 'lineColor': '#666', 'fontSize': '13px'}}}%%
@@ -35,5 +37,7 @@ graph TD
 
 - [Evaluation Report](eval-report.md) -- Empirical evaluation, statistical analysis, and bundled raw data
 - [Repository Structure](repository-structure.md) -- Monorepo layout and module organization
+- [Architecture](ARCHITECTURE.md) -- Package structure, execution flow, and design overview
+- [Troubleshooting](TROUBLESHOOTING.md) -- Common setup, runtime, and CI issues with fixes
 - [Contributing](../CONTRIBUTING.md) -- Development setup, testing, CI, publishing
 - [Roadmap](../ROADMAP.md) -- Current priorities and capability batches

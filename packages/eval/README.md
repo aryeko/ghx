@@ -1,5 +1,7 @@
 # @ghx-dev/eval
 
+> **Internal package** -- this package is private and not published to npm. It is used for ghx development and evaluation.
+
 Evaluation harness for ghx -- measures how structured capability routing compares to raw `gh` CLI and GitHub MCP server tools across tool calls, token cost, and reliability through unbiased, controlled benchmarks.
 
 ## How It Works
