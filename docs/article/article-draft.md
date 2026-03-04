@@ -1,6 +1,6 @@
 # From 15 Tool Calls to 2: Stop Your AI Agent From Wasting Tokens on GitHub
 
-*Your AI coding assistant is spending more time fighting GitHub's API than doing actual work. Here's the data — and the fix.*
+*Your AI coding assistant is spending more time fighting GitHub's API than doing actual work. Here's the data — and a pattern to fix it.*
 
 ---
 
@@ -10,9 +10,18 @@ Watch an AI agent submit a PR review with inline comments. It calls `gh api`, ge
 
 This isn't a bug. It's the default experience for every AI agent that interacts with GitHub — Claude Code, Cursor, Windsurf, Copilot, or any custom agent you build. And it happens on almost every non-trivial GitHub operation.
 
-I measured exactly how much waste this creates, ran a controlled evaluation across 30 sessions, and built a tool that eliminates it. Here's what I found.
+I measured exactly how much waste this creates, ran a controlled evaluation across 30 runs, and built a tool that dramatically reduces it. Here's what I found.
 
 ![Without ghx: 15 tool calls, 126 seconds of chaotic API discovery. With ghx: 2 tool calls, 26 seconds.](images/hero-chaos-vs-clarity.png)
+
+**The short version:** [ghx](https://github.com/aryeko/ghx) is an open-source execution router that gives AI agents pre-declared, typed GitHub capabilities instead of making them discover the API at runtime. It bundles ~70 operations (PR reviews, issue triage, releases, workflows) into single-call "capabilities" with structured input/output schemas, automatic GraphQL/CLI routing, and batch chaining — so the agent says *what* it wants, not *how* to call it.
+
+> **TL;DR**
+> - AI agents waste 60–70% of their GitHub tool calls on API discovery and retry — an average of **9 backtracking events per task**.
+> - ghx pre-declares ~70 typed capabilities with automatic routing and chain batching, cutting tool calls by 73% and latency by 54% in a controlled 30-run evaluation.
+> - The pattern is general: **pre-declared capability interfaces beat runtime API discovery** for any LLM-driven workflow.
+
+> **Who this is for:** Agent builders integrating GitHub operations, developers tired of agents fighting `gh api` payloads, and anyone designing tool interfaces for LLMs.
 
 ---
 
@@ -53,6 +62,8 @@ Every run started from identical fixture-seeded GitHub state, reset between iter
 
 ![Benchmark comparison: ghx vs Raw gh CLI vs GitHub MCP across tool calls, wall-clock time, and success rate](images/benchmark-three-mode-comparison.png)
 
+*p50 = median (50th percentile) — half the runs were faster/lower, half were slower/higher.*
+
 | Metric | Baseline (raw `gh`) | GitHub MCP | ghx | ghx vs baseline |
 |---|---|---|---|---|
 | Tool calls (p50) | 8 | 7 | **2** | **-73%** |
@@ -67,9 +78,11 @@ But the number that matters most isn't in this table.
 
 ### Backtracking: where the waste actually lives
 
-I tracked "backtracking events" — moments where the agent tries an approach, gets an error, and reverses course to try something different.
+I tracked **backtracking events** across all 30 runs.
 
 ![Backtracking events per task: Raw gh CLI averages 9, GitHub MCP 3.5, ghx just 1](images/benchmark-backtracking-events.png)
+
+*A **backtracking event** is when the agent tries an approach, gets an error (e.g., a 422 from a malformed API call), and reverses course to try a different approach. Each one burns tokens on the failed attempt, the reasoning about what went wrong, and the retry.*
 
 | Mode | Backtracking events per task |
 |---|---|
@@ -85,9 +98,9 @@ This is the core insight: **the cost isn't in the final successful API call. It'
 
 ---
 
-## Why MCP isn't enough
+## Where MCP still leaves room
 
-The GitHub MCP Server helps — it gives the agent structured tools with defined inputs and outputs. But look at the tool call numbers:
+The GitHub MCP Server helps — it gives the agent structured tools with defined inputs and outputs, and it eliminates the parsing headaches of raw CLI output. But look at the tool call numbers:
 
 | Metric | GitHub MCP | ghx | Difference |
 |---|---|---|---|
@@ -95,11 +108,12 @@ The GitHub MCP Server helps — it gives the agent structured tools with defined
 | Cohen's d | — | — | **3.417** (strongest signal in the dataset) |
 | p-value | — | — | **< 0.001** |
 
-MCP reduces latency (agents don't fight encoding), but it doesn't reduce the number of calls. An agent still needs to call one MCP tool per GitHub operation. Triage an issue? That's separate calls for removing a label, adding a label, assigning a user, and posting a comment.
+MCP maps tools 1:1 with REST primitives — one MCP tool per GitHub API endpoint. This eliminates encoding pain but doesn't reduce the number of round trips. Triage an issue? That's still separate calls for removing a label, adding a label, assigning a user, and posting a comment.
 
 The architectural difference is **composite operations**. ghx collapses multi-step workflows into a single call:
 
 ![Chain batching: 4 separate API calls without ghx vs 1 batched call with ghx](images/diagram-chain-batching.png)
+*(Why "2 API round trips" in the diagram: 1. an ID-resolve query to map names → GitHub node IDs, 2. a single batched GraphQL mutation for all four operations.)*
 
 ```bash
 ghx chain --steps - <<'EOF'
@@ -138,22 +152,14 @@ input_schema:
     prNumber: { type: integer }
     event: { enum: [APPROVE, REQUEST_CHANGES, COMMENT] }
     body: { type: string }
-    comments:
-      type: array
-      items:
-        type: object
-        required: [path, line, body]
-        properties:
-          path: { type: string }
-          line: { type: integer }
-          body: { type: string }
+    comments: { type: array }  # items: path, line, body
 
 routing:
   preferred: graphql
   fallbacks: [cli]
 ```
 
-There are **70 of these** across 6 domains: repos, issues, pull requests, workflows, projects v2, and releases.
+There are **~70 of these** across 6 domains: repos, issues, pull requests, workflows, projects v2, and releases.
 
 The agent never discovers the API surface. It reads the capability list once and knows exactly what's available, what inputs are required, and what shape to expect back. No trial and error.
 
@@ -189,24 +195,9 @@ No parsing. No normalization. The agent checks `ok`, reads `data` or `error`, an
 
 ---
 
-## The before and after
+## What it looks like in practice
 
-Here's the PR review scenario side by side.
-
-**Without ghx** — 15 tool calls, 126 seconds:
-
-```
-gh pr view 42                                    # read PR
-gh pr diff 42                                    # read diff
-gh api POST reviews -f 'comments[0][path]=...'   # attempt 1 → 422
-noglob gh api POST reviews ...                   # attempt 2 → 422
-python3 -c "..." | gh api --input -              # attempt 3 → no inline comments
-gh api POST reviews/comments -f path=...         # attempt 4-6 → individual comments
-gh api POST reviews -f event=REQUEST_CHANGES     # attempt 7 → submit event
-gh pr view 42 --json reviews                     # verify
-```
-
-**With ghx** — 2 tool calls, 26 seconds:
+Here's the entire PR review scenario with ghx — 2 tool calls, 26 seconds:
 
 ```bash
 # Call 1: Read the PR and diff in one chain
@@ -228,7 +219,7 @@ ghx run pr.reviews.submit --input '{
 }'
 ```
 
-Same result. 87% fewer tool calls. 79% less time. Zero backtracking.
+Compare that to the 15-call, 126-second baseline described in the intro. Same result. 87% fewer tool calls. 79% less time. Zero backtracking.
 
 ---
 
@@ -247,7 +238,7 @@ To teach your AI agent (Claude Code, Cursor, etc.) about ghx automatically:
 npx @ghx-dev/core setup --scope project --yes
 ```
 
-This installs a skill file that the agent reads on session start. It immediately knows all 70 capabilities and how to use them.
+This installs a skill file that the agent reads on session start. It immediately knows all ~70 capabilities and how to use them.
 
 For programmatic usage in your own agent:
 
@@ -265,6 +256,12 @@ const result = await executeTask(
 )
 // result.ok === true — always a ResultEnvelope, never throws
 ```
+
+---
+
+## What ghx doesn't do
+
+ghx handles deterministic GitHub API operations — the kind with well-defined inputs, outputs, and routing. It doesn't solve tasks that require human judgment (like issue prioritization or code review quality), and it doesn't help with non-GitHub APIs. The evaluation covers only two PR-focused scenarios with a single model (Codex 5.3); results may differ for other workflows or models. See the Reproducibility Appendix below for full methodology details.
 
 ---
 
@@ -287,5 +284,22 @@ If you're building agent tooling, consider: what API surface is your agent re-di
 *If this saved you tokens, star the repo. If you have ideas, open an issue. If you want to add capabilities, PRs are welcome.*
 
 ---
+
+## Appendix: Reproducibility
+
+**Sample size:** 30 total runs = 3 modes (baseline, MCP, ghx) x 2 scenarios x 5 iterations per cell.
+
+**Agent choice:** OpenAI Codex 5.3 was chosen for strict reproducibility — its deterministic execution model makes it easier to isolate the toolset as the single independent variable. The patterns should generalize to other agents (Claude Code, Cursor, etc.), but cross-model evaluation is future work.
+
+**Key definitions:**
+- **Active tokens** = input + output tokens, excluding prefix-cached tokens. This isolates the tokens the model processes from scratch — the actual cost driver. (ghx's skill prompt is ~600 tokens and gets prefix-cached, so it has near-zero marginal cost.)
+- **Success** = all checkpoints pass. Checkpoints verify actual GitHub state via API (e.g., "a CHANGES_REQUESTED review exists," "all 3 threads have replies") — functional correctness, not textual similarity.
+- **Backtracking event** = the agent tries an approach, receives an error, and switches to a different approach in a subsequent tool call.
+
+**Benchmark harness:** The evaluation framework (`@ghx-dev/eval`) is included in the [ghx monorepo](https://github.com/aryeko/ghx) under `packages/eval/`. Scenario definitions, fixture seeding, checkpoint scoring, and statistical analysis are all open source. The full evaluation report with per-iteration data is at `docs/eval-report.md` in the repo.
+
+---
+
+*Arye Eidelman is a software engineer focused on developer tooling and AI agent infrastructure. He builds [ghx](https://github.com/aryeko/ghx).*
 
 *Tags: AI Agents, Developer Tools, GitHub, API Design, Open Source*
