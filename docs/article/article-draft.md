@@ -300,6 +300,6 @@ If you're building agent tooling, consider: what API surface is your agent re-di
 
 ---
 
-*Arye Eidelman is a software engineer focused on developer tooling and AI agent infrastructure. He builds [ghx](https://github.com/aryeko/ghx).*
+*Arye Kogan is a software engineer focused on developer tooling and AI agent infrastructure. He builds [ghx](https://github.com/aryeko/ghx).*
 
 *Tags: AI Agents, Developer Tools, GitHub, API Design, Open Source*
