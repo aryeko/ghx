@@ -122,6 +122,24 @@ describe("cli index main", () => {
     )
   })
 
+  it("prints version for --version", async () => {
+    const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true)
+
+    const code = await main(["--version"])
+
+    expect(code).toBe(0)
+    expect(stdout).toHaveBeenCalledWith(expect.stringMatching(/^ghx \d+\.\d+\.\d+/))
+  })
+
+  it("prints version for -V", async () => {
+    const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true)
+
+    const code = await main(["-V"])
+
+    expect(code).toBe(0)
+    expect(stdout).toHaveBeenCalledWith(expect.stringMatching(/^ghx \d+\.\d+\.\d+/))
+  })
+
   it("prints error and exits 1 for unknown command", async () => {
     const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true)
 
