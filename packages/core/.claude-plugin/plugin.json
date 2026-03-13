@@ -1,10 +1,11 @@
 {
   "name": "ghx",
-  "description": "GitHub execution router for AI agents — 70 capabilities with deterministic routing and normalized output",
+  "description": "Route GitHub operations through deterministic adapters instead of fragile shell scraping. 70+ capabilities covering issues, PRs, repos, releases, and projects — each with validated input, normalized output, and automatic fallback routing.",
   "version": "0.3.0",
   "author": {
     "name": "Arye Kogan"
   },
+  "category": "development",
   "repository": "https://github.com/aryeko/ghx",
   "homepage": "https://github.com/aryeko/ghx",
   "license": "MIT",

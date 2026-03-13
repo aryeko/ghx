@@ -1,15 +1,22 @@
 {
-  "name": "ghx",
+  "name": "ghx-dev",
+  "description": "Marketplace for ghx — a GitHub execution router that gives AI agents deterministic, validated access to GitHub operations.",
   "owner": {
     "name": "Arye Kogan"
   },
   "plugins": [
     {
       "name": "ghx",
+      "description": "Route GitHub operations through deterministic adapters instead of fragile shell scraping. 70+ capabilities covering issues, PRs, repos, releases, and projects — each with validated input, normalized output, and automatic fallback routing.",
+      "version": "0.3.0",
+      "author": {
+        "name": "Arye Kogan"
+      },
       "source": {
         "source": "npm",
         "package": "@ghx-dev/core"
-      }
+      },
+      "category": "development"
     }
   ]
 }
