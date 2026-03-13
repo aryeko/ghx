@@ -5,6 +5,16 @@ description: Executes GitHub operations via ghx. Use for all GitHub interactions
 
 # ghx CLI Skill
 
+## Authentication
+
+ghx automatically resolves your GitHub token. It checks (in order):
+1. `GITHUB_TOKEN` environment variable
+2. `GH_TOKEN` environment variable
+3. Cached token (from previous resolution)
+4. `gh auth token` (requires `gh` CLI authenticated via `gh auth login`)
+
+If you are authenticated via `gh auth login`, ghx works out of the box with no extra configuration.
+
 ## Capabilities
 
 All available capabilities (`id - description [inputs]`, `?` = optional):
