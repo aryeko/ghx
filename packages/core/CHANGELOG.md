@@ -1,5 +1,12 @@
 # @ghx-dev/core
 
+## 0.3.1
+
+### Patch Changes
+
+- 145132d: Fix plugin cache ENAMETOOLONG by renaming marketplace to avoid name collision with plugin. Add description, category, version, and author metadata to plugin manifests.
+- b94f1be: Add --version/-v flag, warm token cache during setup, fix skill install path to using-ghx
+
 ## 0.3.0
 
 ### Minor Changes
