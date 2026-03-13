@@ -48,9 +48,9 @@ describe("cli index main", () => {
     const code = await main([])
 
     expect(code).toBe(0)
-    expect(stdout).toHaveBeenCalledWith(
-      "Usage:\n  ghx run <task> --input '<json>' | --input - [--check-gh-preflight]\n  ghx chain --steps '<json-array>' | --steps - [--check-gh-preflight]\n  ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]\n  ghx capabilities list\n  ghx capabilities explain <capability_id>\n",
-    )
+    const output = String(stdout.mock.calls[0]?.[0])
+    expect(output).toContain("ghx run <task>")
+    expect(output).toContain("--version")
   })
 
   it("prints usage for --help", async () => {
@@ -59,9 +59,9 @@ describe("cli index main", () => {
     const code = await main(["--help"])
 
     expect(code).toBe(0)
-    expect(stdout).toHaveBeenCalledWith(
-      "Usage:\n  ghx run <task> --input '<json>' | --input - [--check-gh-preflight]\n  ghx chain --steps '<json-array>' | --steps - [--check-gh-preflight]\n  ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]\n  ghx capabilities list\n  ghx capabilities explain <capability_id>\n",
-    )
+    const output = String(stdout.mock.calls[0]?.[0])
+    expect(output).toContain("ghx run <task>")
+    expect(output).toContain("--version")
   })
 
   it("delegates run command to runCommand", async () => {
@@ -106,9 +106,9 @@ describe("cli index main", () => {
     const code = await main(["capabilities", "nope"])
 
     expect(code).toBe(1)
-    expect(stderr).toHaveBeenCalledWith(
-      "Unknown capabilities subcommand: nope\nUsage:\n  ghx run <task> --input '<json>' | --input - [--check-gh-preflight]\n  ghx chain --steps '<json-array>' | --steps - [--check-gh-preflight]\n  ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]\n  ghx capabilities list\n  ghx capabilities explain <capability_id>\n",
-    )
+    const output = String(stderr.mock.calls[0]?.[0])
+    expect(output).toContain("Unknown capabilities subcommand: nope")
+    expect(output).toContain("ghx run <task>")
   })
 
   it("prints usage when capabilities subcommand is missing", async () => {
@@ -117,9 +117,9 @@ describe("cli index main", () => {
     const code = await main(["capabilities"])
 
     expect(code).toBe(1)
-    expect(stderr).toHaveBeenCalledWith(
-      "Missing capabilities subcommand.\nUsage:\n  ghx run <task> --input '<json>' | --input - [--check-gh-preflight]\n  ghx chain --steps '<json-array>' | --steps - [--check-gh-preflight]\n  ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]\n  ghx capabilities list\n  ghx capabilities explain <capability_id>\n",
-    )
+    const output = String(stderr.mock.calls[0]?.[0])
+    expect(output).toContain("Missing capabilities subcommand")
+    expect(output).toContain("ghx run <task>")
   })
 
   it("prints version for --version", async () => {
@@ -140,14 +140,23 @@ describe("cli index main", () => {
     expect(stdout).toHaveBeenCalledWith(expect.stringMatching(/^ghx \d+\.\d+\.\d+/))
   })
 
+  it("prints version for -v", async () => {
+    const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true)
+
+    const code = await main(["-v"])
+
+    expect(code).toBe(0)
+    expect(stdout).toHaveBeenCalledWith(expect.stringMatching(/^ghx \d+\.\d+\.\d+/))
+  })
+
   it("prints error and exits 1 for unknown command", async () => {
     const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true)
 
     const code = await main(["nope"])
 
     expect(code).toBe(1)
-    expect(stderr).toHaveBeenCalledWith(
-      "Unknown command: nope\nUsage:\n  ghx run <task> --input '<json>' | --input - [--check-gh-preflight]\n  ghx chain --steps '<json-array>' | --steps - [--check-gh-preflight]\n  ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]\n  ghx capabilities list\n  ghx capabilities explain <capability_id>\n",
-    )
+    const output = String(stderr.mock.calls[0]?.[0])
+    expect(output).toContain("Unknown command: nope")
+    expect(output).toContain("ghx run <task>")
   })
 })

@@ -28,12 +28,18 @@ function resolveVersion(): string {
 
 function usage(): string {
   return [
+    `ghx ${resolveVersion()} — GitHub execution router for AI agents`,
+    "",
     "Usage:",
     "  ghx run <task> --input '<json>' | --input - [--check-gh-preflight]",
     "  ghx chain --steps '<json-array>' | --steps - [--check-gh-preflight]",
     "  ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]",
     "  ghx capabilities list",
     "  ghx capabilities explain <capability_id>",
+    "",
+    "Flags:",
+    "  -h, --help       Show this help",
+    "  -v, --version    Show version",
   ].join("\n")
 }
 
@@ -45,7 +51,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     return 0
   }
 
-  if (command === "--version" || command === "-V") {
+  if (command === "--version" || command === "-V" || command === "-v") {
     process.stdout.write(`ghx ${resolveVersion()}\n`)
     return 0
   }
