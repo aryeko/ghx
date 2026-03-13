@@ -13,8 +13,7 @@ const repoRoot = join(packageRoot, "..", "..")
 const pkg = JSON.parse(await readFile(join(packageRoot, "package.json"), "utf8"))
 const repoUrl = pkg.repository.url.replace(/^git\+/, "").replace(/\.git$/, "")
 
-const pluginDescription =
-  "GitHub execution router for AI agents — 70 capabilities with deterministic routing and normalized output"
+const pluginDescription = pkg.description
 const packageKeywords = Array.isArray(pkg.keywords)
   ? pkg.keywords.filter((value) => typeof value === "string")
   : []
@@ -23,11 +22,14 @@ const pluginKeywords =
     ? [...new Set(packageKeywords)]
     : ["github", "ai-agents", "cli", "automation"]
 
+const authorObj = { name: typeof pkg.author === "string" ? pkg.author : (pkg.author?.name ?? "") }
+
 const pluginJson = {
   name: "ghx",
   description: pluginDescription,
   version: pkg.version,
-  author: { name: typeof pkg.author === "string" ? pkg.author : (pkg.author?.name ?? "") },
+  author: authorObj,
+  category: "development",
   repository: repoUrl,
   homepage: repoUrl,
   license: pkg.license,
@@ -35,12 +37,18 @@ const pluginJson = {
 }
 
 const marketplaceJson = {
-  name: "ghx",
-  owner: { name: typeof pkg.author === "string" ? pkg.author : (pkg.author?.name ?? "") },
+  name: "ghx-dev",
+  description:
+    "Marketplace for ghx — a GitHub execution router that gives AI agents deterministic, validated access to GitHub operations.",
+  owner: authorObj,
   plugins: [
     {
       name: "ghx",
+      description: pluginDescription,
+      version: pkg.version,
+      author: authorObj,
       source: { source: "npm", package: pkg.name },
+      category: "development",
     },
   ],
 }
@@ -77,5 +85,6 @@ if (checkMode) {
     await writeFile(path, JSON.stringify(content, null, 2) + "\n", "utf8")
   }
   execSync("biome check --write .claude-plugin/", { cwd: packageRoot, stdio: "inherit" })
+  execSync("biome check --write .claude-plugin/", { cwd: repoRoot, stdio: "inherit" })
   process.stdout.write("Plugin manifests synced.\n")
 }
