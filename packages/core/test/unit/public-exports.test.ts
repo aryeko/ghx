@@ -6,7 +6,9 @@ import {
   createSafeCliCommandRunner,
   executeTask,
   explainCapability,
+  invalidateTokenCache,
   listCapabilities,
+  resolveGithubToken,
 } from "@core/index.js"
 import { describe, expect, it } from "vitest"
 
@@ -17,6 +19,8 @@ describe("public exports", () => {
     expect(typeof createGithubClientFromToken).toBe("function")
     expect(typeof createGraphqlClient).toBe("function")
     expect(typeof createSafeCliCommandRunner).toBe("function")
+    expect(typeof resolveGithubToken).toBe("function")
+    expect(typeof invalidateTokenCache).toBe("function")
   })
 
   it("exports agent api surface", () => {
