@@ -31,9 +31,9 @@ describe("cli index entrypoint", () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
 
     expect(process.exitCode).toBe(0)
-    expect(stdout).toHaveBeenCalledWith(
-      "Usage:\n  ghx run <task> --input '<json>' | --input - [--check-gh-preflight]\n  ghx chain --steps '<json-array>' | --steps - [--check-gh-preflight]\n  ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]\n  ghx capabilities list\n  ghx capabilities explain <capability_id>\n",
-    )
+    const output = String(stdout.mock.calls[0]?.[0])
+    expect(output).toContain("ghx run <task>")
+    expect(output).toContain("--version")
   })
 
   it("does not run main when argv[1] is missing", async () => {

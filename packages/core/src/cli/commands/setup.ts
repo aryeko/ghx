@@ -3,6 +3,7 @@ import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import readline from "node:readline/promises"
 import { fileURLToPath } from "node:url"
+import { resolveGithubToken } from "@core/core/auth/resolve-token.js"
 import type { ErrorCode } from "@core/core/errors/codes.js"
 import { errorCodes } from "@core/core/errors/codes.js"
 import { Ajv } from "ajv"
@@ -129,7 +130,7 @@ function parseArgs(argv: string[]): SetupOptions | null {
 
 function resolveSkillPath(scope: SetupScope): string {
   const base = scope === "user" ? homedir() : process.cwd()
-  return join(base, ".agents", "skills", "ghx", "SKILL.md")
+  return join(base, ".agents", "skills", "using-ghx", "SKILL.md")
 }
 
 function resolveTrackingPath(): string {
@@ -254,6 +255,17 @@ export async function setupCommand(argv: string[] = []): Promise<number> {
     await writeFile(skillPath, skillContent, "utf8")
 
     process.stdout.write(`Setup complete: wrote ${skillPath}\n`)
+
+    try {
+      const { source } = await resolveGithubToken()
+      if (source === "gh-cli") {
+        process.stdout.write("GitHub token cached from gh CLI (enables sandboxed agent access)\n")
+      }
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      process.stderr.write(`Warning: could not resolve GitHub token — ${detail}\n`)
+    }
+
     process.stdout.write("Try: ghx capabilities list\n")
     await writeTrackingEvent({
       track: parsed.track,

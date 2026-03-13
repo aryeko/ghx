@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
-import { realpathSync } from "node:fs"
-import { pathToFileURL } from "node:url"
+import { readFileSync, realpathSync } from "node:fs"
+import { dirname, join } from "node:path"
+import { fileURLToPath, pathToFileURL } from "node:url"
 
 import { capabilitiesExplainCommand } from "./commands/capabilities-explain.js"
 import { capabilitiesListCommand } from "./commands/capabilities-list.js"
@@ -9,14 +10,36 @@ import { chainCommand } from "./commands/chain.js"
 import { runCommand } from "./commands/run.js"
 import { setupCommand } from "./commands/setup.js"
 
+function resolveVersion(): string {
+  const cliDir = dirname(fileURLToPath(import.meta.url))
+  const candidates = [join(cliDir, "..", "..", "package.json"), join(cliDir, "..", "package.json")]
+  for (const candidate of candidates) {
+    try {
+      const pkg = JSON.parse(readFileSync(candidate, "utf8")) as { version?: string }
+      if (pkg.version) {
+        return pkg.version
+      }
+    } catch {
+      continue
+    }
+  }
+  return "unknown"
+}
+
 function usage(): string {
   return [
+    `ghx ${resolveVersion()} — GitHub execution router for AI agents`,
+    "",
     "Usage:",
     "  ghx run <task> --input '<json>' | --input - [--check-gh-preflight]",
     "  ghx chain --steps '<json-array>' | --steps - [--check-gh-preflight]",
     "  ghx setup --scope <user|project> [--yes] [--dry-run] [--verify] [--track]",
     "  ghx capabilities list",
     "  ghx capabilities explain <capability_id>",
+    "",
+    "Flags:",
+    "  -h, --help       Show this help",
+    "  -v, --version    Show version",
   ].join("\n")
 }
 
@@ -25,6 +48,11 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
 
   if (!command || command === "--help" || command === "-h") {
     process.stdout.write(`${usage()}\n`)
+    return 0
+  }
+
+  if (command === "--version" || command === "-V" || command === "-v") {
+    process.stdout.write(`ghx ${resolveVersion()}\n`)
     return 0
   }
 
