@@ -1,5 +1,13 @@
 # @ghx-dev/eval
 
+## 0.2.2
+
+### Patch Changes
+
+- Updated dependencies [145132d]
+- Updated dependencies [b94f1be]
+  - @ghx-dev/core@0.3.1
+
 ## 0.2.1
 
 ### Patch Changes
