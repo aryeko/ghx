@@ -1,3 +1,8 @@
+export type { TokenResolution } from "./core/auth/resolve-token.js"
+export {
+  invalidateTokenCache,
+  resolveGithubToken,
+} from "./core/auth/resolve-token.js"
 export type {
   AttemptMeta,
   ChainResultEnvelope,

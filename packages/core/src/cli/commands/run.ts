@@ -1,4 +1,6 @@
 import { compactRunResult } from "@core/cli/formatters/compact.js"
+import { invalidateTokenCache, resolveGithubToken } from "@core/core/auth/resolve-token.js"
+import { errorCodes } from "@core/core/errors/codes.js"
 import type { TaskRequest } from "../../core/contracts/task.js"
 import { executeTask } from "../../core/routing/engine/index.js"
 import { createGithubClient } from "../../gql/github-client.js"
@@ -82,15 +84,6 @@ export function readStdin(timeoutMs = 10_000): Promise<string> {
   })
 }
 
-function resolveGithubToken(): string {
-  const token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN
-  if (!token || token.trim().length === 0) {
-    throw new Error("Missing GITHUB_TOKEN or GH_TOKEN for GraphQL transport")
-  }
-
-  return token
-}
-
 async function executeGraphqlRequest<TData>(
   token: string,
   query: string,
@@ -142,24 +135,33 @@ export async function runCommand(argv: string[] = []): Promise<number> {
   const { task, inputSource, skipGhPreflight, verbose } = parseRunFlags(argv)
   const input =
     inputSource === "stdin" ? parseJsonInput(await readStdin()) : parseJsonInput(inputSource.raw)
-  const githubToken = resolveGithubToken()
 
-  const githubClient = createGithubClient({
-    async execute<TData>(query: string, variables?: Record<string, unknown>): Promise<TData> {
-      return executeGraphqlRequest<TData>(githubToken, query, variables)
-    },
-  })
+  const { token, source } = await resolveGithubToken()
 
-  const request: TaskRequest = {
-    task,
-    input,
-  }
+  const buildClient = (t: string) =>
+    createGithubClient({
+      async execute<TData>(query: string, variables?: Record<string, unknown>): Promise<TData> {
+        return executeGraphqlRequest<TData>(t, query, variables)
+      },
+    })
 
-  const result = await executeTask(request, {
-    githubClient,
-    githubToken,
+  const request: TaskRequest = { task, input }
+
+  let result = await executeTask(request, {
+    githubClient: buildClient(token),
+    githubToken: token,
     skipGhPreflight,
   })
+
+  if (!result.ok && result.error?.code === errorCodes.Auth && source !== "env") {
+    await invalidateTokenCache()
+    const fresh = await resolveGithubToken()
+    result = await executeTask(request, {
+      githubClient: buildClient(fresh.token),
+      githubToken: fresh.token,
+      skipGhPreflight,
+    })
+  }
 
   const output = verbose ? result : compactRunResult(result)
   process.stdout.write(`${JSON.stringify(output, null, verbose ? 2 : undefined)}\n`)

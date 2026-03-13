@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 const executeTasksMock = vi.fn()
+const resolveGithubTokenMock = vi.fn()
 
 vi.mock("@core/core/routing/engine/index.js", () => ({
   executeTasks: (...args: unknown[]) => executeTasksMock(...args),
@@ -8,6 +9,10 @@ vi.mock("@core/core/routing/engine/index.js", () => ({
 
 vi.mock("@core/gql/github-client.js", () => ({
   createGithubClient: (transport: unknown) => transport,
+}))
+
+vi.mock("@core/core/auth/resolve-token.js", () => ({
+  resolveGithubToken: (...args: unknown[]) => resolveGithubTokenMock(...args),
 }))
 
 describe("chainCommand parsing", () => {
@@ -69,7 +74,7 @@ describe("chainCommand parsing", () => {
 
     const { chainCommand } = await import("@core/cli/commands/chain.js")
 
-    vi.stubEnv("GITHUB_TOKEN", "test-token")
+    resolveGithubTokenMock.mockResolvedValue({ token: "test-token", source: "env" })
 
     const exitCode = await chainCommand([
       "--steps",
@@ -95,7 +100,7 @@ describe("chainCommand parsing", () => {
 
     const { chainCommand } = await import("@core/cli/commands/chain.js")
 
-    vi.stubEnv("GITHUB_TOKEN", "test-token")
+    resolveGithubTokenMock.mockResolvedValue({ token: "test-token", source: "env" })
 
     const exitCode = await chainCommand([
       "--steps",
@@ -120,7 +125,7 @@ describe("chainCommand parsing", () => {
 
     const { chainCommand } = await import("@core/cli/commands/chain.js")
 
-    vi.stubEnv("GITHUB_TOKEN", "test-token")
+    resolveGithubTokenMock.mockResolvedValue({ token: "test-token", source: "env" })
 
     const exitCode = await chainCommand([
       "--steps",
@@ -130,26 +135,27 @@ describe("chainCommand parsing", () => {
     expect(exitCode).toBe(1)
   })
 
-  it("chainCommand returns 1 and writes to stderr when GITHUB_TOKEN missing", async () => {
+  it("chainCommand returns 1 and writes to stderr when token resolution fails", async () => {
+    resolveGithubTokenMock.mockRejectedValue(
+      new Error(
+        "GitHub token not found. Set GITHUB_TOKEN or GH_TOKEN environment variable, or authenticate with: gh auth login",
+      ),
+    )
     const { chainCommand } = await import("@core/cli/commands/chain.js")
-
-    vi.stubEnv("GITHUB_TOKEN", undefined)
-    vi.stubEnv("GH_TOKEN", undefined)
-
     const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true)
     const exitCode = await chainCommand([
       "--steps",
       '[{"task":"issue.close","input":{"issueId":"I_1"}}]',
     ])
     expect(exitCode).toBe(1)
-    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining("GITHUB_TOKEN"))
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining("GitHub token not found"))
     stderrSpy.mockRestore()
   })
 
   it("chainCommand returns 1 and writes to stderr when --steps JSON is invalid", async () => {
     const { chainCommand } = await import("@core/cli/commands/chain.js")
 
-    vi.stubEnv("GITHUB_TOKEN", "tok")
+    resolveGithubTokenMock.mockResolvedValue({ token: "tok", source: "env" })
 
     const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true)
     const exitCode = await chainCommand(["--steps", "not-valid-json"])
@@ -161,7 +167,7 @@ describe("chainCommand parsing", () => {
   it("chainCommand returns 1 when --steps is not an array", async () => {
     const { chainCommand } = await import("@core/cli/commands/chain.js")
 
-    vi.stubEnv("GITHUB_TOKEN", "tok")
+    resolveGithubTokenMock.mockResolvedValue({ token: "tok", source: "env" })
 
     const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true)
     const exitCode = await chainCommand(["--steps", '{"task":"foo"}'])
@@ -173,7 +179,7 @@ describe("chainCommand parsing", () => {
   it("chainCommand returns 1 when step items have invalid shape", async () => {
     const { chainCommand } = await import("@core/cli/commands/chain.js")
 
-    vi.stubEnv("GITHUB_TOKEN", "tok")
+    resolveGithubTokenMock.mockResolvedValue({ token: "tok", source: "env" })
 
     const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true)
     const exitCode = await chainCommand(["--steps", '[{"bad":"shape"}]'])
@@ -229,7 +235,7 @@ describe("chainCommand parsing", () => {
 
     const { chainCommand } = await import("@core/cli/commands/chain.js")
 
-    vi.stubEnv("GITHUB_TOKEN", "test-token")
+    resolveGithubTokenMock.mockResolvedValue({ token: "test-token", source: "env" })
 
     let captured = ""
     const stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
@@ -264,7 +270,7 @@ describe("chainCommand parsing", () => {
 
     const { chainCommand } = await import("@core/cli/commands/chain.js")
 
-    vi.stubEnv("GITHUB_TOKEN", "test-token")
+    resolveGithubTokenMock.mockResolvedValue({ token: "test-token", source: "env" })
 
     let captured = ""
     const stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
@@ -294,7 +300,7 @@ describe("chainCommand parsing", () => {
 
     const { chainCommand } = await import("@core/cli/commands/chain.js")
 
-    vi.stubEnv("GITHUB_TOKEN", "test-token")
+    resolveGithubTokenMock.mockResolvedValue({ token: "test-token", source: "env" })
 
     let captured = ""
     const stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
@@ -329,7 +335,7 @@ describe("chainCommand parsing", () => {
 
     const { chainCommand } = await import("@core/cli/commands/chain.js")
 
-    vi.stubEnv("GITHUB_TOKEN", "test-token")
+    resolveGithubTokenMock.mockResolvedValue({ token: "test-token", source: "env" })
 
     let captured = ""
     const stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
@@ -349,6 +355,33 @@ describe("chainCommand parsing", () => {
     })
     expect(parsed.results[0].error).not.toHaveProperty("retryable")
     expect(parsed.results[0].error).not.toHaveProperty("details")
+  })
+
+  it("does not retry on AUTH error — returns error result as-is", async () => {
+    resolveGithubTokenMock.mockClear()
+    resolveGithubTokenMock.mockResolvedValue({ token: "cached-token", source: "cache" })
+    executeTasksMock.mockResolvedValue({
+      status: "failed",
+      results: [
+        {
+          task: "issue.close",
+          ok: false,
+          error: { code: "AUTH", message: "Bad credentials", retryable: false },
+        },
+      ],
+      meta: { route_used: "graphql", total: 1, succeeded: 0, failed: 1 },
+    })
+
+    const { chainCommand } = await import("@core/cli/commands/chain.js")
+
+    const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true)
+    const exitCode = await chainCommand([
+      "--steps",
+      '[{"task":"issue.close","input":{"issueId":"I_1"}}]',
+    ])
+    expect(exitCode).toBe(1)
+    expect(resolveGithubTokenMock).toHaveBeenCalledTimes(1)
+    stdout.mockRestore()
   })
 })
 
