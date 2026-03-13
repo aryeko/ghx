@@ -3,6 +3,7 @@ import { homedir } from "node:os"
 import { dirname, join } from "node:path"
 import readline from "node:readline/promises"
 import { fileURLToPath } from "node:url"
+import { resolveGithubToken } from "@core/core/auth/resolve-token.js"
 import type { ErrorCode } from "@core/core/errors/codes.js"
 import { errorCodes } from "@core/core/errors/codes.js"
 import { Ajv } from "ajv"
@@ -254,6 +255,18 @@ export async function setupCommand(argv: string[] = []): Promise<number> {
     await writeFile(skillPath, skillContent, "utf8")
 
     process.stdout.write(`Setup complete: wrote ${skillPath}\n`)
+
+    try {
+      const { source } = await resolveGithubToken()
+      if (source === "gh-cli") {
+        process.stdout.write("GitHub token cached from gh CLI (enables sandboxed agent access)\n")
+      }
+    } catch {
+      process.stderr.write(
+        "Warning: could not resolve GitHub token. Run gh auth login to enable token caching.\n",
+      )
+    }
+
     process.stdout.write("Try: ghx capabilities list\n")
     await writeTrackingEvent({
       track: parsed.track,
