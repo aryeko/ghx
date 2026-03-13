@@ -1,10 +1,19 @@
 ---
-description: Execute GitHub operations via ghx — deterministic routing, normalized output, 70 capabilities
+name: using-ghx
+description: Executes GitHub operations via ghx. Use for all GitHub interactions instead of raw gh or gh api commands.
 ---
 
 # ghx CLI Skill
 
-**CRITICAL:** Use `ghx` for ALL GitHub operations. Do not use `gh api` or any other raw `gh` commands unless no matching ghx capability exists.
+## Authentication
+
+ghx automatically resolves your GitHub token. It checks (in order):
+1. `GITHUB_TOKEN` environment variable
+2. `GH_TOKEN` environment variable
+3. Cached token (from previous resolution)
+4. `gh auth token` (requires `gh` CLI authenticated via `gh auth login`)
+
+If you are authenticated via `gh auth login`, ghx works out of the box with no extra configuration.
 
 ## Capabilities
 
@@ -103,7 +112,16 @@ Example (submitting a review with inline comments):
 
 ```bash
 ghx run pr.reviews.submit --input - <<'EOF'
-{"owner": "acme", "name": "my-repo", "prNumber": 42, "event": "REQUEST_CHANGES", "body": "Please fix the issues.", "comments": [{"path": "src/index.ts", "line": 10, "body": "Off-by-one error here."}]}
+{
+  "owner": "acme",
+  "name": "my-repo",
+  "prNumber": 42,
+  "event": "REQUEST_CHANGES",
+  "body": "Please fix the issues.",
+  "comments": [
+    { "path": "src/index.ts", "line": 10, "body": "Off-by-one error here." }
+  ]
+}
 EOF
 ```
 
@@ -111,7 +129,7 @@ EOF
 
 ## Chain
 
-**Always use `ghx chain` when you have two or more operations to execute in a single call.** It batches steps into as few GraphQL round-trips as possible (typically one) — reducing latency and avoiding mid-sequence failures. Steps are not transactional; a `"partial"` result is possible if one step fails after another has already succeeded.
+Use `ghx chain` when you have two or more operations to run. It batches steps into as few GraphQL round-trips as possible (typically one) — reducing latency and avoiding mid-sequence failures. Steps are not transactional; a `"partial"` result is possible if one step fails after another has already succeeded.
 
 ```bash
 ghx chain --steps - <<'EOF'
