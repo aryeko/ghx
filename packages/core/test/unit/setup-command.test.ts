@@ -72,7 +72,7 @@ describe("setupCommand", () => {
     expect(code).toBe(0)
     const skillPath = join(tempRoot, ".agents", "skills", "ghx", "SKILL.md")
     const content = readFileSync(skillPath, "utf8")
-    expect(content).toContain("Use `ghx` for ALL GitHub operations.")
+    expect(content).toContain("Do not use `gh api` or any other raw `gh` commands")
     expect(content).toContain("ghx capabilities explain <capability_id>")
     expect(content).toContain("ghx run <capability_id> --input - <<'EOF'")
     expect(content).not.toContain("GHX_SKIP_GH_PREFLIGHT=1")

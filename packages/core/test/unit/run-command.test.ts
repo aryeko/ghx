@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const createGithubClientMock = vi.fn()
 const executeTaskMock = vi.fn()
+const resolveGithubTokenMock = vi.fn()
+const invalidateTokenCacheMock = vi.fn()
 
 vi.mock("@core/gql/github-client.js", () => ({
   createGithubClient: (...args: unknown[]) => createGithubClientMock(...args),
@@ -10,6 +12,11 @@ vi.mock("@core/gql/github-client.js", () => ({
 
 vi.mock("@core/core/routing/engine/index.js", () => ({
   executeTask: (...args: unknown[]) => executeTaskMock(...args),
+}))
+
+vi.mock("@core/core/auth/resolve-token.js", () => ({
+  resolveGithubToken: (...args: unknown[]) => resolveGithubTokenMock(...args),
+  invalidateTokenCache: (...args: unknown[]) => invalidateTokenCacheMock(...args),
 }))
 
 import { parseRunFlags, readStdin, runCommand } from "@core/cli/commands/run.js"
@@ -26,8 +33,6 @@ function mockStdin(content: string): void {
 
 describe("runCommand", () => {
   const originalFetch = globalThis.fetch
-  const originalGithubToken = process.env.GITHUB_TOKEN
-  const originalGhToken = process.env.GH_TOKEN
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -40,14 +45,12 @@ describe("runCommand", () => {
       data: null,
       meta: { capability_id: "test.task", route_used: "graphql" },
     })
-    process.env.GITHUB_TOKEN = "token-123"
-    process.env.GH_TOKEN = undefined
+    resolveGithubTokenMock.mockResolvedValue({ token: "token-123", source: "env" })
+    invalidateTokenCacheMock.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
     globalThis.fetch = originalFetch
-    process.env.GITHUB_TOKEN = originalGithubToken
-    process.env.GH_TOKEN = originalGhToken
     vi.restoreAllMocks()
   })
 
@@ -88,12 +91,15 @@ describe("runCommand", () => {
     )
   })
 
-  it("throws when both GitHub token env vars are missing", async () => {
-    delete process.env.GITHUB_TOKEN
-    delete process.env.GH_TOKEN
+  it("throws when token resolution fails", async () => {
+    resolveGithubTokenMock.mockRejectedValue(
+      new Error(
+        "GitHub token not found. Set GITHUB_TOKEN or GH_TOKEN environment variable, or authenticate with: gh auth login",
+      ),
+    )
 
     await expect(runCommand(["repo.view", "--input", "{}"])).rejects.toThrow(
-      "Missing GITHUB_TOKEN or GH_TOKEN",
+      "GitHub token not found",
     )
   })
 
@@ -418,6 +424,100 @@ describe("runCommand", () => {
       })
       expect(parsed.error).not.toHaveProperty("retryable")
       expect(parsed.error).not.toHaveProperty("details")
+    })
+  })
+
+  describe("AUTH retry", () => {
+    it("does not retry when token came from env and result has AUTH error", async () => {
+      resolveGithubTokenMock.mockResolvedValue({ token: "env-token", source: "env" })
+      executeTaskMock.mockResolvedValue({
+        ok: false,
+        error: { code: "AUTH", message: "Bad credentials", retryable: false },
+        meta: { capability_id: "repo.view", route_used: "graphql" },
+      })
+
+      const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true)
+      await runCommand(["repo.view", "--input", "{}"])
+
+      expect(executeTaskMock).toHaveBeenCalledTimes(1)
+      expect(invalidateTokenCacheMock).not.toHaveBeenCalled()
+      stdout.mockRestore()
+    })
+
+    it("retries once when token came from cache and result has AUTH error", async () => {
+      resolveGithubTokenMock
+        .mockResolvedValueOnce({ token: "cached-token", source: "cache" })
+        .mockResolvedValueOnce({ token: "fresh-token", source: "gh-cli" })
+      invalidateTokenCacheMock.mockResolvedValue(undefined)
+
+      executeTaskMock
+        .mockResolvedValueOnce({
+          ok: false,
+          error: { code: "AUTH", message: "Bad credentials", retryable: false },
+          meta: { capability_id: "repo.view", route_used: "graphql" },
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          data: { id: "r1" },
+          meta: { capability_id: "repo.view", route_used: "graphql" },
+        })
+
+      const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true)
+      await runCommand(["repo.view", "--input", "{}"])
+
+      expect(invalidateTokenCacheMock).toHaveBeenCalledTimes(1)
+      expect(executeTaskMock).toHaveBeenCalledTimes(2)
+      expect(createGithubClientMock).toHaveBeenCalledTimes(2)
+      stdout.mockRestore()
+    })
+
+    it("retries once when token came from gh-cli and result has AUTH error", async () => {
+      resolveGithubTokenMock
+        .mockResolvedValueOnce({ token: "cli-token", source: "gh-cli" })
+        .mockResolvedValueOnce({ token: "fresh-token", source: "gh-cli" })
+      invalidateTokenCacheMock.mockResolvedValue(undefined)
+
+      executeTaskMock
+        .mockResolvedValueOnce({
+          ok: false,
+          error: { code: "AUTH", message: "Bad credentials", retryable: false },
+          meta: { capability_id: "repo.view", route_used: "graphql" },
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          data: { id: "r1" },
+          meta: { capability_id: "repo.view", route_used: "graphql" },
+        })
+
+      const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true)
+      await runCommand(["repo.view", "--input", "{}"])
+
+      expect(invalidateTokenCacheMock).toHaveBeenCalledTimes(1)
+      expect(executeTaskMock).toHaveBeenCalledTimes(2)
+      stdout.mockRestore()
+    })
+
+    it("returns error when retry also fails with AUTH", async () => {
+      resolveGithubTokenMock
+        .mockResolvedValueOnce({ token: "cached-token", source: "cache" })
+        .mockResolvedValueOnce({ token: "still-bad", source: "gh-cli" })
+      invalidateTokenCacheMock.mockResolvedValue(undefined)
+
+      const authError = {
+        ok: false,
+        error: { code: "AUTH", message: "Bad credentials", retryable: false },
+        meta: { capability_id: "repo.view", route_used: "graphql" },
+      }
+      executeTaskMock.mockResolvedValue(authError)
+
+      const stdout = vi.spyOn(process.stdout, "write").mockImplementation(() => true)
+      await runCommand(["repo.view", "--input", "{}"])
+
+      expect(executeTaskMock).toHaveBeenCalledTimes(2)
+      const written = String(stdout.mock.calls[0]?.[0] ?? "")
+      const parsed = JSON.parse(written)
+      expect(parsed.ok).toBe(false)
+      stdout.mockRestore()
     })
   })
 })
