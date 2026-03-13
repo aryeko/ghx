@@ -14,13 +14,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Worktrees:** Feature branches may have isolated worktrees at `.worktrees/<branch-name>/`. Check there before assuming the main checkout is the active workspace.
 
-## Additional Rules Files
-
-Currently absent but treat as required policy inputs if added:
-- `.cursor/rules/`
-- `.cursorrules`
-- `.github/copilot-instructions.md`
-
 ## Commands
 
 ### Setup
@@ -137,9 +130,16 @@ Lefthook runs automatically on commit (installed via `pnpm install`):
 2. If GraphQL operations changed: `pnpm run ghx:gql:verify`.
 3. Satisfy all applicable checkboxes in `.github/pull_request_template.md`.
 4. Coverage for touched files: ≥90% (aim for 95%).
-5. If `@ghx-dev/core` public API changed: add a changeset — create `.changeset/<kebab-name>.md` with frontmatter `---\n"@ghx-dev/core": patch\n---\n\nDescription.`
-6. Review `.github/pull_request_template.md` and satisfy every applicable validation checkbox.
-7. Confirm tests were added/updated as needed for behavior changes.
+5. If `@ghx-dev/core` public API changed: add a changeset:
+   ```yaml
+   # .changeset/<kebab-name>.md
+   ---
+   "@ghx-dev/core": patch
+   ---
+
+   Description of the change.
+   ```
+6. Confirm tests were added/updated as needed for behavior changes.
 
 ## Documentation
 
