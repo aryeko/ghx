@@ -1,4 +1,5 @@
 import { compactChainResult } from "@core/cli/formatters/compact.js"
+import { resolveGithubToken } from "@core/core/auth/resolve-token.js"
 import { executeTasks } from "@core/core/routing/engine/index.js"
 import { createResolutionCache } from "@core/core/routing/resolution-cache.js"
 import { createGithubClient } from "@core/gql/github-client.js"
@@ -65,15 +66,6 @@ function parseJsonSteps(raw: string): Array<{ task: string; input: Record<string
   }
 
   return parsed as Array<{ task: string; input: Record<string, unknown> }>
-}
-
-function resolveGithubToken(): string {
-  const token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN
-  if (!token || token.trim().length === 0) {
-    throw new Error("Missing GITHUB_TOKEN or GH_TOKEN for GraphQL transport")
-  }
-
-  return token
 }
 
 type GqlPayload<TData> = {
@@ -158,7 +150,7 @@ export async function chainCommand(argv: string[] = []): Promise<number> {
     const { stepsSource, skipGhPreflight, verbose } = parseChainFlags(argv)
     const steps =
       stepsSource === "stdin" ? parseJsonSteps(await readStdin()) : parseJsonSteps(stepsSource.raw)
-    const githubToken = resolveGithubToken()
+    const { token: githubToken } = await resolveGithubToken()
 
     const githubClient = createGithubClient({
       async execute<TData>(query: string, variables?: Record<string, unknown>): Promise<TData> {
