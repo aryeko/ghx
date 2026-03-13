@@ -128,7 +128,7 @@ describe("cli index main", () => {
     const code = await main(["--version"])
 
     expect(code).toBe(0)
-    expect(stdout).toHaveBeenCalledWith(expect.stringMatching(/^ghx \d+\.\d+\.\d+/))
+    expect(stdout).toHaveBeenCalledWith(expect.stringMatching(/^ghx \d+\.\d+\.\d+\n$/))
   })
 
   it("prints version for -V", async () => {
@@ -137,7 +137,7 @@ describe("cli index main", () => {
     const code = await main(["-V"])
 
     expect(code).toBe(0)
-    expect(stdout).toHaveBeenCalledWith(expect.stringMatching(/^ghx \d+\.\d+\.\d+/))
+    expect(stdout).toHaveBeenCalledWith(expect.stringMatching(/^ghx \d+\.\d+\.\d+\n$/))
   })
 
   it("prints version for -v", async () => {
@@ -146,7 +146,7 @@ describe("cli index main", () => {
     const code = await main(["-v"])
 
     expect(code).toBe(0)
-    expect(stdout).toHaveBeenCalledWith(expect.stringMatching(/^ghx \d+\.\d+\.\d+/))
+    expect(stdout).toHaveBeenCalledWith(expect.stringMatching(/^ghx \d+\.\d+\.\d+\n$/))
   })
 
   it("prints error and exits 1 for unknown command", async () => {

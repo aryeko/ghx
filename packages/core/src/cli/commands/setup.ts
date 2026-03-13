@@ -261,10 +261,9 @@ export async function setupCommand(argv: string[] = []): Promise<number> {
       if (source === "gh-cli") {
         process.stdout.write("GitHub token cached from gh CLI (enables sandboxed agent access)\n")
       }
-    } catch {
-      process.stderr.write(
-        "Warning: could not resolve GitHub token. Run gh auth login to enable token caching.\n",
-      )
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      process.stderr.write(`Warning: could not resolve GitHub token — ${detail}\n`)
     }
 
     process.stdout.write("Try: ghx capabilities list\n")
