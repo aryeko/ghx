@@ -58,7 +58,7 @@ describe("OpenCodeJudgeProvider", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    provider = new OpenCodeJudgeProvider({ model: "openai/gpt-4o-mini", port: 1338 })
+    provider = new OpenCodeJudgeProvider({ model: "openai/gpt-4o-mini", port: 1339 })
   })
 
   describe("id property", () => {
@@ -75,7 +75,7 @@ describe("OpenCodeJudgeProvider", () => {
 
       expect(mockCreateOpencode).toHaveBeenCalledOnce()
       const callArg = mockCreateOpencode.mock.calls[0]?.[0] as Record<string, unknown>
-      expect(callArg["port"]).toBe(1338)
+      expect(callArg["port"]).toBe(1339)
       const config = callArg["config"] as Record<string, unknown>
       expect(config["model"]).toBe("openai/gpt-4o-mini")
       const permission = config["permission"] as Record<string, unknown>
@@ -84,13 +84,13 @@ describe("OpenCodeJudgeProvider", () => {
       expect(permission["webfetch"]).toBe("deny")
     })
 
-    it("uses default port 1338 when not specified", async () => {
+    it("uses default port 1339 when not specified", async () => {
       setupSdkMock()
       const providerDefault = new OpenCodeJudgeProvider({ model: "openai/gpt-4o-mini" })
       await providerDefault.init()
 
       const callArg = mockCreateOpencode.mock.calls[0]?.[0] as Record<string, unknown>
-      expect(callArg["port"]).toBe(1338)
+      expect(callArg["port"]).toBe(1339)
 
       await providerDefault.shutdown()
     })

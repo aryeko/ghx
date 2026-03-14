@@ -14,11 +14,11 @@ import {
 export interface OpenCodeJudgeProviderOptions {
   /** Model identifier, e.g. "openai/gpt-4o-mini". */
   readonly model: string
-  /** Optional TCP port for OpenCode server. Defaults to 1338. */
+  /** Optional TCP port for OpenCode server. Defaults to 1339. */
   readonly port?: number
 }
 
-const DEFAULT_PORT = 1338
+const DEFAULT_PORT = 1339
 const POLL_INTERVAL_MS = 300
 const DEFAULT_TIMEOUT_MS = 120_000
 

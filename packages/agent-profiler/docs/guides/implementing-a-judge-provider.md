@@ -92,7 +92,7 @@ const judgeScorer = new LlmJudgeScorer({
 
 ### Behavior
 
-1. **No rubric defined:** If the scenario has no `extensions.rubric` (or it fails validation), the scorer returns a pass-through result: `{ success: true, passed: 1, total: 1 }` with a single `"no-rubric"` detail. This allows the scorer to be registered globally without failing on scenarios that do not use judge evaluation.
+1. **No rubric defined:** If the scenario has no `extensions.rubric` (or it fails validation), the scorer returns a neutral result: `{ success: true, passed: 0, total: 0, details: [] }`. This allows the scorer to be registered globally without failing on scenarios that do not use judge evaluation -- scenarios without a rubric simply contribute nothing to the composite score.
 
 2. **Rubric present:** The scorer builds a system prompt from the criteria and optional grading instructions, builds a user prompt from the scenario context and agent output (including trace summary if available), then calls `provider.judge()`.
 
@@ -238,14 +238,16 @@ it("extracts a valid rubric", () => {
 ```typescript
 import { LlmJudgeScorer } from "@ghx-dev/agent-profiler"
 
-it("passes through when no rubric is defined", async () => {
+it("returns neutral result when no rubric is defined", async () => {
   const scorer = new LlmJudgeScorer({ id: "judge", provider: createMockProvider({ text: "" }) })
   const scenario = { extensions: {} } as unknown as BaseScenario
   const context = { agentOutput: "done", trace: null, mode: "test", model: "m", iteration: 0, metadata: {} }
 
   const result = await scorer.evaluate(scenario, context)
   expect(result.success).toBe(true)
-  expect(result.details[0].id).toBe("no-rubric")
+  expect(result.passed).toBe(0)
+  expect(result.total).toBe(0)
+  expect(result.details).toHaveLength(0)
 })
 
 it("returns failure when judge returns invalid JSON", async () => {
