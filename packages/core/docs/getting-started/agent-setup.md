@@ -44,14 +44,14 @@ ghx setup --scope project --yes
 
 ### Platform compatibility
 
-| Platform | Reads `~/.agents/skills/`? | Notes |
-|---|---|---|
-| Codex | Yes | Also reads `AGENTS.md` and `~/.codex/skills/` |
-| Cline | Yes | Recommended path; also reads `~/.cline/skills/` |
-| Windsurf | Yes | Also reads `.windsurf/skills/` |
-| OpenCode | Yes | Also reads `~/.config/opencode/skills/` |
-| Cursor | No | Copy SKILL.md content into `.cursor/rules/*.mdc` or `.cursorrules` |
-| Aider | No | Use `--read ~/.agents/skills/using-ghx/SKILL.md` flag |
+| Platform | `--scope user` | `--scope project` | Notes |
+|---|---|---|---|
+| Codex | Yes | Yes | Also reads `AGENTS.md` and `~/.codex/skills/` |
+| Cline | Yes | Yes | Also reads `~/.cline/skills/` |
+| Windsurf | Yes | Yes | Also reads `.windsurf/skills/` |
+| OpenCode | Yes | Yes | Also reads `~/.config/opencode/skills/` |
+| Cursor | No | Yes | User-level skills read from `~/.cursor/skills/` instead |
+| Aider | No | No | Use `--read ~/.agents/skills/using-ghx/SKILL.md` flag |
 
 ## The Execute Tool Pattern
 
