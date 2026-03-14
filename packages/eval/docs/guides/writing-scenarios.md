@@ -97,8 +97,20 @@ Register the scenario ID in `scenarios/scenario-sets.json`:
 
 ```json
 {
-  "default": ["pr-reply-threads-wf-001", "pr-review-comment-001"],
-  "pr-only": ["pr-reply-threads-wf-001", "pr-review-comment-001"]
+  "default": ["pr-reply-threads-wf-001"],
+  "pr-only": ["pr-reply-threads-wf-001", "pr-review-comment-001"],
+  "issue-only": [
+    "issue-triage-and-assign-wf-001",
+    "issue-close-with-context-wf-001",
+    "issue-to-pr-lifecycle-wf-001"
+  ],
+  "full": [
+    "pr-reply-threads-wf-001",
+    "pr-review-comment-001",
+    "issue-triage-and-assign-wf-001",
+    "issue-close-with-context-wf-001",
+    "issue-to-pr-lifecycle-wf-001"
+  ]
 }
 ```
 

@@ -6,7 +6,12 @@ vi.mock("node:child_process", () => ({
   spawn: vi.fn(),
 }))
 
-import { runGh, runGhWithInput, runGhWithToken } from "@eval/fixture/seeders/gh.js"
+import {
+  parseIssueNumberFromUrl,
+  runGh,
+  runGhWithInput,
+  runGhWithToken,
+} from "@eval/fixture/seeders/gh.js"
 
 const mockExecFile = vi.mocked(execFile)
 const mockSpawn = vi.mocked(spawn)
@@ -32,6 +37,7 @@ function makeSpawnMock(stdout: string, exitCode = 0, stderr = ""): void {
         }),
       },
       stdin: {
+        on: vi.fn(),
         write: vi.fn(),
         end: vi.fn(() => {
           if (stdout) for (const cb of stdoutHandlers) cb(Buffer.from(stdout))
@@ -53,6 +59,7 @@ function makeSpawnErrorMock(spawnError: Error): void {
       stdout: { on: vi.fn() },
       stderr: { on: vi.fn() },
       stdin: {
+        on: vi.fn(),
         write: vi.fn(),
         end: vi.fn(() => {
           for (const cb of errorHandlers) cb(spawnError)
@@ -165,5 +172,43 @@ describe("runGhWithInput", () => {
     await expect(runGhWithInput(["api", "--method", "POST"], "{}")).rejects.toThrow(
       "spawn gh ENOENT",
     )
+  })
+})
+
+describe("parseIssueNumberFromUrl", () => {
+  it("extracts issue number from standard GitHub URL", () => {
+    expect(parseIssueNumberFromUrl("https://github.com/owner/repo/issues/42")).toBe(42)
+  })
+
+  it("extracts large issue numbers", () => {
+    expect(parseIssueNumberFromUrl("https://github.com/owner/repo/issues/12345")).toBe(12345)
+  })
+
+  it("throws on PR URL", () => {
+    expect(() => parseIssueNumberFromUrl("https://github.com/owner/repo/pull/10")).toThrow(
+      "Could not parse issue number",
+    )
+  })
+
+  it("throws on URL with trailing whitespace", () => {
+    // gh output sometimes has trailing newlines -- but runGh trims, so this shouldn't happen.
+    // Still good to know the behavior.
+    expect(() => parseIssueNumberFromUrl("https://github.com/owner/repo/issues/42\n")).toThrow(
+      "Could not parse issue number",
+    )
+  })
+
+  it("throws on URL with query params", () => {
+    expect(() =>
+      parseIssueNumberFromUrl("https://github.com/owner/repo/issues/42?foo=bar"),
+    ).toThrow("Could not parse issue number")
+  })
+
+  it("throws on empty string", () => {
+    expect(() => parseIssueNumberFromUrl("")).toThrow("Could not parse issue number")
+  })
+
+  it("throws on non-URL string", () => {
+    expect(() => parseIssueNumberFromUrl("not-a-url")).toThrow("Could not parse issue number")
   })
 })

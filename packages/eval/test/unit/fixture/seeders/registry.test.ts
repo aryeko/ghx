@@ -1,4 +1,4 @@
-import { getSeeder, registerSeeder } from "@eval/fixture/seeders/index.js"
+import { getSeeder, hasSeeder, registerSeeder } from "@eval/fixture/seeders/index.js"
 import type { FixtureSeeder, SeedOptions } from "@eval/fixture/seeders/types.js"
 import { describe, expect, it } from "vitest"
 
@@ -36,5 +36,20 @@ describe("fixture seeder registry", () => {
 
     expect(getSeeder("issue")).toBe(issueSeeder)
     expect(getSeeder("discussion")).toBe(discussionSeeder)
+  })
+
+  it("auto-registers issue_for_triage seeder", () => {
+    expect(hasSeeder("issue_for_triage")).toBe(true)
+    expect(getSeeder("issue_for_triage").type).toBe("issue_for_triage")
+  })
+
+  it("auto-registers issue_bug_to_close seeder", () => {
+    expect(hasSeeder("issue_bug_to_close")).toBe(true)
+    expect(getSeeder("issue_bug_to_close").type).toBe("issue_bug_to_close")
+  })
+
+  it("auto-registers issue_with_branch seeder", () => {
+    expect(hasSeeder("issue_with_branch")).toBe(true)
+    expect(getSeeder("issue_with_branch").type).toBe("issue_with_branch")
   })
 })

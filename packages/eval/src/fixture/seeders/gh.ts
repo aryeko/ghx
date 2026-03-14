@@ -49,9 +49,22 @@ export function runGhWithInput(args: readonly string[], input: string): Promise<
         finishResolve(stdout.trim())
       }
     })
+    proc.stdin.on("error", finishReject)
     proc.stdin.write(input)
     proc.stdin.end()
   })
+}
+
+/**
+ * Extracts the issue number from a `gh issue create` URL output.
+ * The URL format is: `https://github.com/{owner}/{repo}/issues/{number}`
+ */
+export function parseIssueNumberFromUrl(url: string): number {
+  const match = /\/issues\/(\d+)$/.exec(url)
+  if (!match?.[1]) {
+    throw new Error(`Could not parse issue number from URL: "${url}"`)
+  }
+  return Number.parseInt(match[1], 10)
 }
 
 /** Run `gh` as a different GitHub identity by overriding `GH_TOKEN`. */

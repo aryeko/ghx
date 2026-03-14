@@ -1,0 +1,54 @@
+{
+  "id": "issue-triage-and-assign-wf-001",
+  "name": "Triage and Assign Issue",
+  "description": "Agent triages a newly filed issue by reading it, inspecting available labels, applying the most relevant labels, and posting a triage summary comment.",
+  "category": "issue",
+  "difficulty": "intermediate",
+  "prompt": "Issue #{{issue_number}} in {{repo}} has just been filed. Triage it: read the issue, check the repo's available labels, apply the most relevant labels (at least one domain label like 'bug', 'enhancement', or 'performance'), and post a triage summary comment explaining the priority and next steps.",
+  "timeoutMs": 120000,
+  "allowedRetries": 1,
+  "tags": ["issue", "triage", "labels", "api-only"],
+  "fixture": {
+    "repo": "{{fixture_repo}}",
+    "requires": ["issue_for_triage"],
+    "bindings": {
+      "issue_number": "issue_for_triage.number",
+      "repo": "issue_for_triage.repo"
+    },
+    "reseedPerIteration": false,
+    "seedPerIteration": true
+  },
+  "assertions": {
+    "checkpoints": [
+      {
+        "id": "labels-applied",
+        "description": "At least one domain label applied (fixture starts with only @ghx-dev/eval tracking label)",
+        "task": "issue.view",
+        "input": {
+          "owner": "{{owner}}",
+          "name": "{{repo_name}}",
+          "issueNumber": "{{issue_number}}"
+        },
+        "condition": { "type": "field_gte", "path": "labels.length", "value": 2 }
+      },
+      {
+        "id": "triage-comment-exists",
+        "description": "A triage summary comment was posted on the issue",
+        "task": "issue.comments.list",
+        "input": {
+          "owner": "{{owner}}",
+          "name": "{{repo_name}}",
+          "issueNumber": "{{issue_number}}",
+          "first": 10
+        },
+        "condition": { "type": "field_gte", "path": "items.length", "value": 1 }
+      }
+    ],
+    "expectedCapabilities": [
+      "issue.view",
+      "repo.labels.list",
+      "issue.labels.set",
+      "issue.comments.create"
+    ]
+  }
+}

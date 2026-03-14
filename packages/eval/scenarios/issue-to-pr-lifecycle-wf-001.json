@@ -1,0 +1,39 @@
+{
+  "id": "issue-to-pr-lifecycle-wf-001",
+  "name": "Issue to PR Lifecycle",
+  "description": "Agent reads an issue, creates a PR referencing it from a pre-existing branch, and submits a review requesting changes. Tests cross-domain issue+PR coordination. Note: the review-submitted step is not checkpointed because pr.reviews.list requires a prNumber that is only known after the agent creates the PR — the checkpoint system does not support chaining outputs between checkpoints. Only PR creation is verified.",
+  "category": "issue",
+  "difficulty": "advanced",
+  "prompt": "Issue #{{issue_number}} in {{repo}} describes a needed change. Create a PR from branch '{{head_branch}}' to '{{base_branch}}' that references this issue (include 'Fixes #{{issue_number}}' in the body). Then submit a review on the PR requesting changes with at least one specific suggestion.",
+  "timeoutMs": 180000,
+  "allowedRetries": 1,
+  "tags": ["issue", "pr", "cross-domain", "lifecycle", "api-only"],
+  "fixture": {
+    "repo": "{{fixture_repo}}",
+    "requires": ["issue_with_branch"],
+    "bindings": {
+      "issue_number": "issue_with_branch.number",
+      "repo": "issue_with_branch.repo",
+      "head_branch": "issue_with_branch.metadata.headBranch",
+      "base_branch": "issue_with_branch.metadata.baseBranch"
+    },
+    "reseedPerIteration": false,
+    "seedPerIteration": true
+  },
+  "assertions": {
+    "checkpoints": [
+      {
+        "id": "pr-created-for-issue",
+        "description": "At least one PR is linked to the issue",
+        "task": "issue.relations.prs.list",
+        "input": {
+          "owner": "{{owner}}",
+          "name": "{{repo_name}}",
+          "issueNumber": "{{issue_number}}"
+        },
+        "condition": { "type": "field_gte", "path": "items.length", "value": 1 }
+      }
+    ],
+    "expectedCapabilities": ["issue.view", "pr.create", "pr.reviews.submit"]
+  }
+}

@@ -1,37 +1,13 @@
 import * as childProcess from "node:child_process"
 import { createIssueSeeder } from "@eval/fixture/seeders/issue-seeder.js"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { mockExecFileResults } from "./helpers.js"
 
 vi.mock("node:child_process", () => ({
   execFile: vi.fn(),
 }))
 
 const mockedExecFile = vi.mocked(childProcess.execFile)
-
-/**
- * Configure the mocked `execFile` to invoke its callback with successive
- * results. Each entry in `results` corresponds to one `execFile` call.
- * The callback is always the last argument (matching `promisify` convention).
- */
-function mockExecFileResults(
-  results: readonly { readonly stdout: string; readonly stderr: string }[],
-) {
-  let callIndex = 0
-  mockedExecFile.mockImplementation((...args: unknown[]) => {
-    const callback = args[args.length - 1] as (
-      err: Error | null,
-      stdout: string,
-      stderr: string,
-    ) => void
-    const result = results[callIndex++]
-    if (!result) {
-      callback(new Error("unexpected execFile call"), "", "")
-    } else {
-      callback(null, result.stdout, result.stderr)
-    }
-    return {} as ReturnType<typeof childProcess.execFile>
-  })
-}
 
 describe("createIssueSeeder", () => {
   afterEach(() => {
@@ -44,11 +20,8 @@ describe("createIssueSeeder", () => {
   })
 
   it("creates an issue and returns a FixtureResource", async () => {
-    const issueList = [{ number: 42, title: "[@ghx-dev/eval] open_issue" }]
-
-    mockExecFileResults([
-      { stdout: "", stderr: "" },
-      { stdout: JSON.stringify(issueList), stderr: "" },
+    mockExecFileResults(mockedExecFile, [
+      { stdout: "https://github.com/acme/sandbox/issues/42\n", stderr: "" },
     ])
 
     const seeder = createIssueSeeder()
@@ -68,11 +41,8 @@ describe("createIssueSeeder", () => {
   })
 
   it("calls gh issue create with expected arguments", async () => {
-    const issueList = [{ number: 7, title: "[@ghx-dev/eval] labeled_issue" }]
-
-    mockExecFileResults([
-      { stdout: "", stderr: "" },
-      { stdout: JSON.stringify(issueList), stderr: "" },
+    mockExecFileResults(mockedExecFile, [
+      { stdout: "https://github.com/acme/sandbox/issues/7\n", stderr: "" },
     ])
 
     const seeder = createIssueSeeder()
@@ -83,12 +53,11 @@ describe("createIssueSeeder", () => {
     })
 
     const calls = mockedExecFile.mock.calls
-    expect(calls).toHaveLength(2)
+    expect(calls).toHaveLength(1)
 
     const createCall = calls[0] as unknown[]
-    const listCall = calls[1] as unknown[]
 
-    // First call: gh issue create
+    // Only call: gh issue create
     expect(createCall[0]).toBe("gh")
     expect(createCall[1]).toEqual(
       expect.arrayContaining([
@@ -102,28 +71,10 @@ describe("createIssueSeeder", () => {
         "@ghx-dev/eval",
       ]),
     )
-
-    // Second call: gh issue list
-    expect(listCall[0]).toBe("gh")
-    expect(listCall[1]).toEqual(
-      expect.arrayContaining([
-        "issue",
-        "list",
-        "--repo",
-        "acme/sandbox",
-        "--label",
-        "@ghx-dev/eval",
-        "--json",
-        "number,title",
-      ]),
-    )
   })
 
-  it("throws when issue cannot be found after creation", async () => {
-    mockExecFileResults([
-      { stdout: "", stderr: "" },
-      { stdout: "[]", stderr: "" },
-    ])
+  it("throws when the URL returned by gh issue create cannot be parsed", async () => {
+    mockExecFileResults(mockedExecFile, [{ stdout: "not-a-valid-url\n", stderr: "" }])
 
     const seeder = createIssueSeeder()
 
@@ -133,6 +84,6 @@ describe("createIssueSeeder", () => {
         name: "ghost_issue",
         labels: ["@ghx-dev/eval"],
       }),
-    ).rejects.toThrow(/could not find.*ghost_issue/i)
+    ).rejects.toThrow(/could not parse issue number from url/i)
   })
 })
