@@ -1,5 +1,11 @@
 # @ghx-dev/core
 
+## 0.4.0
+
+### Minor Changes
+
+- cfc96b0: Add SessionStart hook to expose `ghx` CLI on PATH during Claude Code sessions
+
 ## 0.3.1
 
 ### Patch Changes
