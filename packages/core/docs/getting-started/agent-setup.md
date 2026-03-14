@@ -31,7 +31,7 @@ Install the ghx plugin from the Cursor marketplace. The plugin includes:
 - **Rules** — 3 always-apply `.mdc` rules that guide the agent to prefer ghx over raw `gh`/`gh api`/`curl`, use `ghx chain` for batching, and check capabilities before custom API calls
 - **SessionStart hook** — warns if `ghx` is not installed
 
-Alternatively, use `ghx setup --scope project --yes` to install the skill file directly into the project.
+**Fallback:** `ghx setup --scope project --yes` installs the SKILL.md skill file only. The `.mdc` rules and sessionStart hook are exclusive to the marketplace plugin.
 
 ## Other Agents
 

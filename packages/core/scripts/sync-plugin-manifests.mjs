@@ -69,7 +69,10 @@ async function buildCursorManifest() {
   let existing = {}
   try {
     existing = JSON.parse(await readFile(cursorPath, "utf8"))
-  } catch {
+  } catch (error) {
+    if (error?.code !== "ENOENT") {
+      throw new Error(`Failed to parse ${cursorPath}: ${error.message}`)
+    }
     // File does not exist yet — start fresh with synced fields only.
   }
 
