@@ -29,7 +29,8 @@ ghx/
 ├── packages/
 │   ├── core/                   # @ghx-dev/core (public npm package)
 │   │   ├── .claude-plugin/     # Claude Code plugin manifest
-│   │   ├── skills/             # Agent skill templates (also used by plugin)
+│   │   ├── .cursor-plugin/     # Cursor IDE plugin (rules, hooks, manifest)
+│   │   ├── skills/             # Agent skill templates (shared by both plugins)
 │   │   │   └── using-ghx/      # ghx usage skill (SKILL.md)
 │   │   ├── src/
 │   │   │   ├── cli/                  # ghx CLI entrypoint

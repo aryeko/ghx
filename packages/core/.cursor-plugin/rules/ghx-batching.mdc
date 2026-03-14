@@ -1,0 +1,16 @@
+---
+description: Use ghx chain to batch multiple GitHub operations into a single API call
+alwaysApply: true
+---
+
+When performing 2+ GitHub operations, use `ghx chain` with a JSON array of steps instead of sequential `ghx run` calls. This batches operations into fewer API round-trips.
+
+Example:
+```bash
+ghx chain --steps - <<'EOF'
+[
+  {"task":"pr.view","input":{"owner":"org","name":"repo","number":123}},
+  {"task":"pr.reviews.list","input":{"owner":"org","name":"repo","number":123}}
+]
+EOF
+```

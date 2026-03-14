@@ -47,6 +47,7 @@
     "hooks",
     "scripts/plugin",
     ".claude-plugin",
+    ".cursor-plugin",
     "skills",
     "LICENSE",
     "README.md"
