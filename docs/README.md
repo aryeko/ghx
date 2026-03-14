@@ -41,3 +41,4 @@ graph TD
 - [Troubleshooting](TROUBLESHOOTING.md) -- Common setup, runtime, and CI issues with fixes
 - [Contributing](../CONTRIBUTING.md) -- Development setup, testing, CI, publishing
 - [Roadmap](../ROADMAP.md) -- Current priorities and capability batches
+- [Blog Post: AI Agents Shouldn't Relearn GitHub on Every Run](https://plainenglish.io/artificial-intelligence/ai-agents-shouldn-t-relearn-github-on-every-run) -- Full motivation and benchmark methodology

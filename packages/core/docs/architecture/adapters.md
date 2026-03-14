@@ -80,7 +80,7 @@ import { createSafeCliCommandRunner, executeTask } from "@ghx-dev/core"
 
 const runner = createSafeCliCommandRunner() // default safe runner
 const result = await executeTask(
-  { task: "pr.view", input: { owner: "acme", name: "repo", number: 42 } },
+  { task: "pr.view", input: { owner: "acme", name: "repo", prNumber: 42 } },
   { githubClient, githubToken: token, cliRunner: runner },
 )
 ```

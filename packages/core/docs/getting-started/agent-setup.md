@@ -82,23 +82,9 @@ const info = explainCapability("pr.threads.list")
 const result = await tool.execute("pr.threads.list", {
   owner: "acme",
   name: "repo",
-  number: 42,
+  prNumber: 42,
 })
 ```
-
-## Agent Skill Install (Claude Code)
-
-ghx ships a skill file that teaches Claude Code how to use it. Install it:
-
-```bash
-# Project-scoped (recommended)
-npx @ghx-dev/core setup --scope project --yes
-
-# Verify installation
-npx @ghx-dev/core setup --scope project --verify
-```
-
-This writes `SKILL.md` to `.agents/skills/ghx/SKILL.md` in your project, which Claude Code reads automatically.
 
 ## Integration Pattern
 

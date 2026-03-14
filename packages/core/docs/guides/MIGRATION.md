@@ -74,12 +74,12 @@ To migrate an agent from raw `gh` to ghx:
 
 1. Install the ghx skill into your project:
    ```bash
-   npx @ghx-dev/core setup --scope project --yes
+   ghx setup --scope project --yes
    ```
 
 2. Verify the installation:
    ```bash
-   npx @ghx-dev/core setup --scope project --verify
+   ghx setup --scope project --verify
    ```
 
 3. Remove any `gh` CLI instructions from your agent's system prompt. The installed `SKILL.md` teaches the agent how to discover and use ghx capabilities.

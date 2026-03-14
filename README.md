@@ -201,6 +201,10 @@ Full documentation lives in [`docs/`](docs/README.md):
 - **[Repository Structure](docs/repository-structure.md)** -- Monorepo layout and module organization
 - Branding assets: `assets/branding/README.md`
 
+## Background
+
+Read the full motivation and benchmark methodology: [AI Agents Shouldn't Relearn GitHub on Every Run](https://plainenglish.io/artificial-intelligence/ai-agents-shouldn-t-relearn-github-on-every-run)
+
 ## Roadmap
 
 Current roadmap priorities and capability batches are tracked in `ROADMAP.md`.
@@ -221,6 +225,8 @@ pnpm install
 pnpm run build
 pnpm run ci
 ```
+
+Questions? Open a [Discussion](https://github.com/aryeko/ghx/discussions).
 
 ## License
 

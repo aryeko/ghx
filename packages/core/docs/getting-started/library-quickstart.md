@@ -17,7 +17,7 @@ Every operation is a `TaskRequest` — a capability ID plus typed input:
 
 ```ts
 const result = await executeTask(
-  { task: "pr.view", input: { owner: "acme", name: "repo", number: 42 } },
+  { task: "pr.view", input: { owner: "acme", name: "repo", prNumber: 42 } },
   { githubClient, githubToken: token },
 )
 

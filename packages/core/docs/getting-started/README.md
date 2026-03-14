@@ -25,7 +25,7 @@ sequenceDiagram
 
     rect rgb(235, 255, 235)
     Note over Agent,GH: ✅ With ghx — one deterministic call
-    Agent->>ghx: executeTask("pr.view", {owner, name, number})
+    Agent->>ghx: executeTask("pr.view", {owner, name, prNumber})
     ghx->>GH: optimal route (GraphQL or CLI)
     GH-->>ghx: response
     ghx-->>Agent: ResultEnvelope {ok, data, meta}
@@ -124,11 +124,11 @@ sequenceDiagram
     participant GH as GitHub
 
     Note over Agent,GH: Use Case: PR Review Cycle
-    Agent->>ghx: executeTask("pr.view", {owner, name, number: 42})
+    Agent->>ghx: executeTask("pr.view", {owner, name, prNumber: 42})
     ghx-->>Agent: {ok: true, data: {title, body, state, ...}}
-    Agent->>ghx: executeTask("pr.threads.list", {owner, name, number: 42})
+    Agent->>ghx: executeTask("pr.threads.list", {owner, name, prNumber: 42})
     ghx-->>Agent: {ok: true, data: [{path, body, isResolved}, ...]}
-    Agent->>ghx: executeTask("pr.reviews.submit", {owner, name, number: 42, event: "COMMENT", body: "LGTM"})
+    Agent->>ghx: executeTask("pr.reviews.submit", {owner, name, prNumber: 42, event: "COMMENT", body: "LGTM"})
     ghx-->>Agent: {ok: true, data: {id, state: "COMMENTED"}}
 ```
 
@@ -152,3 +152,4 @@ sequenceDiagram
 - [CLI Quickstart](./cli-quickstart.md) — all CLI commands
 - [Agent Setup](./agent-setup.md) — wire ghx into your agent
 - [Concepts: How ghx Works](../concepts/README.md) — understand the architecture
+- [Troubleshooting](../../../../docs/TROUBLESHOOTING.md) — common setup and runtime issues
