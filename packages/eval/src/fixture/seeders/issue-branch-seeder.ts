@@ -3,7 +3,12 @@ import { parseIssueNumberFromUrl, runGh, runGhWithInput } from "@eval/fixture/se
 import type { FixtureSeeder, SeedOptions } from "@eval/fixture/seeders/types.js"
 
 function extractSha(raw: string, label: string): string {
-  const parsed: unknown = JSON.parse(raw)
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new Error(`Expected JSON from ${label}, got: ${raw.slice(0, 200)}`)
+  }
   if (typeof parsed !== "object" || parsed === null || !("sha" in parsed)) {
     throw new Error(`Expected { sha: string } from ${label}, got: ${raw.slice(0, 200)}`)
   }
