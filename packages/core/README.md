@@ -122,7 +122,8 @@ ghx run pr.view --input '{"owner":"aryeko","name":"ghx","prNumber":42}'
 **Claude Code** -- install from the plugin marketplace:
 
 ```bash
-claude plugin add ghx
+/plugin marketplace add aryeko/ghx
+/plugin install ghx@ghx-dev
 ```
 
 **Cursor, Windsurf, Codex, other agents** -- install the skill:

@@ -46,7 +46,8 @@ Then wire ghx into your agent:
 
 ```bash
 # Claude Code — install from the plugin marketplace
-claude plugin add ghx
+/plugin marketplace add aryeko/ghx
+/plugin install ghx@ghx-dev
 
 # Cursor, Windsurf, Codex, other agents — install the skill
 ghx setup --scope user --yes
@@ -64,7 +65,7 @@ npx @ghx-dev/core run repo.view --input '{"owner":"aryeko","name":"ghx"}'
 
 ## Who is this for?
 
-- **Claude Code users** -- install from the plugin marketplace (`claude plugin add ghx`) for automatic skill loading
+- **Claude Code users** -- install from the plugin marketplace (`/plugin install ghx@ghx-dev`) for automatic skill loading
 - **Cursor / Windsurf / Codex users** -- install globally and run `ghx setup --scope user` to get the agent skill
 - **Custom agent builders** -- import `createExecuteTool()` for typed GitHub access in your own agent framework
 

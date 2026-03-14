@@ -14,13 +14,14 @@ Then wire it into your agent using one of the methods below.
 
 ## Claude Code (Plugin Marketplace)
 
-The easiest path for Claude Code users:
+The easiest path for Claude Code users. Run these commands inside a Claude Code session:
 
 ```bash
-claude plugin add ghx
+/plugin marketplace add aryeko/ghx
+/plugin install ghx@ghx-dev
 ```
 
-This installs the ghx skill from the plugin marketplace. Claude Code loads it automatically -- no manual file management needed.
+This registers the ghx marketplace and installs the plugin. Claude Code loads the skill automatically -- no manual file management needed. Verify by starting a new session and asking Claude to perform a GitHub operation.
 
 ## Cursor, Windsurf, Codex, and Other Agents
 
