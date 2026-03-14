@@ -1,3 +1,4 @@
+import { createIssueBranchSeeder } from "./issue-branch-seeder.js"
 import { createIssueSeeder } from "./issue-seeder.js"
 import { createMixedThreadsSeeder } from "./mixed-threads-seeder.js"
 import { createPrSeeder } from "./pr-seeder.js"
@@ -24,6 +25,7 @@ export function getSeeder(type: string): FixtureSeeder {
 // Auto-register built-in seeders
 registerSeeder(createPrSeeder())
 registerSeeder(createIssueSeeder())
+registerSeeder(createIssueBranchSeeder())
 registerSeeder(createMixedThreadsSeeder())
 
 export type { FixtureSeeder, SeedOptions } from "./types.js"
