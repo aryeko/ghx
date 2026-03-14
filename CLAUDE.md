@@ -14,13 +14,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Worktrees:** Feature branches may have isolated worktrees at `.worktrees/<branch-name>/`. Check there before assuming the main checkout is the active workspace.
 
-## Additional Rules Files
-
-Currently absent but treat as required policy inputs if added:
-- `.cursor/rules/`
-- `.cursorrules`
-- `.github/copilot-instructions.md`
-
 ## Commands
 
 ### Setup
@@ -111,7 +104,8 @@ User/Agent → CLI (packages/core/src/cli/) → executeTask() [core/routing/engi
 
 ## Code Style
 
-- **Formatter:** Biome (`biome.json`). Double quotes, no semicolons, trailing commas, 2-space indent, 100-char line width. Do not introduce Prettier or other formatters.
+- **Formatter:** Biome (`biome.json`), formatting only (linter disabled). Double quotes, no semicolons, trailing commas, 2-space indent, 100-char line width. Also formats `.json` and `.yaml`/`.yml`. Do not introduce Prettier or other formatters.
+- **Linter:** ESLint (`eslint.config.mjs`) with TypeScript strict configs + Vitest plugin. `--max-warnings=0` enforced. Prefix unused variables with `_` to suppress warnings.
 - **Imports:** Use `import type` for type-only imports. Relative imports require explicit `.js` extension (NodeNext resolution). When a module needs both a value and a type import from the same source, Biome's `organizeImports` places `import type` first — accept this ordering to avoid churn.
 - **Path aliases:** Use `@core/*` (maps to `packages/core/src/*`) and `@profiler/*` (maps to `packages/agent-profiler/src/*`) for imports crossing 2+ directory levels. Single-level relative imports (`./`, `../`) remain as-is. Aliases are configured per-package in `tsconfig.json`, `tsup.config.ts`, and `vitest.config.ts`.
 - **Types:** `unknown` + narrowing over `any`. Validate untrusted input at boundaries (AJV in core, Zod in agent-profiler). Result envelope shape `{ ok, data, error, meta }` is a stable contract — do not change it.
@@ -126,7 +120,7 @@ User/Agent → CLI (packages/core/src/cli/) → executeTask() [core/routing/engi
 
 Lefthook runs automatically on commit (installed via `pnpm install`):
 - Biome format + auto-stage
-- ESLint on staged `.ts`/`.js`/`.mjs`
+- ESLint on staged `.ts`/`.js`/`.mjs` (`--max-warnings=0`)
 - Full typecheck
 
 **Caution:** Lefthook's `stage_fixed: true` auto-stages all Biome-modified files. Avoid parallel commits in the same worktree — stray unstaged files bleed into the wrong commit.
@@ -137,9 +131,16 @@ Lefthook runs automatically on commit (installed via `pnpm install`):
 2. If GraphQL operations changed: `pnpm run ghx:gql:verify`.
 3. Satisfy all applicable checkboxes in `.github/pull_request_template.md`.
 4. Coverage for touched files: ≥90% (aim for 95%).
-5. If `@ghx-dev/core` public API changed: add a changeset — create `.changeset/<kebab-name>.md` with frontmatter `---\n"@ghx-dev/core": patch\n---\n\nDescription.`
-6. Review `.github/pull_request_template.md` and satisfy every applicable validation checkbox.
-7. Confirm tests were added/updated as needed for behavior changes.
+5. If `@ghx-dev/core` public API changed: add a changeset:
+   ```yaml
+   # .changeset/<kebab-name>.md
+   ---
+   "@ghx-dev/core": patch
+   ---
+
+   Description of the change.
+   ```
+6. Confirm tests were added/updated as needed for behavior changes.
 
 ## Documentation
 
