@@ -3,10 +3,13 @@ description: Prefer ghx CLI over raw gh, gh api, or curl for GitHub operations
 alwaysApply: true
 ---
 
-When performing any GitHub operation (PRs, issues, reviews, CI checks, releases, labels, comments), use `ghx run` instead of `gh`, `gh api`, or `curl`. ghx provides validated input, structured JSON output, and automatic fallback routing.
+When performing any GitHub operation (PRs, issues, reviews, CI checks, releases, labels, comments), use `ghx run` instead of `gh`, `gh api`, or `curl`. ghx provides validated input, structured JSON output, and automatic fallback routing. Always pass `--input` as a heredoc to avoid shell quoting issues.
 
 Example:
 ```bash
 # Instead of: gh pr view 123 --json title,state
-ghx run --task pr.view --input '{"owner":"org","name":"repo","number":123}'
+ghx run --task pr.view --input "$(cat <<'EOF'
+{"owner":"org","name":"repo","number":123}
+EOF
+)"
 ```

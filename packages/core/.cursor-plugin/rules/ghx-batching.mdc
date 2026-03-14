@@ -7,8 +7,11 @@ When performing 2+ GitHub operations, use `ghx chain` with a JSON array of tasks
 
 Example:
 ```bash
-ghx chain --input '[
+ghx chain --input "$(cat <<'EOF'
+[
   {"task":"pr.view","input":{"owner":"org","name":"repo","number":123}},
   {"task":"pr.reviews.list","input":{"owner":"org","name":"repo","number":123}}
-]'
+]
+EOF
+)"
 ```
