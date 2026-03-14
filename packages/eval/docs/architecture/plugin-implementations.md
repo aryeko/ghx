@@ -1,6 +1,6 @@
 # Plugin Implementations
 
-`@ghx-dev/eval` implements 5 of the 6 profiler plugin contracts. The profiler provides built-in collectors and analyzers; eval adds ghx-specific implementations that connect the generic profiling framework to GitHub task evaluation.
+`@ghx-dev/eval` implements 5 of the 6 profiler plugin contracts plus the optional `JudgeProvider` contract. The profiler provides built-in collectors and analyzers; eval adds ghx-specific implementations that connect the generic profiling framework to GitHub task evaluation.
 
 ## Implementation Table
 
@@ -11,6 +11,7 @@
 | `Collector` | `GhxCollector` | `src/collector/ghx-collector.ts` | Classify tool calls into ghx/mcp/gh_cli/bash/file_ops/other categories |
 | `ModeResolver` | `EvalModeResolver` | `src/mode/resolver.ts` | Map mode names to environment variables, system instructions, and MCP config |
 | `RunHooks` | `createEvalHooks()` | `src/hooks/eval-hooks.ts` | Fixture verification, reset, and session trace export |
+| `JudgeProvider` | `OpenCodeJudgeProvider` | `src/judge/opencode-judge-provider.ts` | LLM judge calls via OpenCode SDK with restrictive permissions |
 
 The 6th contract (`Analyzer`) is not implemented by eval -- the profiler's 5 built-in analyzers (Reasoning, Strategy, Efficiency, ToolPattern, Error) are used directly.
 
@@ -70,7 +71,15 @@ The `createEvalHooks()` factory wires fixture management and session export into
 
 See [Fixtures](./fixtures.md) for the full fixture lifecycle.
 
-**Source:** `packages/eval/src/provider/opencode-provider.ts`, `packages/eval/src/scorer/checkpoint-scorer.ts`, `packages/eval/src/collector/ghx-collector.ts`, `packages/eval/src/mode/resolver.ts`, `packages/eval/src/hooks/eval-hooks.ts`
+## JudgeProvider -- OpenCodeJudgeProvider
+
+`OpenCodeJudgeProvider` drives LLM judge calls via the OpenCode SDK with restrictive permissions. All permission categories (bash, edit, webfetch, doom_loop, external_directory) are set to `"deny"` since the judge only needs to read and respond -- no tool calls required.
+
+**Lifecycle:** `init()` creates a dedicated OpenCode instance on a configurable port (default 1338), snapshots managed environment variables, and configures the judge model. `shutdown()` closes the server and restores the environment snapshot. These lifecycle calls are managed by eval hooks: `createEvalHooks()` wires `judgeProvider.init()` into `beforeRun` and `judgeProvider.shutdown()` into `afterRun`.
+
+**Integration:** When the `--judge-model` CLI flag is provided, `OpenCodeJudgeProvider` is instantiated and passed to `LlmJudgeScorer` from the profiler. The eval CLI wraps `CheckpointScorer` and `LlmJudgeScorer` in a `CompositeScorer`, so both checkpoint verification and LLM judge evaluation run for each scenario iteration. Scenarios that include an `extensions.rubric` with evaluation criteria are scored by the judge; results are prefixed with `llm-judge:` in scorer details.
+
+**Source:** `packages/eval/src/provider/opencode-provider.ts`, `packages/eval/src/scorer/checkpoint-scorer.ts`, `packages/eval/src/collector/ghx-collector.ts`, `packages/eval/src/mode/resolver.ts`, `packages/eval/src/hooks/eval-hooks.ts`, `packages/eval/src/judge/opencode-judge-provider.ts`
 
 ## Related Documentation
 

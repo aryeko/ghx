@@ -216,6 +216,7 @@ ghx/
 | `contracts/analyzer.ts` | Trace analyzer contract | `Analyzer` |
 | `contracts/mode-resolver.ts` | Mode resolution contract | `ModeResolver`, `ModeConfig` |
 | `contracts/hooks.ts` | Lifecycle hooks | `RunHooks`, `BeforeScenarioContext`, `AfterScenarioContext` |
+| `contracts/judge-provider.ts` | JudgeProvider interface, rubric types, extractRubric helper | `JudgeProvider`, `Rubric`, `extractRubric()` |
 
 ### Runner (`runner`)
 
@@ -238,6 +239,13 @@ ghx/
 | `analyzer/efficiency-analyzer.ts` | Efficiency measurement | `efficiencyAnalyzer` |
 | `analyzer/tool-pattern-analyzer.ts` | Tool pattern detection | `toolPatternAnalyzer`, `createToolPatternAnalyzer()`, `BASH_TOOL_NAMES`, `isBashLikeTool`, `extractCommand`, `resolveToolDisplayName` |
 | `analyzer/error-analyzer.ts` | Error categorization | `errorAnalyzer` |
+
+### Scorers (`scorer`)
+
+| Module | Purpose | Key Exports |
+|--------|---------|-------------|
+| `scorer/llm-judge-scorer.ts` | LlmJudgeScorer: rubric-based LLM evaluation via JudgeProvider | `LlmJudgeScorer` |
+| `scorer/composite-scorer.ts` | CompositeScorer: merges results from N scorers | `CompositeScorer` |
 
 ### Statistics & Reporting (`stats`, `reporter`, `store`)
 
@@ -270,6 +278,7 @@ ghx/
 | `scorer/checkpoint-scorer.ts` | Checkpoint-based verification | `CheckpointScorer` |
 | `collector/ghx-collector.ts` | Tool call classification | `GhxCollector` |
 | `hooks/eval-hooks.ts` | Lifecycle hooks (fixture reset) | `createEvalHooks()` |
+| `judge/opencode-judge-provider.ts` | OpenCodeJudgeProvider: LLM judge via OpenCode SDK | `OpenCodeJudgeProvider` |
 
 ### Scenarios & Fixtures
 

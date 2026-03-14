@@ -53,8 +53,9 @@ graph TB
 **You implement:**
 
 - **SessionProvider** -- drives agent sessions: create, prompt, export, and destroy. This is the primary integration point where you connect the profiler to your agent runtime.
-- **Scorer** -- evaluates agent output against scenario-specific checkpoints. Returns a pass/fail result with an optional numeric score.
+- **Scorer** -- evaluates agent output against scenario-specific checkpoints. Returns a pass/fail result with an optional numeric score. Built-in scorers include `LlmJudgeScorer` (delegates to an LLM judge via `JudgeProvider`) and `CompositeScorer` (combines multiple scorers with weights).
 - **ModeResolver** -- maps mode names (e.g., `"baseline"`, `"optimized"`) to environment variables and system instructions that configure the agent differently for each mode.
+- **JudgeProvider** (optional) -- a companion to Scorer that provides provider-agnostic LLM judge calls for rubric-based evaluation. Implement this contract to connect `LlmJudgeScorer` to your LLM of choice.
 
 **Built-in:**
 
@@ -79,7 +80,7 @@ The profiler pipeline moves data through five stages:
    - Calls `SessionProvider.exportSession` to get a `SessionTrace` (when session export is enabled or analyzers are registered)
    - Passes the `PromptResult` and optional trace through each `Collector` to extract `CustomMetrics`
    - Passes the trace through each `Analyzer` to produce findings
-   - Calls `Scorer` to evaluate checkpoints
+   - Calls `Scorer` to evaluate checkpoints (scoring can optionally delegate to an LLM judge via `JudgeProvider` for rubric-based evaluation)
    - Writes a `ProfileRow` to the JSONL store
 
 4. **Statistical analysis** -- the statistics engine reads all `ProfileRow` records and computes descriptive statistics (mean, median, p90, p95, IQR, CV, stddev), bootstrap confidence intervals, Cohen's d effect sizes, and permutation tests.

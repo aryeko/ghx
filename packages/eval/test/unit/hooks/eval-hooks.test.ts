@@ -343,6 +343,77 @@ describe("createEvalHooks", () => {
     })
   })
 
+  describe("judgeProvider lifecycle", () => {
+    it("calls judgeProvider.init() in beforeRun when provided", async () => {
+      const manager = makeFixtureManager()
+      const judgeProvider = {
+        init: vi.fn().mockResolvedValue(undefined),
+        shutdown: vi.fn().mockResolvedValue(undefined),
+      }
+      const { beforeRun } = createEvalHooks({
+        fixtureManager: manager,
+        sessionExport: false,
+        judgeProvider,
+      })
+      await beforeRun?.(dummyRunContext)
+      expect(judgeProvider.init).toHaveBeenCalledOnce()
+    })
+
+    it("calls judgeProvider.shutdown() in afterRun when provided", async () => {
+      const manager = makeFixtureManager()
+      const judgeProvider = {
+        init: vi.fn().mockResolvedValue(undefined),
+        shutdown: vi.fn().mockResolvedValue(undefined),
+      }
+      const { afterRun } = createEvalHooks({
+        fixtureManager: manager,
+        sessionExport: false,
+        judgeProvider,
+      })
+      await afterRun?.(dummyRunContext)
+      expect(judgeProvider.shutdown).toHaveBeenCalledOnce()
+    })
+
+    it("calls judgeProvider.shutdown() even if shutdown itself rejects", async () => {
+      const manager = makeFixtureManager()
+      const judgeProvider = {
+        init: vi.fn().mockResolvedValue(undefined),
+        shutdown: vi.fn().mockRejectedValue(new Error("shutdown failed")),
+      }
+      const { afterRun } = createEvalHooks({
+        fixtureManager: manager,
+        sessionExport: false,
+        judgeProvider,
+      })
+      // shutdown rejection propagates — the important thing is shutdown was called
+      await expect(afterRun?.(dummyRunContext)).rejects.toThrow("shutdown failed")
+      expect(judgeProvider.shutdown).toHaveBeenCalledOnce()
+    })
+
+    it("does not set afterRun when no judgeProvider provided", () => {
+      const manager = makeFixtureManager()
+      const hooks = createEvalHooks({ fixtureManager: manager, sessionExport: false })
+      expect(hooks.afterRun).toBeUndefined()
+    })
+
+    it("does not call judgeProvider.init() when fixtures are missing (beforeRun throws first)", async () => {
+      const manager = makeFixtureManager({
+        status: vi.fn().mockResolvedValue({ ok: [], missing: ["pr_with_mixed_threads"] }),
+      })
+      const judgeProvider = {
+        init: vi.fn().mockResolvedValue(undefined),
+        shutdown: vi.fn().mockResolvedValue(undefined),
+      }
+      const { beforeRun } = createEvalHooks({
+        fixtureManager: manager,
+        sessionExport: false,
+        judgeProvider,
+      })
+      await expect(beforeRun?.(dummyRunContext)).rejects.toThrow("Missing fixtures before run")
+      expect(judgeProvider.init).not.toHaveBeenCalled()
+    })
+  })
+
   describe("afterScenario", () => {
     it("closes seeded resources after a seedPerIteration iteration", async () => {
       const manager = makeFixtureManager()

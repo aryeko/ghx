@@ -21,7 +21,7 @@ export interface OpenCodeProviderOptions {
   readonly model: string
 }
 
-type SessionApi = {
+export type SessionApi = {
   create: (opts: Record<string, unknown>) => Promise<unknown>
   promptAsync: (opts: Record<string, unknown>) => Promise<unknown>
   messages: (opts: Record<string, unknown>) => Promise<unknown>
@@ -37,7 +37,7 @@ type EnvSnapshot = {
   extra: Record<string, string | undefined>
 }
 
-function snapshotManagedEnv(extraKeys: readonly string[]): EnvSnapshot {
+export function snapshotManagedEnv(extraKeys: readonly string[]): EnvSnapshot {
   const managed = {} as Record<ManagedEnvKey, string | undefined>
   for (const key of MANAGED_ENV_KEYS) {
     managed[key] = process.env[key]
@@ -49,7 +49,7 @@ function snapshotManagedEnv(extraKeys: readonly string[]): EnvSnapshot {
   return { managed, extra }
 }
 
-function restoreEnv(snapshot: EnvSnapshot): void {
+export function restoreEnv(snapshot: EnvSnapshot): void {
   // Restore managed keys using static property access (no dynamic delete)
   if (snapshot.managed.XDG_CONFIG_HOME === undefined) {
     delete process.env.XDG_CONFIG_HOME
@@ -78,7 +78,7 @@ function restoreEnv(snapshot: EnvSnapshot): void {
   }
 }
 
-function unwrapSessionMessages(raw: unknown): unknown[] {
+export function unwrapSessionMessages(raw: unknown): unknown[] {
   if (Array.isArray(raw)) return raw
   if (raw && typeof raw === "object") {
     const obj = raw as Record<string, unknown>
@@ -88,7 +88,7 @@ function unwrapSessionMessages(raw: unknown): unknown[] {
   return []
 }
 
-function unwrapSessionId(raw: unknown): string {
+export function unwrapSessionId(raw: unknown): string {
   if (raw && typeof raw === "object") {
     const obj = raw as Record<string, unknown>
     if (typeof obj["id"] === "string") return obj["id"]
@@ -100,7 +100,7 @@ function unwrapSessionId(raw: unknown): string {
   throw new Error("opencode-provider: session.create returned unexpected shape — no id found")
 }
 
-function getSessionApi(client: unknown): SessionApi {
+export function getSessionApi(client: unknown): SessionApi {
   const session = (client as { session?: Record<string, unknown> }).session
   if (!session) throw new Error("opencode-provider: SDK client has no session API")
 
@@ -133,6 +133,46 @@ function getSessionApi(client: unknown): SessionApi {
         opts,
       ),
   }
+}
+
+export function isSessionComplete(messages: unknown[]): boolean {
+  const lastMsg = messages[messages.length - 1]
+  if (!lastMsg || typeof lastMsg !== "object") return false
+  const msg = lastMsg as Record<string, unknown>
+
+  const parts = msg["parts"] as Array<Record<string, unknown>> | undefined
+  if (!parts) return false
+
+  for (const part of parts) {
+    if (part["type"] === "step-finish" && part["reason"] === "stop") {
+      return true
+    }
+  }
+
+  return false
+}
+
+export function findLastAssistantMessage(messages: unknown[]): unknown {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i]
+    if (!msg || typeof msg !== "object") continue
+    const m = msg as Record<string, unknown>
+    const info = m["info"] as Record<string, unknown> | undefined
+    if (info?.["role"] === "assistant") return msg
+  }
+  return null
+}
+
+export function extractMessageText(message: unknown): string {
+  if (!message || typeof message !== "object") return ""
+  const msg = message as Record<string, unknown>
+  const parts = msg["parts"] as Array<Record<string, unknown>> | undefined
+  if (!parts) return ""
+
+  return parts
+    .filter((p) => p["type"] === "text")
+    .map((p) => (p["text"] as string) ?? "")
+    .join("\n")
 }
 
 /**
@@ -283,10 +323,10 @@ export class OpenCodeProvider implements SessionProvider {
 
     const wallMs = Date.now() - startTime
 
-    const lastAssistant = this.findLastAssistantMessage(messages)
+    const lastAssistant = findLastAssistantMessage(messages)
     const tokens = this.extractTokens(messages)
     const toolCalls = this.extractToolCallRecords(messages)
-    const outputText = this.extractText(lastAssistant)
+    const outputText = extractMessageText(lastAssistant)
 
     const timing: TimingBreakdown = { wallMs, segments: [] }
     const cost: CostBreakdown = { totalUsd: 0, inputUsd: 0, outputUsd: 0, reasoningUsd: 0 }
@@ -352,53 +392,13 @@ export class OpenCodeProvider implements SessionProvider {
         query: { limit: 200 },
       })
       const messages = unwrapSessionMessages(rawMessages)
-      if (this.isComplete(messages)) {
+      if (isSessionComplete(messages)) {
         return messages
       }
       await new Promise<void>((resolve) => setTimeout(resolve, pollInterval))
     }
 
     throw new TimeoutError(sessionId, timeoutMs)
-  }
-
-  private isComplete(messages: unknown[]): boolean {
-    const lastMsg = messages[messages.length - 1]
-    if (!lastMsg || typeof lastMsg !== "object") return false
-    const msg = lastMsg as Record<string, unknown>
-
-    const parts = msg["parts"] as Array<Record<string, unknown>> | undefined
-    if (!parts) return false
-
-    for (const part of parts) {
-      if (part["type"] === "step-finish" && part["reason"] === "stop") {
-        return true
-      }
-    }
-
-    return false
-  }
-
-  private findLastAssistantMessage(messages: unknown[]): unknown {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const msg = messages[i]
-      if (!msg || typeof msg !== "object") continue
-      const m = msg as Record<string, unknown>
-      const info = m["info"] as Record<string, unknown> | undefined
-      if (info?.["role"] === "assistant") return msg
-    }
-    return null
-  }
-
-  private extractText(message: unknown): string {
-    if (!message || typeof message !== "object") return ""
-    const msg = message as Record<string, unknown>
-    const parts = msg["parts"] as Array<Record<string, unknown>> | undefined
-    if (!parts) return ""
-
-    return parts
-      .filter((p) => p["type"] === "text")
-      .map((p) => (p["text"] as string) ?? "")
-      .join("\n")
   }
 
   private extractTokens(messages: unknown[]): TokenBreakdown {

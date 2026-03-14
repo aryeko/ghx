@@ -32,6 +32,14 @@ export type {
   RunContext,
   RunHooks,
 } from "./contracts/hooks.js"
+export type {
+  JudgeCriterion,
+  JudgeProvider,
+  JudgeRequest,
+  JudgeResponse,
+  JudgeRubric,
+} from "./contracts/judge-provider.js"
+export { extractRubric } from "./contracts/judge-provider.js"
 export type { ModeConfig, ModeResolver } from "./contracts/mode-resolver.js"
 export type {
   CreateSessionParams,
@@ -53,6 +61,11 @@ export { generateReport } from "./reporter/orchestrator.js"
 // ── Runner ─────────────────────────────────────────────────────────────────
 export type { ProfileSuiteOptions, ProfileSuiteResult } from "./runner/profile-runner.js"
 export { runProfileSuite } from "./runner/profile-runner.js"
+// ── Scorers ───────────────────────────────────────────────────────────────
+export type { CompositeScorerOptions } from "./scorer/composite-scorer.js"
+export { CompositeScorer } from "./scorer/composite-scorer.js"
+export type { LlmJudgeScorerOptions } from "./scorer/llm-judge-scorer.js"
+export { LlmJudgeScorer } from "./scorer/llm-judge-scorer.js"
 // ── Shared ─────────────────────────────────────────────────────────────────
 export {
   DEFAULT_BOOTSTRAP_RESAMPLES,

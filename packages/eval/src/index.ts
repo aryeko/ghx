@@ -17,6 +17,7 @@ export { getSeeder, registerSeeder } from "./fixture/seeders/index.js"
 export type { FixtureSeeder, SeedOptions } from "./fixture/seeders/types.js"
 export type { EvalHooksOptions } from "./hooks/eval-hooks.js"
 export { createEvalHooks } from "./hooks/eval-hooks.js"
+export { OpenCodeJudgeProvider } from "./judge/opencode-judge-provider.js"
 // Plugin implementations
 export { EvalModeResolver } from "./mode/resolver.js"
 export { OpenCodeProvider } from "./provider/opencode-provider.js"

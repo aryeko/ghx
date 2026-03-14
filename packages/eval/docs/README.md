@@ -58,7 +58,7 @@ Start here: **[Getting Started](getting-started/README.md)**
 Read: **[Architecture](architecture/README.md)**
 
 - [System Overview](architecture/overview.md) -- End-to-end execution flow from configuration through profiling to reports
-- [Plugin Implementations](architecture/plugin-implementations.md) -- How eval implements the 5 profiler plugin contracts
+- [Plugin Implementations](architecture/plugin-implementations.md) -- How eval implements the 6 profiler plugin contracts
 - [Modes](architecture/modes.md) -- The three evaluation modes and EvalModeResolver
 - [Fixtures](architecture/fixtures.md) -- Fixture lifecycle: seed, status, reset, cleanup
 - [Scenarios](architecture/scenarios.md) -- EvalScenario schema, template binding, and checkpoint definitions
@@ -96,10 +96,11 @@ See: **[Contributing](contributing/README.md)**
 | Fact | Details |
 |------|---------|
 | Evaluation Modes | ghx (capability router), mcp (GitHub MCP server), baseline (raw `gh` CLI) |
-| Plugin Implementations | OpenCodeProvider, CheckpointScorer, GhxCollector, EvalModeResolver, createEvalHooks |
+| Plugin Implementations | OpenCodeProvider, CheckpointScorer, GhxCollector, EvalModeResolver, createEvalHooks, OpenCodeJudgeProvider |
 | Scenario Format | JSON with Zod validation, fixture bindings, checkpoint assertions |
 | Fixture Management | Seed, status, reset, cleanup lifecycle for GitHub test resources |
 | CLI Commands | `eval run`, `eval analyze`, `eval report`, `eval check`, `eval fixture` |
+| LLM Judge Scoring | Optional `--judge-model` flag enables LLM-as-judge evaluation via `OpenCodeJudgeProvider` |
 | Statistical Methods | Bootstrap CI, Cohen's d effect size, permutation tests (via agent-profiler) |
 
 ## Requirements

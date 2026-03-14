@@ -136,6 +136,24 @@ fixtures:
 
 Environment variables take precedence over config file values. CLI flags take precedence over both.
 
+## LLM Judge Configuration
+
+The `--judge-model` CLI flag enables LLM-as-judge scoring alongside checkpoint-based scoring. When provided, the eval CLI creates an `OpenCodeJudgeProvider` with the specified model and composes it with the standard `CheckpointScorer`:
+
+- `CompositeScorer` wraps `CheckpointScorer` + `LlmJudgeScorer`, running both for each scenario iteration
+- Judge results are prefixed with `llm-judge:` in scorer details on the `ProfileRow`
+- The judge provider lifecycle (`init()` / `shutdown()`) is managed automatically by `createEvalHooks()` via `beforeRun` and `afterRun` hooks
+- Scenarios must include an `extensions.rubric` field with evaluation criteria to be scored by the judge
+
+Example:
+
+```bash
+pnpm --filter @ghx-dev/eval run eval run \
+  --judge-model openai/gpt-4o-mini \
+  --scenario pr-review-comment-001 \
+  --repetitions 3
+```
+
 ## Matrix Expansion
 
 The eval CLI expands the full evaluation matrix: **models x modes x scenarios x repetitions**.

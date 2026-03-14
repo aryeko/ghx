@@ -36,6 +36,11 @@ export interface EvalHooksOptions {
    * raw template so the prompt and checkpoint inputs receive the new PR number.
    */
   readonly rawScenarios?: ReadonlyMap<string, EvalScenario>
+  /** Optional judge provider for LLM-as-judge lifecycle management. */
+  readonly judgeProvider?: {
+    init(): Promise<void>
+    shutdown(): Promise<void>
+  }
 }
 
 /**
@@ -74,13 +79,16 @@ export function createEvalHooks(options: EvalHooksOptions): RunHooks {
   // Key: `${scenarioId}:${mode}:${iteration}`
   const iterationResources = new Map<string, readonly FixtureResource[]>()
 
-  return {
+  const baseHooks: RunHooks = {
     beforeRun: async (_ctx: RunContext) => {
       const status = await options.fixtureManager.status()
       if (status.missing.length > 0) {
         throw new Error(
           `Missing fixtures before run: ${status.missing.join(", ")}. Run "eval fixture seed" first.`,
         )
+      }
+      if (options.judgeProvider) {
+        await options.judgeProvider.init()
       }
     },
 
@@ -142,6 +150,23 @@ export function createEvalHooks(options: EvalHooksOptions): RunHooks {
             // best-effort: don't fail the run if cleanup fails
           }
         }
+      }
+    },
+  }
+
+  if (!options.judgeProvider) {
+    return baseHooks
+  }
+
+  const { judgeProvider } = options
+
+  return {
+    ...baseHooks,
+    afterRun: async (ctx: RunContext) => {
+      try {
+        await baseHooks.afterRun?.(ctx)
+      } finally {
+        await judgeProvider.shutdown()
       }
     },
   }

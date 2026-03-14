@@ -10,6 +10,7 @@ Practical walkthroughs for implementing plugins, configuring the profiler, and i
 | [Implementing a Scorer](implementing-a-scorer.md) | Step-by-step guide to implementing the Scorer contract that evaluates agent output |
 | [Custom Collectors](custom-collectors.md) | Create custom Collector implementations to extract domain-specific metrics |
 | [Custom Analyzers](custom-analyzers.md) | Create custom Analyzer implementations to produce structured findings from session traces |
+| [Implementing a Judge Provider](implementing-a-judge-provider.md) | Build a custom JudgeProvider for LLM-based evaluation |
 | [Configuration](configuration.md) | Full reference for YAML configuration, CLI flags, and environment variables |
 | [Reports](reports.md) | Understand the report structure, output files, and how to interpret statistical results |
 | [Scenarios](scenarios.md) | Understand the BaseScenario type, extending scenarios, sets, and the loader pattern |
@@ -26,5 +27,5 @@ For fine-tuning execution parameters, see [Configuration](configuration.md). For
 
 - [Quick Start](../getting-started/quick-start.md) -- complete runnable example in 50 lines
 - [Core Concepts](../getting-started/concepts.md) -- mental model and plugin-first architecture
-- [Plugin Contracts](../architecture/plugin-contracts.md) -- full interface definitions for all six contracts
+- [Plugin Contracts](../architecture/plugin-contracts.md) -- full interface definitions for all seven contracts
 - [Architecture Overview](../architecture/overview.md) -- system design and data flow
