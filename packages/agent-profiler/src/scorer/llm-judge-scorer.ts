@@ -75,6 +75,10 @@ function buildUserPrompt(scenario: BaseScenario, context: ScorerContext): string
   parts.push(scenario.prompt)
   parts.push("")
 
+  parts.push("Agent output:")
+  parts.push(context.agentOutput)
+  parts.push("")
+
   if (context.trace !== null) {
     const trace: SessionTrace = context.trace
     const errorCount = trace.events.filter((e) => e.type === "error").length
@@ -95,9 +99,6 @@ function buildUserPrompt(scenario: BaseScenario, context: ScorerContext): string
       }
       parts.push("")
     }
-  } else {
-    parts.push("Agent output:")
-    parts.push(context.agentOutput)
   }
 
   return parts.join("\n")

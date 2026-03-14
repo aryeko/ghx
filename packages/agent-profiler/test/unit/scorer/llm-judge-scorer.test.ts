@@ -128,7 +128,7 @@ describe("LlmJudgeScorer", () => {
     expect(request?.userPrompt).not.toContain("Tool call sequence")
   })
 
-  it("includes trace summary and tool call sequence when trace is provided", async () => {
+  it("includes agent output alongside trace summary and tool call sequence", async () => {
     const trace: SessionTrace = {
       sessionId: "session-1",
       events: [
@@ -175,6 +175,7 @@ describe("LlmJudgeScorer", () => {
     const scorer = new LlmJudgeScorer({ id: "llm-judge", provider })
     await scorer.evaluate(makeScenario(validRubric), makeContext(trace))
     const request = vi.mocked(provider.judge).mock.calls[0]?.[0]
+    expect(request?.userPrompt).toContain("I completed the task")
     expect(request?.userPrompt).toContain("Tool call sequence")
     expect(request?.userPrompt).toContain("list_issues")
     expect(request?.userPrompt).toContain("create_pr")

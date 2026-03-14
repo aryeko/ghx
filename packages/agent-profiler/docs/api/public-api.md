@@ -318,7 +318,7 @@ Request and response shapes for judge invocations.
 
 ### JudgeRubric, JudgeCriterion (types)
 
-Rubric definition types. A `JudgeRubric` contains an array of `JudgeCriterion` entries, each defining a name, description, and weight for evaluation.
+Rubric definition types. A `JudgeRubric` contains an array of `JudgeCriterion` entries, each defining an `id` and `description`.
 
 ### extractRubric
 
@@ -336,7 +336,7 @@ class LlmJudgeScorer implements Scorer {
 }
 ```
 
-A `Scorer` implementation that delegates evaluation to an LLM judge via a `JudgeProvider`. Extracts the rubric from the scenario, sends the agent output to the judge, and converts the judge response into a `ScorerResult`.
+A `Scorer` implementation that delegates evaluation to an LLM judge via a `JudgeProvider`. Extracts the rubric from the scenario, builds a prompt from agent output and trace summary (when available), sends it to the judge, and converts the judge response into a `ScorerResult`.
 
 ### LlmJudgeScorerOptions (type)
 
@@ -350,11 +350,11 @@ class CompositeScorer implements Scorer {
 }
 ```
 
-A `Scorer` implementation that combines multiple scorers (e.g., checkpoint-based and LLM judge) into a single weighted result.
+A `Scorer` implementation that combines multiple scorers (e.g., checkpoint-based and LLM judge) into a single aggregated result.
 
 ### CompositeScorerOptions (type)
 
-Configuration for `CompositeScorer`, including the list of scorers and their weights.
+Configuration for `CompositeScorer`, including the list of scorers.
 
 ### Usage Example
 
@@ -372,10 +372,7 @@ const judgeScorer = new LlmJudgeScorer({
 
 // Combine with a checkpoint scorer
 const scorer = new CompositeScorer({
-  scorers: [
-    { scorer: checkpointScorer, weight: 0.6 },
-    { scorer: judgeScorer, weight: 0.4 },
-  ],
+  scorers: [checkpointScorer, judgeScorer],
 })
 ```
 
@@ -412,8 +409,8 @@ Type-only exports that define the plugin contracts and internal data shapes. The
 | `JudgeProvider` | Contract for provider-agnostic LLM judge calls |
 | `JudgeRequest` | Request shape for judge invocations |
 | `JudgeResponse` | Response shape from judge invocations |
-| `JudgeRubric` | Rubric definition containing weighted criteria |
-| `JudgeCriterion` | Single criterion within a judge rubric |
+| `JudgeRubric` | Rubric definition containing criteria |
+| `JudgeCriterion` | Single criterion with `id` and `description` |
 | `ScorerContext` | Context passed to the scorer during evaluation |
 | `ScorerResult` | Result of scorer evaluation |
 | `ScorerCheckResult` | Per-checkpoint outcome from scorer |

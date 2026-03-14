@@ -94,7 +94,7 @@ const judgeScorer = new LlmJudgeScorer({
 
 1. **No rubric defined:** If the scenario has no `extensions.rubric` (or it fails validation), the scorer returns a neutral result: `{ success: true, passed: 0, total: 0, details: [] }`. This allows the scorer to be registered globally without failing on scenarios that do not use judge evaluation -- scenarios without a rubric simply contribute nothing to the composite score.
 
-2. **Rubric present:** The scorer builds a system prompt from the criteria and optional grading instructions, builds a user prompt from the scenario context and agent output (including trace summary if available), then calls `provider.judge()`.
+2. **Rubric present:** The scorer builds a system prompt from the criteria and optional grading instructions, builds a user prompt from scenario context and agent output (plus trace summary and tool-call sequence when a trace is available), then calls `provider.judge()`.
 
 3. **Response parsing:** The judge response must be valid JSON matching this structure:
 

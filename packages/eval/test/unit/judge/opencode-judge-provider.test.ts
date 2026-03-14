@@ -105,6 +105,18 @@ describe("OpenCodeJudgeProvider", () => {
 
       await providerCustom.shutdown()
     })
+
+    it("cleans up env and config dir when createOpencode throws", async () => {
+      const initError = new Error("port conflict")
+      mockCreateOpencode.mockRejectedValue(initError)
+
+      await expect(provider.init()).rejects.toThrow("port conflict")
+
+      expect(mockRm).toHaveBeenCalledWith("/tmp/judge-opencode-mock", {
+        recursive: true,
+        force: true,
+      })
+    })
   })
 
   describe("judge()", () => {

@@ -164,7 +164,7 @@ A convenience function that reads `scenario.extensions["rubric"]`, validates it 
 
 Source: `packages/agent-profiler/src/scorer/llm-judge-scorer.ts`
 
-`LlmJudgeScorer` evaluates agent sessions using an LLM judge. It reads the rubric from `scenario.extensions.rubric` via `extractRubric()`, builds a system prompt (role definition, criteria list, grading instructions, JSON output format) and a user prompt (scenario context, agent output, trace summary), then calls the injected `JudgeProvider`. The judge response is parsed as JSON containing an array of verdicts (id, passed, reasoning), which are mapped back to the rubric criteria to produce a `ScorerResult`.
+`LlmJudgeScorer` evaluates agent sessions using an LLM judge. It reads the rubric from `scenario.extensions.rubric` via `extractRubric()`, builds a system prompt (role definition, criteria list, grading instructions, JSON output format) and a user prompt (scenario context, agent output, plus trace summary and tool-call sequence when a trace is available), then calls the injected `JudgeProvider`. The judge response is parsed as JSON containing an array of verdicts (id, passed, reasoning), which are mapped back to the rubric criteria to produce a `ScorerResult`.
 
 When no rubric is present on the scenario, the scorer returns a neutral result (`passed: 0, total: 0, details: []`). This allows `LlmJudgeScorer` to be composed with other scorers without requiring every scenario to define a rubric -- scenarios without a rubric simply contribute nothing to the composite score.
 

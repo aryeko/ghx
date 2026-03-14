@@ -66,24 +66,38 @@ export class OpenCodeJudgeProvider implements JudgeProvider {
     process.env.XDG_CONFIG_HOME = this.configDir
     process.env.OPENCODE_CONFIG_DIR = this.configDir
 
-    const opencode = await createOpencode({
-      port: this.port,
-      config: {
-        model: this.model,
-        instructions: [],
-        plugin: [],
-        mcp: {},
-        agent: {},
-        command: {},
-        permission: {
-          edit: "deny",
-          bash: "deny",
-          webfetch: "deny",
-          doom_loop: "deny",
-          external_directory: "deny",
+    let opencode: Awaited<ReturnType<typeof createOpencode>>
+    try {
+      opencode = await createOpencode({
+        port: this.port,
+        config: {
+          model: this.model,
+          instructions: [],
+          plugin: [],
+          mcp: {},
+          agent: {},
+          command: {},
+          permission: {
+            edit: "deny",
+            bash: "deny",
+            webfetch: "deny",
+            doom_loop: "deny",
+            external_directory: "deny",
+          },
         },
-      },
-    })
+      })
+    } catch (error) {
+      if (this.envSnapshot) {
+        restoreEnv(this.envSnapshot)
+        this.envSnapshot = null
+      }
+      if (this.configDir) {
+        const { rm } = await import("node:fs/promises")
+        await rm(this.configDir, { recursive: true, force: true }).catch(() => {})
+        this.configDir = null
+      }
+      throw error
+    }
 
     this.server = opencode.server as { close: () => void }
     this.client = opencode.client
