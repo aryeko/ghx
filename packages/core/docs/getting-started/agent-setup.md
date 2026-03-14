@@ -23,6 +23,16 @@ The easiest path for Claude Code users. Run these commands inside a Claude Code 
 
 This registers the ghx marketplace and installs the plugin. Claude Code loads the skill automatically -- no manual file management needed. Verify by starting a new session and asking Claude to perform a GitHub operation.
 
+## Cursor (Plugin Marketplace)
+
+Install the ghx plugin from the Cursor marketplace. The plugin includes:
+
+- **Skill** — the full ghx SKILL.md for capability discovery
+- **Rules** — 3 always-apply `.mdc` rules that guide the agent to prefer ghx over raw `gh`/`gh api`/`curl`, use `ghx chain` for batching, and check capabilities before custom API calls
+- **SessionStart hook** — warns if `ghx` is not installed
+
+Alternatively, use `ghx setup --scope project --yes` to install the skill file directly into the project.
+
 ## Other Agents
 
 Install the ghx skill to the standard agents directory:
@@ -50,7 +60,7 @@ ghx setup --scope project --yes
 | Cline | Yes | Yes | Also reads `~/.cline/skills/` |
 | Windsurf | Yes | Yes | Also reads `.windsurf/skills/` |
 | OpenCode | Yes | Yes | Also reads `~/.config/opencode/skills/` |
-| Cursor | No | Yes | User-level skills read from `~/.cursor/skills/` instead |
+| Cursor | No | Yes | Prefer Cursor plugin marketplace instead (see above) |
 | Aider | No | No | Use `--read ~/.agents/skills/using-ghx/SKILL.md` flag |
 
 ## The Execute Tool Pattern
