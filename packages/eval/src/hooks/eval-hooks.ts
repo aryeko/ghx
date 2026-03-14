@@ -163,8 +163,11 @@ export function createEvalHooks(options: EvalHooksOptions): RunHooks {
   return {
     ...baseHooks,
     afterRun: async (ctx: RunContext) => {
-      await baseHooks.afterRun?.(ctx)
-      await judgeProvider.shutdown()
+      try {
+        await baseHooks.afterRun?.(ctx)
+      } finally {
+        await judgeProvider.shutdown()
+      }
     },
   }
 }
