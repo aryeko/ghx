@@ -72,12 +72,17 @@ Three shell commands become one `ghx chain` call -- one tool call instead of thr
 
 To migrate an agent from raw `gh` to ghx:
 
-1. Install the ghx skill into your project:
+1. Install ghx globally:
+   ```bash
+   npm i -g @ghx-dev/core
+   ```
+
+2. Install the ghx skill into your project:
    ```bash
    ghx setup --scope project --yes
    ```
 
-2. Verify the installation:
+3. Verify the installation:
    ```bash
    ghx setup --scope project --verify
    ```
