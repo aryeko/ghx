@@ -196,7 +196,7 @@ describe("LlmJudgeScorer", () => {
     expect(request?.systemPrompt).toContain("Be extra strict about tool selection.")
   })
 
-  it("sets outputValid true and error message on malformed JSON", async () => {
+  it("sets error message and populates details for all criteria on malformed JSON", async () => {
     const provider = makeProvider({ text: "not json", tokenCount: 50 })
     const scorer = new LlmJudgeScorer({ id: "llm-judge", provider })
     const result = await scorer.evaluate(makeScenario(validRubric), makeContext())
