@@ -154,6 +154,20 @@ export class FixtureManager {
   }
 
   /**
+   * Deletes a Git branch from GitHub via the refs API.
+   *
+   * Best-effort: silently ignores errors so that missing branches do not fail
+   * the cleanup flow.
+   */
+  async deleteBranch(repo: string, branch: string): Promise<void> {
+    try {
+      await this.runGh(["api", `repos/${repo}/git/refs/heads/${branch}`, "--method", "DELETE"])
+    } catch {
+      // best-effort: branch may already be deleted
+    }
+  }
+
+  /**
    * Closes a single fixture resource (PR or issue) on GitHub.
    *
    * Used by eval hooks to clean up per-iteration seeded fixtures after each

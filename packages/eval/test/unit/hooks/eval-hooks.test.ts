@@ -30,6 +30,7 @@ function makeFixtureManager(
     }),
     cleanup: vi.fn().mockResolvedValue(undefined),
     closeResource: vi.fn().mockResolvedValue(undefined),
+    deleteBranch: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   } as unknown as FixtureManager
 }
@@ -460,6 +461,124 @@ describe("createEvalHooks", () => {
       } as AfterScenarioContext)
 
       expect(writeFile).not.toHaveBeenCalled()
+    })
+
+    it("calls deleteBranch when resource has metadata.headBranch", async () => {
+      const manager = makeFixtureManager()
+      // Override seedOne to return a resource with metadata.headBranch
+      vi.spyOn(manager, "seedOne").mockResolvedValue({
+        type: "issue",
+        number: 42,
+        repo: "aryeko/ghx-bench-fixtures",
+        branch: undefined,
+        labels: ["@ghx-dev/eval"],
+        metadata: { headBranch: "feat/issue-42-branch" },
+      } as unknown as import("@eval/fixture/manifest.js").FixtureResource)
+
+      const rawScenario = {
+        id: "branch-cleanup-001",
+        name: "test",
+        description: "test",
+        prompt: "Fix issue #{{issue_number}}",
+        timeoutMs: 60000,
+        allowedRetries: 0,
+        tags: [],
+        category: "issue" as const,
+        difficulty: "basic" as const,
+        fixture: {
+          repo: "aryeko/ghx-bench-fixtures",
+          requires: ["issue_with_branch"],
+          bindings: { issue_number: "issue_with_branch.number" },
+          reseedPerIteration: false,
+          seedPerIteration: true,
+        },
+        assertions: { checkpoints: [] },
+      }
+      const rawScenariosMap = new Map([
+        [
+          "branch-cleanup-001",
+          rawScenario as unknown as import("@eval/scenario/schema.js").EvalScenario,
+        ],
+      ])
+      const hooks = createEvalHooks({
+        fixtureManager: manager,
+        sessionExport: false,
+        rawScenarios: rawScenariosMap,
+      })
+
+      await hooks.beforeScenario?.({
+        scenario: rawScenario as unknown as import("@ghx-dev/agent-profiler").BaseScenario,
+        mode: "ghx",
+        model: "test-model",
+        iteration: 0,
+      })
+
+      await hooks.afterScenario?.({
+        scenario: { id: "branch-cleanup-001" } as never,
+        mode: "ghx",
+        model: "test-model",
+        iteration: 0,
+        result: {} as never,
+        trace: null,
+      } as import("@ghx-dev/agent-profiler").AfterScenarioContext)
+
+      expect(manager.deleteBranch).toHaveBeenCalledWith(
+        "aryeko/ghx-bench-fixtures",
+        "feat/issue-42-branch",
+      )
+    })
+
+    it("does not call deleteBranch when resource has no metadata.headBranch", async () => {
+      const manager = makeFixtureManager()
+      const rawScenario = {
+        id: "no-branch-cleanup-001",
+        name: "test",
+        description: "test",
+        prompt: "Review PR #{{pr_number}}",
+        timeoutMs: 60000,
+        allowedRetries: 0,
+        tags: [],
+        category: "pr" as const,
+        difficulty: "basic" as const,
+        fixture: {
+          repo: "aryeko/ghx-bench-fixtures",
+          requires: ["pr_with_changes"],
+          bindings: { pr_number: "pr_with_changes.number", repo: "pr_with_changes.repo" },
+          reseedPerIteration: false,
+          seedPerIteration: true,
+        },
+        assertions: { checkpoints: [] },
+      }
+      const rawScenariosMap = new Map([
+        [
+          "no-branch-cleanup-001",
+          rawScenario as unknown as import("@eval/scenario/schema.js").EvalScenario,
+        ],
+      ])
+      const hooks = createEvalHooks({
+        fixtureManager: manager,
+        sessionExport: false,
+        rawScenarios: rawScenariosMap,
+      })
+
+      await hooks.beforeScenario?.({
+        scenario: rawScenario as unknown as import("@ghx-dev/agent-profiler").BaseScenario,
+        mode: "ghx",
+        model: "test-model",
+        iteration: 0,
+      })
+
+      await hooks.afterScenario?.({
+        scenario: { id: "no-branch-cleanup-001" } as never,
+        mode: "ghx",
+        model: "test-model",
+        iteration: 0,
+        result: {} as never,
+        trace: null,
+      } as import("@ghx-dev/agent-profiler").AfterScenarioContext)
+
+      // seedOne returns metadata without headBranch, so deleteBranch should not be called
+      expect(manager.deleteBranch).not.toHaveBeenCalled()
     })
 
     it("does not throw when closeResource fails during cleanup (best-effort)", async () => {

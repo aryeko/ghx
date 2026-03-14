@@ -138,6 +138,11 @@ export function createEvalHooks(options: EvalHooksOptions): RunHooks {
         for (const resource of resources) {
           try {
             await options.fixtureManager.closeResource(resource)
+            // Clean up branches for composite seeders (e.g. issue_with_branch)
+            const branch = resource.metadata?.headBranch
+            if (typeof branch === "string") {
+              await options.fixtureManager.deleteBranch(resource.repo, branch)
+            }
           } catch {
             // best-effort: don't fail the run if cleanup fails
           }
