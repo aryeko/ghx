@@ -1,5 +1,11 @@
 # @ghx-dev/core
 
+## 0.4.1
+
+### Patch Changes
+
+- a4b015b: Fix SessionStart hook so ghx CLI is available on PATH. Replace bin/ghx symlink with a real executable script (symlinks don't survive plugin cache extraction), pass CLAUDE_PLUGIN_ROOT as env var to setup-env.sh (plugin variable substitution only expands in hooks.json command strings, not inside scripts).
+
 ## 0.4.0
 
 ### Minor Changes
