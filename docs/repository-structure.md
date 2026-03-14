@@ -116,7 +116,7 @@ ghx/
 | `core/registry/schema-utils.ts` | Schema helper utilities | JSON schema helpers |
 | `core/registry/operation-card-schema.ts` | Card schema definition | `operationCardSchema` |
 | `core/registry/ajv-instance.ts` | Shared AJV instance | `ajv` |
-| `core/registry/cards/*.yaml` | Capability definitions | 70 operation cards |
+| `core/registry/cards/*.yaml` | Capability definitions | 70+ operation cards |
 
 ### Routing Engine (`core/routing`)
 

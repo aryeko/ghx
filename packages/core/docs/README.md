@@ -20,14 +20,14 @@ docs/
 ├── concepts/            How ghx works: operation cards, routing, result envelope, chaining
 ├── architecture/        System design, execution pipeline, adapters, GraphQL layer
 ├── guides/              Error handling, custom transport, adding capabilities, telemetry
-├── reference/           API exports, 70 capabilities, error codes, types, CLI commands
+├── reference/           API exports, 70+ capabilities, error codes, types, CLI commands
 └── contributing/        Dev setup, testing, code style for core package
 ```
 
 ## Quick Links
 
 - [Result Envelope Contract](./concepts/result-envelope.md)
-- [All 70 Capabilities](./reference/capabilities.md)
+- [All 70+ Capabilities](./reference/capabilities.md)
 - [Operation Cards Explained](./concepts/operation-cards.md)
 - [Routing Engine](./concepts/routing-engine.md)
 - [Error Codes Reference](./reference/error-codes.md)

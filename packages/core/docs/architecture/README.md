@@ -16,7 +16,7 @@ graph TB
     subgraph Core["core/"]
         direction TB
         CONTRACTS[contracts/<br/>ResultEnvelope, TaskRequest]
-        REGISTRY[registry/<br/>70 Operation Cards + Schema Validation]
+        REGISTRY[registry/<br/>70+ Operation Cards + Schema Validation]
         ROUTING[routing/engine/<br/>Single + Batch Execution]
         EXEC[execution/<br/>Adapters: CLI + GraphQL]
         ERRORS[errors/<br/>Error Codes + Mapping]

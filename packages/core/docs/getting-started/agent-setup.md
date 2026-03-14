@@ -128,4 +128,4 @@ flowchart LR
 
 - [Concepts: How ghx Works](../concepts/README.md) — understand the internals
 - [Error Handling Guide](../guides/error-handling.md) — build resilient agent flows
-- [Capabilities Reference](../reference/capabilities.md) — browse all 70 capabilities
+- [Capabilities Reference](../reference/capabilities.md) — browse all 70+ capabilities
