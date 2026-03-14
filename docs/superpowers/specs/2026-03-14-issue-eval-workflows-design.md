@@ -31,19 +31,24 @@ explaining the priority and next steps.
 **Fixture:** `issue_for_triage`
 - Type: `issue`
 - Open issue with descriptive body (bug report style), no labels, no assignees, no milestone
+- Seeder applies zero labels (no tracking label — this fixture must start clean for the `labels-applied` checkpoint)
 - `seedPerIteration: true`
 - Bindings: `issue_number`, `repo`, `owner`, `repo_name`
 - Extra bindings from fixture repo config: `assignee`, `milestone_number`
 
 **Checkpoints:**
 
-| ID | Task | Condition | Description |
-|---|---|---|---|
-| `labels-applied` | `issue.view` | `field_gte` path=`labels.length` value=1 | At least one label applied |
-| `milestone-set` | `issue.view` | `field_equals` path=`milestone.number` value=`{{milestone_number}}` | Correct milestone assigned |
-| `triage-comment-exists` | `issue.comments.list` | `count_gte` value=1 | Triage summary comment posted |
+| ID | Task | Input | Condition | Description |
+|---|---|---|---|---|
+| `labels-applied` | `issue.view` | `owner`, `name`, `issueNumber` | `field_gte` path=`labels.length` value=1 | At least one label applied (fixture starts with zero) |
+| `milestone-set` | `issue.view` | `owner`, `name`, `issueNumber` | `field_equals` path=`milestone.number` value=`{{milestone_number}}` | Correct milestone assigned |
+| `triage-comment-exists` | `issue.comments.list` | `owner`, `name`, `issueNumber`, `first: 10` | `field_gte` path=`items.length` value=1 | Triage summary comment posted |
+
+**Note:** Assignee verification is not included because `issue.view` output does not currently include an `assignees` field. The agent is still instructed to assign, and `issue.assignees.add` is in the expected capabilities, but verification is deferred until the card is extended.
 
 **Expected capabilities:** `issue.view`, `repo.labels.list`, `issue.labels.set`, `issue.assignees.add`, `issue.milestone.set`, `issue.comments.create`
+
+**Timeout:** 120000ms | **Retries:** 1
 
 **Tags:** `["issue", "triage", "labels", "assign", "milestone", "api-only"]`
 
@@ -64,20 +69,25 @@ replace the 'bug' label with 'resolved', and close the issue.
 
 **Fixture:** `issue_bug_to_close`
 - Type: `issue`
-- Open issue with `bug` label and distinctive title containing the search term
+- Open issue with only the `bug` label (no `@ghx-dev/eval` tracking label — keeps label count predictable)
+- Distinctive title containing the search term
 - `seedPerIteration: true`
 - Bindings: `issue_number`, `repo`, `owner`, `repo_name`, `search_term`
 
 **Checkpoints:**
 
-| ID | Task | Condition | Description |
-|---|---|---|---|
-| `issue-closed` | `issue.view` | `field_equals` path=`state` value=`"CLOSED"` | Issue is closed |
-| `resolution-comment` | `issue.comments.list` | `count_gte` value=1 | Resolution comment posted |
-| `bug-label-removed` | `issue.view` | `field_equals` path=`labels.length` value=1 | Exactly one label remains |
-| `resolved-label-applied` | `issue.view` | `field_contains` path=`labels.0.name` value=`"resolved"` | The remaining label is "resolved" |
+| ID | Task | Input | Condition | Description |
+|---|---|---|---|---|
+| `issue-closed` | `issue.view` | `owner`, `name`, `issueNumber` | `field_equals` path=`state` value=`"CLOSED"` | Issue is closed |
+| `resolution-comment` | `issue.comments.list` | `owner`, `name`, `issueNumber`, `first: 10` | `field_gte` path=`items.length` value=1 | Resolution comment posted |
+| `bug-label-removed` | `issue.view` | `owner`, `name`, `issueNumber` | `field_equals` path=`labels.length` value=1 | Exactly one label remains (bug removed, resolved added) |
+| `resolved-label-applied` | `issue.view` | `owner`, `name`, `issueNumber` | `field_equals` path=`labels.0` value=`"resolved"` | The remaining label is "resolved" |
+
+**Note:** Labels in `issue.view` output are an array of strings (not objects), so paths reference the string directly (e.g., `labels.0`, not `labels.0.name`).
 
 **Expected capabilities:** `issue.list`, `issue.view`, `issue.comments.create`, `issue.labels.set`, `issue.close`
+
+**Timeout:** 120000ms | **Retries:** 1
 
 **Tags:** `["issue", "close", "labels", "search", "api-only"]`
 
@@ -106,16 +116,17 @@ changes with at least one specific suggestion.
 
 **Checkpoints:**
 
-| ID | Task | Condition | Description |
-|---|---|---|---|
-| `pr-created-for-issue` | `issue.relations.prs.list` | `count_gte` value=1 | A PR linked to the issue exists |
-| `review-submitted` | `pr.reviews.list` | `count_gte` value=1 | A review was submitted on the PR |
+| ID | Task | Input | Condition | Description |
+|---|---|---|---|---|
+| `pr-created-for-issue` | `issue.relations.prs.list` | `owner`, `name`, `issueNumber` | `field_gte` path=`items.length` value=1 | A PR linked to the issue exists |
+
+**v1 simplification:** Only the PR-linkage checkpoint is included. The `pr.reviews.list` checkpoint requires the dynamically created PR number, which needs checkpoint output forwarding (see Open Questions). For v1, we verify the cross-domain chain completed (issue -> PR created) without verifying the review. The review capability is still in `expectedCapabilities` for behavioral analysis.
 
 **Expected capabilities:** `issue.view`, `pr.create`, `pr.reviews.submit`
 
-**Tags:** `["issue", "pr", "cross-domain", "lifecycle", "api-only"]`
+**Timeout:** 180000ms | **Retries:** 1 (higher timeout for cross-domain multi-step)
 
-**Note:** The `pr.reviews.list` checkpoint requires knowing the PR number. Since the agent creates the PR dynamically, this checkpoint uses `issue.relations.prs.list` first to discover the PR, then a second checkpoint queries `pr.reviews.list` on that PR. This may require the checkpoint scorer to support chained lookups or a two-pass evaluation — see Open Questions.
+**Tags:** `["issue", "pr", "cross-domain", "lifecycle", "api-only"]`
 
 ---
 
@@ -125,28 +136,28 @@ changes with at least one specific suggestion.
 
 #### `createTriageIssueSeeder()`
 
-Creates an open issue with a descriptive body suitable for triage decisions. No labels, no assignees, no milestone.
+Creates an open issue with a descriptive body suitable for triage decisions. Zero labels, no assignees, no milestone. The `[@ghx-dev/eval]` prefix in the title is used for cleanup identification but no label is applied.
 
 ```
 Title: "[@ghx-dev/eval] Performance degradation in API response times"
 Body: Multi-paragraph bug report with reproduction steps, expected vs actual behavior
-Labels: ["@ghx-dev/eval"] (tracking label only, not domain labels)
+Labels: [] (none — checkpoint asserts labels.length >= 1 after agent acts)
 ```
 
-Extends the existing `createIssueSeeder()` pattern. Returns `FixtureResource` with `type: "issue"`.
+Extends the existing `createIssueSeeder()` pattern but passes an empty labels array. Returns `FixtureResource` with `type: "issue"`.
 
 #### `createBugIssueSeeder()`
 
-Creates an open issue with the `bug` label and a title containing a known search term.
+Creates an open issue with only the `bug` label and a title containing a known search term. No tracking label — the scenario asserts exactly 1 label remains after the swap.
 
 ```
 Title: "[@ghx-dev/eval] Memory leak in connection pooling"
 Body: Bug report body
-Labels: ["@ghx-dev/eval", "bug"]
+Labels: ["bug"] (only bug — no tracking label)
 Search term stored in metadata: "Memory leak in connection pooling"
 ```
 
-Reuses the existing `createIssueSeeder()` with appropriate labels. Returns `FixtureResource` with `type: "issue"` and `metadata: { searchTerm: "..." }`.
+Reuses the existing `createIssueSeeder()` with a single `bug` label. Returns `FixtureResource` with `type: "issue"` and `metadata: { searchTerm: "..." }`.
 
 #### `createIssueBranchSeeder()`
 
@@ -209,7 +220,12 @@ All 3 scenarios use `seedPerIteration: true`. Each iteration gets a fresh issue 
    - (b) Hardcode it in the scenario config (fragile).
    - **Recommendation:** Option (a) — the triage issue seeder should look up or create the milestone and store its number in metadata.
 
-3. **Branch cleanup for scenario 3:** After each iteration, the pushed branch and created PR need cleanup. The existing `seedPerIteration` hook handles PR cleanup but may not handle branch deletion. Verify the eval hooks cover this or extend them.
+3. **Branch cleanup for scenario 3:** After each iteration, the pushed branch and created PR need cleanup. The existing `seedPerIteration` hook handles PR cleanup but may not handle branch deletion. The `FixtureSeeder` interface has only `seed()` with no `teardown()`. Options:
+   - (a) Extend `FixtureSeeder` with an optional `teardown()` method.
+   - (b) Handle cleanup in the eval hooks (`afterScenario`).
+   - **Recommendation:** Option (b) — keep the seeder interface simple, handle branch deletion in eval hooks since `seedPerIteration` already closes PRs there.
+
+4. **Label prerequisite verification:** Scenario 2 depends on `bug` and `resolved` labels existing in the fixture repo. If missing, `issue.labels.set` may fail or silently skip, causing checkpoint failures for infrastructure reasons, not agent capability. The seeders should verify required labels exist (via `repo.labels.list` or `gh label list`) before seeding, and fail fast with a clear error if missing.
 
 ## Deliverables
 
@@ -217,9 +233,12 @@ All 3 scenarios use `seedPerIteration: true`. Each iteration gets a fresh issue 
 2. 3 new seeders in `packages/eval/src/fixture/seeders/`
 3. Seeder index update in `packages/eval/src/fixture/seeders/index.ts`
 4. Scenario sets update in `packages/eval/scenarios/scenario-sets.json`
-5. Checkpoint scorer enhancement: output forwarding between checkpoints (for scenario 3)
-6. Fixture repo setup: ensure milestone and `resolved` label exist
+5. Fixture repo setup: ensure milestone, `bug`, and `resolved` labels exist
+6. Fixture verification: seed each fixture via `eval fixture seed`, verify expected state via `eval fixture status`, then clean up via `eval fixture cleanup`
 7. Unit tests for new seeders and scenario validation
+8. Branch cleanup support in eval hooks for scenario 3's pushed branches
+
+**Deferred from v1:** Checkpoint output forwarding for scenario 3's review verification (Open Question 1, option c chosen for v1).
 
 ## Deferred Work
 
