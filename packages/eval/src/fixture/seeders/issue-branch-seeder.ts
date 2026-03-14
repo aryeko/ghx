@@ -1,5 +1,5 @@
 import type { FixtureResource } from "@eval/fixture/manifest.js"
-import { runGh, runGhWithInput } from "@eval/fixture/seeders/gh.js"
+import { parseIssueNumberFromUrl, runGh, runGhWithInput } from "@eval/fixture/seeders/gh.js"
 import type { FixtureSeeder, SeedOptions } from "@eval/fixture/seeders/types.js"
 
 const FIXTURE_FILE_CONTENT = `# Eval Fixture Change
@@ -75,7 +75,7 @@ export function createIssueBranchSeeder(): FixtureSeeder {
       const title = `[@ghx-dev/eval] ${options.name}`
       const issueBody =
         "Implement connection pool monitoring.\n\nThis issue tracks adding health checks and idle timeout configuration to prevent pool exhaustion under load."
-      await runGh([
+      const createUrl = await runGh([
         "issue",
         "create",
         "--repo",
@@ -86,33 +86,11 @@ export function createIssueBranchSeeder(): FixtureSeeder {
         issueBody,
         ...options.labels.flatMap((label) => ["--label", label]),
       ])
-
-      // 7. Find the created issue
-      const listOutput = await runGh([
-        "issue",
-        "list",
-        "--repo",
-        options.repo,
-        "--label",
-        "@ghx-dev/eval",
-        "--json",
-        "number,title",
-        "--limit",
-        "1",
-        "--search",
-        title,
-      ])
-      const issues: readonly { readonly number: number; readonly title: string }[] =
-        JSON.parse(listOutput)
-
-      const match = issues.find((i) => i.title === title)
-      if (!match) {
-        throw new Error(`Could not find issue "${options.name}" after creation in ${options.repo}`)
-      }
+      const issueNumber = parseIssueNumberFromUrl(createUrl)
 
       return {
         type: "issue",
-        number: match.number,
+        number: issueNumber,
         repo: options.repo,
         labels: [...options.labels],
         metadata: {

@@ -39,12 +39,7 @@ describe("createBugIssueSeeder", () => {
   })
 
   it("creates an issue with bug label and stores searchTerm in metadata", async () => {
-    const issueList = [{ number: 20, title: "[@ghx-dev/eval] Memory leak in connection pooling" }]
-
-    mockExecFileResults([
-      { stdout: "", stderr: "" },
-      { stdout: JSON.stringify(issueList), stderr: "" },
-    ])
+    mockExecFileResults([{ stdout: "https://github.com/acme/sandbox/issues/20", stderr: "" }])
 
     const seeder = createBugIssueSeeder()
     const result = await seeder.seed({
@@ -63,12 +58,7 @@ describe("createBugIssueSeeder", () => {
   })
 
   it("includes the bug label in gh issue create args", async () => {
-    const issueList = [{ number: 5, title: "[@ghx-dev/eval] Memory leak in connection pooling" }]
-
-    mockExecFileResults([
-      { stdout: "", stderr: "" },
-      { stdout: JSON.stringify(issueList), stderr: "" },
-    ])
+    mockExecFileResults([{ stdout: "https://github.com/acme/sandbox/issues/5", stderr: "" }])
 
     const seeder = createBugIssueSeeder()
     await seeder.seed({

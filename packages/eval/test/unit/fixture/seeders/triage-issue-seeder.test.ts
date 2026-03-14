@@ -39,12 +39,7 @@ describe("createTriageIssueSeeder", () => {
   })
 
   it("creates an issue with a detailed triage body", async () => {
-    const issueList = [{ number: 10, title: "[@ghx-dev/eval] issue_for_triage" }]
-
-    mockExecFileResults([
-      { stdout: "", stderr: "" },
-      { stdout: JSON.stringify(issueList), stderr: "" },
-    ])
+    mockExecFileResults([{ stdout: "https://github.com/acme/sandbox/issues/10", stderr: "" }])
 
     const seeder = createTriageIssueSeeder()
     const result = await seeder.seed({

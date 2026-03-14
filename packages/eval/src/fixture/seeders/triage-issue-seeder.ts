@@ -1,5 +1,5 @@
 import type { FixtureResource } from "@eval/fixture/manifest.js"
-import { runGh } from "@eval/fixture/seeders/gh.js"
+import { parseIssueNumberFromUrl, runGh } from "@eval/fixture/seeders/gh.js"
 import type { FixtureSeeder, SeedOptions } from "@eval/fixture/seeders/types.js"
 
 const TRIAGE_BODY = `## Bug Report
@@ -40,34 +40,12 @@ export function createTriageIssueSeeder(): FixtureSeeder {
         TRIAGE_BODY,
         ...options.labels.flatMap((label) => ["--label", label]),
       ]
-      await runGh(createArgs)
-
-      const listArgs = [
-        "issue",
-        "list",
-        "--repo",
-        options.repo,
-        "--label",
-        "@ghx-dev/eval",
-        "--json",
-        "number,title",
-        "--limit",
-        "1",
-        "--search",
-        title,
-      ]
-      const listOutput = await runGh(listArgs)
-      const issues: readonly { readonly number: number; readonly title: string }[] =
-        JSON.parse(listOutput)
-
-      const match = issues.find((i) => i.title === title)
-      if (!match) {
-        throw new Error(`Could not find issue "${options.name}" after creation in ${options.repo}`)
-      }
+      const createUrl = await runGh(createArgs)
+      const issueNumber = parseIssueNumberFromUrl(createUrl)
 
       return {
         type: "issue",
-        number: match.number,
+        number: issueNumber,
         repo: options.repo,
         labels: [...options.labels],
         metadata: {},

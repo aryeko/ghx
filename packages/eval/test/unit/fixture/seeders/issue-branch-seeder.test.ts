@@ -74,14 +74,11 @@ describe("createIssueBranchSeeder", () => {
   })
 
   it("creates an issue and a branch, returning composite metadata", async () => {
-    const issueList = [{ number: 30, title: "[@ghx-dev/eval] issue_with_branch" }]
-
-    // execFile calls: get default branch (--jq returns plain string), get HEAD sha (--jq returns plain string), issue create, issue list
+    // execFile calls: get default branch (--jq), get HEAD sha (--jq), issue create (returns URL)
     mockExecFileResults([
       { stdout: "main", stderr: "" },
       { stdout: "abc123", stderr: "" },
-      { stdout: "", stderr: "" },
-      { stdout: JSON.stringify(issueList), stderr: "" },
+      { stdout: "https://github.com/acme/sandbox/issues/30", stderr: "" },
     ])
 
     // spawn calls: create tree, create commit, create ref
@@ -113,13 +110,10 @@ describe("createIssueBranchSeeder", () => {
   })
 
   it("calls gh api with correct args for branch creation", async () => {
-    const issueList = [{ number: 5, title: "[@ghx-dev/eval] branch_test" }]
-
     mockExecFileResults([
       { stdout: "main", stderr: "" },
       { stdout: "sha999", stderr: "" },
-      { stdout: "", stderr: "" },
-      { stdout: JSON.stringify(issueList), stderr: "" },
+      { stdout: "https://github.com/acme/sandbox/issues/5", stderr: "" },
     ])
 
     mockSpawnResults([
@@ -136,7 +130,7 @@ describe("createIssueBranchSeeder", () => {
     })
 
     const execFileCalls = mockedExecFile.mock.calls
-    expect(execFileCalls).toHaveLength(4)
+    expect(execFileCalls).toHaveLength(3)
 
     // First execFile call: get default branch
     const repoCall = execFileCalls[0] as unknown[]
@@ -175,12 +169,11 @@ describe("createIssueBranchSeeder", () => {
     )
   })
 
-  it("throws when issue cannot be found after creation", async () => {
+  it("throws when issue create returns an unparseable URL", async () => {
     mockExecFileResults([
       { stdout: "main", stderr: "" },
       { stdout: "sha000", stderr: "" },
-      { stdout: "", stderr: "" },
-      { stdout: "[]", stderr: "" },
+      { stdout: "bad-output-no-url", stderr: "" },
     ])
 
     mockSpawnResults([
@@ -197,6 +190,6 @@ describe("createIssueBranchSeeder", () => {
         name: "ghost_branch",
         labels: ["@ghx-dev/eval"],
       }),
-    ).rejects.toThrow(/could not find.*ghost_branch/i)
+    ).rejects.toThrow(/could not parse issue number/i)
   })
 })
