@@ -14,7 +14,7 @@ ghx uses structured logging throughout the execution pipeline. This guide explai
 Set via `GHX_LOG_LEVEL` environment variable:
 
 ```bash
-GHX_LOG_LEVEL=debug ghx run pr.view --input '{"owner":"acme","name":"repo","number":42}'
+GHX_LOG_LEVEL=debug ghx run pr.view --input '{"owner":"acme","name":"repo","prNumber":42}'
 ```
 
 ## Key Log Events
@@ -58,7 +58,7 @@ GHX_LOG_LEVEL=debug ghx run pr.view --input '{"owner":"acme","name":"repo","numb
 Investigate why a PR view fell back to CLI:
 
 ```bash
-GHX_LOG_LEVEL=debug ghx run pr.view --input '{"owner":"acme","name":"repo","number":42}'
+GHX_LOG_LEVEL=debug ghx run pr.view --input '{"owner":"acme","name":"repo","prNumber":42}'
 ```
 
 Sample output:

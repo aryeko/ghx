@@ -2,6 +2,55 @@
 
 Wire ghx into your AI agent to give it deterministic, token-efficient GitHub operations.
 
+## Install
+
+All platforms require `@ghx-dev/core` installed globally so `ghx` is available in PATH:
+
+```bash
+npm i -g @ghx-dev/core
+```
+
+Then wire it into your agent using one of the methods below.
+
+## Claude Code (Plugin Marketplace)
+
+The easiest path for Claude Code users. Run these commands inside a Claude Code session:
+
+```bash
+/plugin marketplace add aryeko/ghx
+/plugin install ghx@ghx-dev
+```
+
+This registers the ghx marketplace and installs the plugin. Claude Code loads the skill automatically -- no manual file management needed. Verify by starting a new session and asking Claude to perform a GitHub operation.
+
+## Cursor, Windsurf, Codex, and Other Agents
+
+Install the ghx skill to the standard agents directory:
+
+```bash
+ghx setup --scope user --yes
+
+# Verify
+ghx setup --scope user --verify
+```
+
+This writes `SKILL.md` to `~/.agents/skills/using-ghx/SKILL.md`. Agents that follow the `~/.agents/skills/` convention will pick it up automatically.
+
+For agents that don't read `~/.agents/skills/`, reference the skill from your agent's config:
+
+| Platform | Config file | How to reference |
+|---|---|---|
+| Cursor | `.cursor/rules/*.mdc` or `.cursorrules` | Include or paste the SKILL.md content |
+| Windsurf | `.windsurfrules` | Include or paste the SKILL.md content |
+| Codex | `AGENTS.md` | Reference or inline the skill instructions |
+| Cline | `.clinerules` | Include or paste the SKILL.md content |
+
+You can also install project-scoped (writes to `.agents/skills/using-ghx/SKILL.md` in the current directory):
+
+```bash
+ghx setup --scope project --yes
+```
+
 ## The Execute Tool Pattern
 
 ghx provides `createExecuteTool` — a factory that wraps the execution engine into a tool shape your agent can call:
@@ -34,23 +83,9 @@ const info = explainCapability("pr.threads.list")
 const result = await tool.execute("pr.threads.list", {
   owner: "acme",
   name: "repo",
-  number: 42,
+  prNumber: 42,
 })
 ```
-
-## Agent Skill Install (Claude Code)
-
-ghx ships a skill file that teaches Claude Code how to use it. Install it:
-
-```bash
-# Project-scoped (recommended)
-npx @ghx-dev/core setup --scope project --yes
-
-# Verify installation
-npx @ghx-dev/core setup --scope project --verify
-```
-
-This writes `SKILL.md` to `.agents/skills/ghx/SKILL.md` in your project, which Claude Code reads automatically.
 
 ## Integration Pattern
 
@@ -94,4 +129,4 @@ flowchart LR
 
 - [Concepts: How ghx Works](../concepts/README.md) — understand the internals
 - [Error Handling Guide](../guides/error-handling.md) — build resilient agent flows
-- [Capabilities Reference](../reference/capabilities.md) — browse all 70 capabilities
+- [Capabilities Reference](../reference/capabilities.md) — browse all 70+ capabilities

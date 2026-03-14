@@ -5,20 +5,24 @@ The `ghx` CLI lets you execute any capability from the command line — useful f
 ## Install
 
 ```bash
-# Run without installing
-npx @ghx-dev/core <command>
-
-# Or install globally
 npm i -g @ghx-dev/core
-ghx <command>
 ```
 
 Set `GITHUB_TOKEN` or `GH_TOKEN` in your environment.
 
+<details>
+<summary>Try without installing (npx)</summary>
+
+```bash
+npx @ghx-dev/core <command>
+```
+
+</details>
+
 ## Discover Capabilities
 
 ```bash
-# List all 70 capabilities
+# List all 70+ capabilities
 ghx capabilities list
 
 # Filter by domain
@@ -48,13 +52,13 @@ Output is always a JSON [`ResultEnvelope`](../concepts/result-envelope.md):
 
 ```bash
 # View a PR
-ghx run pr.view --input '{"owner":"acme","name":"repo","number":42}'
+ghx run pr.view --input '{"owner":"acme","name":"repo","prNumber":42}'
 
 # List issue comments
 ghx run issue.comments.list --input '{"owner":"acme","name":"repo","issueNumber":7}'
 
 # Submit a PR review
-ghx run pr.reviews.submit --input '{"owner":"acme","name":"repo","number":42,"event":"APPROVE","body":"Looks good!"}'
+ghx run pr.reviews.submit --input '{"owner":"acme","name":"repo","prNumber":42,"event":"APPROVE","body":"Looks good!"}'
 ```
 
 ## Chain: Batch Operations
@@ -97,5 +101,6 @@ Output:
 ## Next Steps
 
 - [CLI Command Reference](../reference/cli.md) — all commands, flags, exit codes
-- [Capabilities Reference](../reference/capabilities.md) — full table of 70 capabilities
+- [Capabilities Reference](../reference/capabilities.md) — full table of 70+ capabilities
 - [Agent Setup](./agent-setup.md) — install ghx as an agent skill
+- [Troubleshooting](../../../../docs/TROUBLESHOOTING.md) — common setup and runtime issues

@@ -40,7 +40,7 @@ flowchart LR
 
 ```ts
 const result = await executeTask(
-  { task: "pr.view", input: { owner: "acme", name: "repo", number: 42 } },
+  { task: "pr.view", input: { owner: "acme", name: "repo", prNumber: 42 } },
   deps,
 )
 

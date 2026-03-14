@@ -2,7 +2,7 @@
 
 ## Current State
 
-ghx ships **70 capabilities** across 6 domains:
+ghx ships **70+ capabilities** across 6 domains:
 
 | Domain | Count |
 |--------|-------|

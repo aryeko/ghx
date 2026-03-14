@@ -19,6 +19,8 @@
 When AI agents use the `gh` CLI directly, they waste thousands of tokens on research, trial-and-error formatting, and guessing JSON parsing paths. **ghx eliminates this waste** by providing a stable, structured execution layer.
 
 > **100% success rate, 73% fewer tool calls, 18% fewer active tokens, 54% lower latency** compared to raw CLI usage ([measured across 30 runs](https://github.com/aryeko/ghx/blob/main/docs/eval-report.md) on standard PR workflows with Codex 5.3).
+>
+> Read the full motivation: [AI Agents Shouldn't Relearn GitHub on Every Run](https://plainenglish.io/artificial-intelligence/ai-agents-shouldn-t-relearn-github-on-every-run)
 
 ```mermaid
 sequenceDiagram
@@ -59,11 +61,21 @@ Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 - **[Architecture](./docs/architecture/README.md)** — System design, execution pipeline, formatters, and GraphQL layer.
 - **[Reference](./docs/reference/README.md)** — API exports, error codes, and a complete table of all 70+ capabilities.
 
-## Quick Start (Library)
+## Install
+
+```bash
+npm i -g @ghx-dev/core
+```
+
+This makes the `ghx` CLI available in your PATH. Then wire it into your agent (see [Agent Integration](#agent-integration) below).
+
+For library usage (TypeScript imports), install as a project dependency instead:
 
 ```bash
 npm install @ghx-dev/core
 ```
+
+## Quick Start (Library)
 
 ```ts
 import { createGithubClientFromToken, executeTask } from "@ghx-dev/core"
@@ -92,10 +104,10 @@ Use ghx directly from your terminal or add it as an agent skill.
 
 ```bash
 # List all 70+ capabilities
-npx @ghx-dev/core capabilities list
+ghx capabilities list
 
 # Run a capability
-npx @ghx-dev/core run pr.view --input '{"owner":"aryeko","name":"ghx","number":42}'
+ghx run pr.view --input '{"owner":"aryeko","name":"ghx","prNumber":42}'
 
 # Output is a standard ResultEnvelope:
 # {
@@ -107,13 +119,20 @@ npx @ghx-dev/core run pr.view --input '{"owner":"aryeko","name":"ghx","number":4
 
 ## Agent Integration
 
-To install the `ghx` skill for Claude Code:
+**Claude Code** -- install from the plugin marketplace:
 
 ```bash
-npx @ghx-dev/core setup --scope project --yes
+/plugin marketplace add aryeko/ghx
+/plugin install ghx@ghx-dev
 ```
 
-This installs `.agents/skills/ghx/SKILL.md` which teaches Claude how to use `npx @ghx-dev/core` for reliable GitHub interactions.
+**Cursor, Windsurf, Codex, other agents** -- install the skill:
+
+```bash
+ghx setup --scope user --yes
+```
+
+This writes `SKILL.md` to `~/.agents/skills/using-ghx/` which teaches your agent how to use `ghx` for reliable GitHub interactions. See [Agent Setup](./docs/getting-started/agent-setup.md) for platform-specific wiring.
 
 ## License
 

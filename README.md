@@ -36,30 +36,38 @@ sequenceDiagram
 Requirements: Node.js `22+`, `gh` CLI authenticated, `GITHUB_TOKEN` or `GH_TOKEN` in env.
 
 ```bash
-npx @ghx-dev/core capabilities list
-npx @ghx-dev/core capabilities explain repo.view
-npx @ghx-dev/core run repo.view --input '{"owner":"aryeko","name":"ghx"}'
-```
-
-Or install globally:
-
-```bash
 npm i -g @ghx-dev/core
 ghx capabilities list
+ghx capabilities explain repo.view
 ghx run repo.view --input '{"owner":"aryeko","name":"ghx"}'
 ```
 
-Agent onboarding (Claude Code skill):
+Then wire ghx into your agent:
 
 ```bash
-npx @ghx-dev/core setup --scope project --yes
-npx @ghx-dev/core setup --scope project --verify
+# Claude Code — install from the plugin marketplace
+/plugin marketplace add aryeko/ghx
+/plugin install ghx@ghx-dev
+
+# Cursor, Windsurf, Codex, other agents — install the skill
+ghx setup --scope user --yes
 ```
+
+<details>
+<summary>Try without installing (npx)</summary>
+
+```bash
+npx @ghx-dev/core capabilities list
+npx @ghx-dev/core run repo.view --input '{"owner":"aryeko","name":"ghx"}'
+npx @ghx-dev/core setup --scope user --yes
+```
+
+</details>
 
 ## Who is this for?
 
-- **Claude Code users** -- install with `ghx setup --scope project` and get deterministic GitHub operations
-- **Cursor / Windsurf users** -- point your agent at `ghx capabilities list` for structured tool use
+- **Claude Code users** -- install from the [plugin marketplace](packages/core/docs/getting-started/agent-setup.md#claude-code-plugin-marketplace) for automatic skill loading
+- **Cursor / Windsurf / Codex users** -- install globally and run `ghx setup --scope user` to get the agent skill
 - **Custom agent builders** -- import `createExecuteTool()` for typed GitHub access in your own agent framework
 
 ## The Problem
@@ -195,6 +203,10 @@ Full documentation lives in [`docs/`](docs/README.md):
 - **[Repository Structure](docs/repository-structure.md)** -- Monorepo layout and module organization
 - Branding assets: `assets/branding/README.md`
 
+## Background
+
+Read the full motivation and benchmark methodology: [AI Agents Shouldn't Relearn GitHub on Every Run](https://plainenglish.io/artificial-intelligence/ai-agents-shouldn-t-relearn-github-on-every-run)
+
 ## Roadmap
 
 Current roadmap priorities and capability batches are tracked in `ROADMAP.md`.
@@ -215,6 +227,8 @@ pnpm install
 pnpm run build
 pnpm run ci
 ```
+
+Questions? Open a [Discussion](https://github.com/aryeko/ghx/discussions).
 
 ## License
 

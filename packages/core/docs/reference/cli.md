@@ -27,7 +27,7 @@ ghx run <capability_id> --input '<json>'
 
 ```bash
 ghx run repo.view --input '{"owner":"aryeko","name":"ghx"}'
-ghx run pr.view --input '{"owner":"acme","name":"repo","number":42}'
+ghx run pr.view --input '{"owner":"acme","name":"repo","prNumber":42}'
 ghx run issue.create --input '{"owner":"acme","name":"repo","title":"Bug report","body":"Details..."}'
 ```
 
@@ -102,7 +102,7 @@ ghx capabilities explain pr.threads.list
 
 ### `ghx setup`
 
-Install the ghx skill file for agent integration (Claude Code).
+Install the ghx skill file for agent integration.
 
 ```bash
 ghx setup --scope <project|user> [--yes] [--verify]
@@ -110,7 +110,7 @@ ghx setup --scope <project|user> [--yes] [--verify]
 
 | Flag | Required | Description |
 |---|---|---|
-| `--scope` | Yes | `project` (writes to `.agents/skills/ghx/SKILL.md`) or `user` (writes to `~/.agents/skills/ghx/SKILL.md`) |
+| `--scope` | Yes | `project` (writes to `.agents/skills/using-ghx/SKILL.md`) or `user` (writes to `~/.agents/skills/using-ghx/SKILL.md`) |
 | `--yes` | No | Skip confirmation prompt |
 | `--verify` | No | Verify the installation is correct |
 

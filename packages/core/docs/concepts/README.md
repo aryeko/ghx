@@ -10,7 +10,7 @@ graph LR
 
     subgraph B[ghx Core]
         direction TB
-        R[Registry<br/>70 Operation Cards] --> E[Routing Engine]
+        R[Registry<br/>70+ Operation Cards] --> E[Routing Engine]
         E --> V{Validate Input}
         V --> S[Route Selection<br/>Suitability + Preflight]
         S --> AD[Adapter]

@@ -1,6 +1,6 @@
 # Capabilities Reference
 
-All 70 capabilities in `@ghx-dev/core`, grouped by domain.
+All 70+ capabilities in `@ghx-dev/core`, grouped by domain.
 
 ## Repository
 
