@@ -62,6 +62,7 @@ await generateReport({ runId: result.runId, rows: result.rows, reportsDir: "repo
 | `Analyzer` | Produce structured findings from session traces |
 | `ModeResolver` | Map mode names to environment and instructions |
 | `RunHooks` | Lifecycle callbacks at run, mode, and iteration boundaries |
+| `JudgeProvider` | Provider-agnostic LLM judge calls for rubric-based evaluation |
 
 ## Documentation
 

@@ -63,7 +63,7 @@ Start here: **[Getting Started](getting-started/README.md)**
 Read: **[Architecture Documentation](architecture/README.md)**
 
 - [System Overview](architecture/overview.md) -- Data flow and layer diagram
-- [Plugin Contracts](architecture/plugin-contracts.md) -- All 6 contracts with full interfaces
+- [Plugin Contracts](architecture/plugin-contracts.md) -- All 7 contracts with full interfaces
 - [Statistics Engine](architecture/statistics.md) -- Bootstrap CI, Cohen's d, permutation tests
 
 ### I want to implement custom plugins
@@ -92,16 +92,17 @@ See: **[Contributing](contributing/README.md)**
 
 ## Key Facts
 
-**6 Plugin Contracts** -- the extension points of the profiler:
+**7 Plugin Contracts** -- the extension points of the profiler:
 
 | Contract | Purpose | Built-in |
 |----------|---------|----------|
 | `SessionProvider` | Drive agent sessions (create, prompt, export, destroy) | None (you implement) |
-| `Scorer` | Evaluate agent output against checkpoints | None (you implement) |
+| `Scorer` | Evaluate agent output against checkpoints | LlmJudgeScorer, CompositeScorer |
 | `Collector` | Extract custom metrics from prompt results | Token, Latency, Cost, ToolCall |
 | `Analyzer` | Produce structured findings from session traces | Reasoning, Strategy, Efficiency, ToolPattern, Error |
 | `ModeResolver` | Map mode names to environment and instructions | None (you implement) |
 | `RunHooks` | Lifecycle callbacks at run, mode, and iteration boundaries | None (you implement) |
+| `JudgeProvider` | Provider-agnostic LLM judge calls for rubric-based evaluation | None (you implement) |
 
 **Statistical Methods:**
 

@@ -304,6 +304,81 @@ The logger interface with methods for each log level.
 type LogLevel = "debug" | "info" | "warn" | "error"
 ```
 
+## Judge & Composite Scoring
+
+Types and classes for LLM-based rubric evaluation and composite scoring strategies.
+
+### JudgeProvider (type)
+
+Contract for provider-agnostic LLM judge calls. Implement this to connect the profiler to your LLM of choice for rubric-based evaluation.
+
+### JudgeRequest, JudgeResponse (types)
+
+Request and response shapes for judge invocations.
+
+### JudgeRubric, JudgeCriterion (types)
+
+Rubric definition types. A `JudgeRubric` contains an array of `JudgeCriterion` entries, each defining a name, description, and weight for evaluation.
+
+### extractRubric
+
+```typescript
+function extractRubric(scenario: BaseScenario): JudgeRubric | undefined
+```
+
+Extract a `JudgeRubric` from a scenario's `extensions` map, returning `undefined` if no rubric is defined.
+
+### LlmJudgeScorer
+
+```typescript
+class LlmJudgeScorer implements Scorer {
+  constructor(options: LlmJudgeScorerOptions)
+}
+```
+
+A `Scorer` implementation that delegates evaluation to an LLM judge via a `JudgeProvider`. Extracts the rubric from the scenario, sends the agent output to the judge, and converts the judge response into a `ScorerResult`.
+
+### LlmJudgeScorerOptions (type)
+
+Configuration for `LlmJudgeScorer`, including the `JudgeProvider` instance and optional defaults.
+
+### CompositeScorer
+
+```typescript
+class CompositeScorer implements Scorer {
+  constructor(options: CompositeScorerOptions)
+}
+```
+
+A `Scorer` implementation that combines multiple scorers (e.g., checkpoint-based and LLM judge) into a single weighted result.
+
+### CompositeScorerOptions (type)
+
+Configuration for `CompositeScorer`, including the list of scorers and their weights.
+
+### Usage Example
+
+```typescript
+import {
+  LlmJudgeScorer,
+  CompositeScorer,
+  extractRubric,
+} from "@ghx-dev/agent-profiler"
+
+// LLM judge scorer with a custom provider
+const judgeScorer = new LlmJudgeScorer({
+  judge: yourJudgeProvider, // implements JudgeProvider
+})
+
+// Combine with a checkpoint scorer
+const scorer = new CompositeScorer({
+  scorers: [
+    { scorer: checkpointScorer, weight: 0.6 },
+    { scorer: judgeScorer, weight: 0.4 },
+  ],
+})
+```
+
 ## Constants
 
 Default values used throughout the profiler when configuration does not specify overrides.
@@ -334,6 +409,11 @@ Type-only exports that define the plugin contracts and internal data shapes. The
 | `ProviderConfig` | Provider-level configuration |
 | `PermissionConfig` | Permission settings for sessions |
 | `Scorer` | Contract for checkpoint evaluation |
+| `JudgeProvider` | Contract for provider-agnostic LLM judge calls |
+| `JudgeRequest` | Request shape for judge invocations |
+| `JudgeResponse` | Response shape from judge invocations |
+| `JudgeRubric` | Rubric definition containing weighted criteria |
+| `JudgeCriterion` | Single criterion within a judge rubric |
 | `ScorerContext` | Context passed to the scorer during evaluation |
 | `ScorerResult` | Result of scorer evaluation |
 | `ScorerCheckResult` | Per-checkpoint outcome from scorer |
