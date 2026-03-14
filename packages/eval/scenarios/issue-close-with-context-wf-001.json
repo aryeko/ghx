@@ -1,0 +1,78 @@
+{
+  "id": "issue-close-with-context-wf-001",
+  "name": "Close Issue with Context",
+  "description": "Agent searches for a specific bug issue, posts a resolution comment, updates labels from bug to resolved, and closes the issue.",
+  "category": "issue",
+  "difficulty": "intermediate",
+  "prompt": "In {{repo}}, find open issues with the label 'bug'. View each one and find the issue whose title contains '{{search_term}}'. Post a resolution comment explaining the fix, replace the 'bug' label with 'resolved', and close the issue.",
+  "timeoutMs": 120000,
+  "allowedRetries": 1,
+  "tags": ["issue", "close", "labels", "search", "api-only"],
+  "fixture": {
+    "repo": "{{fixture_repo}}",
+    "requires": ["issue_bug_to_close"],
+    "bindings": {
+      "issue_number": "issue_bug_to_close.number",
+      "repo": "issue_bug_to_close.repo",
+      "search_term": "issue_bug_to_close.metadata.searchTerm"
+    },
+    "reseedPerIteration": false,
+    "seedPerIteration": true
+  },
+  "assertions": {
+    "checkpoints": [
+      {
+        "id": "issue-closed",
+        "description": "Issue state is CLOSED",
+        "task": "issue.view",
+        "input": {
+          "owner": "{{owner}}",
+          "name": "{{repo_name}}",
+          "issueNumber": "{{issue_number}}"
+        },
+        "condition": { "type": "field_equals", "path": "state", "value": "CLOSED" }
+      },
+      {
+        "id": "resolution-comment",
+        "description": "A resolution comment was posted",
+        "task": "issue.comments.list",
+        "input": {
+          "owner": "{{owner}}",
+          "name": "{{repo_name}}",
+          "issueNumber": "{{issue_number}}",
+          "first": 10
+        },
+        "condition": { "type": "field_gte", "path": "items.length", "value": 1 }
+      },
+      {
+        "id": "label-count-correct",
+        "description": "Exactly 2 labels remain (tracking label + resolved, bug removed)",
+        "task": "issue.view",
+        "input": {
+          "owner": "{{owner}}",
+          "name": "{{repo_name}}",
+          "issueNumber": "{{issue_number}}"
+        },
+        "condition": { "type": "field_equals", "path": "labels.length", "value": 2 }
+      },
+      {
+        "id": "resolved-label-applied",
+        "description": "The resolved label is present (alphabetically after @ghx-dev/eval)",
+        "task": "issue.view",
+        "input": {
+          "owner": "{{owner}}",
+          "name": "{{repo_name}}",
+          "issueNumber": "{{issue_number}}"
+        },
+        "condition": { "type": "field_equals", "path": "labels.1", "value": "resolved" }
+      }
+    ],
+    "expectedCapabilities": [
+      "issue.list",
+      "issue.view",
+      "issue.comments.create",
+      "issue.labels.set",
+      "issue.close"
+    ]
+  }
+}
