@@ -59,13 +59,14 @@ ghx setup --scope user --yes
 ```bash
 npx @ghx-dev/core capabilities list
 npx @ghx-dev/core run repo.view --input '{"owner":"aryeko","name":"ghx"}'
+npx @ghx-dev/core setup --scope user --yes
 ```
 
 </details>
 
 ## Who is this for?
 
-- **Claude Code users** -- install from the plugin marketplace (`/plugin install ghx@ghx-dev`) for automatic skill loading
+- **Claude Code users** -- install from the [plugin marketplace](packages/core/docs/getting-started/agent-setup.md#claude-code-plugin-marketplace) for automatic skill loading
 - **Cursor / Windsurf / Codex users** -- install globally and run `ghx setup --scope user` to get the agent skill
 - **Custom agent builders** -- import `createExecuteTool()` for typed GitHub access in your own agent framework
 
