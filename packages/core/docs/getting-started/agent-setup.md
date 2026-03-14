@@ -23,7 +23,7 @@ The easiest path for Claude Code users. Run these commands inside a Claude Code 
 
 This registers the ghx marketplace and installs the plugin. Claude Code loads the skill automatically -- no manual file management needed. Verify by starting a new session and asking Claude to perform a GitHub operation.
 
-## Cursor, Windsurf, Codex, and Other Agents
+## Other Agents
 
 Install the ghx skill to the standard agents directory:
 
@@ -34,22 +34,24 @@ ghx setup --scope user --yes
 ghx setup --scope user --verify
 ```
 
-This writes `SKILL.md` to `~/.agents/skills/using-ghx/SKILL.md`. Agents that follow the `~/.agents/skills/` convention will pick it up automatically.
-
-For agents that don't read `~/.agents/skills/`, reference the skill from your agent's config:
-
-| Platform | Config file | How to reference |
-|---|---|---|
-| Cursor | `.cursor/rules/*.mdc` or `.cursorrules` | Include or paste the SKILL.md content |
-| Windsurf | `.windsurfrules` | Include or paste the SKILL.md content |
-| Codex | `AGENTS.md` | Reference or inline the skill instructions |
-| Cline | `.clinerules` | Include or paste the SKILL.md content |
+This writes `SKILL.md` to `~/.agents/skills/using-ghx/SKILL.md`.
 
 You can also install project-scoped (writes to `.agents/skills/using-ghx/SKILL.md` in the current directory):
 
 ```bash
 ghx setup --scope project --yes
 ```
+
+### Platform compatibility
+
+| Platform | Reads `~/.agents/skills/`? | Notes |
+|---|---|---|
+| Codex | Yes | Also reads `AGENTS.md` and `~/.codex/skills/` |
+| Cline | Yes | Recommended path; also reads `~/.cline/skills/` |
+| Windsurf | Yes | Also reads `.windsurf/skills/` |
+| OpenCode | Yes | Also reads `~/.config/opencode/skills/` |
+| Cursor | No | Copy SKILL.md content into `.cursor/rules/*.mdc` or `.cursorrules` |
+| Aider | No | Use `--read ~/.agents/skills/using-ghx/SKILL.md` flag |
 
 ## The Execute Tool Pattern
 
