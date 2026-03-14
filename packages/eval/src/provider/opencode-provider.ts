@@ -21,7 +21,7 @@ export interface OpenCodeProviderOptions {
   readonly model: string
 }
 
-type SessionApi = {
+export type SessionApi = {
   create: (opts: Record<string, unknown>) => Promise<unknown>
   promptAsync: (opts: Record<string, unknown>) => Promise<unknown>
   messages: (opts: Record<string, unknown>) => Promise<unknown>
@@ -37,7 +37,7 @@ type EnvSnapshot = {
   extra: Record<string, string | undefined>
 }
 
-function snapshotManagedEnv(extraKeys: readonly string[]): EnvSnapshot {
+export function snapshotManagedEnv(extraKeys: readonly string[]): EnvSnapshot {
   const managed = {} as Record<ManagedEnvKey, string | undefined>
   for (const key of MANAGED_ENV_KEYS) {
     managed[key] = process.env[key]
@@ -49,7 +49,7 @@ function snapshotManagedEnv(extraKeys: readonly string[]): EnvSnapshot {
   return { managed, extra }
 }
 
-function restoreEnv(snapshot: EnvSnapshot): void {
+export function restoreEnv(snapshot: EnvSnapshot): void {
   // Restore managed keys using static property access (no dynamic delete)
   if (snapshot.managed.XDG_CONFIG_HOME === undefined) {
     delete process.env.XDG_CONFIG_HOME
@@ -78,7 +78,7 @@ function restoreEnv(snapshot: EnvSnapshot): void {
   }
 }
 
-function unwrapSessionMessages(raw: unknown): unknown[] {
+export function unwrapSessionMessages(raw: unknown): unknown[] {
   if (Array.isArray(raw)) return raw
   if (raw && typeof raw === "object") {
     const obj = raw as Record<string, unknown>
@@ -88,7 +88,7 @@ function unwrapSessionMessages(raw: unknown): unknown[] {
   return []
 }
 
-function unwrapSessionId(raw: unknown): string {
+export function unwrapSessionId(raw: unknown): string {
   if (raw && typeof raw === "object") {
     const obj = raw as Record<string, unknown>
     if (typeof obj["id"] === "string") return obj["id"]
@@ -100,7 +100,7 @@ function unwrapSessionId(raw: unknown): string {
   throw new Error("opencode-provider: session.create returned unexpected shape — no id found")
 }
 
-function getSessionApi(client: unknown): SessionApi {
+export function getSessionApi(client: unknown): SessionApi {
   const session = (client as { session?: Record<string, unknown> }).session
   if (!session) throw new Error("opencode-provider: SDK client has no session API")
 
