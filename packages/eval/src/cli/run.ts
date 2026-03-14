@@ -7,6 +7,7 @@ import type { EvalConfig } from "@eval/config/schema.js"
 import { FixtureManager } from "@eval/fixture/manager.js"
 import { loadFixtureManifest } from "@eval/fixture/manifest.js"
 import { createEvalHooks } from "@eval/hooks/eval-hooks.js"
+import { OpenCodeJudgeProvider } from "@eval/judge/opencode-judge-provider.js"
 import { EvalModeResolver } from "@eval/mode/resolver.js"
 import { OpenCodeProvider } from "@eval/provider/opencode-provider.js"
 import { generateEvalReport } from "@eval/report/generate.js"
@@ -14,9 +15,11 @@ import { loadEvalScenarios, loadScenarioSets } from "@eval/scenario/loader.js"
 import { CheckpointScorer } from "@eval/scorer/checkpoint-scorer.js"
 import type { BaseScenario, SessionAnalysisBundle } from "@ghx-dev/agent-profiler"
 import {
+  CompositeScorer,
   createToolPatternAnalyzer,
   efficiencyAnalyzer,
   errorAnalyzer,
+  LlmJudgeScorer,
   reasoningAnalyzer,
   runProfileSuite,
   strategyAnalyzer,
@@ -46,6 +49,7 @@ interface RunOpts {
   skipWarmup: boolean
   seedIfMissing: boolean
   outputJsonl?: string
+  judgeModel?: string
 }
 
 function applyOptsOverrides(config: EvalConfig, opts: RunOpts): EvalConfig {
@@ -151,6 +155,7 @@ export function makeRunCommand(): Command {
     .option("--skip-warmup", "disable warmup iterations")
     .option("--seed-if-missing", "auto-seed missing fixtures before run")
     .option("--output-jsonl <path>", "override results output file path")
+    .option("--judge-model <model>", "enable LLM-as-judge scoring with the specified model")
     .action(async (opts: RunOpts) => {
       const yamlContent = await readFile(opts.config, "utf-8")
       const rawConfig = loadEvalConfig(yamlContent)
@@ -194,6 +199,20 @@ export function makeRunCommand(): Command {
 
       const allFixtureRequires = [...new Set(scenarios.flatMap((s) => s.fixture?.requires ?? []))]
 
+      const judgeProvider = opts.judgeModel
+        ? new OpenCodeJudgeProvider({ model: opts.judgeModel })
+        : undefined
+
+      const checkpointScorer = new CheckpointScorer(githubToken)
+      const scorer = judgeProvider
+        ? new CompositeScorer({
+            scorers: [
+              checkpointScorer,
+              new LlmJudgeScorer({ id: "llm-judge", provider: judgeProvider }),
+            ],
+          })
+        : checkpointScorer
+
       const hooks = createEvalHooks({
         fixtureManager,
         sessionExport: config.output.session_export,
@@ -202,6 +221,7 @@ export function makeRunCommand(): Command {
         fixtureRequires: allFixtureRequires,
         rawScenarios: rawScenariosMap,
         runId,
+        ...(judgeProvider ? { judgeProvider } : {}),
       })
 
       for (const model of config.models) {
@@ -223,7 +243,7 @@ export function makeRunCommand(): Command {
           logLevel: config.output.log_level,
           analyzers: BUILT_IN_ANALYZERS,
           provider,
-          scorer: new CheckpointScorer(githubToken),
+          scorer,
           modeResolver: new EvalModeResolver(),
           collectors: [new GhxCollector()],
           hooks,
