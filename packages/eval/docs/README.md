@@ -96,10 +96,11 @@ See: **[Contributing](contributing/README.md)**
 | Fact | Details |
 |------|---------|
 | Evaluation Modes | ghx (capability router), mcp (GitHub MCP server), baseline (raw `gh` CLI) |
-| Plugin Implementations | OpenCodeProvider, CheckpointScorer, GhxCollector, EvalModeResolver, createEvalHooks |
+| Plugin Implementations | OpenCodeProvider, CheckpointScorer, GhxCollector, EvalModeResolver, createEvalHooks, OpenCodeJudgeProvider |
 | Scenario Format | JSON with Zod validation, fixture bindings, checkpoint assertions |
 | Fixture Management | Seed, status, reset, cleanup lifecycle for GitHub test resources |
 | CLI Commands | `eval run`, `eval analyze`, `eval report`, `eval check`, `eval fixture` |
+| LLM Judge Scoring | Optional `--judge-model` flag enables LLM-as-judge evaluation via `OpenCodeJudgeProvider` |
 | Statistical Methods | Bootstrap CI, Cohen's d effect size, permutation tests (via agent-profiler) |
 
 ## Requirements

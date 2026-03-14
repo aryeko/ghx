@@ -35,6 +35,7 @@ Options:
   --skip-warmup            Skip warmup canary
   --output-jsonl <path>    Write raw JSONL to specific file
   --seed-if-missing        Auto-seed fixtures if manifest not found
+  --judge-model <model>    Enable LLM-as-judge scoring with specified model
   --dry-run                Show what would be executed without running
 ```
 

@@ -18,7 +18,7 @@ Same agent, same model, same task, same starting GitHub state -- only the toolse
 
 ## Architecture
 
-Built on `@ghx-dev/agent-profiler`, implementing 5 of its 6 plugin contracts:
+Built on `@ghx-dev/agent-profiler`, implementing 5 of its 6 plugin contracts plus the optional `JudgeProvider` contract:
 
 | Contract | Eval Implementation | Purpose |
 |----------|-------------------|---------|
@@ -27,6 +27,7 @@ Built on `@ghx-dev/agent-profiler`, implementing 5 of its 6 plugin contracts:
 | Collector | `GhxCollector` | Classify tool calls into 6 categories |
 | ModeResolver | `EvalModeResolver` | Configure ghx/mcp/baseline environments |
 | RunHooks | `createEvalHooks` | Reset fixtures between iterations |
+| JudgeProvider | `OpenCodeJudgeProvider` | LLM judge calls via OpenCode SDK |
 
 ## Quick Start
 
@@ -57,7 +58,7 @@ import { FixtureManager, loadFixtureManifest, writeFixtureManifest } from "@ghx-
 import type { FixtureManifest } from "@ghx-dev/eval"
 
 // Execution
-import { OpenCodeProvider, EvalModeResolver, CheckpointScorer, GhxCollector, createEvalHooks } from "@ghx-dev/eval"
+import { OpenCodeProvider, OpenCodeJudgeProvider, EvalModeResolver, CheckpointScorer, GhxCollector, createEvalHooks } from "@ghx-dev/eval"
 import type { EvalHooksOptions } from "@ghx-dev/eval"
 ```
 
