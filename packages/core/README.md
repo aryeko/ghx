@@ -59,11 +59,21 @@ Comprehensive documentation is available in the [`docs/`](./docs/) directory:
 - **[Architecture](./docs/architecture/README.md)** — System design, execution pipeline, formatters, and GraphQL layer.
 - **[Reference](./docs/reference/README.md)** — API exports, error codes, and a complete table of all 70+ capabilities.
 
-## Quick Start (Library)
+## Install
+
+```bash
+npm i -g @ghx-dev/core
+```
+
+This makes the `ghx` CLI available in your PATH. Then wire it into your agent (see [Agent Integration](#agent-integration) below).
+
+For library usage (TypeScript imports), install as a project dependency instead:
 
 ```bash
 npm install @ghx-dev/core
 ```
+
+## Quick Start (Library)
 
 ```ts
 import { createGithubClientFromToken, executeTask } from "@ghx-dev/core"
@@ -92,10 +102,10 @@ Use ghx directly from your terminal or add it as an agent skill.
 
 ```bash
 # List all 70+ capabilities
-npx @ghx-dev/core capabilities list
+ghx capabilities list
 
 # Run a capability
-npx @ghx-dev/core run pr.view --input '{"owner":"aryeko","name":"ghx","number":42}'
+ghx run pr.view --input '{"owner":"aryeko","name":"ghx","prNumber":42}'
 
 # Output is a standard ResultEnvelope:
 # {
@@ -107,13 +117,19 @@ npx @ghx-dev/core run pr.view --input '{"owner":"aryeko","name":"ghx","number":4
 
 ## Agent Integration
 
-To install the `ghx` skill for Claude Code:
+**Claude Code** -- install from the plugin marketplace:
 
 ```bash
-npx @ghx-dev/core setup --scope project --yes
+claude plugin add ghx
 ```
 
-This installs `.agents/skills/ghx/SKILL.md` which teaches Claude how to use `npx @ghx-dev/core` for reliable GitHub interactions.
+**Cursor, Windsurf, Codex, other agents** -- install the skill:
+
+```bash
+ghx setup --scope user --yes
+```
+
+This writes `SKILL.md` to `~/.agents/skills/using-ghx/` which teaches your agent how to use `ghx` for reliable GitHub interactions. See [Agent Setup](./docs/getting-started/agent-setup.md) for platform-specific wiring.
 
 ## License
 

@@ -5,15 +5,19 @@ The `ghx` CLI lets you execute any capability from the command line — useful f
 ## Install
 
 ```bash
-# Run without installing
-npx @ghx-dev/core <command>
-
-# Or install globally
 npm i -g @ghx-dev/core
-ghx <command>
 ```
 
 Set `GITHUB_TOKEN` or `GH_TOKEN` in your environment.
+
+<details>
+<summary>Try without installing (npx)</summary>
+
+```bash
+npx @ghx-dev/core <command>
+```
+
+</details>
 
 ## Discover Capabilities
 

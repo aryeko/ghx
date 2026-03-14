@@ -2,6 +2,54 @@
 
 Wire ghx into your AI agent to give it deterministic, token-efficient GitHub operations.
 
+## Install
+
+All platforms require `@ghx-dev/core` installed globally so `ghx` is available in PATH:
+
+```bash
+npm i -g @ghx-dev/core
+```
+
+Then wire it into your agent using one of the methods below.
+
+## Claude Code (Plugin Marketplace)
+
+The easiest path for Claude Code users:
+
+```bash
+claude plugin add ghx
+```
+
+This installs the ghx skill from the plugin marketplace. Claude Code loads it automatically -- no manual file management needed.
+
+## Cursor, Windsurf, Codex, and Other Agents
+
+Install the ghx skill to the standard agents directory:
+
+```bash
+ghx setup --scope user --yes
+
+# Verify
+ghx setup --scope user --verify
+```
+
+This writes `SKILL.md` to `~/.agents/skills/using-ghx/SKILL.md`. Agents that follow the `~/.agents/skills/` convention will pick it up automatically.
+
+For agents that don't read `~/.agents/skills/`, reference the skill from your agent's config:
+
+| Platform | Config file | How to reference |
+|---|---|---|
+| Cursor | `.cursor/rules/*.mdc` or `.cursorrules` | Include or paste the SKILL.md content |
+| Windsurf | `.windsurfrules` | Include or paste the SKILL.md content |
+| Codex | `AGENTS.md` | Reference or inline the skill instructions |
+| Cline | `.clinerules` | Include or paste the SKILL.md content |
+
+You can also install project-scoped (writes to `.agents/skills/using-ghx/SKILL.md` in the current directory):
+
+```bash
+ghx setup --scope project --yes
+```
+
 ## The Execute Tool Pattern
 
 ghx provides `createExecuteTool` — a factory that wraps the execution engine into a tool shape your agent can call:

@@ -52,12 +52,20 @@ Three-mode comparison (baseline `gh` CLI vs GitHub MCP vs ghx) across [30 runs](
 
 ## Install
 
+Install globally to make `ghx` available in your PATH:
+
+```bash
+npm i -g @ghx-dev/core
+```
+
+For library usage (TypeScript imports), install as a project dependency instead:
+
 ```bash
 npm install @ghx-dev/core
 ```
 
 <details>
-<summary>Other package managers</summary>
+<summary>Other package managers (project dependency)</summary>
 
 ```bash
 pnpm add @ghx-dev/core
@@ -72,7 +80,7 @@ yarn add @ghx-dev/core
 ### Option A: CLI
 
 ```bash
-npx @ghx-dev/core run repo.view --input '{"owner":"aryeko","name":"ghx"}'
+ghx run repo.view --input '{"owner":"aryeko","name":"ghx"}'
 ```
 
 Output:
