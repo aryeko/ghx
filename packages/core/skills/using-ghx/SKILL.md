@@ -1,19 +1,19 @@
 ---
 name: using-ghx
-description: Executes GitHub operations via ghx. Use for all GitHub interactions instead of raw gh or gh api commands.
+description: "Executes GitHub operations via ghx CLI, which batches multiple operations into single API calls and provides structured JSON output for 70+ GitHub capabilities. Use when working with PRs, issues, reviews, CI checks, releases, labels, comments, or any GitHub API operation -- even simple ones like checking PR status or listing issues. Provides richer output than raw gh, gh api, or curl commands."
 ---
 
 # ghx CLI Skill
 
+ghx provides 70+ GitHub capabilities with structured JSON input/output. It batches operations into single GraphQL round-trips, making it faster than sequential `gh` or `gh api` calls.
+
+## Resolving owner and name
+
+Most capabilities require `owner` and `name`. Infer from `git remote get-url origin` once at the start and reuse. If no git remote is available, ask the user.
+
 ## Authentication
 
-ghx automatically resolves your GitHub token. It checks (in order):
-1. `GITHUB_TOKEN` environment variable
-2. `GH_TOKEN` environment variable
-3. Cached token (from previous resolution)
-4. `gh auth token` (requires `gh` CLI authenticated via `gh auth login`)
-
-If you are authenticated via `gh auth login`, ghx works out of the box with no extra configuration.
+ghx resolves tokens automatically (env vars `GITHUB_TOKEN`/`GH_TOKEN`, or `gh auth token`). No setup needed if `gh auth login` has been run.
 
 ## Capabilities
 
@@ -92,7 +92,7 @@ release.update - Update a draft release without publishing it. [owner, name, rel
 release.publish - Publish an existing draft release. [owner, name, releaseId, title?, notes?, prerelease?]
 ```
 
-Only if the full input/output schema of a specific capability needed:
+If you need the full input/output schema for a capability:
 
 ```bash
 ghx capabilities explain <capability_id>
@@ -100,7 +100,7 @@ ghx capabilities explain <capability_id>
 
 ## Execute
 
-**Always use heredoc — never inline `--input '...'`.** Inline form breaks with nested quotes and trailing commas in model-generated JSON.
+**Always use heredoc for input** — never inline `--input '...'`. Inline form breaks with nested quotes and trailing commas in model-generated JSON.
 
 ```bash
 ghx run <capability_id> --input - <<'EOF'
@@ -108,28 +108,11 @@ ghx run <capability_id> --input - <<'EOF'
 EOF
 ```
 
-Example (submitting a review with inline comments):
+**Result:** `{ ok, data?, pagination? }` on success — `{ ok, error: { code, message } }` on failure.
 
-```bash
-ghx run pr.reviews.submit --input - <<'EOF'
-{
-  "owner": "acme",
-  "name": "my-repo",
-  "prNumber": 42,
-  "event": "REQUEST_CHANGES",
-  "body": "Please fix the issues.",
-  "comments": [
-    { "path": "src/index.ts", "line": 10, "body": "Off-by-one error here." }
-  ]
-}
-EOF
-```
+## Chain (batch multiple operations)
 
-**Result (compact, default):** `{ ok, data?, pagination? }` on success — `{ ok, error: { code, message } }` on failure.
-
-## Chain
-
-Use `ghx chain` when you have two or more operations to run. It batches steps into as few GraphQL round-trips as possible (typically one) — reducing latency and avoiding mid-sequence failures. Steps are not transactional; a `"partial"` result is possible if one step fails after another has already succeeded.
+When you have two or more **independent** operations, use `ghx chain`. It batches them into as few GraphQL round-trips as possible (typically one), which is significantly faster than running them sequentially. Steps are not transactional — a `"partial"` result is possible if one step fails after others succeed.
 
 ```bash
 ghx chain --steps - <<'EOF'
@@ -140,8 +123,54 @@ ghx chain --steps - <<'EOF'
 EOF
 ```
 
-**Result:** `{ status, results[] }`. Each result: `{ task, ok, data? }` on success — `{ task, ok, error: { code, message } }` on failure.
+**Result:** `{ status, results[] }`. Each element: `{ task, ok, data? }` or `{ task, ok, error: { code, message } }`.
 
-**CRITICAL:** Do not use `gh api` or any other raw `gh` commands unless no matching ghx capability exists. Always try `ghx` first.
+**When NOT to chain:** Don't chain when a later step depends on the result of an earlier one. For example, "check CI, then fetch logs only if something failed" requires two sequential calls because the second depends on the first result. Similarly, "create an issue, then label it" needs the issue number from the create step before labeling.
 
-**IMPORTANT:** Always use `ghx chain` when you have two or more operations to execute in a single call!
+## Error handling
+
+ghx never throws — errors are always in the response envelope. Check the `ok` field:
+- `ok: true` — success, data is in `data`
+- `ok: false` — failure, details in `error.code` and `error.message`
+
+Common error codes: `AUTH`, `NOT_FOUND`, `VALIDATION`, `RATE_LIMIT`, `NETWORK`, `SERVER`.
+
+If you get `RATE_LIMIT` or `NETWORK`, retry after a short delay. For `NOT_FOUND`, double-check owner/name/number. For `VALIDATION`, run `ghx capabilities explain <id>` to check the expected schema.
+
+## Common workflow patterns
+
+### PR merge readiness audit
+Use `ghx chain` with `pr.checks.list`, `pr.threads.list`, and `pr.merge.status` in one call to get all three signals at once.
+
+### Review a PR (read diff, check threads, submit review)
+1. `pr.diff.view` — read the full diff
+2. `pr.threads.list` — see existing unresolved review comments
+3. `pr.reviews.submit` — submit your review with inline comments
+
+### Respond to all unresolved review threads
+1. `pr.threads.list` — get all unresolved threads (returns `threadId` for each)
+2. `ghx chain` with multiple `pr.threads.reply` steps — reply to each thread in one batch
+
+### Check CI status and debug failures (sequential -- don't chain)
+1. `pr.checks.list` — see which checks passed/failed
+2. Only if something failed: `workflow.run.view` — get job details for the failed run
+3. Only if needed: `workflow.job.logs.view` — read the failure logs
+
+### Triage an issue (label, assign, comment)
+Use `ghx chain` with `issue.labels.add`, `issue.assignees.add`, and `issue.comments.create` in one call.
+
+### Create an issue then configure it (sequential then batch)
+1. `issue.create` — get the new issue number
+2. `ghx chain` with `issue.labels.add`, `issue.assignees.add`, `issue.comments.create` — batch all mutations using the number from step 1
+
+### Create a PR from current branch
+1. Infer owner/name from git remote
+2. Get current branch: `git branch --show-current`
+3. `pr.create` with `head` = current branch, `base` = main/master
+
+## Important rules
+
+- Prefer `ghx` over `gh`, `gh api`, or `curl` for any GitHub operation that has a matching capability.
+- Use `ghx chain` when you have 2+ **independent** operations — it is faster and avoids mid-sequence failures.
+- Always use heredoc (`<<'EOF'`) for JSON input, never inline `--input '{...}'`.
+- Infer owner/name from `git remote get-url origin` when in a git repository.
