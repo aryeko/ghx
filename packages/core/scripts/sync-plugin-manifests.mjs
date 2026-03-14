@@ -34,6 +34,7 @@ const pluginJson = {
   homepage: repoUrl,
   license: pkg.license,
   keywords: pluginKeywords,
+  hooks: "./hooks/hooks.json",
 }
 
 const marketplaceJson = {

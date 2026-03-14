@@ -42,7 +42,10 @@
     }
   },
   "files": [
+    "bin",
     "dist",
+    "hooks",
+    "scripts/plugin",
     ".claude-plugin",
     "skills",
     "LICENSE",
