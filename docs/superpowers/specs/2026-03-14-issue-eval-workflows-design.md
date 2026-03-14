@@ -178,7 +178,7 @@ This seeder is new — no existing seeder handles composite issue+branch resourc
 
 The fixture repo (`aryeko/ghx-bench-fixtures`) must have:
 
-1. **A milestone** — at least one open milestone for the triage scenario to reference. Can be created once manually or via a one-time setup script.
+1. **A milestone** — at least one open milestone for the triage scenario to reference. It can be created once manually or via a one-time setup script.
 2. **The `resolved` label** — must exist in the repo for the close-with-context scenario. Created once manually.
 3. **The `bug` label** — must exist (likely already does as a GitHub default).
 

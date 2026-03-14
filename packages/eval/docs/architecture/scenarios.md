@@ -276,7 +276,7 @@ Named groupings in `scenario-sets.json` allow running predefined subsets of scen
 }
 ```
 
-Use `--scenario-set smoke` on the CLI to run only the scenarios in that set.
+Use `--scenario-set default` on the CLI to run only the scenarios in that set.
 
 ## Validation
 
