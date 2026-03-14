@@ -18,6 +18,5 @@
     "graphql",
     "automation",
     "typescript"
-  ],
-  "hooks": "./hooks/hooks.json"
+  ]
 }
