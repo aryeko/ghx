@@ -1,6 +1,7 @@
 import * as childProcess from "node:child_process"
 import { createIssueBranchSeeder } from "@eval/fixture/seeders/issue-branch-seeder.js"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { mockExecFileResults } from "./helpers.js"
 
 vi.mock("node:child_process", () => ({
   execFile: vi.fn(),
@@ -10,31 +11,12 @@ vi.mock("node:child_process", () => ({
 const mockedExecFile = vi.mocked(childProcess.execFile)
 const mockedSpawn = vi.mocked(childProcess.spawn)
 
-function mockExecFileResults(
-  results: readonly { readonly stdout: string; readonly stderr: string }[],
-) {
-  let callIndex = 0
-  mockedExecFile.mockImplementation((...args: unknown[]) => {
-    const callback = args[args.length - 1] as (
-      err: Error | null,
-      stdout: string,
-      stderr: string,
-    ) => void
-    const result = results[callIndex++]
-    if (!result) {
-      callback(new Error("unexpected execFile call"), "", "")
-    } else {
-      callback(null, result.stdout, result.stderr)
-    }
-    return {} as ReturnType<typeof childProcess.execFile>
-  })
-}
-
 function mockSpawnResults(results: readonly string[]) {
   let callIndex = 0
   mockedSpawn.mockImplementation((..._args: unknown[]) => {
     const result = results[callIndex++] ?? ""
     const stdin = {
+      on: vi.fn(),
       write: vi.fn(),
       end: vi.fn(),
     }
@@ -75,7 +57,7 @@ describe("createIssueBranchSeeder", () => {
 
   it("creates an issue and a branch, returning composite metadata", async () => {
     // execFile calls: get default branch (--jq), get HEAD sha (--jq), issue create (returns URL)
-    mockExecFileResults([
+    mockExecFileResults(mockedExecFile, [
       { stdout: "main", stderr: "" },
       { stdout: "abc123", stderr: "" },
       { stdout: "https://github.com/acme/sandbox/issues/30", stderr: "" },
@@ -110,7 +92,7 @@ describe("createIssueBranchSeeder", () => {
   })
 
   it("calls gh api with correct args for branch creation", async () => {
-    mockExecFileResults([
+    mockExecFileResults(mockedExecFile, [
       { stdout: "main", stderr: "" },
       { stdout: "sha999", stderr: "" },
       { stdout: "https://github.com/acme/sandbox/issues/5", stderr: "" },
@@ -170,7 +152,7 @@ describe("createIssueBranchSeeder", () => {
   })
 
   it("throws when issue create returns an unparseable URL", async () => {
-    mockExecFileResults([
+    mockExecFileResults(mockedExecFile, [
       { stdout: "main", stderr: "" },
       { stdout: "sha000", stderr: "" },
       { stdout: "bad-output-no-url", stderr: "" },

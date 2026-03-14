@@ -1,7 +1,7 @@
 {
   "id": "issue-to-pr-lifecycle-wf-001",
   "name": "Issue to PR Lifecycle",
-  "description": "Agent reads an issue, creates a PR referencing it from a pre-existing branch, and submits a review requesting changes. Tests cross-domain issue+PR coordination.",
+  "description": "Agent reads an issue, creates a PR referencing it from a pre-existing branch, and submits a review requesting changes. Tests cross-domain issue+PR coordination. Note: the review-submitted step is not checkpointed because pr.reviews.list requires a prNumber that is only known after the agent creates the PR — the checkpoint system does not support chaining outputs between checkpoints. Only PR creation is verified.",
   "category": "issue",
   "difficulty": "advanced",
   "prompt": "Issue #{{issue_number}} in {{repo}} describes a needed change. Create a PR from branch '{{head_branch}}' to '{{base_branch}}' that references this issue (include 'Fixes #{{issue_number}}' in the body). Then submit a review on the PR requesting changes with at least one specific suggestion.",

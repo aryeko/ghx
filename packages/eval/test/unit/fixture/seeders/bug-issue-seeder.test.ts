@@ -1,32 +1,13 @@
 import * as childProcess from "node:child_process"
 import { createBugIssueSeeder } from "@eval/fixture/seeders/bug-issue-seeder.js"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { mockExecFileResults } from "./helpers.js"
 
 vi.mock("node:child_process", () => ({
   execFile: vi.fn(),
 }))
 
 const mockedExecFile = vi.mocked(childProcess.execFile)
-
-function mockExecFileResults(
-  results: readonly { readonly stdout: string; readonly stderr: string }[],
-) {
-  let callIndex = 0
-  mockedExecFile.mockImplementation((...args: unknown[]) => {
-    const callback = args[args.length - 1] as (
-      err: Error | null,
-      stdout: string,
-      stderr: string,
-    ) => void
-    const result = results[callIndex++]
-    if (!result) {
-      callback(new Error("unexpected execFile call"), "", "")
-    } else {
-      callback(null, result.stdout, result.stderr)
-    }
-    return {} as ReturnType<typeof childProcess.execFile>
-  })
-}
 
 describe("createBugIssueSeeder", () => {
   afterEach(() => {
@@ -39,7 +20,9 @@ describe("createBugIssueSeeder", () => {
   })
 
   it("creates an issue with bug label and stores searchTerm in metadata", async () => {
-    mockExecFileResults([{ stdout: "https://github.com/acme/sandbox/issues/20", stderr: "" }])
+    mockExecFileResults(mockedExecFile, [
+      { stdout: "https://github.com/acme/sandbox/issues/20", stderr: "" },
+    ])
 
     const seeder = createBugIssueSeeder()
     const result = await seeder.seed({
@@ -58,7 +41,9 @@ describe("createBugIssueSeeder", () => {
   })
 
   it("includes the bug label in gh issue create args", async () => {
-    mockExecFileResults([{ stdout: "https://github.com/acme/sandbox/issues/5", stderr: "" }])
+    mockExecFileResults(mockedExecFile, [
+      { stdout: "https://github.com/acme/sandbox/issues/5", stderr: "" },
+    ])
 
     const seeder = createBugIssueSeeder()
     await seeder.seed({

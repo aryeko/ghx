@@ -2,6 +2,18 @@ import type { FixtureResource } from "@eval/fixture/manifest.js"
 import { parseIssueNumberFromUrl, runGh, runGhWithInput } from "@eval/fixture/seeders/gh.js"
 import type { FixtureSeeder, SeedOptions } from "@eval/fixture/seeders/types.js"
 
+function extractSha(raw: string, label: string): string {
+  const parsed: unknown = JSON.parse(raw)
+  if (typeof parsed !== "object" || parsed === null || !("sha" in parsed)) {
+    throw new Error(`Expected { sha: string } from ${label}, got: ${raw.slice(0, 200)}`)
+  }
+  const { sha } = parsed as { sha: string }
+  if (typeof sha !== "string" || sha.length === 0) {
+    throw new Error(`Invalid sha in ${label} response: ${JSON.stringify(sha)}`)
+  }
+  return sha
+}
+
 const FIXTURE_FILE_CONTENT = `# Eval Fixture Change
 
 This file was added by the eval fixture seeder to create a diff for PR creation.
@@ -47,7 +59,7 @@ export function createIssueBranchSeeder(): FixtureSeeder {
         ["api", `repos/${options.repo}/git/trees`, "--method", "POST", "--input", "-"],
         treeBody,
       )
-      const treeSha = (JSON.parse(treeRaw) as { sha: string }).sha
+      const treeSha = extractSha(treeRaw, "git/trees")
 
       // 4. Create a commit
       const commitBody = JSON.stringify({
@@ -59,7 +71,7 @@ export function createIssueBranchSeeder(): FixtureSeeder {
         ["api", `repos/${options.repo}/git/commits`, "--method", "POST", "--input", "-"],
         commitBody,
       )
-      const commitSha = (JSON.parse(commitRaw) as { sha: string }).sha
+      const commitSha = extractSha(commitRaw, "git/commits")
 
       // 5. Create the branch ref
       const refBody = JSON.stringify({

@@ -1,13 +1,13 @@
 {
   "id": "issue-triage-and-assign-wf-001",
   "name": "Triage and Assign Issue",
-  "description": "Agent triages a newly filed issue by reading it, inspecting available labels, applying labels, assigning a user, setting a milestone, and posting a triage summary comment.",
+  "description": "Agent triages a newly filed issue by reading it, inspecting available labels, applying the most relevant labels, and posting a triage summary comment.",
   "category": "issue",
   "difficulty": "intermediate",
-  "prompt": "Issue #{{issue_number}} in {{repo}} has just been filed. Triage it: read the issue, check the repo's available labels, apply the most relevant labels, assign it to user '{{assignee}}', set milestone #{{milestone_number}}, and post a triage summary comment explaining the priority and next steps.",
+  "prompt": "Issue #{{issue_number}} in {{repo}} has just been filed. Triage it: read the issue, check the repo's available labels, apply the most relevant labels (at least one domain label like 'bug', 'enhancement', or 'performance'), and post a triage summary comment explaining the priority and next steps.",
   "timeoutMs": 120000,
   "allowedRetries": 1,
-  "tags": ["issue", "triage", "labels", "assign", "milestone", "api-only"],
+  "tags": ["issue", "triage", "labels", "api-only"],
   "fixture": {
     "repo": "{{fixture_repo}}",
     "requires": ["issue_for_triage"],
@@ -48,8 +48,6 @@
       "issue.view",
       "repo.labels.list",
       "issue.labels.set",
-      "issue.assignees.add",
-      "issue.milestone.set",
       "issue.comments.create"
     ]
   }

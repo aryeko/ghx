@@ -49,6 +49,7 @@ export function runGhWithInput(args: readonly string[], input: string): Promise<
         finishResolve(stdout.trim())
       }
     })
+    proc.stdin.on("error", finishReject)
     proc.stdin.write(input)
     proc.stdin.end()
   })

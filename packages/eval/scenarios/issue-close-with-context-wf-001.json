@@ -57,7 +57,7 @@
       },
       {
         "id": "resolved-label-applied",
-        "description": "The resolved label is present (alphabetically after @ghx-dev/eval)",
+        "description": "The resolved label is present at index 1 (GitHub returns labels in creation order: @ghx-dev/eval tracking label is created first, resolved label second)",
         "task": "issue.view",
         "input": {
           "owner": "{{owner}}",

@@ -1,32 +1,13 @@
 import * as childProcess from "node:child_process"
 import { createTriageIssueSeeder } from "@eval/fixture/seeders/triage-issue-seeder.js"
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { mockExecFileResults } from "./helpers.js"
 
 vi.mock("node:child_process", () => ({
   execFile: vi.fn(),
 }))
 
 const mockedExecFile = vi.mocked(childProcess.execFile)
-
-function mockExecFileResults(
-  results: readonly { readonly stdout: string; readonly stderr: string }[],
-) {
-  let callIndex = 0
-  mockedExecFile.mockImplementation((...args: unknown[]) => {
-    const callback = args[args.length - 1] as (
-      err: Error | null,
-      stdout: string,
-      stderr: string,
-    ) => void
-    const result = results[callIndex++]
-    if (!result) {
-      callback(new Error("unexpected execFile call"), "", "")
-    } else {
-      callback(null, result.stdout, result.stderr)
-    }
-    return {} as ReturnType<typeof childProcess.execFile>
-  })
-}
 
 describe("createTriageIssueSeeder", () => {
   afterEach(() => {
@@ -39,7 +20,9 @@ describe("createTriageIssueSeeder", () => {
   })
 
   it("creates an issue with a detailed triage body", async () => {
-    mockExecFileResults([{ stdout: "https://github.com/acme/sandbox/issues/10", stderr: "" }])
+    mockExecFileResults(mockedExecFile, [
+      { stdout: "https://github.com/acme/sandbox/issues/10", stderr: "" },
+    ])
 
     const seeder = createTriageIssueSeeder()
     const result = await seeder.seed({

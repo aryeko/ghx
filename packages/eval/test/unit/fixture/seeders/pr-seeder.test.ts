@@ -33,6 +33,7 @@ function mockSpawnCall(stdout: string) {
     const stderrEmitter = new EventEmitter()
     const proc = new EventEmitter()
     const stdinMock = {
+      on: vi.fn(),
       write: vi.fn(),
       end: vi.fn(() => {
         setImmediate(() => {
