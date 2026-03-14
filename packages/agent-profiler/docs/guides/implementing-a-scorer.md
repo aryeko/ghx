@@ -196,6 +196,10 @@ const multiCheckScorer: Scorer = {
 - **`outputValid` should be `true` if the format is valid** even when content checks fail. Set it to `false` only when the output itself is malformed or the scorer cannot parse it. This distinction allows reports to separate format failures from correctness failures.
 - **Handle scorer misconfiguration gracefully.** If the scenario does not provide the expected extensions, return a clear error in the `ScorerResult` rather than throwing an exception.
 
+## See Also
+
+- [Implementing a Judge Provider](implementing-a-judge-provider.md) -- for LLM-based evaluation using rubrics and the JudgeProvider contract
+
 ## Source Reference
 
 - Scorer contract: `packages/agent-profiler/src/contracts/scorer.ts`
