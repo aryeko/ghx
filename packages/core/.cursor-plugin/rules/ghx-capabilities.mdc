@@ -1,0 +1,12 @@
+---
+description: Check ghx capabilities before attempting raw GitHub API calls
+alwaysApply: true
+---
+
+Before writing custom `gh api` or curl commands, run `ghx capabilities list` or `ghx capabilities explain <id>` to check if ghx already supports the operation. ghx covers 70+ capabilities across issues, PRs, repos, releases, workflows, and projects.
+
+Example:
+```bash
+ghx capabilities list --domain pr
+ghx capabilities explain pr.merge
+```
