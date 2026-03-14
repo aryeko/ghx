@@ -115,6 +115,7 @@ After all iterations complete, cleanup closes the resources created during seedi
 - Close all open PRs in the fixture repository
 - Close all open issues in the fixture repository
 - Delete branches created for PR fixtures
+- Delete branches created by composite seeders (e.g. issue-branch seeder stores `metadata.headBranch`)
 - Remove `@ghx-dev/eval` labels
 - Delete the manifest file
 
@@ -159,6 +160,15 @@ export function createEvalHooks(options: EvalHooksOptions): RunHooks {
     },
 
     afterScenario: async (ctx: AfterScenarioContext) => {
+      // Clean up branches created by composite seeders (e.g. issue-branch)
+      const resource = ctx.fixtureResource
+      if (resource?.metadata?.headBranch) {
+        await options.fixtureManager.deleteBranch(
+          resource.repo,
+          resource.metadata.headBranch as string,
+        )
+      }
+
       if (options.sessionExport && ctx.trace) {
         await exportSessionTrace(
           ctx.trace,
@@ -173,7 +183,7 @@ export function createEvalHooks(options: EvalHooksOptions): RunHooks {
 }
 ```
 
-The `beforeRun` hook acts as a gate -- no iterations execute if fixtures are missing. The `beforeScenario` hook runs before every iteration, but only triggers a reset when the scenario opts in via `reseedPerIteration`. The `afterScenario` hook handles session trace export, writing each trace to `reports/sessions/<scenarioId>/<mode>-iter-<n>.json`.
+The `beforeRun` hook acts as a gate -- no iterations execute if fixtures are missing. The `beforeScenario` hook runs before every iteration, but only triggers a reset when the scenario opts in via `reseedPerIteration`. The `afterScenario` hook handles two concerns: cleaning up branches created by composite seeders (e.g. the issue-branch seeder stores `metadata.headBranch`), and session trace export, writing each trace to `reports/sessions/<scenarioId>/<mode>-iter-<n>.json`.
 
 **Source:** `packages/eval/src/fixture/manager.ts`, `packages/eval/src/fixture/manifest.ts`
 

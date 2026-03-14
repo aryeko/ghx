@@ -278,7 +278,7 @@ ghx/
 | `scenario/schema.ts` | Scenario Zod schema | `EvalScenarioSchema`, `EvalScenario` |
 | `scenario/loader.ts` | Scenario loading & binding | `loadEvalScenarios()`, `bindFixtureVariables()` |
 | `fixture/manager.ts` | Fixture lifecycle management | `FixtureManager` |
-| `fixture/seeders/*.ts` | Data seeders (PR, issue, mixed) | `getSeeder()`, `registerSeeder()` |
+| `fixture/seeders/*.ts` | Data seeders (PR, issue, triage, bug, issue-branch, mixed) | `getSeeder()`, `registerSeeder()` |
 
 ### CLI & Reporting
 

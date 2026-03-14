@@ -259,16 +259,19 @@ Named groupings in `scenario-sets.json` allow running predefined subsets of scen
 
 ```json
 {
-  "smoke": ["pr-review-comment-001", "issue-label-assign-001"],
-  "pr-full": [
-    "pr-review-comment-001",
-    "pr-reply-threads-wf-001",
-    "pr-merge-ready-check-001"
+  "default": ["pr-reply-threads-wf-001"],
+  "pr-only": ["pr-reply-threads-wf-001", "pr-review-comment-001"],
+  "issue-only": [
+    "issue-triage-and-assign-wf-001",
+    "issue-close-with-context-wf-001",
+    "issue-to-pr-lifecycle-wf-001"
   ],
-  "basic-only": [
+  "full": [
+    "pr-reply-threads-wf-001",
     "pr-review-comment-001",
-    "issue-label-assign-001",
-    "repo-branch-list-001"
+    "issue-triage-and-assign-wf-001",
+    "issue-close-with-context-wf-001",
+    "issue-to-pr-lifecycle-wf-001"
   ]
 }
 ```
