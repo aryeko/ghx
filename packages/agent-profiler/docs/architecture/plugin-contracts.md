@@ -1,6 +1,6 @@
 # Plugin Contracts
 
-Understand all 6 extension contracts, their TypeScript interfaces, and implementation gotchas.
+Understand all 7 extension contracts, their TypeScript interfaces, and implementation gotchas.
 
 ## Contract Relationships
 
@@ -17,6 +17,8 @@ graph LR
     RunHooks --> BeforeScenarioContext
     RunHooks --> AfterScenarioContext
     RunHooks --> RunContext
+    JudgeProvider --> JudgeResponse
+    Scorer -.-> JudgeProvider
 ```
 
 ## SessionProvider
@@ -101,6 +103,80 @@ interface ScorerResult {
 - `trace` is null when session export is disabled and no analyzers are registered. Scorer implementations must handle null traces gracefully.
 - `error` in `ScorerResult` indicates a scorer-internal failure (not a scenario failure). The runner treats iterations with scorer errors as failed iterations.
 - `outputValid` reflects whether the agent output conforms to the scenario's expected output schema. It is independent of `success`, which reflects whether the checks passed.
+
+## JudgeProvider
+
+The judge provider is a provider-agnostic interface for making LLM judge calls. Scorers such as `LlmJudgeScorer` delegate to a `JudgeProvider` to evaluate agent behavior against a rubric defined in the scenario.
+
+Source: `packages/agent-profiler/src/contracts/judge-provider.ts`
+
+```typescript
+interface JudgeProvider {
+  readonly id: string
+  judge(request: JudgeRequest): Promise<JudgeResponse>
+}
+```
+
+**JudgeRequest and JudgeResponse:**
+
+```typescript
+interface JudgeRequest {
+  readonly systemPrompt: string
+  readonly userPrompt: string
+}
+
+interface JudgeResponse {
+  readonly text: string
+  readonly tokenCount?: number
+}
+```
+
+**JudgeRubric and JudgeCriterion:**
+
+Rubrics are stored in `scenario.extensions.rubric` and define the criteria an LLM judge evaluates.
+
+```typescript
+interface JudgeCriterion {
+  readonly id: string
+  readonly description: string
+}
+
+interface JudgeRubric {
+  readonly criteria: readonly JudgeCriterion[]
+  readonly gradingInstructions?: string
+}
+```
+
+**`extractRubric(scenario)` helper:**
+
+A convenience function that reads `scenario.extensions["rubric"]`, validates it against the `JudgeRubricSchema` (Zod), and returns a typed `JudgeRubric` or `undefined` if the field is missing or invalid.
+
+**Gotchas:**
+
+- JudgeProvider has NO lifecycle methods (`init`, `shutdown`). The caller is responsible for managing provider initialization and shutdown externally (e.g., via `RunHooks`, explicit setup/teardown, or a wrapper).
+- `JudgeResponse.text` must contain valid JSON parseable by the consuming scorer. The provider itself does not validate the response structure.
+- `tokenCount` is optional and informational. Not all LLM backends report token usage.
+- `extractRubric()` returns `undefined` silently when the rubric field is missing or fails validation. It does not throw.
+
+## Built-in Scorers
+
+### LlmJudgeScorer
+
+Source: `packages/agent-profiler/src/scorer/llm-judge-scorer.ts`
+
+`LlmJudgeScorer` evaluates agent sessions using an LLM judge. It reads the rubric from `scenario.extensions.rubric` via `extractRubric()`, builds a system prompt (role definition, criteria list, grading instructions, JSON output format) and a user prompt (scenario context, agent output, trace summary), then calls the injected `JudgeProvider`. The judge response is parsed as JSON containing an array of verdicts (id, passed, reasoning), which are mapped back to the rubric criteria to produce a `ScorerResult`.
+
+When no rubric is present on the scenario, the scorer is a pass-through: it returns a successful result with a single `no-rubric` detail entry. This allows `LlmJudgeScorer` to be composed with other scorers without requiring every scenario to define a rubric.
+
+If the judge returns invalid JSON, the scorer returns `success: false` with all criteria marked as failed and an error describing the parse failure.
+
+### CompositeScorer
+
+Source: `packages/agent-profiler/src/scorer/composite-scorer.ts`
+
+`CompositeScorer` runs N scorers sequentially and merges their `ScorerResult` outputs into a single result. Detail IDs are prefixed with the scorer's ID to avoid collisions (e.g., a detail with id `check-1` from a scorer with id `checkpoint` becomes `checkpoint:check-1`).
+
+If an individual scorer throws, `CompositeScorer` catches the error, records a failed detail entry (`<scorer-id>:error`), and continues with the remaining scorers. The composite result reports `success: false` if any constituent scorer failed or threw.
 
 ## Collector
 

@@ -29,6 +29,9 @@ flowchart TB
     Q --> T["Analyzers.analyze(trace)"]
     T --> U["AnalysisResult[]"]
     U --> V["Scorer.evaluate()"]
+    V -.-> VA["JudgeProvider.judge()"]
+    VA -.-> VB["JudgeResponse"]
+    VB -.-> V
     V --> W["ScorerResult"]
     W --> X["ProfileRow written to JSONL Store"]
 
@@ -84,7 +87,7 @@ The collection and analysis layer transforms raw execution results into structur
 | `packages/agent-profiler/src/analyzer/*.ts` | Qualitative analysis of session traces |
 | `packages/agent-profiler/src/contracts/*.ts` | Interface definitions for all plugin contracts |
 
-Collectors run after every prompt and produce `CustomMetric[]` values stored in `ProfileRow.extensions`. Analyzers run only when a `SessionTrace` is available and produce `AnalysisResult` objects containing findings and summaries.
+Collectors run after every prompt and produce `CustomMetric[]` values stored in `ProfileRow.extensions`. Analyzers run only when a `SessionTrace` is available and produce `AnalysisResult` objects containing findings and summaries. Scorers may optionally delegate to a `JudgeProvider` for LLM-based evaluation -- when a scenario defines a rubric in `scenario.extensions.rubric`, the `LlmJudgeScorer` builds judge prompts from the rubric criteria and calls the provider to obtain per-criterion verdicts.
 
 ### 4. Reporting
 
