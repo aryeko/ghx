@@ -1,5 +1,11 @@
 # @ghx-dev/agent-profiler
 
+## 0.2.0
+
+### Minor Changes
+
+- aecc1e4: Add LLM-as-judge scoring with JudgeProvider contract, LlmJudgeScorer, CompositeScorer, and OpenCodeJudgeProvider. Enables rubric-based LLM evaluation of agent sessions via `--judge-model` CLI flag.
+
 ## 0.1.0
 
 ### Minor Changes

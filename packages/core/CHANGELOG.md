@@ -1,5 +1,11 @@
 # @ghx-dev/core
 
+## 0.4.3
+
+### Patch Changes
+
+- 0712329: Add Cursor IDE plugin with rules, shared skill reference, and sessionStart hook.
+
 ## 0.4.2
 
 ### Patch Changes

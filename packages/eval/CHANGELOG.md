@@ -1,5 +1,19 @@
 # @ghx-dev/eval
 
+## 0.3.0
+
+### Minor Changes
+
+- b742f77: Add 3 issue-domain eval scenarios (triage, bug-close, issue-to-PR lifecycle) with corresponding fixture seeders, branch cleanup hooks, and URL-based issue number extraction.
+- aecc1e4: Add LLM-as-judge scoring with JudgeProvider contract, LlmJudgeScorer, CompositeScorer, and OpenCodeJudgeProvider. Enables rubric-based LLM evaluation of agent sessions via `--judge-model` CLI flag.
+
+### Patch Changes
+
+- Updated dependencies [0712329]
+- Updated dependencies [aecc1e4]
+  - @ghx-dev/core@0.4.3
+  - @ghx-dev/agent-profiler@0.2.0
+
 ## 0.2.5
 
 ### Patch Changes
