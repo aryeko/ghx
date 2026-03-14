@@ -1,0 +1,9 @@
+{
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "../scripts/plugin/ensure-ghx.sh"
+      }
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "ghx",
+  "description": "Route GitHub operations through deterministic adapters instead of fragile shell scraping. 70+ capabilities covering issues, PRs, repos, releases, and projects — each with validated input, normalized output, and automatic fallback routing.",
+  "version": "0.4.2",
+  "author": {
+    "name": "Arye Kogan"
+  },
+  "category": "development",
+  "repository": "https://github.com/aryeko/ghx",
+  "homepage": "https://github.com/aryeko/ghx",
+  "license": "MIT",
+  "keywords": [
+    "github",
+    "github-api",
+    "ai-agents",
+    "agentic",
+    "cli",
+    "graphql",
+    "automation",
+    "typescript"
+  ],
+  "logo": "https://raw.githubusercontent.com/aryeko/ghx/main/assets/branding/logos/ghx-logo-icon.svg",
+  "skills": "../skills/",
+  "rules": "rules/"
+}
