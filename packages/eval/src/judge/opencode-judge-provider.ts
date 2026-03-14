@@ -1,7 +1,10 @@
 import type { JudgeProvider, JudgeRequest, JudgeResponse } from "@ghx-dev/agent-profiler"
 import type { SessionApi } from "../provider/opencode-provider.js"
 import {
+  extractMessageText,
+  findLastAssistantMessage,
   getSessionApi,
+  isSessionComplete,
   restoreEnv,
   snapshotManagedEnv,
   unwrapSessionId,
@@ -44,6 +47,11 @@ export class OpenCodeJudgeProvider implements JudgeProvider {
   }
 
   async init(): Promise<void> {
+    if (this.server !== null) {
+      throw new Error(
+        "OpenCodeJudgeProvider.init() called while already initialized; call shutdown() first",
+      )
+    }
     const { createOpencode } = await import("@opencode-ai/sdk")
 
     this.envSnapshot = snapshotManagedEnv([])
@@ -93,7 +101,7 @@ export class OpenCodeJudgeProvider implements JudgeProvider {
     const messages = await this.pollForCompletion(sessionApi, sessionId, DEFAULT_TIMEOUT_MS)
 
     const lastAssistant = findLastAssistantMessage(messages)
-    const text = extractText(lastAssistant)
+    const text = extractMessageText(lastAssistant)
     const tokenCount = extractOutputTokenCount(lastAssistant)
 
     return tokenCount !== undefined ? { text, tokenCount } : { text }
@@ -125,7 +133,7 @@ export class OpenCodeJudgeProvider implements JudgeProvider {
         query: { limit: 200 },
       })
       const messages = unwrapSessionMessages(rawMessages)
-      if (isComplete(messages)) {
+      if (isSessionComplete(messages)) {
         return messages
       }
       await new Promise<void>((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
@@ -133,45 +141,6 @@ export class OpenCodeJudgeProvider implements JudgeProvider {
 
     throw new Error(`OpenCodeJudgeProvider: session ${sessionId} timed out after ${timeoutMs}ms`)
   }
-}
-
-function isComplete(messages: unknown[]): boolean {
-  const lastMsg = messages[messages.length - 1]
-  if (!lastMsg || typeof lastMsg !== "object") return false
-  const msg = lastMsg as Record<string, unknown>
-  const parts = msg["parts"] as Array<Record<string, unknown>> | undefined
-  if (!parts) return false
-
-  for (const part of parts) {
-    if (part["type"] === "step-finish" && part["reason"] === "stop") {
-      return true
-    }
-  }
-
-  return false
-}
-
-function findLastAssistantMessage(messages: unknown[]): unknown {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i]
-    if (!msg || typeof msg !== "object") continue
-    const m = msg as Record<string, unknown>
-    const info = m["info"] as Record<string, unknown> | undefined
-    if (info?.["role"] === "assistant") return msg
-  }
-  return null
-}
-
-function extractText(message: unknown): string {
-  if (!message || typeof message !== "object") return ""
-  const msg = message as Record<string, unknown>
-  const parts = msg["parts"] as Array<Record<string, unknown>> | undefined
-  if (!parts) return ""
-
-  return parts
-    .filter((p) => p["type"] === "text")
-    .map((p) => (p["text"] as string) ?? "")
-    .join("\n")
 }
 
 function extractOutputTokenCount(message: unknown): number | undefined {
