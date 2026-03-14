@@ -104,7 +104,8 @@ User/Agent → CLI (packages/core/src/cli/) → executeTask() [core/routing/engi
 
 ## Code Style
 
-- **Formatter:** Biome (`biome.json`). Double quotes, no semicolons, trailing commas, 2-space indent, 100-char line width. Do not introduce Prettier or other formatters.
+- **Formatter:** Biome (`biome.json`), formatting only (linter disabled). Double quotes, no semicolons, trailing commas, 2-space indent, 100-char line width. Also formats `.json` and `.yaml`/`.yml`. Do not introduce Prettier or other formatters.
+- **Linter:** ESLint (`eslint.config.mjs`) with TypeScript strict configs + Vitest plugin. `--max-warnings=0` enforced. Prefix unused variables with `_` to suppress warnings.
 - **Imports:** Use `import type` for type-only imports. Relative imports require explicit `.js` extension (NodeNext resolution). When a module needs both a value and a type import from the same source, Biome's `organizeImports` places `import type` first — accept this ordering to avoid churn.
 - **Path aliases:** Use `@core/*` (maps to `packages/core/src/*`) and `@profiler/*` (maps to `packages/agent-profiler/src/*`) for imports crossing 2+ directory levels. Single-level relative imports (`./`, `../`) remain as-is. Aliases are configured per-package in `tsconfig.json`, `tsup.config.ts`, and `vitest.config.ts`.
 - **Types:** `unknown` + narrowing over `any`. Validate untrusted input at boundaries (AJV in core, Zod in agent-profiler). Result envelope shape `{ ok, data, error, meta }` is a stable contract — do not change it.
@@ -119,7 +120,7 @@ User/Agent → CLI (packages/core/src/cli/) → executeTask() [core/routing/engi
 
 Lefthook runs automatically on commit (installed via `pnpm install`):
 - Biome format + auto-stage
-- ESLint on staged `.ts`/`.js`/`.mjs`
+- ESLint on staged `.ts`/`.js`/`.mjs` (`--max-warnings=0`)
 - Full typecheck
 
 **Caution:** Lefthook's `stage_fixed: true` auto-stages all Biome-modified files. Avoid parallel commits in the same worktree — stray unstaged files bleed into the wrong commit.
