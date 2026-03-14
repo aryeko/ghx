@@ -43,15 +43,16 @@ const validResponse = (verdicts: unknown[]): JudgeResponse => ({
 })
 
 describe("LlmJudgeScorer", () => {
-  it("returns pass-through when no rubric in scenario", async () => {
+  it("returns neutral result when no rubric in scenario", async () => {
     const scorer = new LlmJudgeScorer({
       id: "llm-judge",
       provider: makeProvider(validResponse([])),
     })
     const result = await scorer.evaluate(makeScenario(), makeContext())
     expect(result.success).toBe(true)
-    expect(result.passed).toBe(1)
-    expect(result.total).toBe(1)
+    expect(result.passed).toBe(0)
+    expect(result.total).toBe(0)
+    expect(result.details).toHaveLength(0)
   })
 
   it("calls judge provider with constructed prompt", async () => {

@@ -146,16 +146,10 @@ export class LlmJudgeScorer implements Scorer {
     if (rubric === undefined) {
       return {
         success: true,
-        passed: 1,
-        total: 1,
+        passed: 0,
+        total: 0,
         outputValid: true,
-        details: [
-          {
-            id: "no-rubric",
-            description: "No rubric defined for this scenario",
-            passed: true,
-          },
-        ],
+        details: [],
       }
     }
 

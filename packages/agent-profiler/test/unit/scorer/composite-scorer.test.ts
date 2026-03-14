@@ -77,7 +77,7 @@ describe("CompositeScorer", () => {
     expect(result.total).toBe(3)
   })
 
-  it("catches scorer errors and continues", async () => {
+  it("catches scorer errors, sets outputValid false, and continues", async () => {
     const throwingScorer: Scorer = {
       id: "broken",
       evaluate: vi.fn().mockRejectedValue(new Error("boom")),
@@ -87,6 +87,7 @@ describe("CompositeScorer", () => {
     })
     const result = await scorer.evaluate(makeScenario(), makeContext())
     expect(result.success).toBe(false)
+    expect(result.outputValid).toBe(false)
     expect(result.details.some((d) => d.error?.includes("boom"))).toBe(true)
     expect(result.details.some((d) => d.id === "ok:check-1")).toBe(true)
   })

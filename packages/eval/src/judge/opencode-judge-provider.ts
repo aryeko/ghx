@@ -39,6 +39,7 @@ export class OpenCodeJudgeProvider implements JudgeProvider {
   private readonly port: number
   private client: unknown = null
   private server: { close: () => void } | null = null
+  private configDir: string | null = null
   private envSnapshot: ReturnType<typeof snapshotManagedEnv> | null = null
 
   constructor(options: OpenCodeJudgeProviderOptions) {
@@ -53,8 +54,17 @@ export class OpenCodeJudgeProvider implements JudgeProvider {
       )
     }
     const { createOpencode } = await import("@opencode-ai/sdk")
+    const { mkdtemp } = await import("node:fs/promises")
+    const { join } = await import("node:path")
+    const { tmpdir } = await import("node:os")
 
+    this.configDir = await mkdtemp(join(tmpdir(), "judge-opencode-"))
     this.envSnapshot = snapshotManagedEnv([])
+
+    delete process.env.OPENCODE_CONFIG
+    delete process.env.OPENCODE_CONFIG_DIR
+    process.env.XDG_CONFIG_HOME = this.configDir
+    process.env.OPENCODE_CONFIG_DIR = this.configDir
 
     const opencode = await createOpencode({
       port: this.port,
@@ -116,6 +126,11 @@ export class OpenCodeJudgeProvider implements JudgeProvider {
     if (this.envSnapshot) {
       restoreEnv(this.envSnapshot)
       this.envSnapshot = null
+    }
+    if (this.configDir) {
+      const { rm } = await import("node:fs/promises")
+      await rm(this.configDir, { recursive: true, force: true }).catch(() => {})
+      this.configDir = null
     }
   }
 

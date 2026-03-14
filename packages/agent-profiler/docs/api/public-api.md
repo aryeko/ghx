@@ -367,7 +367,7 @@ import {
 
 // LLM judge scorer with a custom provider
 const judgeScorer = new LlmJudgeScorer({
-  judge: yourJudgeProvider, // implements JudgeProvider
+  provider: yourJudgeProvider, // implements JudgeProvider
 })
 
 // Combine with a checkpoint scorer

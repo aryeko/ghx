@@ -27,5 +27,5 @@ For fine-tuning execution parameters, see [Configuration](configuration.md). For
 
 - [Quick Start](../getting-started/quick-start.md) -- complete runnable example in 50 lines
 - [Core Concepts](../getting-started/concepts.md) -- mental model and plugin-first architecture
-- [Plugin Contracts](../architecture/plugin-contracts.md) -- full interface definitions for all six contracts
+- [Plugin Contracts](../architecture/plugin-contracts.md) -- full interface definitions for all seven contracts
 - [Architecture Overview](../architecture/overview.md) -- system design and data flow

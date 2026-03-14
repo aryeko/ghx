@@ -7,10 +7,20 @@ const mockCreate = vi.fn()
 const mockPromptAsync = vi.fn()
 const mockMessages = vi.fn()
 const mockCreateOpencode = vi.fn()
+const mockRm = vi.fn().mockResolvedValue(undefined)
 
 vi.mock("@opencode-ai/sdk", () => ({
   createOpencode: mockCreateOpencode,
 }))
+
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>
+  return {
+    ...actual,
+    mkdtemp: vi.fn().mockResolvedValue("/tmp/judge-opencode-mock"),
+    rm: (...args: unknown[]) => mockRm(...args),
+  }
+})
 
 function makeAssistantMessage(text: string, tokens = 42) {
   return {
@@ -150,13 +160,17 @@ describe("OpenCodeJudgeProvider", () => {
   })
 
   describe("shutdown()", () => {
-    it("closes the server and resets state", async () => {
+    it("closes the server and cleans up config dir", async () => {
       setupSdkMock()
       await provider.init()
 
       await provider.shutdown()
 
       expect(mockClose).toHaveBeenCalledOnce()
+      expect(mockRm).toHaveBeenCalledWith("/tmp/judge-opencode-mock", {
+        recursive: true,
+        force: true,
+      })
     })
 
     it("is safe to call when not initialized", async () => {

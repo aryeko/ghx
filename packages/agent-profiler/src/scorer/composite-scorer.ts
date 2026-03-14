@@ -34,6 +34,7 @@ export class CompositeScorer implements Scorer {
         if (!result.outputValid) allOutputValid = false
       } catch (error) {
         allSuccess = false
+        allOutputValid = false
         allDetails.push({
           id: `${scorer.id}:error`,
           description: `Scorer "${scorer.id}" threw an error`,

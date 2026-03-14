@@ -58,7 +58,7 @@ Start here: **[Getting Started](getting-started/README.md)**
 Read: **[Architecture](architecture/README.md)**
 
 - [System Overview](architecture/overview.md) -- End-to-end execution flow from configuration through profiling to reports
-- [Plugin Implementations](architecture/plugin-implementations.md) -- How eval implements the 5 profiler plugin contracts
+- [Plugin Implementations](architecture/plugin-implementations.md) -- How eval implements the 6 profiler plugin contracts
 - [Modes](architecture/modes.md) -- The three evaluation modes and EvalModeResolver
 - [Fixtures](architecture/fixtures.md) -- Fixture lifecycle: seed, status, reset, cleanup
 - [Scenarios](architecture/scenarios.md) -- EvalScenario schema, template binding, and checkpoint definitions
