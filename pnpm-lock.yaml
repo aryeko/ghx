@@ -149,8 +149,8 @@ importers:
         specifier: ^5.0.8
         version: 5.0.8(graphql@16.13.1)
       '@opencode-ai/sdk':
-        specifier: ^1.2.23
-        version: 1.2.23
+        specifier: ^1.2.27
+        version: 1.2.27
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9
@@ -185,8 +185,8 @@ importers:
         specifier: workspace:*
         version: link:../core
       '@opencode-ai/sdk':
-        specifier: ^1.2.23
-        version: 1.2.23
+        specifier: ^1.2.27
+        version: 1.2.27
       commander:
         specifier: ^14.0.3
         version: 14.0.3
@@ -1933,8 +1933,8 @@ packages:
   '@nx/workspace@22.5.4':
     resolution: {integrity: sha512-TZeuCDy+VN/5zqMYxHw15HKe2Ppcb9WBOebz4bmXE206c8Aop3S9QeLfys00Uobt9ZaYh9QUeN0iFsZm7TNv0w==}
 
-  '@opencode-ai/sdk@1.2.23':
-    resolution: {integrity: sha512-f0qtJ5GFsEK8fCgT13zL7Ev7lFt03mf9HTQqmpJEgJpDaSx3Mb3ZGJCsfyw48SAASISkq+4Lct/4P17CKG7xUg==}
+  '@opencode-ai/sdk@1.2.27':
+    resolution: {integrity: sha512-Wk0o/I+Fo+wE3zgvlJDs8Fb67KlKqX0PrV8dK5adSDkANq6r4Z25zXJg2iOir+a8ntg3rAcpel1OY4FV/TwRUA==}
 
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
@@ -6649,7 +6649,7 @@ snapshots:
       - '@swc/core'
       - debug
 
-  '@opencode-ai/sdk@1.2.23': {}
+  '@opencode-ai/sdk@1.2.27': {}
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
