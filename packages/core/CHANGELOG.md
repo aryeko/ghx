@@ -1,5 +1,11 @@
 # @ghx-dev/core
 
+## 0.4.4
+
+### Patch Changes
+
+- f3ae97f: Inline SessionStart hook logic and remove `scripts/plugin/ensure-ghx.sh`. The hook now runs directly as a shell command, scoped to `startup` source only (skips resume/clear/compact), and outputs a `systemMessage` via JSON stdout when `ghx` is not installed.
+
 ## 0.4.3
 
 ### Patch Changes
