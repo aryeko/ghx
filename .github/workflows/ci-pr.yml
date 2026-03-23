@@ -45,7 +45,7 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - uses: nrwl/nx-set-shas@v4
+      - uses: nrwl/nx-set-shas@v5
       - run: pnpm run ci:affected
       - name: Detect Codecov report files (Node 24)
         if: ${{ always() && matrix.node-version == 24 && !cancelled() }}
