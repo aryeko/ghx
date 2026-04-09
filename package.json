@@ -54,10 +54,9 @@
   "type": "module",
   "pnpm": {
     "overrides": {
-      "minimatch@10.2.1": "10.2.3",
       "immutable@<3.8.3": ">=3.8.3",
-      "flatted@<3.4.0": ">=3.4.0",
-      "ajv@<6.14.0": "6.14.0"
+      "axios@<1.15.0": "1.15.0",
+      "lodash@<=4.17.23": "4.18.1"
     }
   },
   "bugs": {
@@ -65,18 +64,18 @@
   },
   "homepage": "https://github.com/aryeko/ghx#readme",
   "devDependencies": {
-    "@biomejs/biome": "^2.4.5",
+    "@biomejs/biome": "^2.4.11",
     "@changesets/cli": "^2.30.0",
     "@eslint/js": "^9.35.0",
-    "@nx/eslint": "22.5.4",
-    "@nx/js": "22.5.4",
+    "@nx/eslint": "22.6.4",
+    "@nx/js": "22.6.4",
     "@types/node": "catalog:",
-    "@vitest/eslint-plugin": "^1.6.9",
-    "vite": "^7.3.1",
+    "@vitest/eslint-plugin": "^1.6.15",
+    "vite": "^7.3.2",
     "eslint": "^9.35.0",
     "globals": "^17.4.0",
-    "lefthook": "^2.1.4",
-    "nx": "22.5.4",
+    "lefthook": "^2.1.5",
+    "nx": "22.6.4",
     "typescript": "catalog:",
     "typescript-eslint": "^8.56.1"
   }
