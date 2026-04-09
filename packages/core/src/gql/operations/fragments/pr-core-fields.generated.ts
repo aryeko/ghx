@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "../base-types.js"
+import { TypedDocumentString } from "../typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type PrCoreFieldsFragment = {
@@ -11,7 +12,8 @@ export type PrCoreFieldsFragment = {
   url: any
 }
 
-export const PrCoreFieldsFragmentDoc = `
+export const PrCoreFieldsFragmentDoc = new TypedDocumentString(
+  `
     fragment PrCoreFields on PullRequest {
   id
   number
@@ -19,7 +21,9 @@ export const PrCoreFieldsFragmentDoc = `
   state
   url
 }
-    `
+    `,
+  { fragmentName: "PrCoreFields" },
+)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

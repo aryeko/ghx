@@ -1,6 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
-import { PageInfoFieldsFragmentDoc } from "./fragments/page-info-fields.generated.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type ProjectV2CommonFields_ProjectV2Field_Fragment = {
@@ -76,14 +76,17 @@ export type ProjectV2FieldsListOrgQuery = {
   } | null
 }
 
-export const ProjectV2CommonFieldsFragmentDoc = `
+export const ProjectV2CommonFieldsFragmentDoc = new TypedDocumentString(
+  `
     fragment ProjectV2CommonFields on ProjectV2FieldCommon {
   id
   name
   dataType
 }
-    `
-export const ProjectV2FieldsListOrgDocument = `
+    `,
+  { fragmentName: "ProjectV2CommonFields" },
+)
+export const ProjectV2FieldsListOrgDocument = new TypedDocumentString(`
     query ProjectV2FieldsListOrg($owner: String!, $projectNumber: Int!, $first: Int!, $after: String) {
   organization(login: $owner) {
     projectV2(number: $projectNumber) {
@@ -106,8 +109,15 @@ export const ProjectV2FieldsListOrgDocument = `
     }
   }
 }
-    ${ProjectV2CommonFieldsFragmentDoc}
-${PageInfoFieldsFragmentDoc}`
+    fragment ProjectV2CommonFields on ProjectV2FieldCommon {
+  id
+  name
+  dataType
+}
+fragment PageInfoFields on PageInfo {
+  endCursor
+  hasNextPage
+}`)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

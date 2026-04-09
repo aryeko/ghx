@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type PrReviewSubmitMutationVariables = Types.Exact<{
@@ -25,7 +26,7 @@ export type PrReviewSubmitMutation = {
   } | null
 }
 
-export const PrReviewSubmitDocument = `
+export const PrReviewSubmitDocument = new TypedDocumentString(`
     mutation PrReviewSubmit($pullRequestId: ID!, $event: PullRequestReviewEvent!, $body: String, $threads: [DraftPullRequestReviewThread!]) {
   addPullRequestReview(
     input: {pullRequestId: $pullRequestId, event: $event, body: $body, threads: $threads}
@@ -38,7 +39,7 @@ export const PrReviewSubmitDocument = `
     }
   }
 }
-    `
+    `)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

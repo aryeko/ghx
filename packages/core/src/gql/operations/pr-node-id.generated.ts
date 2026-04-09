@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type PrNodeIdQueryVariables = Types.Exact<{
@@ -16,7 +17,7 @@ export type PrNodeIdQuery = {
   } | null
 }
 
-export const PrNodeIdDocument = `
+export const PrNodeIdDocument = new TypedDocumentString(`
     query PrNodeId($owner: String!, $name: String!, $prNumber: Int!) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $prNumber) {
@@ -24,7 +25,7 @@ export const PrNodeIdDocument = `
     }
   }
 }
-    `
+    `)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

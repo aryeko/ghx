@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "../base-types.js"
+import { TypedDocumentString } from "../typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type IssueCoreFieldsFragment = {
@@ -11,7 +12,8 @@ export type IssueCoreFieldsFragment = {
   url: any
 }
 
-export const IssueCoreFieldsFragmentDoc = `
+export const IssueCoreFieldsFragmentDoc = new TypedDocumentString(
+  `
     fragment IssueCoreFields on Issue {
   id
   number
@@ -19,7 +21,9 @@ export const IssueCoreFieldsFragmentDoc = `
   state
   url
 }
-    `
+    `,
+  { fragmentName: "IssueCoreFields" },
+)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type IssueCommentCreateMutationVariables = Types.Exact<{
@@ -18,7 +19,7 @@ export type IssueCommentCreateMutation = {
   } | null
 }
 
-export const IssueCommentCreateDocument = `
+export const IssueCommentCreateDocument = new TypedDocumentString(`
     mutation IssueCommentCreate($issueId: ID!, $body: String!) {
   addComment(input: {subjectId: $issueId, body: $body}) {
     commentEdge {
@@ -30,7 +31,7 @@ export const IssueCommentCreateDocument = `
     }
   }
 }
-    `
+    `)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

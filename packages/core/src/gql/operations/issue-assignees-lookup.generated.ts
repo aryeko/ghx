@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type IssueAssigneesLookupQueryVariables = Types.Exact<{
@@ -282,7 +283,7 @@ export type IssueAssigneesLookupQuery = {
     | null
 }
 
-export const IssueAssigneesLookupDocument = `
+export const IssueAssigneesLookupDocument = new TypedDocumentString(`
     query IssueAssigneesLookup($issueId: ID!) {
   node(id: $issueId) {
     ... on Issue {
@@ -301,7 +302,7 @@ export const IssueAssigneesLookupDocument = `
     }
   }
 }
-    `
+    `)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type RepoViewQueryVariables = Types.Exact<{
@@ -22,7 +23,7 @@ export type RepoViewQuery = {
   } | null
 }
 
-export const RepoViewDocument = `
+export const RepoViewDocument = new TypedDocumentString(`
     query RepoView($owner: String!, $name: String!) {
   repository(owner: $owner, name: $name) {
     id
@@ -37,7 +38,7 @@ export const RepoViewDocument = `
     }
   }
 }
-    `
+    `)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

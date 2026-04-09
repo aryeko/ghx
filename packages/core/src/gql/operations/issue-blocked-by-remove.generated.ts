@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type IssueBlockedByRemoveMutationVariables = Types.Exact<{
@@ -16,7 +17,7 @@ export type IssueBlockedByRemoveMutation = {
   } | null
 }
 
-export const IssueBlockedByRemoveDocument = `
+export const IssueBlockedByRemoveDocument = new TypedDocumentString(`
     mutation IssueBlockedByRemove($issueId: ID!, $blockedByIssueId: ID!) {
   removeBlockedBy(input: {issueId: $issueId, blockingIssueId: $blockedByIssueId}) {
     issue {
@@ -27,7 +28,7 @@ export const IssueBlockedByRemoveDocument = `
     }
   }
 }
-    `
+    `)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

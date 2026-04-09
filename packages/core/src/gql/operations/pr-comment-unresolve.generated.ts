@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type PrCommentUnresolveMutationVariables = Types.Exact<{
@@ -14,7 +15,7 @@ export type PrCommentUnresolveMutation = {
   } | null
 }
 
-export const PrCommentUnresolveDocument = `
+export const PrCommentUnresolveDocument = new TypedDocumentString(`
     mutation PrCommentUnresolve($threadId: ID!) {
   unresolveReviewThread(input: {threadId: $threadId}) {
     thread {
@@ -23,7 +24,7 @@ export const PrCommentUnresolveDocument = `
     }
   }
 }
-    `
+    `)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

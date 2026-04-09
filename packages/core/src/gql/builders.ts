@@ -25,7 +25,7 @@ const ISSUE_MILESTONE_SET_BY_ID_MUTATION = IssueMilestoneSetDocument
 const ISSUE_COMMENT_CREATE_MUTATION = IssueCommentCreateDocument
 
 export type BuiltOperation = {
-  mutation: string
+  mutation: string | { toString(): string }
   variables: GraphqlVariables
 }
 

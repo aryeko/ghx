@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type ReleaseViewQueryVariables = Types.Exact<{
@@ -27,7 +28,7 @@ export type ReleaseViewQuery = {
   } | null
 }
 
-export const ReleaseViewDocument = `
+export const ReleaseViewDocument = new TypedDocumentString(`
     query ReleaseView($owner: String!, $name: String!, $tagName: String!) {
   repository(owner: $owner, name: $name) {
     release(tagName: $tagName) {
@@ -45,7 +46,7 @@ export const ReleaseViewDocument = `
     }
   }
 }
-    `
+    `)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

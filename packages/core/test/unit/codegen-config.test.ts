@@ -18,6 +18,10 @@ describe("codegen config", () => {
         baseTypesPath: "./base-types.js",
       }),
     )
-    expect(generatedOutput.plugins).toEqual(["typescript-operations", "typescript-graphql-request"])
+    expect(generatedOutput.plugins).toEqual([
+      { add: { content: 'import { TypedDocumentString } from "./typed-document-string.js"' } },
+      "typescript-operations",
+      "typescript-graphql-request",
+    ])
   })
 })

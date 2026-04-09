@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type ProjectV2UserIdQueryVariables = Types.Exact<{
@@ -12,7 +13,7 @@ export type ProjectV2UserIdQuery = {
   user?: { __typename?: "User"; projectV2?: { __typename?: "ProjectV2"; id: string } | null } | null
 }
 
-export const ProjectV2UserIdDocument = `
+export const ProjectV2UserIdDocument = new TypedDocumentString(`
     query ProjectV2UserId($login: String!, $number: Int!) {
   user(login: $login) {
     projectV2(number: $number) {
@@ -20,7 +21,7 @@ export const ProjectV2UserIdDocument = `
     }
   }
 }
-    `
+    `)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type PrMergeStatusQueryVariables = Types.Exact<{
@@ -23,7 +24,7 @@ export type PrMergeStatusQuery = {
   } | null
 }
 
-export const PrMergeStatusDocument = `
+export const PrMergeStatusDocument = new TypedDocumentString(`
     query PrMergeStatus($owner: String!, $name: String!, $prNumber: Int!) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $prNumber) {
@@ -35,7 +36,7 @@ export const PrMergeStatusDocument = `
     }
   }
 }
-    `
+    `)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

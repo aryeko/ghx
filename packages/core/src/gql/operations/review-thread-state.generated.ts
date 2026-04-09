@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type ReviewThreadStateQueryVariables = Types.Exact<{
@@ -272,7 +273,7 @@ export type ReviewThreadStateQuery = {
     | null
 }
 
-export const ReviewThreadStateDocument = `
+export const ReviewThreadStateDocument = new TypedDocumentString(`
     query ReviewThreadState($threadId: ID!) {
   node(id: $threadId) {
     ... on PullRequestReviewThread {
@@ -281,7 +282,7 @@ export const ReviewThreadStateDocument = `
     }
   }
 }
-    `
+    `)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

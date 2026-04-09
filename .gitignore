@@ -19,3 +19,4 @@ packages/benchmark/fixtures/*.json
 
 # Local environment overrides
 .env.local
+.DS_Store

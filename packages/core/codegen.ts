@@ -15,7 +15,19 @@ const config = {
       // changed without a custom plugin or fork. Since generated files are never
       // edited manually and Biome linting is disabled for this project, this `any`
       // does not affect CI or runtime behavior. Tracked as a known limitation.
-      plugins: ["typescript-operations", "typescript-graphql-request"],
+      //
+      // The `add` plugin injects the TypedDocumentString import that v7 of
+      // typescript-graphql-request requires (it emits `new TypedDocumentString()`
+      // but does not generate the import itself when using near-operation-file preset).
+      plugins: [
+        {
+          add: {
+            content: 'import { TypedDocumentString } from "./typed-document-string.js"',
+          },
+        },
+        "typescript-operations",
+        "typescript-graphql-request",
+      ],
       config: {
         useTypeImports: true,
         documentMode: "string",

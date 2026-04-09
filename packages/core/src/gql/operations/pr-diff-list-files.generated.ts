@@ -1,6 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
-import { PageInfoFieldsFragmentDoc } from "./fragments/page-info-fields.generated.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type PrDiffListFilesQueryVariables = Types.Exact<{
@@ -31,7 +31,7 @@ export type PrDiffListFilesQuery = {
   } | null
 }
 
-export const PrDiffListFilesDocument = `
+export const PrDiffListFilesDocument = new TypedDocumentString(`
     query PrDiffListFiles($owner: String!, $name: String!, $prNumber: Int!, $first: Int!, $after: String) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $prNumber) {
@@ -48,7 +48,10 @@ export const PrDiffListFilesDocument = `
     }
   }
 }
-    ${PageInfoFieldsFragmentDoc}`
+    fragment PageInfoFields on PageInfo {
+  endCursor
+  hasNextPage
+}`)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

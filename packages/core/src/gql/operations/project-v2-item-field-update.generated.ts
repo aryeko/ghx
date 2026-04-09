@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type UpdateProjectV2ItemFieldMutationVariables = Types.Exact<{
@@ -17,7 +18,7 @@ export type UpdateProjectV2ItemFieldMutation = {
   } | null
 }
 
-export const UpdateProjectV2ItemFieldDocument = `
+export const UpdateProjectV2ItemFieldDocument = new TypedDocumentString(`
     mutation UpdateProjectV2ItemField($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: ProjectV2FieldValue!) {
   updateProjectV2ItemFieldValue(
     input: {projectId: $projectId, itemId: $itemId, fieldId: $fieldId, value: $value}
@@ -27,7 +28,7 @@ export const UpdateProjectV2ItemFieldDocument = `
     }
   }
 }
-    `
+    `)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,
