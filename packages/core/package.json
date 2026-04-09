@@ -94,12 +94,12 @@
     "js-yaml": "^4.1.0"
   },
   "devDependencies": {
-    "@graphql-codegen/cli": "^6.1.2",
-    "@graphql-codegen/near-operation-file-preset": "^4.0.0",
-    "@graphql-codegen/schema-ast": "^5.0.0",
-    "@graphql-codegen/typescript": "^5.0.8",
-    "@graphql-codegen/typescript-graphql-request": "^6.3.0",
-    "@graphql-codegen/typescript-operations": "^5.0.8",
+    "@graphql-codegen/cli": "^6.2.1",
+    "@graphql-codegen/near-operation-file-preset": "^5.0.0",
+    "@graphql-codegen/schema-ast": "^5.0.1",
+    "@graphql-codegen/typescript": "^5.0.9",
+    "@graphql-codegen/typescript-graphql-request": "^7.0.0",
+    "@graphql-codegen/typescript-operations": "^5.0.9",
     "@opencode-ai/sdk": "^1.4.2",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "catalog:",
