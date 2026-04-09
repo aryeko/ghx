@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type UserNodeIdQueryVariables = Types.Exact<{
@@ -11,13 +12,13 @@ export type UserNodeIdQuery = {
   user?: { __typename?: "User"; id: string } | null
 }
 
-export const UserNodeIdDocument = `
+export const UserNodeIdDocument = new TypedDocumentString(`
     query UserNodeId($login: String!) {
   user(login: $login) {
     id
   }
 }
-    `
+    `)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type IssueLabelsAddMutationVariables = Types.Exact<{
@@ -26,7 +27,7 @@ export type IssueLabelsAddMutation = {
   } | null
 }
 
-export const IssueLabelsAddDocument = `
+export const IssueLabelsAddDocument = new TypedDocumentString(`
     mutation IssueLabelsAdd($labelableId: ID!, $labelIds: [ID!]!) {
   addLabelsToLabelable(input: {labelableId: $labelableId, labelIds: $labelIds}) {
     labelable {
@@ -41,7 +42,7 @@ export const IssueLabelsAddDocument = `
     }
   }
 }
-    `
+    `)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

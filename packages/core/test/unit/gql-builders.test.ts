@@ -39,7 +39,7 @@ describe("OperationBuilder exports", () => {
 describe("pr.threads.reply builder", () => {
   it("build() returns mutation string and variables", () => {
     const result = replyBuilder.build({ threadId: "t1", body: "Fixed" })
-    expect(result.mutation).toContain("addPullRequestReviewThreadReply")
+    expect(String(result.mutation)).toContain("addPullRequestReviewThreadReply")
     expect(result.variables).toEqual({ threadId: "t1", body: "Fixed" })
   })
 
@@ -68,7 +68,7 @@ describe("pr.threads.reply builder", () => {
 describe("pr.threads.resolve builder", () => {
   it("build() returns mutation string and variables", () => {
     const result = resolveBuilder.build({ threadId: "t1" })
-    expect(result.mutation).toContain("resolveReviewThread")
+    expect(String(result.mutation)).toContain("resolveReviewThread")
     expect(result.variables).toEqual({ threadId: "t1" })
   })
 
@@ -82,7 +82,7 @@ describe("pr.threads.resolve builder", () => {
 describe("pr.threads.unresolve builder", () => {
   it("build() returns mutation string and variables", () => {
     const result = unresolveBuilder.build({ threadId: "t1" })
-    expect(result.mutation).toContain("unresolveReviewThread")
+    expect(String(result.mutation)).toContain("unresolveReviewThread")
     expect(result.variables).toEqual({ threadId: "t1" })
   })
 

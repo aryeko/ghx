@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type PrBranchUpdateMutationVariables = Types.Exact<{
@@ -15,7 +16,7 @@ export type PrBranchUpdateMutation = {
   } | null
 }
 
-export const PrBranchUpdateDocument = `
+export const PrBranchUpdateDocument = new TypedDocumentString(`
     mutation PrBranchUpdate($pullRequestId: ID!, $updateMethod: PullRequestBranchUpdateMethod) {
   updatePullRequestBranch(
     input: {pullRequestId: $pullRequestId, updateMethod: $updateMethod}
@@ -26,7 +27,7 @@ export const PrBranchUpdateDocument = `
     }
   }
 }
-    `
+    `)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

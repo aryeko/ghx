@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type IssueDeleteMutationVariables = Types.Exact<{
@@ -11,13 +12,13 @@ export type IssueDeleteMutation = {
   deleteIssue?: { __typename?: "DeleteIssuePayload"; clientMutationId?: string | null } | null
 }
 
-export const IssueDeleteDocument = `
+export const IssueDeleteDocument = new TypedDocumentString(`
     mutation IssueDelete($issueId: ID!) {
   deleteIssue(input: {issueId: $issueId}) {
     clientMutationId
   }
 }
-    `
+    `)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

@@ -100,6 +100,7 @@
     "@graphql-codegen/typescript": "^5.0.9",
     "@graphql-codegen/typescript-graphql-request": "^7.0.0",
     "@graphql-codegen/typescript-operations": "^5.0.9",
+    "@graphql-typed-document-node/core": "^3.2.0",
     "@opencode-ai/sdk": "^1.4.2",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "catalog:",

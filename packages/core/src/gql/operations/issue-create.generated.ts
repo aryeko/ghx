@@ -1,6 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
-import { IssueCoreFieldsFragmentDoc } from "./fragments/issue-core-fields.generated.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type IssueCreateMutationVariables = Types.Exact<{
@@ -24,7 +24,7 @@ export type IssueCreateMutation = {
   } | null
 }
 
-export const IssueCreateDocument = `
+export const IssueCreateDocument = new TypedDocumentString(`
     mutation IssueCreate($repositoryId: ID!, $title: String!, $body: String) {
   createIssue(input: {repositoryId: $repositoryId, title: $title, body: $body}) {
     issue {
@@ -32,7 +32,13 @@ export const IssueCreateDocument = `
     }
   }
 }
-    ${IssueCoreFieldsFragmentDoc}`
+    fragment IssueCoreFields on Issue {
+  id
+  number
+  title
+  state
+  url
+}`)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

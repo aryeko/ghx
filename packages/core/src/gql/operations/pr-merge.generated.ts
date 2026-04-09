@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type PrMergeMutationVariables = Types.Exact<{
@@ -22,7 +23,7 @@ export type PrMergeMutation = {
   } | null
 }
 
-export const PrMergeDocument = `
+export const PrMergeDocument = new TypedDocumentString(`
     mutation PrMerge($pullRequestId: ID!, $mergeMethod: PullRequestMergeMethod) {
   mergePullRequest(
     input: {pullRequestId: $pullRequestId, mergeMethod: $mergeMethod}
@@ -36,7 +37,7 @@ export const PrMergeDocument = `
     }
   }
 }
-    `
+    `)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

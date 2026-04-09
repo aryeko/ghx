@@ -1,6 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
-import { IssueCoreFieldsFragmentDoc } from "./fragments/issue-core-fields.generated.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type IssueViewQueryVariables = Types.Exact<{
@@ -29,7 +29,7 @@ export type IssueViewQuery = {
   } | null
 }
 
-export const IssueViewDocument = `
+export const IssueViewDocument = new TypedDocumentString(`
     query IssueView($owner: String!, $name: String!, $issueNumber: Int!) {
   repository(owner: $owner, name: $name) {
     issue(number: $issueNumber) {
@@ -43,7 +43,13 @@ export const IssueViewDocument = `
     }
   }
 }
-    ${IssueCoreFieldsFragmentDoc}`
+    fragment IssueCoreFields on Issue {
+  id
+  number
+  title
+  state
+  url
+}`)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

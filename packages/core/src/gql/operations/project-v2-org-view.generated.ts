@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type ProjectV2OrgViewQueryVariables = Types.Exact<{
@@ -23,7 +24,7 @@ export type ProjectV2OrgViewQuery = {
   } | null
 }
 
-export const ProjectV2OrgViewDocument = `
+export const ProjectV2OrgViewDocument = new TypedDocumentString(`
     query ProjectV2OrgView($org: String!, $projectNumber: Int!) {
   organization(login: $org) {
     projectV2(number: $projectNumber) {
@@ -36,7 +37,7 @@ export const ProjectV2OrgViewDocument = `
     }
   }
 }
-    `
+    `)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

@@ -61,8 +61,9 @@ import { RepoLabelsListDocument } from "./operations/repo-labels-list.generated.
 import { RepoViewDocument } from "./operations/repo-view.generated.js"
 import { UserNodeIdDocument } from "./operations/user-node-id.generated.js"
 
-// Unified document map — contains lookup queries, mutations, and query operations
-const DOCUMENTS: Record<string, string> = {
+// Unified document map — contains lookup queries, mutations, and query operations.
+// Values are TypedDocumentString instances (which extend String) since codegen v7.
+const DOCUMENTS: Record<string, string | { toString(): string }> = {
   // Resolution lookup queries (Phase 1)
   IssueAssigneesLookup: IssueAssigneesLookupDocument,
   IssueAssigneesLookupByNumber: IssueAssigneesLookupByNumberDocument,
@@ -137,7 +138,7 @@ export function getDocument(operationName: string): string {
   if (!doc) {
     throw new Error(`No document registered for operation: ${operationName}`)
   }
-  return doc
+  return String(doc)
 }
 
 export function getLookupDocument(operationName: string): string {

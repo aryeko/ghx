@@ -1,6 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
-import { PageInfoFieldsFragmentDoc } from "./fragments/page-info-fields.generated.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type ProjectV2ItemsListQueryVariables = Types.Exact<{
@@ -54,7 +54,7 @@ export type ProjectV2ItemsListQuery = {
   } | null
 }
 
-export const ProjectV2ItemsListDocument = `
+export const ProjectV2ItemsListDocument = new TypedDocumentString(`
     query ProjectV2ItemsList($owner: String!, $projectNumber: Int!, $first: Int!, $after: String) {
   organization(login: $owner) {
     projectV2(number: $projectNumber) {
@@ -109,7 +109,10 @@ export const ProjectV2ItemsListDocument = `
     }
   }
 }
-    ${PageInfoFieldsFragmentDoc}`
+    fragment PageInfoFields on PageInfo {
+  endCursor
+  hasNextPage
+}`)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

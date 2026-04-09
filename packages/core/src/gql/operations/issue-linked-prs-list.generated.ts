@@ -1,6 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
-import { PrCoreFieldsFragmentDoc } from "./fragments/pr-core-fields.generated.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type IssueLinkedPrsListQueryVariables = Types.Exact<{
@@ -83,7 +83,7 @@ export type IssueLinkedPrsListQuery = {
   } | null
 }
 
-export const IssueLinkedPrsListDocument = `
+export const IssueLinkedPrsListDocument = new TypedDocumentString(`
     query IssueLinkedPrsList($owner: String!, $name: String!, $issueNumber: Int!) {
   repository(owner: $owner, name: $name) {
     issue(number: $issueNumber) {
@@ -103,7 +103,13 @@ export const IssueLinkedPrsListDocument = `
     }
   }
 }
-    ${PrCoreFieldsFragmentDoc}`
+    fragment PrCoreFields on PullRequest {
+  id
+  number
+  title
+  state
+  url
+}`)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

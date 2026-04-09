@@ -1,5 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type IssueLabelsUpdateMutationVariables = Types.Exact<{
@@ -22,7 +23,7 @@ export type IssueLabelsUpdateMutation = {
   } | null
 }
 
-export const IssueLabelsUpdateDocument = `
+export const IssueLabelsUpdateDocument = new TypedDocumentString(`
     mutation IssueLabelsUpdate($issueId: ID!, $labelIds: [ID!]!) {
   updateIssue(input: {id: $issueId, labelIds: $labelIds}) {
     issue {
@@ -35,7 +36,7 @@ export const IssueLabelsUpdateDocument = `
     }
   }
 }
-    `
+    `)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,

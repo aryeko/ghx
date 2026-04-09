@@ -1,6 +1,6 @@
 import type { GraphQLClient, RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
-import { PageInfoFieldsFragmentDoc } from "./fragments/page-info-fields.generated.js"
+import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type IssueCommentsListQueryVariables = Types.Exact<{
@@ -39,7 +39,7 @@ export type IssueCommentsListQuery = {
   } | null
 }
 
-export const IssueCommentsListDocument = `
+export const IssueCommentsListDocument = new TypedDocumentString(`
     query IssueCommentsList($owner: String!, $name: String!, $issueNumber: Int!, $first: Int!, $after: String) {
   repository(owner: $owner, name: $name) {
     issue(number: $issueNumber) {
@@ -60,7 +60,10 @@ export const IssueCommentsListDocument = `
     }
   }
 }
-    ${PageInfoFieldsFragmentDoc}`
+    fragment PageInfoFields on PageInfo {
+  endCursor
+  hasNextPage
+}`)
 
 export type SdkFunctionWrapper = <T>(
   action: (requestHeaders?: Record<string, string>) => Promise<T>,
