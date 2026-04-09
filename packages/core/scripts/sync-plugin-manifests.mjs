@@ -36,7 +36,12 @@ const sharedFields = {
   keywords: pluginKeywords,
 }
 
-const claudePluginJson = { ...sharedFields }
+/** Fields specific to Claude Code plugin (not derived from package.json). */
+const claudeOnlyFields = {
+  skills: ["skills"],
+}
+
+const claudePluginJson = { ...sharedFields, ...claudeOnlyFields }
 
 const marketplaceJson = {
   name: "ghx-dev",
