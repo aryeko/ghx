@@ -1,5 +1,11 @@
 # @ghx-dev/core
 
+## 0.4.6
+
+### Patch Changes
+
+- 82add9d: Remove invalid `skills` field from plugin manifest.
+
 ## 0.4.5
 
 ### Patch Changes
