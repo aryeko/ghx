@@ -37,9 +37,7 @@ const sharedFields = {
 }
 
 /** Fields specific to Claude Code plugin (not derived from package.json). */
-const claudeOnlyFields = {
-  skills: ["skills"],
-}
+const claudeOnlyFields = {}
 
 const claudePluginJson = { ...sharedFields, ...claudeOnlyFields }
 
