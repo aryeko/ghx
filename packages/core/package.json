@@ -1,6 +1,6 @@
 {
   "name": "@ghx-dev/core",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "description": "Route GitHub operations through deterministic adapters instead of fragile shell scraping. 70+ capabilities covering issues, PRs, repos, releases, and projects — each with validated input, normalized output, and automatic fallback routing.",
   "author": "Arye Kogan",
   "license": "MIT",
