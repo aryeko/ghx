@@ -15,6 +15,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
+        with:
+          version: 10.29.3
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
@@ -40,6 +42,8 @@ jobs:
         with:
           fetch-depth: 0
       - uses: pnpm/action-setup@v6
+        with:
+          version: 10.29.3
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
@@ -89,6 +93,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
+        with:
+          version: 10.29.3
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
@@ -110,6 +116,8 @@ jobs:
         with:
           fetch-depth: 0
       - uses: pnpm/action-setup@v6
+        with:
+          version: 10.29.3
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
