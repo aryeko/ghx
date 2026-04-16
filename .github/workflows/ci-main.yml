@@ -17,6 +17,7 @@ jobs:
       - uses: pnpm/action-setup@v6
         with:
           version: 10.29.3
+      - run: corepack disable pnpm
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
@@ -31,6 +32,7 @@ jobs:
       - uses: pnpm/action-setup@v6
         with:
           version: 10.29.3
+      - run: corepack disable pnpm
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
@@ -55,6 +57,7 @@ jobs:
       - uses: pnpm/action-setup@v6
         with:
           version: 10.29.3
+      - run: corepack disable pnpm
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
@@ -104,6 +107,7 @@ jobs:
       - uses: pnpm/action-setup@v6
         with:
           version: 10.29.3
+      - run: corepack disable pnpm
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
