@@ -151,8 +151,8 @@ importers:
         specifier: ^3.2.0
         version: 3.2.0(graphql@16.13.2)
       '@opencode-ai/sdk':
-        specifier: ^1.4.3
-        version: 1.4.3
+        specifier: ^1.14.33
+        version: 1.14.33
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9
@@ -187,8 +187,8 @@ importers:
         specifier: workspace:*
         version: link:../core
       '@opencode-ai/sdk':
-        specifier: ^1.4.3
-        version: 1.4.3
+        specifier: ^1.14.33
+        version: 1.14.33
       commander:
         specifier: ^14.0.3
         version: 14.0.3
@@ -1825,8 +1825,8 @@ packages:
   '@nx/workspace@22.6.5':
     resolution: {integrity: sha512-/CZtv1ESSfZ1MVqSlCsmnBWysU1z5VdNlwANlqL6BV2X6RUHKDPVj4YuNPvCK+0LsqyzfJdUt3pcnBYxnT5TIg==}
 
-  '@opencode-ai/sdk@1.4.3':
-    resolution: {integrity: sha512-X0CAVbwoGAjTY2iecpWkx2B+GAa2jSaQKYpJ+xILopeF/OGKZUN15mjqci+L7cEuwLHV5wk3x2TStUOVCa5p0A==}
+  '@opencode-ai/sdk@1.14.33':
+    resolution: {integrity: sha512-LtP9oLMSxVw47AE562IagIOwxLfHLVjk/CTExkYCYtdjPXTQeU5mjyZDbahilAGeFUen9fFE/R9e933zvjF9sQ==}
 
   '@oxc-project/types@0.124.0':
     resolution: {integrity: sha512-VBFWMTBvHxS11Z5Lvlr3IWgrwhMTXV+Md+EQF0Xf60+wAdsGFTBx7X7K/hP4pi8N7dcm1RvcHwDxZ16Qx8keUg==}
@@ -6367,7 +6367,7 @@ snapshots:
       - '@swc/core'
       - debug
 
-  '@opencode-ai/sdk@1.4.3':
+  '@opencode-ai/sdk@1.14.33':
     dependencies:
       cross-spawn: 7.0.6
 
