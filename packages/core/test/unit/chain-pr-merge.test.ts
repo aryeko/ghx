@@ -13,6 +13,144 @@ import { createGithubClient } from "../helpers/engine-fixtures.js"
 // path relies on the card's `graphql.resolution` block.
 
 describe("executeTasks chaining — pr.merge resolution (issue #4)", () => {
+  it("routes deleteBranch closes in a chain through the CLI route", async () => {
+    const queryMock = vi.fn()
+    const queryRawMock = vi.fn()
+    const cliRunner = {
+      run: vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" }),
+    }
+
+    const result = await executeTasks(
+      [
+        {
+          task: "pr.close",
+          input: { owner: "acme", name: "repo", prNumber: 1, deleteBranch: true },
+        },
+        {
+          task: "pr.close",
+          input: { owner: "acme", name: "repo", prNumber: 2, deleteBranch: true },
+        },
+      ],
+      {
+        githubClient: createGithubClient({
+          query: queryMock,
+          queryRaw: queryRawMock,
+        }),
+        cliRunner,
+        skipGhPreflight: true,
+      },
+    )
+
+    expect(result.status).toBe("success")
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(queryRawMock).not.toHaveBeenCalled()
+    expect(cliRunner.run).toHaveBeenCalledTimes(2)
+    expect(cliRunner.run).toHaveBeenNthCalledWith(
+      1,
+      "gh",
+      expect.arrayContaining(["pr", "close", "1", "--delete-branch"]),
+      expect.any(Number),
+    )
+    expect(cliRunner.run).toHaveBeenNthCalledWith(
+      2,
+      "gh",
+      expect.arrayContaining(["pr", "close", "2", "--delete-branch"]),
+      expect.any(Number),
+    )
+  })
+
+  it("routes admin merges in a chain through the CLI route", async () => {
+    const queryMock = vi.fn()
+    const queryRawMock = vi.fn()
+    const cliRunner = {
+      run: vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" }),
+    }
+
+    const result = await executeTasks(
+      [
+        {
+          task: "pr.merge",
+          input: { owner: "acme", name: "repo", prNumber: 1, admin: true },
+        },
+        {
+          task: "pr.merge",
+          input: { owner: "acme", name: "repo", prNumber: 2, auto: true },
+        },
+      ],
+      {
+        githubClient: createGithubClient({
+          query: queryMock,
+          queryRaw: queryRawMock,
+        }),
+        cliRunner,
+        skipGhPreflight: true,
+      },
+    )
+
+    expect(result.status).toBe("success")
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(queryRawMock).not.toHaveBeenCalled()
+    expect(cliRunner.run).toHaveBeenCalledTimes(2)
+    expect(cliRunner.run).toHaveBeenNthCalledWith(
+      1,
+      "gh",
+      expect.arrayContaining(["pr", "merge", "1", "--merge", "--admin"]),
+      expect.any(Number),
+    )
+    expect(cliRunner.run).toHaveBeenNthCalledWith(
+      2,
+      "gh",
+      expect.arrayContaining(["pr", "merge", "2", "--merge", "--auto"]),
+      expect.any(Number),
+    )
+  })
+
+  it("routes deleteBranch merges in a chain through the CLI route", async () => {
+    const queryMock = vi.fn()
+    const queryRawMock = vi.fn()
+    const cliRunner = {
+      run: vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" }),
+    }
+
+    const result = await executeTasks(
+      [
+        {
+          task: "pr.merge",
+          input: { owner: "acme", name: "repo", prNumber: 1, method: "squash", deleteBranch: true },
+        },
+        {
+          task: "pr.merge",
+          input: { owner: "acme", name: "repo", prNumber: 2, method: "rebase", deleteBranch: true },
+        },
+      ],
+      {
+        githubClient: createGithubClient({
+          query: queryMock,
+          queryRaw: queryRawMock,
+        }),
+        cliRunner,
+        skipGhPreflight: true,
+      },
+    )
+
+    expect(result.status).toBe("success")
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(queryRawMock).not.toHaveBeenCalled()
+    expect(cliRunner.run).toHaveBeenCalledTimes(2)
+    expect(cliRunner.run).toHaveBeenNthCalledWith(
+      1,
+      "gh",
+      expect.arrayContaining(["pr", "merge", "1", "--squash", "--delete-branch"]),
+      expect.any(Number),
+    )
+    expect(cliRunner.run).toHaveBeenNthCalledWith(
+      2,
+      "gh",
+      expect.arrayContaining(["pr", "merge", "2", "--rebase", "--delete-branch"]),
+      expect.any(Number),
+    )
+  })
+
   it("resolves pullRequestId and uppercases mergeMethod for a 2-step pr.merge chain", async () => {
     // Phase 1 (resolution lookup): batched PrNodeId query returns one node per step alias.
     const queryMock = vi.fn().mockResolvedValueOnce({

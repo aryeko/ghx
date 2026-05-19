@@ -64,7 +64,7 @@ pr.checks.rerun.failed - Rerun failed PR workflow checks for a selected run. [ow
 pr.checks.rerun.all - Rerun all PR workflow checks for a selected run. [owner, name, prNumber, runId]
 pr.merge.status - View PR mergeability and readiness signals. [owner, name, prNumber]
 pr.merge - Execute a PR merge. [owner, name, prNumber, method?, deleteBranch?, admin?, auto?]
-pr.close - Close a PR without merging. [owner, name, prNumber, deleteBranch?]
+pr.close - Close a PR without merging. [owner, name, prNumber, deleteBranch?, comment?]
 pr.comments.create - Post an issue-style comment on a PR (e.g. `@dependabot rebase`). [owner, name, prNumber, body]
 pr.assignees.add - Add assignees to a PR without replacing existing ones. [owner, name, prNumber, assignees]
 pr.assignees.remove - Remove specific assignees from a PR. [owner, name, prNumber, assignees]

@@ -130,6 +130,34 @@ export const operationCardSchema = {
                     },
                     additionalProperties: false,
                   },
+                  {
+                    type: "object",
+                    required: ["target", "source", "from_input"],
+                    properties: {
+                      target: { type: "string", minLength: 1 },
+                      source: { const: "input_present" },
+                      from_input: { type: "string", minLength: 1 },
+                    },
+                    additionalProperties: false,
+                  },
+                  {
+                    type: "object",
+                    required: ["target", "source", "from_input", "default"],
+                    properties: {
+                      target: { type: "string", minLength: 1 },
+                      source: { const: "input_default" },
+                      from_input: { type: "string", minLength: 1 },
+                      default: {
+                        anyOf: [
+                          { type: "string" },
+                          { type: "number" },
+                          { type: "boolean" },
+                          { type: "null" },
+                        ],
+                      },
+                    },
+                    additionalProperties: false,
+                  },
                 ],
               },
             },

@@ -582,10 +582,12 @@ const handlePrClose: CliHandler = async (runner, params, card) => {
     if (prNumber === null) throw new Error("Missing or invalid prNumber for pr.close")
     if (params.deleteBranch !== undefined && typeof params.deleteBranch !== "boolean")
       throw new Error("Missing or invalid deleteBranch for pr.close")
+    const comment = parseNonEmptyString(params.comment)
 
     const args = [...commandTokens(card, "pr close"), String(prNumber)]
     if (repo) args.push("--repo", repo)
     if (params.deleteBranch === true) args.push("--delete-branch")
+    if (comment !== null) args.push("--comment", comment)
 
     const result = await runner.run("gh", args, DEFAULT_TIMEOUT_MS)
     if (result.exitCode !== 0) {

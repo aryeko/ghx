@@ -45,6 +45,9 @@ routing:
   fallbacks: [cli]
   suitability:
     - when: params
+      predicate: cli if deleteBranch == true
+      reason: "gh CLI required for --delete-branch (mergePullRequest GraphQL cannot delete refs)"
+    - when: params
       predicate: cli if admin == true
       reason: "gh CLI required for --admin (mergePullRequest GraphQL has no admin bypass)"
     - when: params

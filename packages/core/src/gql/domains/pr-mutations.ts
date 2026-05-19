@@ -553,7 +553,11 @@ export async function runPrClose(
   const client = createGraphqlRequestClient(transport)
   const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
 
-  const result = await getPrCloseSdk(client).PrClose({ pullRequestId })
+  const result = await getPrCloseSdk(client).PrClose({
+    pullRequestId,
+    addComment: input.comment !== undefined,
+    commentBody: input.comment ?? "",
+  })
 
   const pr = result.closePullRequest?.pullRequest
   if (!pr) {

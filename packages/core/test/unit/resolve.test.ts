@@ -169,6 +169,31 @@ describe("applyInject", () => {
       )
     })
   })
+
+  it("input_present: returns true when input field exists and false otherwise", () => {
+    const spec: InjectSpec = {
+      target: "addComment",
+      source: "input_present",
+      from_input: "comment",
+    }
+
+    expect(applyInject(spec, {}, { comment: "closing note" })).toEqual({ addComment: true })
+    expect(applyInject(spec, {}, {})).toEqual({ addComment: false })
+  })
+
+  it("input_default: returns input value or default when the field is absent", () => {
+    const spec: InjectSpec = {
+      target: "commentBody",
+      source: "input_default",
+      from_input: "comment",
+      default: "",
+    }
+
+    expect(applyInject(spec, {}, { comment: "closing note" })).toEqual({
+      commentBody: "closing note",
+    })
+    expect(applyInject(spec, {}, {})).toEqual({ commentBody: "" })
+  })
 })
 
 describe("buildOperationVars", () => {

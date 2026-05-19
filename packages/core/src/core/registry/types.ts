@@ -117,6 +117,21 @@ export interface InputUpperInject {
   from_input: string
 }
 
+/** Injects whether an input field is present and non-null. */
+export interface InputPresentInject {
+  target: string
+  source: "input_present"
+  from_input: string
+}
+
+/** Injects an input field value, or a static default when the field is absent or null. */
+export interface InputDefaultInject {
+  target: string
+  source: "input_default"
+  from_input: string
+  default: string | number | boolean | null
+}
+
 /** A specification for how to inject a resolved Phase 1 value into Phase 2. */
 export type InjectSpec =
   | ScalarInject
@@ -124,6 +139,8 @@ export type InjectSpec =
   | InputPassthroughInject
   | NullLiteralInject
   | InputUpperInject
+  | InputPresentInject
+  | InputDefaultInject
 
 /** Defines the GraphQL query to run during the Phase 1 lookup. */
 export interface LookupSpec {

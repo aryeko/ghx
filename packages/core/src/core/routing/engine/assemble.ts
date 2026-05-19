@@ -31,6 +31,40 @@ export type AssembleInput = {
   batchStartMs: number
 }
 
+function stripExcludedFields(value: unknown, excludedFields: ReadonlySet<string>): unknown {
+  if (Array.isArray(value)) {
+    return value.map((entry) => stripExcludedFields(entry, excludedFields))
+  }
+
+  if (typeof value !== "object" || value === null) {
+    return value
+  }
+
+  const result: Record<string, unknown> = {}
+  for (const [key, child] of Object.entries(value)) {
+    if (!excludedFields.has(key)) {
+      result[key] = stripExcludedFields(child, excludedFields)
+    }
+  }
+  return result
+}
+
+function applyInputExclusions(data: unknown, input: Record<string, unknown>): unknown {
+  const exclude = input.exclude
+  if (!Array.isArray(exclude)) {
+    return data
+  }
+
+  const excludedFields = new Set(
+    exclude.filter((field): field is string => typeof field === "string"),
+  )
+  if (excludedFields.size === 0) {
+    return data
+  }
+
+  return stripExcludedFields(data, excludedFields)
+}
+
 export function assembleChainResult(input: AssembleInput): ChainResultEnvelope {
   const {
     steps,
@@ -95,7 +129,11 @@ export function assembleChainResult(input: AssembleInput): ChainResultEnvelope {
     }
 
     if (alias in queryRawResult) {
-      return { task: req.task, ok: true, data: queryRawResult[alias] }
+      return {
+        task: req.task,
+        ok: true,
+        data: applyInputExclusions(queryRawResult[alias], req.input),
+      }
     }
 
     // Determine context-appropriate error message

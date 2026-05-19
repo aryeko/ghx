@@ -604,6 +604,7 @@ export type PrCloseInput = {
   name: string
   prNumber: number
   deleteBranch?: boolean
+  comment?: string
 }
 
 export type PrCloseData = {

@@ -81,6 +81,53 @@ describe("runPrClose", () => {
     expect(secondCall?.[1]).toMatchObject({ pullRequestId: "PR_node_abc" })
   })
 
+  it("adds a comment when comment text is supplied", async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({ repository: { pullRequest: { id: "PR_node_abc" } } })
+      .mockResolvedValueOnce({
+        closePullRequest: {
+          pullRequest: { id: "PR_node_abc", number: 42, state: "CLOSED", closed: true },
+        },
+        addComment: {
+          commentEdge: {
+            node: { id: "COMMENT_node" },
+          },
+        },
+      })
+    const transport: GraphqlTransport = { execute }
+
+    await runPrClose(transport, { ...baseInput, comment: "Superseded by another PR." })
+
+    const secondCall = execute.mock.calls[1]
+    expect(secondCall?.[1]).toMatchObject({
+      pullRequestId: "PR_node_abc",
+      addComment: true,
+      commentBody: "Superseded by another PR.",
+    })
+  })
+
+  it("does not request addComment when comment is absent", async () => {
+    const execute = vi
+      .fn()
+      .mockResolvedValueOnce({ repository: { pullRequest: { id: "PR_node_abc" } } })
+      .mockResolvedValueOnce({
+        closePullRequest: {
+          pullRequest: { id: "PR_node_abc", number: 42, state: "CLOSED", closed: true },
+        },
+      })
+    const transport: GraphqlTransport = { execute }
+
+    await runPrClose(transport, baseInput)
+
+    const secondCall = execute.mock.calls[1]
+    expect(secondCall?.[1]).toMatchObject({
+      pullRequestId: "PR_node_abc",
+      addComment: false,
+      commentBody: "",
+    })
+  })
+
   it("rejects invalid input via assertion", async () => {
     const execute = vi.fn()
     const transport: GraphqlTransport = { execute }

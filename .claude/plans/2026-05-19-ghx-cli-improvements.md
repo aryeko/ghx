@@ -27,7 +27,7 @@
 - Modify: `packages/core/src/core/execute/execute.ts:120-135` (single-call path) — but the single-call path uses `normalizeError` with `ajvErrors` raw, so enrichment must live at error-formatter site. Inspect first; if enrichment only matters for the chain path's stringified error, only touch `preflight.ts`.
 - Add test: `packages/core/test/unit/preflight-error-messages.test.ts`
 
-**Behavior:** When AJV error has `keyword: "enum"` and `params.allowedValues` is an array, append ` (allowed: <comma-joined values>)` to the message. When keyword is `"type"`, append ` (expected: <params.type>)`.
+**Behavior:** When AJV error has `keyword: "enum"` and `params.allowedValues` is an array, append `(allowed: <comma-joined values>)` to the message. When keyword is `"type"`, append `(expected: <params.type>)`.
 
 ### Commit 2 — Issue #5b: Case-insensitive enum cards
 
@@ -219,7 +219,7 @@
 
 ## Verification gate (before pushing)
 
-```
+```bash
 pnpm run ci --outputStyle=static
 pnpm run ghx:gql:verify
 ```
@@ -229,6 +229,6 @@ Both must pass with zero warnings.
 ## Coverage
 
 ≥90% on touched files. Aim for 95%. Spot-check via:
-```
+```bash
 pnpm --filter @ghx-dev/core run test:coverage
 ```

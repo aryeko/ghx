@@ -1,5 +1,5 @@
+import { formatSchemaErrorDetails } from "@core/core/registry/schema-validator.js"
 import { describe, expect, it } from "vitest"
-import { formatSchemaErrorDetails } from "../../src/core/registry/schema-validator.js"
 
 describe("formatSchemaErrorDetails", () => {
   it("appends ` (allowed: ...)` when keyword === 'enum' and params.allowedValues is a string array", () => {

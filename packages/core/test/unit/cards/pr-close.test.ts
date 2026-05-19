@@ -93,14 +93,14 @@ describe("pr.close operation card", () => {
       expect(result.ok).toBe(false)
     })
 
-    it("rejects additional properties (no comment field at MVP)", () => {
+    it("accepts an optional close comment", () => {
       const result = validateInput(schema, {
         owner: "acme",
         name: "repo",
         prNumber: 42,
         comment: "Closing this PR",
       })
-      expect(result.ok).toBe(false)
+      expect(result.ok).toBe(true)
     })
   })
 
@@ -127,13 +127,13 @@ describe("pr.close operation card", () => {
       expect(result.ok).toBe(false)
     })
 
-    it("rejects payloads missing deleteBranch", () => {
+    it("accepts payloads missing deleteBranch", () => {
       const result = validateOutput(schema, {
         prNumber: 42,
         state: "CLOSED",
         closed: true,
       })
-      expect(result.ok).toBe(false)
+      expect(result.ok).toBe(true)
     })
   })
 })

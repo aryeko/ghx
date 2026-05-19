@@ -462,6 +462,7 @@ export function assertPrCloseInput(input: PrCloseInput): void {
   if (input.deleteBranch !== undefined && typeof input.deleteBranch !== "boolean") {
     throw new Error("deleteBranch must be a boolean")
   }
+  assertOptionalString(input.comment, "PR close comment")
 }
 
 export function assertPrBranchUpdateInput(input: PrBranchUpdateInput): void {

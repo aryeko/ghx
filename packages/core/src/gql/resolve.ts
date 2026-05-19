@@ -53,6 +53,17 @@ export function applyInject(
     return { [spec.target]: value.toUpperCase() }
   }
 
+  if (spec.source === "input_present") {
+    return {
+      [spec.target]: input[spec.from_input] !== undefined && input[spec.from_input] !== null,
+    }
+  }
+
+  if (spec.source === "input_default") {
+    const value = input[spec.from_input]
+    return { [spec.target]: value === undefined || value === null ? spec.default : value }
+  }
+
   // map_array
   if (spec.source !== "map_array") {
     throw new Error(`Unknown inject source: '${(spec as InjectSpec).source}'`)

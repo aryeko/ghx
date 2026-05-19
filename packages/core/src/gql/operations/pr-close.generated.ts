@@ -5,6 +5,8 @@ import { TypedDocumentString } from "./typed-document-string.js"
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type PrCloseMutationVariables = Types.Exact<{
   pullRequestId: Types.Scalars["ID"]["input"]
+  addComment?: Types.Scalars["Boolean"]["input"]
+  commentBody?: Types.Scalars["String"]["input"]
 }>
 
 export type PrCloseMutation = {
@@ -19,16 +21,30 @@ export type PrCloseMutation = {
       closed: boolean
     } | null
   } | null
+  addComment?: {
+    __typename?: "AddCommentPayload"
+    commentEdge?: {
+      __typename?: "IssueCommentEdge"
+      node?: { __typename?: "IssueComment"; id: string } | null
+    } | null
+  } | null
 }
 
 export const PrCloseDocument = new TypedDocumentString(`
-    mutation PrClose($pullRequestId: ID!) {
+    mutation PrClose($pullRequestId: ID!, $addComment: Boolean! = false, $commentBody: String! = "") {
   closePullRequest(input: {pullRequestId: $pullRequestId}) {
     pullRequest {
       id
       number
       state
       closed
+    }
+  }
+  addComment(input: {subjectId: $pullRequestId, body: $commentBody}) @include(if: $addComment) {
+    commentEdge {
+      node {
+        id
+      }
     }
   }
 }

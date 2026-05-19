@@ -1,10 +1,17 @@
-mutation PrClose($pullRequestId: ID!) {
+mutation PrClose($pullRequestId: ID!, $addComment: Boolean! = false, $commentBody: String! = "") {
   closePullRequest(input: { pullRequestId: $pullRequestId }) {
     pullRequest {
       id
       number
       state
       closed
+    }
+  }
+  addComment(input: { subjectId: $pullRequestId, body: $commentBody }) @include(if: $addComment) {
+    commentEdge {
+      node {
+        id
+      }
     }
   }
 }

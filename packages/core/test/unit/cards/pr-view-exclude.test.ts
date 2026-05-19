@@ -1,7 +1,8 @@
 import type { TaskRequest } from "@core/core/contracts/task.js"
-import { executeTask } from "@core/core/routing/engine/index.js"
+import { executeTask, executeTasks } from "@core/core/routing/engine/index.js"
 import { createGithubClient } from "@core/gql/github-client.js"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
+import { createGithubClient as createMockGithubClient } from "../../helpers/engine-fixtures.js"
 
 const fullPrViewResponse = {
   repository: {
@@ -107,5 +108,41 @@ describe("pr.view exclude input", () => {
     expect(result.ok).toBe(false)
     expect(result.error?.code).toBe("VALIDATION")
     expect(result.meta.reason).toBe("INPUT_VALIDATION")
+  })
+
+  it("strips body from each chained pr.view result when exclude: ['body'] is supplied", async () => {
+    const queryMock = vi.fn().mockResolvedValueOnce({
+      step0: {
+        pullRequest: fullPrViewResponse.repository.pullRequest,
+      },
+      step1: {
+        pullRequest: fullPrViewResponse.repository.pullRequest,
+      },
+    })
+
+    const result = await executeTasks(
+      [
+        {
+          task: "pr.view",
+          input: { owner: "go-modkit", name: "modkit", prNumber: 232, exclude: ["body"] },
+        },
+        {
+          task: "pr.view",
+          input: { owner: "go-modkit", name: "modkit", prNumber: 233, exclude: ["body"] },
+        },
+      ],
+      {
+        githubClient: createMockGithubClient({
+          query: queryMock,
+        }),
+      },
+    )
+
+    expect(result.status).toBe("success")
+    for (const step of result.results) {
+      expect(step.ok).toBe(true)
+      if (!step.ok) throw new Error("expected ok step")
+      expect(JSON.stringify(step.data)).not.toContain("Dependabot boilerplate body")
+    }
   })
 })

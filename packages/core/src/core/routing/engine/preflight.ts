@@ -4,6 +4,7 @@ import { mapErrorToCode } from "@core/core/errors/map-error.js"
 import { getOperationCard } from "@core/core/registry/index.js"
 import { formatSchemaErrorDetails, validateInput } from "@core/core/registry/schema-validator.js"
 import type { OperationCard } from "@core/core/registry/types.js"
+import { selectPreferredRoute } from "@core/core/routing/suitability.js"
 import type { ClassifiedStep } from "./types.js"
 
 export type PreflightSuccess = {
@@ -100,12 +101,17 @@ export function runPreflight(
     cardIndex += 1
 
     let route: ClassifiedStep["route"]
-    if (!card.graphql) {
+    const preferredRoute = selectPreferredRoute(card, req.input, {})
+    if (preferredRoute === "cli" && card.cli) {
       route = "cli"
-    } else if (card.graphql.operationType === "query") {
-      route = "gql-query"
+    } else if (!card.graphql && card.cli) {
+      route = "cli"
+    } else if (card.graphql) {
+      route = card.graphql.operationType === "query" ? "gql-query" : "gql-mutation"
+    } else if (card.cli) {
+      route = "cli"
     } else {
-      route = "gql-mutation"
+      route = "gql-query"
     }
 
     steps.push({ route, card, index: i, request: req })

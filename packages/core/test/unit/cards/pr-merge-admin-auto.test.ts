@@ -205,6 +205,37 @@ describe("pr.merge admin/auto routing", () => {
     expect(graphql).toHaveBeenCalledTimes(1)
     expect(cli).not.toHaveBeenCalled()
   })
+
+  it("routes to cli when deleteBranch:true", async () => {
+    const card = loadPrMergeCard()
+    const cli = vi.fn(async () => ({
+      ok: true as const,
+      data: {
+        prNumber: 1,
+        method: "merge",
+        isMethodAssumed: true,
+        queued: true,
+        deleteBranch: true,
+      },
+      meta: { capability_id: "pr.merge", route_used: "cli" as const },
+    }))
+    const graphql = vi.fn(async () => ({
+      ok: true as const,
+      data: {},
+      meta: { capability_id: "pr.merge", route_used: "graphql" as const },
+    }))
+
+    const result = await execute({
+      card,
+      params: { owner: "acme", name: "modkit", prNumber: 1, deleteBranch: true },
+      preflight: alwaysPassPreflight,
+      routes: { graphql, cli, rest: vi.fn() },
+    })
+
+    expect(result.ok).toBe(true)
+    expect(cli).toHaveBeenCalledTimes(1)
+    expect(graphql).not.toHaveBeenCalled()
+  })
 })
 
 describe("pr.merge CLI handler --admin and --auto flags", () => {
