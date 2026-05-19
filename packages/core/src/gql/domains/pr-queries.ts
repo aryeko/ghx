@@ -35,21 +35,32 @@ export async function runPrView(
   assertPrInput(input)
 
   const sdk = getPrViewSdk(createGraphqlRequestClient(transport))
-  const result: PrViewQuery = await sdk.PrView(input)
+  const result: PrViewQuery = await sdk.PrView({
+    owner: input.owner,
+    name: input.name,
+    prNumber: input.prNumber,
+  })
   const pr = result.repository?.pullRequest
   if (!pr) {
     throw new Error("Pull request not found")
   }
 
-  return {
+  const excludeBody = Array.isArray(input.exclude) && input.exclude.includes("body")
+
+  const base: PrViewData = {
     id: pr.id,
     number: pr.number,
     title: pr.title,
     state: pr.state,
     url: pr.url,
-    body: pr.body ?? "",
     labels: (pr.labels?.nodes ?? []).flatMap((n) => (n ? [n.name] : [])),
   }
+
+  if (excludeBody) {
+    return base
+  }
+
+  return { ...base, body: pr.body ?? "" }
 }
 
 export async function runPrList(
