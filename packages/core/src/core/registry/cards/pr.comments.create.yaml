@@ -1,0 +1,39 @@
+capability_id: pr.comments.create
+version: "1.0.0"
+description: Create a pull request comment.
+input_schema:
+  type: object
+  required: [owner, name, prNumber, body]
+  properties:
+    owner: { type: string, minLength: 1 }
+    name: { type: string, minLength: 1 }
+    prNumber: { type: integer, minimum: 1 }
+    body: { type: string, minLength: 1 }
+  additionalProperties: false
+output_schema:
+  type: object
+  required: [id, body, url]
+  properties:
+    id: { type: string, minLength: 1 }
+    body: { type: string }
+    url: { type: string }
+  additionalProperties: false
+routing:
+  preferred: graphql
+  fallbacks: []
+graphql:
+  operationName: IssueCommentCreate
+  operationType: mutation
+  documentPath: src/gql/operations/issue-comment-create.graphql
+  resolution:
+    lookup:
+      operationName: PrNodeId
+      documentPath: src/gql/operations/pr-node-id.graphql
+      vars:
+        owner: owner
+        name: name
+        prNumber: prNumber
+    inject:
+      - target: issueId
+        source: scalar
+        path: repository.pullRequest.id

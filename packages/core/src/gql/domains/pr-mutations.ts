@@ -3,6 +3,7 @@ import {
   asRecord,
   assertPrAssigneesInput,
   assertPrBranchUpdateInput,
+  assertPrCommentCreateInput,
   assertPrCommentsListInput,
   assertPrCreateInput,
   assertPrMergeInput,
@@ -13,6 +14,7 @@ import {
   assertReviewThreadInput,
 } from "../assertions.js"
 import type * as Types from "../operations/base-types.js"
+import { getSdk as getIssueCommentCreateSdk } from "../operations/issue-comment-create.generated.js"
 import { getSdk as getIssueCreateRepositoryIdSdk } from "../operations/issue-create-repository-id.generated.js"
 import { getSdk as getPrAssigneesAddSdk } from "../operations/pr-assignees-add.generated.js"
 import { getSdk as getPrAssigneesRemoveSdk } from "../operations/pr-assignees-remove.generated.js"
@@ -42,6 +44,8 @@ import type {
   PrAssigneesRemoveInput,
   PrBranchUpdateData,
   PrBranchUpdateInput,
+  PrCommentCreateData,
+  PrCommentCreateInput,
   PrCommentsListData,
   PrCommentsListInput,
   PrCreateData,
@@ -248,6 +252,34 @@ function parseReviewThreadMutationResult(
   return {
     id: thread.id,
     isResolved: Boolean(thread.isResolved),
+  }
+}
+
+export async function runPrCommentCreate(
+  transport: GraphqlTransport,
+  input: PrCommentCreateInput,
+): Promise<PrCommentCreateData> {
+  assertPrCommentCreateInput(input)
+
+  const client = createGraphqlRequestClient(transport)
+  const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
+
+  const result = await getIssueCommentCreateSdk(client).IssueCommentCreate({
+    issueId: pullRequestId,
+    body: input.body,
+  })
+
+  const mutation = asRecord(asRecord(result)?.["addComment"])
+  const commentEdge = asRecord(mutation?.["commentEdge"])
+  const node = asRecord(commentEdge?.["node"])
+  if (!node || typeof node["id"] !== "string" || typeof node["body"] !== "string") {
+    throw new Error("PR comment creation failed")
+  }
+
+  return {
+    id: node["id"],
+    body: node["body"],
+    url: typeof node["url"] === "string" ? node["url"] : "",
   }
 }
 

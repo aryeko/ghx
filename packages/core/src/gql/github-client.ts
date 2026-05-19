@@ -45,6 +45,8 @@ import type {
   PrAssigneesRemoveInput,
   PrBranchUpdateData,
   PrBranchUpdateInput,
+  PrCommentCreateData,
+  PrCommentCreateInput,
   PrCommentsListData,
   PrCommentsListInput,
   PrCreateData,
@@ -131,6 +133,7 @@ export interface GithubClient extends GraphqlClient {
   fetchIssueView(input: IssueViewInput): Promise<IssueViewData>
   fetchPrList(input: PrListInput): Promise<PrListData>
   fetchPrView(input: PrViewInput): Promise<PrViewData>
+  createPrComment(input: PrCommentCreateInput): Promise<PrCommentCreateData>
   fetchPrCommentsList(input: PrCommentsListInput): Promise<PrCommentsListData>
   fetchPrReviewsList(input: PrReviewsListInput): Promise<PrReviewsListData>
   fetchPrDiffListFiles(input: PrDiffListFilesInput): Promise<PrDiffListFilesData>
@@ -256,6 +259,8 @@ export function createGithubClient(transport: GraphqlTransport): GithubClient {
     fetchPrDiffListFiles: async (input) =>
       (await loadPrQueries()).runPrDiffListFiles(transport, input),
     fetchPrMergeStatus: async (input) => (await loadPrQueries()).runPrMergeStatus(transport, input),
+    createPrComment: async (input) =>
+      (await loadPrMutations()).runPrCommentCreate(transport, input),
     fetchPrCommentsList: async (input) =>
       (await loadPrMutations()).runPrCommentsList(transport, input),
     replyToReviewThread: async (input) =>

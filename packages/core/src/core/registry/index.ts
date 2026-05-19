@@ -46,6 +46,7 @@ function loadCardsFromYaml(): OperationCard[] {
     "pr.view",
     "pr.list",
     "pr.create",
+    "pr.comments.create",
     "pr.update",
     "pr.threads.list",
     "pr.threads.reply",

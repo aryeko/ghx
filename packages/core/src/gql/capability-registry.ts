@@ -23,6 +23,7 @@ import type {
   PrAssigneesAddInput,
   PrAssigneesRemoveInput,
   PrBranchUpdateInput,
+  PrCommentCreateInput,
   PrCommentsListInput,
   PrDiffListFilesInput,
   PrListInput,
@@ -325,6 +326,15 @@ const handlers = new Map<string, GraphqlHandler>([
   ],
 
   // PR mutations (Phase 2)
+  [
+    "pr.comments.create",
+    (c, p) => {
+      if (!c.createPrComment) {
+        throw new Error("createPrComment operation not available")
+      }
+      return c.createPrComment(p as PrCommentCreateInput)
+    },
+  ],
   [
     "pr.create",
     (c, p) => {

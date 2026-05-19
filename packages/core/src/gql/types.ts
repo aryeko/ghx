@@ -105,6 +105,19 @@ export type IssueCommentCreateInput = {
   body: string
 }
 
+export type PrCommentCreateInput = {
+  owner: string
+  name: string
+  prNumber: number
+  body: string
+}
+
+export type PrCommentCreateData = {
+  id: string
+  body: string
+  url: string
+}
+
 export type IssueLinkedPrsListInput = {
   owner: string
   name: string

@@ -22,6 +22,7 @@ import type {
   PrAssigneesAddInput,
   PrAssigneesRemoveInput,
   PrBranchUpdateInput,
+  PrCommentCreateInput,
   PrCommentsListInput,
   PrCreateInput,
   PrDiffListFilesInput,
@@ -394,6 +395,15 @@ export function assertProjectUserInput(input: ProjectV2UserViewInput): void {
   if (!Number.isInteger(input.projectNumber) || input.projectNumber <= 0) {
     throw new Error("Project number must be a positive integer")
   }
+}
+
+export function assertPrCommentCreateInput(input: PrCommentCreateInput): void {
+  assertPrInput({
+    owner: input.owner,
+    name: input.name,
+    prNumber: input.prNumber,
+  })
+  assertNonEmptyString(input.body, "PR comment body")
 }
 
 export function assertPrCreateInput(input: PrCreateInput): void {
