@@ -74,7 +74,7 @@
     "vite": "^8.0.8",
     "eslint": "^9.35.0",
     "globals": "^17.5.0",
-    "lefthook": "^2.1.5",
+    "lefthook": "^2.1.6",
     "nx": "22.6.5",
     "typescript": "catalog:",
     "typescript-eslint": "^8.56.1"
