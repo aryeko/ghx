@@ -120,6 +120,16 @@ export const operationCardSchema = {
                     },
                     additionalProperties: false,
                   },
+                  {
+                    type: "object",
+                    required: ["target", "source", "from_input"],
+                    properties: {
+                      target: { type: "string", minLength: 1 },
+                      source: { const: "input_upper" },
+                      from_input: { type: "string", minLength: 1 },
+                    },
+                    additionalProperties: false,
+                  },
                 ],
               },
             },

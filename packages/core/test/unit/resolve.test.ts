@@ -135,6 +135,40 @@ describe("applyInject", () => {
     }
     expect(applyInject(spec, {}, {})).toEqual({ milestoneId: null })
   })
+
+  describe("input_upper", () => {
+    const spec: InjectSpec = {
+      target: "mergeMethod",
+      source: "input_upper",
+      from_input: "method",
+    }
+
+    it("uppercases a lowercase string input", () => {
+      expect(applyInject(spec, {}, { method: "squash" })).toEqual({ mergeMethod: "SQUASH" })
+    })
+
+    it("uppercases a mixed-case string input", () => {
+      expect(applyInject(spec, {}, { method: "Rebase" })).toEqual({ mergeMethod: "REBASE" })
+    })
+
+    it("preserves an already uppercase string input", () => {
+      expect(applyInject(spec, {}, { method: "MERGE" })).toEqual({ mergeMethod: "MERGE" })
+    })
+
+    it("returns {} when the input field is missing (omits the variable)", () => {
+      expect(applyInject(spec, {}, {})).toEqual({})
+    })
+
+    it("returns {} when the input field is null (omits the variable)", () => {
+      expect(applyInject(spec, {}, { method: null })).toEqual({})
+    })
+
+    it("throws when the input field is not a string", () => {
+      expect(() => applyInject(spec, {}, { method: 42 })).toThrow(
+        /input field 'method' must be a string/,
+      )
+    })
+  })
 })
 
 describe("buildOperationVars", () => {

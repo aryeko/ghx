@@ -38,6 +38,21 @@ export function applyInject(
     return { [spec.target]: value }
   }
 
+  if (spec.source === "input_upper") {
+    const value = input[spec.from_input]
+    // Missing or null: leave the variable unset so the optional GraphQL variable
+    // falls through to its server-side default (no error — value is not required).
+    if (value === undefined || value === null) {
+      return {}
+    }
+    if (typeof value !== "string") {
+      throw new Error(
+        `Resolution failed for '${spec.target}': input field '${spec.from_input}' must be a string for input_upper inject (got ${typeof value})`,
+      )
+    }
+    return { [spec.target]: value.toUpperCase() }
+  }
+
   // map_array
   if (spec.source !== "map_array") {
     throw new Error(`Unknown inject source: '${(spec as InjectSpec).source}'`)

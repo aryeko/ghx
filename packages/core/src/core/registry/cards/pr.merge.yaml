@@ -55,5 +55,25 @@ graphql:
   operationName: PrMerge
   operationType: mutation
   documentPath: src/gql/operations/pr-merge.graphql
+  # Resolution maps the user-facing inputs to the GraphQL mutation variables:
+  # - pullRequestId is the GraphQL node id, looked up from owner/name/prNumber.
+  # - mergeMethod is the uppercase GraphQL enum, derived from the lower/mixed-case
+  #   `method` input. The single-call path (capability-registry handler) does the
+  #   same normalization, so chain and single-call paths agree.
+  resolution:
+    lookup:
+      operationName: PrNodeId
+      documentPath: src/gql/operations/pr-node-id.graphql
+      vars:
+        owner: owner
+        name: name
+        prNumber: prNumber
+    inject:
+      - target: pullRequestId
+        source: scalar
+        path: repository.pullRequest.id
+      - target: mergeMethod
+        source: input_upper
+        from_input: method
 cli:
   command: pr merge
