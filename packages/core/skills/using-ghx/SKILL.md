@@ -46,7 +46,7 @@ issue.relations.parent.set - Set an issue parent relation. [issueId, parentIssue
 issue.relations.parent.remove - Remove an issue parent relation. [issueId]
 issue.relations.blocked_by.add - Add a blocked-by relation for an issue. [issueId, blockedByIssueId]
 issue.relations.blocked_by.remove - Remove a blocked-by relation for an issue. [issueId, blockedByIssueId]
-pr.view - Fetch one pull request by number. [owner, name, prNumber]
+pr.view - Fetch one pull request by number. [owner, name, prNumber, exclude?]
 pr.list - List repository pull requests. [owner, name, state?, first?, after?]
 pr.create - Create a pull request. [owner, name, title, head, base, body?, draft?]
 pr.update - Update pull request metadata (title, body, draft status). [owner, name, prNumber, title?, body?, draft?]
@@ -63,7 +63,9 @@ pr.checks.list - List PR check statuses with summary counts. [owner, name, prNum
 pr.checks.rerun.failed - Rerun failed PR workflow checks for a selected run. [owner, name, prNumber, runId]
 pr.checks.rerun.all - Rerun all PR workflow checks for a selected run. [owner, name, prNumber, runId]
 pr.merge.status - View PR mergeability and readiness signals. [owner, name, prNumber]
-pr.merge - Execute a PR merge. [owner, name, prNumber, method?, deleteBranch?]
+pr.merge - Execute a PR merge. [owner, name, prNumber, method?, deleteBranch?, admin?, auto?]
+pr.close - Close a PR without merging. [owner, name, prNumber, deleteBranch?]
+pr.comments.create - Post an issue-style comment on a PR (e.g. `@dependabot rebase`). [owner, name, prNumber, body]
 pr.assignees.add - Add assignees to a PR without replacing existing ones. [owner, name, prNumber, assignees]
 pr.assignees.remove - Remove specific assignees from a PR. [owner, name, prNumber, assignees]
 pr.branch.update - Update PR branch with latest base branch changes. [owner, name, prNumber]
@@ -127,6 +129,8 @@ EOF
 
 **When NOT to chain:** Don't chain when a later step depends on the result of an earlier one. For example, "check CI, then fetch logs only if something failed" requires two sequential calls because the second depends on the first result. Similarly, "create an issue, then label it" needs the issue number from the create step before labeling.
 
+**Mutation chaining works** for `pr.merge`, `pr.close`, `pr.comments.create`, and the `issue.*` mutations — the engine resolves node IDs for each step before batching the mutations into a single round-trip. If a chained mutation step needs CLI-only behavior (e.g. `pr.merge` with `admin:true`/`auto:true`/`deleteBranch:true`, or `pr.close` with `deleteBranch:true`), each such step transparently falls back to its CLI handler.
+
 ## Error handling
 
 ghx never throws — errors are always in the response envelope. Check the `ok` field:
@@ -134,6 +138,13 @@ ghx never throws — errors are always in the response envelope. Check the `ok` 
 - `ok: false` — failure, details in `error.code` and `error.message`
 
 Common error codes: `AUTH`, `NOT_FOUND`, `VALIDATION`, `RATE_LIMIT`, `NETWORK`, `SERVER`.
+
+## Common errors
+
+- **Validation enum mismatch:** Errors now list the accepted values, e.g. `/method: must be equal to one of the allowed values (allowed: merge, squash, rebase, MERGE, SQUASH, REBASE)`. For `pr.merge.method` and `pr.reviews.submit.event`, both lowercase and uppercase are accepted.
+- **Validation type mismatch:** Errors now name the expected type, e.g. `/jobId: must be integer (expected: integer)`. URL-copied numeric IDs (`jobId`, `runId`, `prNumber`, `issueNumber`) accept string-form numbers; only obviously non-numeric strings (`"abc"`) fail.
+- **`pr.merge` on a branch-protected repo** that rejects with "is not mergeable: the base branch policy prohibits the merge" — pass `admin: true` to bypass with admin privileges (gh CLI route) or `auto: true` to queue the merge for when requirements are met. The two flags are mutually exclusive.
+- **`@dependabot rebase` and similar PR comments** must use `pr.comments.create` (not `issue.comments.create`) — PRs and Issues are distinct GraphQL node types even though they share the numbering sequence.
 
 If you get `RATE_LIMIT` or `NETWORK`, retry after a short delay. For `NOT_FOUND`, double-check owner/name/number. For `VALIDATION`, run `ghx capabilities explain <id>` to check the expected schema.
 
