@@ -553,6 +553,29 @@ describe("pr domain handlers", () => {
       )
     })
 
+    it("appends --comment when comment is supplied", async () => {
+      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" })
+      const runner = { run: runSpy } as unknown as CliCommandRunner
+
+      const result = await h("pr.close")(
+        runner,
+        {
+          owner: "owner",
+          name: "repo",
+          prNumber: 123,
+          comment: "Closing as superseded.",
+        },
+        undefined,
+      )
+
+      expect(result.ok).toBe(true)
+      expect(runSpy).toHaveBeenCalledWith(
+        "gh",
+        ["pr", "close", "123", "--repo", "owner/repo", "--comment", "Closing as superseded."],
+        expect.any(Number),
+      )
+    })
+
     it("returns error envelope on non-zero exit code", async () => {
       const runner = mockRunner(1, "", "pull request not found")
       const result = await h("pr.close")(
