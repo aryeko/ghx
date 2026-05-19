@@ -30,8 +30,10 @@ import { IssueReopenDocument } from "./operations/issue-reopen.generated.js"
 import { IssueUpdateDocument } from "./operations/issue-update.generated.js"
 import { IssueViewDocument } from "./operations/issue-view.generated.js"
 import { PrAssigneesAddDocument } from "./operations/pr-assignees-add.generated.js"
+import { PrAssigneesLookupByNumberDocument } from "./operations/pr-assignees-lookup-by-number.generated.js"
 import { PrAssigneesRemoveDocument } from "./operations/pr-assignees-remove.generated.js"
 import { PrBranchUpdateDocument } from "./operations/pr-branch-update.generated.js"
+import { PrCloseDocument } from "./operations/pr-close.generated.js"
 import { PrCommentReplyDocument } from "./operations/pr-comment-reply.generated.js"
 import { PrCommentResolveDocument } from "./operations/pr-comment-resolve.generated.js"
 import { PrCommentUnresolveDocument } from "./operations/pr-comment-unresolve.generated.js"
@@ -74,6 +76,7 @@ const DOCUMENTS: Record<string, string | { toString(): string }> = {
   IssueMilestoneLookupByNumber: IssueMilestoneLookupByNumberDocument,
   IssueNodeIdLookup: IssueNodeIdLookupDocument,
   IssueParentLookup: IssueParentLookupDocument,
+  PrAssigneesLookupByNumber: PrAssigneesLookupByNumberDocument,
   PrNodeId: PrNodeIdDocument,
   UserNodeId: UserNodeIdDocument,
 
@@ -98,6 +101,7 @@ const DOCUMENTS: Record<string, string | { toString(): string }> = {
   PrAssigneesAdd: PrAssigneesAddDocument,
   PrAssigneesRemove: PrAssigneesRemoveDocument,
   PrBranchUpdate: PrBranchUpdateDocument,
+  PrClose: PrCloseDocument,
   PrCommentReply: PrCommentReplyDocument,
   PrCommentResolve: PrCommentResolveDocument,
   PrCommentUnresolve: PrCommentUnresolveDocument,

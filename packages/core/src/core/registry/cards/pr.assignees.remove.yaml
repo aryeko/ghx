@@ -29,5 +29,23 @@ graphql:
   operationName: PrAssigneesRemove
   operationType: mutation
   documentPath: src/gql/operations/pr-assignees-remove.graphql
+  resolution:
+    lookup:
+      operationName: PrAssigneesLookupByNumber
+      documentPath: src/gql/operations/pr-assignees-lookup-by-number.graphql
+      vars:
+        owner: owner
+        name: name
+        prNumber: prNumber
+    inject:
+      - target: assignableId
+        source: scalar
+        path: repository.pullRequest.id
+      - target: assigneeIds
+        source: map_array
+        from_input: assignees
+        nodes_path: repository.assignableUsers.nodes
+        match_field: login
+        extract_field: id
 cli:
   command: pr edit

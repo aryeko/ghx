@@ -50,9 +50,12 @@ describe("execute", () => {
   })
 
   it("validates full input schema, not only required keys", async () => {
+    // AJV is configured with coerceTypes: true, so primitives like numbers
+    // are coerced to strings when the schema says string. Use an object value
+    // here — objects are never coerced to strings and still fail validation.
     const result = await execute({
       card: baseCard,
-      params: { owner: 123, name: "modkit" } as unknown as Record<string, unknown>,
+      params: { owner: { not: "a string" }, name: "modkit" } as unknown as Record<string, unknown>,
       preflight: alwaysPassPreflight,
       routes: {
         graphql: vi.fn(),

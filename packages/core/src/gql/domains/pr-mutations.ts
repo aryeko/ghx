@@ -3,6 +3,8 @@ import {
   asRecord,
   assertPrAssigneesInput,
   assertPrBranchUpdateInput,
+  assertPrCloseInput,
+  assertPrCommentCreateInput,
   assertPrCommentsListInput,
   assertPrCreateInput,
   assertPrMergeInput,
@@ -13,10 +15,12 @@ import {
   assertReviewThreadInput,
 } from "../assertions.js"
 import type * as Types from "../operations/base-types.js"
+import { getSdk as getIssueCommentCreateSdk } from "../operations/issue-comment-create.generated.js"
 import { getSdk as getIssueCreateRepositoryIdSdk } from "../operations/issue-create-repository-id.generated.js"
 import { getSdk as getPrAssigneesAddSdk } from "../operations/pr-assignees-add.generated.js"
 import { getSdk as getPrAssigneesRemoveSdk } from "../operations/pr-assignees-remove.generated.js"
 import { getSdk as getPrBranchUpdateSdk } from "../operations/pr-branch-update.generated.js"
+import { getSdk as getPrCloseSdk } from "../operations/pr-close.generated.js"
 import { getSdk as getPrCommentReplySdk } from "../operations/pr-comment-reply.generated.js"
 import { getSdk as getPrCommentResolveSdk } from "../operations/pr-comment-resolve.generated.js"
 import { getSdk as getPrCommentUnresolveSdk } from "../operations/pr-comment-unresolve.generated.js"
@@ -42,6 +46,10 @@ import type {
   PrAssigneesRemoveInput,
   PrBranchUpdateData,
   PrBranchUpdateInput,
+  PrCloseData,
+  PrCloseInput,
+  PrCommentCreateData,
+  PrCommentCreateInput,
   PrCommentsListData,
   PrCommentsListInput,
   PrCreateData,
@@ -251,6 +259,34 @@ function parseReviewThreadMutationResult(
   }
 }
 
+export async function runPrCommentCreate(
+  transport: GraphqlTransport,
+  input: PrCommentCreateInput,
+): Promise<PrCommentCreateData> {
+  assertPrCommentCreateInput(input)
+
+  const client = createGraphqlRequestClient(transport)
+  const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
+
+  const result = await getIssueCommentCreateSdk(client).IssueCommentCreate({
+    issueId: pullRequestId,
+    body: input.body,
+  })
+
+  const mutation = asRecord(asRecord(result)?.["addComment"])
+  const commentEdge = asRecord(mutation?.["commentEdge"])
+  const node = asRecord(commentEdge?.["node"])
+  if (!node || typeof node["id"] !== "string" || typeof node["body"] !== "string") {
+    throw new Error("PR comment creation failed")
+  }
+
+  return {
+    id: node["id"],
+    body: node["body"],
+    url: typeof node["url"] === "string" ? node["url"] : "",
+  }
+}
+
 export async function runReplyToReviewThread(
   transport: GraphqlTransport,
   input: ReplyToReviewThreadInput,
@@ -316,13 +352,40 @@ export async function runSubmitPrReview(
   transport: GraphqlTransport,
   input: PrReviewSubmitInput,
 ): Promise<PrReviewSubmitData> {
-  assertPrReviewSubmitInput(input)
+  // Normalize case before assertion so lowercase aliases accepted by the card
+  // (`approve`, `comment`, `request_changes`, `left`, `right`) reach the GitHub
+  // GraphQL API in their canonical uppercase form.
+  const normalizedEvent =
+    typeof input.event === "string"
+      ? (input.event.toUpperCase() as PrReviewSubmitInput["event"])
+      : input.event
+  const normalizedComments: DraftComment[] | undefined = input.comments?.map((comment) => {
+    const next: DraftComment = {
+      path: comment.path,
+      body: comment.body,
+      line: comment.line,
+      ...(comment.startLine !== undefined ? { startLine: comment.startLine } : {}),
+    }
+    if (typeof comment.side === "string") {
+      next.side = comment.side.toUpperCase() as "LEFT" | "RIGHT"
+    }
+    if (typeof comment.startSide === "string") {
+      next.startSide = comment.startSide.toUpperCase() as "LEFT" | "RIGHT"
+    }
+    return next
+  })
+  const normalizedInput: PrReviewSubmitInput = {
+    ...input,
+    event: normalizedEvent,
+    ...(normalizedComments !== undefined ? { comments: normalizedComments } : {}),
+  }
+  assertPrReviewSubmitInput(normalizedInput)
 
   const client = createGraphqlRequestClient(transport)
   const prIdResult = await getPrNodeIdSdk(client).PrNodeId({
-    owner: input.owner,
-    name: input.name,
-    prNumber: input.prNumber,
+    owner: normalizedInput.owner,
+    name: normalizedInput.name,
+    prNumber: normalizedInput.prNumber,
   })
 
   const pullRequestId = prIdResult.repository?.pullRequest?.id
@@ -330,8 +393,8 @@ export async function runSubmitPrReview(
     throw new Error("Failed to retrieve pull request ID")
   }
 
-  const threads = input.comments
-    ? input.comments.map((comment: DraftComment) => ({
+  const threads = normalizedInput.comments
+    ? normalizedInput.comments.map((comment: DraftComment) => ({
         path: comment.path,
         body: comment.body,
         line: comment.line,
@@ -343,8 +406,8 @@ export async function runSubmitPrReview(
 
   const result = await getPrReviewSubmitSdk(client).PrReviewSubmit({
     pullRequestId,
-    event: input.event as PrReviewSubmitMutationVariables["event"],
-    ...(input.body === undefined ? {} : { body: input.body }),
+    event: normalizedInput.event as PrReviewSubmitMutationVariables["event"],
+    ...(normalizedInput.body === undefined ? {} : { body: normalizedInput.body }),
     ...(threads.length === 0 ? {} : { threads }),
   })
 
@@ -471,6 +534,40 @@ export async function runPrMerge(
     isMethodAssumed: input.mergeMethod === undefined,
     // Note: GitHub GraphQL API does not expose merge queue state; queued is always false
     queued: false,
+    deleteBranch: input.deleteBranch ?? false,
+  }
+}
+
+export async function runPrClose(
+  transport: GraphqlTransport,
+  input: PrCloseInput,
+): Promise<PrCloseData> {
+  assertPrCloseInput(input)
+
+  if (input.deleteBranch === true) {
+    throw new Error(
+      "deleteBranch operation not available via GraphQL closePullRequest mutation; use the CLI route to delete the branch on close",
+    )
+  }
+
+  const client = createGraphqlRequestClient(transport)
+  const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
+
+  const result = await getPrCloseSdk(client).PrClose({
+    pullRequestId,
+    addComment: input.comment !== undefined,
+    commentBody: input.comment ?? "",
+  })
+
+  const pr = result.closePullRequest?.pullRequest
+  if (!pr) {
+    throw new Error("Failed to close pull request")
+  }
+
+  return {
+    prNumber: input.prNumber,
+    state: typeof pr.state === "string" ? pr.state : "CLOSED",
+    closed: Boolean(pr.closed),
     deleteBranch: input.deleteBranch ?? false,
   }
 }

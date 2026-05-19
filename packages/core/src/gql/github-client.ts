@@ -45,6 +45,10 @@ import type {
   PrAssigneesRemoveInput,
   PrBranchUpdateData,
   PrBranchUpdateInput,
+  PrCloseData,
+  PrCloseInput,
+  PrCommentCreateData,
+  PrCommentCreateInput,
   PrCommentsListData,
   PrCommentsListInput,
   PrCreateData,
@@ -131,6 +135,7 @@ export interface GithubClient extends GraphqlClient {
   fetchIssueView(input: IssueViewInput): Promise<IssueViewData>
   fetchPrList(input: PrListInput): Promise<PrListData>
   fetchPrView(input: PrViewInput): Promise<PrViewData>
+  createPrComment(input: PrCommentCreateInput): Promise<PrCommentCreateData>
   fetchPrCommentsList(input: PrCommentsListInput): Promise<PrCommentsListData>
   fetchPrReviewsList(input: PrReviewsListInput): Promise<PrReviewsListData>
   fetchPrDiffListFiles(input: PrDiffListFilesInput): Promise<PrDiffListFilesData>
@@ -150,6 +155,7 @@ export interface GithubClient extends GraphqlClient {
   createPr(input: PrCreateInput): Promise<PrCreateData>
   updatePr(input: PrUpdateInput): Promise<PrUpdateData>
   mergePr(input: PrMergeInput): Promise<PrMergeData>
+  closePr(input: PrCloseInput): Promise<PrCloseData>
   updatePrBranch(input: PrBranchUpdateInput): Promise<PrBranchUpdateData>
   addPrAssignees(input: PrAssigneesAddInput): Promise<PrAssigneesAddData>
   removePrAssignees(input: PrAssigneesRemoveInput): Promise<PrAssigneesRemoveData>
@@ -256,6 +262,8 @@ export function createGithubClient(transport: GraphqlTransport): GithubClient {
     fetchPrDiffListFiles: async (input) =>
       (await loadPrQueries()).runPrDiffListFiles(transport, input),
     fetchPrMergeStatus: async (input) => (await loadPrQueries()).runPrMergeStatus(transport, input),
+    createPrComment: async (input) =>
+      (await loadPrMutations()).runPrCommentCreate(transport, input),
     fetchPrCommentsList: async (input) =>
       (await loadPrMutations()).runPrCommentsList(transport, input),
     replyToReviewThread: async (input) =>
@@ -281,6 +289,7 @@ export function createGithubClient(transport: GraphqlTransport): GithubClient {
     createPr: async (input) => (await loadPrMutations()).runPrCreate(transport, input),
     updatePr: async (input) => (await loadPrMutations()).runPrUpdate(transport, input),
     mergePr: async (input) => (await loadPrMutations()).runPrMerge(transport, input),
+    closePr: async (input) => (await loadPrMutations()).runPrClose(transport, input),
     updatePrBranch: async (input) => (await loadPrMutations()).runPrBranchUpdate(transport, input),
     addPrAssignees: async (input) => (await loadPrMutations()).runPrAssigneesAdd(transport, input),
     removePrAssignees: async (input) =>

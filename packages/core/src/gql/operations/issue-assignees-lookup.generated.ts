@@ -5,6 +5,7 @@ import { TypedDocumentString } from "./typed-document-string.js"
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type IssueAssigneesLookupQueryVariables = Types.Exact<{
   issueId: Types.Scalars["ID"]["input"]
+  assignableUsersAfter?: Types.InputMaybe<Types.Scalars["String"]["input"]>
 }>
 
 export type IssueAssigneesLookupQuery = {
@@ -284,11 +285,11 @@ export type IssueAssigneesLookupQuery = {
 }
 
 export const IssueAssigneesLookupDocument = new TypedDocumentString(`
-    query IssueAssigneesLookup($issueId: ID!) {
+    query IssueAssigneesLookup($issueId: ID!, $assignableUsersAfter: String) {
   node(id: $issueId) {
     ... on Issue {
       repository {
-        assignableUsers(first: 100) {
+        assignableUsers(first: 100, after: $assignableUsersAfter) {
           pageInfo {
             hasNextPage
             endCursor

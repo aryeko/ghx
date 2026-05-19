@@ -88,6 +88,13 @@ cli:
 - **`input_schema`** — JSON Schema for input validation (validated at runtime via AJV)
 - **`output_schema`** — JSON Schema for output shape (used for validation and documentation)
 
+> **Input coercion.** AJV is configured with `coerceTypes: true`, so string-form
+> primitives are coerced to the declared schema type before validation. For
+> example, a `jobId` declared as `{ type: integer }` accepts `"74276757370"`
+> (commonly copied from GitHub URLs) and coerces it to `74276757370`. Strings
+> that cannot be coerced — e.g. `"abc"` for an integer field — still fail
+> validation with the standard error.
+
 ### Routing
 
 | Field | Description |

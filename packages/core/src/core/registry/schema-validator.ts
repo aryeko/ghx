@@ -8,6 +8,45 @@ type SchemaValidationError = {
   params: Record<string, unknown>
 }
 
+function describeSuffix(error: SchemaValidationError): string {
+  if (error.keyword === "enum") {
+    const allowed = error.params.allowedValues
+    if (Array.isArray(allowed) && allowed.every((value) => typeof value === "string")) {
+      return ` (allowed: ${allowed.join(", ")})`
+    }
+    return ""
+  }
+
+  if (error.keyword === "type") {
+    const expected = error.params.type
+    if (typeof expected === "string") {
+      return ` (expected: ${expected})`
+    }
+    if (Array.isArray(expected) && expected.every((value) => typeof value === "string")) {
+      return ` (expected: ${expected.join(", ")})`
+    }
+    return ""
+  }
+
+  return ""
+}
+
+/**
+ * Render an array of AJV-derived schema validation errors into a single
+ * caller-friendly string. Each error contributes `${path}: ${message}${suffix}`,
+ * where `suffix` annotates enum and type failures with the accepted values or
+ * expected type so callers don't have to run `ghx capabilities explain` to
+ * discover them. Multiple errors are joined with `"; "`.
+ */
+export function formatSchemaErrorDetails(errors: SchemaValidationError[]): string {
+  return errors
+    .map((error) => {
+      const path = error.instancePath || "root"
+      return `${path}: ${error.message}${describeSuffix(error)}`
+    })
+    .join("; ")
+}
+
 type SchemaValidationResult =
   | { ok: true }
   | {

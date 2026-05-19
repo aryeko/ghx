@@ -22,6 +22,8 @@ import type {
   PrAssigneesAddInput,
   PrAssigneesRemoveInput,
   PrBranchUpdateInput,
+  PrCloseInput,
+  PrCommentCreateInput,
   PrCommentsListInput,
   PrCreateInput,
   PrDiffListFilesInput,
@@ -396,6 +398,15 @@ export function assertProjectUserInput(input: ProjectV2UserViewInput): void {
   }
 }
 
+export function assertPrCommentCreateInput(input: PrCommentCreateInput): void {
+  assertPrInput({
+    owner: input.owner,
+    name: input.name,
+    prNumber: input.prNumber,
+  })
+  assertNonEmptyString(input.body, "PR comment body")
+}
+
 export function assertPrCreateInput(input: PrCreateInput): void {
   assertRepoInput({ owner: input.owner, name: input.name })
   assertNonEmptyString(input.title, "PR title")
@@ -440,6 +451,18 @@ export function assertPrMergeInput(input: PrMergeInput): void {
   if (input.deleteBranch !== undefined && typeof input.deleteBranch !== "boolean") {
     throw new Error("deleteBranch must be a boolean")
   }
+}
+
+export function assertPrCloseInput(input: PrCloseInput): void {
+  assertPrInput({
+    owner: input.owner,
+    name: input.name,
+    prNumber: input.prNumber,
+  })
+  if (input.deleteBranch !== undefined && typeof input.deleteBranch !== "boolean") {
+    throw new Error("deleteBranch must be a boolean")
+  }
+  assertOptionalString(input.comment, "PR close comment")
 }
 
 export function assertPrBranchUpdateInput(input: PrBranchUpdateInput): void {

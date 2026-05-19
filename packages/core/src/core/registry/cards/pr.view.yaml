@@ -8,10 +8,14 @@ input_schema:
     owner: { type: string, minLength: 1 }
     name: { type: string, minLength: 1 }
     prNumber: { type: integer, minimum: 1 }
+    exclude:
+      type: array
+      items: { type: string, enum: [body] }
+      description: "Fields to strip from the output. Currently supports 'body'."
   additionalProperties: false
 output_schema:
   type: object
-  required: [id, number, title, state, url, body, labels]
+  required: [id, number, title, state, url, labels]
   properties:
     id: { type: string, minLength: 1 }
     number: { type: integer, minimum: 1 }

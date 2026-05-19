@@ -510,16 +510,26 @@ const handlePrMerge: CliHandler = async (runner, params, card) => {
     const repo = owner && name ? `${owner}/${name}` : ""
     const prNumber = parseStrictPositiveInt(params.prNumber)
     if (prNumber === null) throw new Error("Missing or invalid prNumber for pr.merge")
-    const method = params.method === undefined ? "merge" : params.method
+    const rawMethod = params.method === undefined ? "merge" : params.method
+    // Accept any casing (merge/Merge/MERGE) since the card enum permits both
+    // lowercase and uppercase. `gh pr merge` only understands the lowercase
+    // long-flag form (`--squash`), so normalize before building the args.
+    const method = typeof rawMethod === "string" ? rawMethod.toLowerCase() : rawMethod
     if (method !== "merge" && method !== "squash" && method !== "rebase")
       throw new Error("Missing or invalid method for pr.merge")
     if (params.deleteBranch !== undefined && typeof params.deleteBranch !== "boolean")
       throw new Error("Missing or invalid deleteBranch for pr.merge")
+    if (params.admin !== undefined && typeof params.admin !== "boolean")
+      throw new Error("Missing or invalid admin for pr.merge")
+    if (params.auto !== undefined && typeof params.auto !== "boolean")
+      throw new Error("Missing or invalid auto for pr.merge")
 
     const args = [...commandTokens(card, "pr merge"), String(prNumber)]
     if (repo) args.push("--repo", repo)
     args.push(`--${method}`)
     if (params.deleteBranch === true) args.push("--delete-branch")
+    if (params.admin === true) args.push("--admin")
+    if (params.auto === true) args.push("--auto")
 
     const result = await runner.run("gh", args, DEFAULT_TIMEOUT_MS)
     if (result.exitCode !== 0) {
@@ -543,6 +553,8 @@ const handlePrMerge: CliHandler = async (runner, params, card) => {
         isMethodAssumed: params.method === undefined,
         queued: true,
         deleteBranch: params.deleteBranch === true,
+        ...(params.admin === true ? { admin: true } : {}),
+        ...(params.auto === true ? { auto: true } : {}),
       },
       "cli",
       { capabilityId: "pr.merge", reason: "CARD_FALLBACK" },
@@ -557,6 +569,61 @@ const handlePrMerge: CliHandler = async (runner, params, card) => {
       },
       "cli",
       { capabilityId: "pr.merge", reason: "CARD_FALLBACK" },
+    )
+  }
+}
+
+const handlePrClose: CliHandler = async (runner, params, card) => {
+  try {
+    const owner = String(params.owner ?? "")
+    const name = String(params.name ?? "")
+    const repo = owner && name ? `${owner}/${name}` : ""
+    const prNumber = parseStrictPositiveInt(params.prNumber)
+    if (prNumber === null) throw new Error("Missing or invalid prNumber for pr.close")
+    if (params.deleteBranch !== undefined && typeof params.deleteBranch !== "boolean")
+      throw new Error("Missing or invalid deleteBranch for pr.close")
+    const comment = parseNonEmptyString(params.comment)
+
+    const args = [...commandTokens(card, "pr close"), String(prNumber)]
+    if (repo) args.push("--repo", repo)
+    if (params.deleteBranch === true) args.push("--delete-branch")
+    if (comment !== null) args.push("--comment", comment)
+
+    const result = await runner.run("gh", args, DEFAULT_TIMEOUT_MS)
+    if (result.exitCode !== 0) {
+      const code = mapErrorToCode(result.stderr)
+      return normalizeError(
+        {
+          code,
+          message: sanitizeCliErrorMessage(result.stderr, result.exitCode),
+          retryable: isRetryableErrorCode(code),
+          details: { capabilityId: "pr.close", exitCode: result.exitCode },
+        },
+        "cli",
+        { capabilityId: "pr.close", reason: "CARD_FALLBACK" },
+      )
+    }
+
+    return normalizeResult(
+      {
+        prNumber,
+        state: "CLOSED",
+        closed: true,
+        deleteBranch: params.deleteBranch === true,
+      },
+      "cli",
+      { capabilityId: "pr.close", reason: "CARD_FALLBACK" },
+    )
+  } catch (error: unknown) {
+    const code = mapErrorToCode(error)
+    return normalizeError(
+      {
+        code,
+        message: error instanceof Error ? error.message : String(error),
+        retryable: isRetryableErrorCode(code),
+      },
+      "cli",
+      { capabilityId: "pr.close", reason: "CARD_FALLBACK" },
     )
   }
 }
@@ -983,6 +1050,7 @@ export const handlers: Record<string, CliHandler> = {
   "pr.merge.status": handlePrMergeStatus,
   "pr.reviews.submit": handlePrReviewSubmit,
   "pr.merge": handlePrMerge,
+  "pr.close": handlePrClose,
   "pr.checks.rerun.failed": handlePrChecksRerunFailed,
   "pr.checks.rerun.all": handlePrChecksRerunAll,
   "pr.reviews.request": handlePrReviewRequest,

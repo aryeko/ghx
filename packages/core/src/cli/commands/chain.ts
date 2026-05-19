@@ -1,4 +1,5 @@
 import { compactChainResult } from "@core/cli/formatters/compact.js"
+import { applyRepoContextDefaultsToSteps } from "@core/cli/repo-context.js"
 import { resolveGithubToken } from "@core/core/auth/resolve-token.js"
 import { executeTasks } from "@core/core/routing/engine/index.js"
 import { createResolutionCache } from "@core/core/routing/resolution-cache.js"
@@ -148,8 +149,9 @@ export async function chainCommand(argv: string[] = []): Promise<number> {
 
   try {
     const { stepsSource, skipGhPreflight, verbose } = parseChainFlags(argv)
-    const steps =
+    const parsedSteps =
       stepsSource === "stdin" ? parseJsonSteps(await readStdin()) : parseJsonSteps(stepsSource.raw)
+    const steps = await applyRepoContextDefaultsToSteps(parsedSteps)
     const { token: githubToken } = await resolveGithubToken()
 
     const githubClient = createGithubClient({

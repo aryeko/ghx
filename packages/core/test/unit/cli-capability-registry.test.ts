@@ -28,6 +28,7 @@ const ALL_CLI_CAPABILITY_IDS = [
   "pr.merge.status",
   "pr.reviews.submit",
   "pr.merge",
+  "pr.close",
   "pr.reviews.request",
   "pr.assignees.add",
   "pr.assignees.remove",

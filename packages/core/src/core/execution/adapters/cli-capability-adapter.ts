@@ -29,6 +29,7 @@ export type CliCapabilityId =
   | "pr.merge.status"
   | "pr.reviews.submit"
   | "pr.merge"
+  | "pr.close"
   | "pr.reviews.request"
   | "pr.assignees.add"
   | "pr.assignees.remove"

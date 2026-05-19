@@ -7,6 +7,7 @@ export type IssueAssigneesLookupByNumberQueryVariables = Types.Exact<{
   owner: Types.Scalars["String"]["input"]
   name: Types.Scalars["String"]["input"]
   issueNumber: Types.Scalars["Int"]["input"]
+  assignableUsersAfter?: Types.InputMaybe<Types.Scalars["String"]["input"]>
 }>
 
 export type IssueAssigneesLookupByNumberQuery = {
@@ -23,12 +24,12 @@ export type IssueAssigneesLookupByNumberQuery = {
 }
 
 export const IssueAssigneesLookupByNumberDocument = new TypedDocumentString(`
-    query IssueAssigneesLookupByNumber($owner: String!, $name: String!, $issueNumber: Int!) {
+    query IssueAssigneesLookupByNumber($owner: String!, $name: String!, $issueNumber: Int!, $assignableUsersAfter: String) {
   repository(owner: $owner, name: $name) {
     issue(number: $issueNumber) {
       id
     }
-    assignableUsers(first: 100) {
+    assignableUsers(first: 100, after: $assignableUsersAfter) {
       pageInfo {
         hasNextPage
         endCursor

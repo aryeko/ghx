@@ -23,6 +23,8 @@ import type {
   PrAssigneesAddInput,
   PrAssigneesRemoveInput,
   PrBranchUpdateInput,
+  PrCloseInput,
+  PrCommentCreateInput,
   PrCommentsListInput,
   PrDiffListFilesInput,
   PrListInput,
@@ -326,6 +328,15 @@ const handlers = new Map<string, GraphqlHandler>([
 
   // PR mutations (Phase 2)
   [
+    "pr.comments.create",
+    (c, p) => {
+      if (!c.createPrComment) {
+        throw new Error("createPrComment operation not available")
+      }
+      return c.createPrComment(p as PrCommentCreateInput)
+    },
+  ],
+  [
     "pr.create",
     (c, p) => {
       const raw = p as {
@@ -380,6 +391,15 @@ const handlers = new Map<string, GraphqlHandler>([
         ...(mergeMethod !== undefined ? { mergeMethod } : {}),
         ...(raw.deleteBranch !== undefined ? { deleteBranch: raw.deleteBranch } : {}),
       })
+    },
+  ],
+  [
+    "pr.close",
+    (c, p) => {
+      if (!c.closePr) {
+        throw new Error("closePr operation not available")
+      }
+      return c.closePr(p as PrCloseInput)
     },
   ],
   ["pr.branch.update", (c, p) => c.updatePrBranch(p as PrBranchUpdateInput)],

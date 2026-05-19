@@ -21,7 +21,11 @@ export type IssueCommentsListInput = IssueCommentsListQueryVariables
 export type IssueListInput = IssueListQueryVariables
 export type IssueViewInput = IssueViewQueryVariables
 export type PrListInput = PrListQueryVariables
-export type PrViewInput = PrViewQueryVariables
+export type PrViewExcludeField = "body"
+
+export type PrViewInput = PrViewQueryVariables & {
+  exclude?: ReadonlyArray<PrViewExcludeField>
+}
 export type PrReviewsListInput = PrReviewsListQueryVariables
 export type PrDiffListFilesInput = PrDiffListFilesQueryVariables
 
@@ -103,6 +107,19 @@ export type IssueCommentCreateInput = {
   name: string
   issueNumber: number
   body: string
+}
+
+export type PrCommentCreateInput = {
+  owner: string
+  name: string
+  prNumber: number
+  body: string
+}
+
+export type PrCommentCreateData = {
+  id: string
+  body: string
+  url: string
 }
 
 export type IssueLinkedPrsListInput = {
@@ -298,7 +315,7 @@ export type PrViewData = {
   title: string
   state: string
   url: string
-  body: string
+  body?: string
   labels: string[]
 }
 
@@ -579,6 +596,21 @@ export type PrMergeData = {
   method: string
   isMethodAssumed: boolean
   queued: boolean
+  deleteBranch: boolean
+}
+
+export type PrCloseInput = {
+  owner: string
+  name: string
+  prNumber: number
+  deleteBranch?: boolean
+  comment?: string
+}
+
+export type PrCloseData = {
+  prNumber: number
+  state: string
+  closed: boolean
   deleteBranch: boolean
 }
 

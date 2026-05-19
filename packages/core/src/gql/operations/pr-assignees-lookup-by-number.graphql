@@ -1,0 +1,21 @@
+query PrAssigneesLookupByNumber(
+  $owner: String!
+  $name: String!
+  $prNumber: Int!
+  $assignableUsersAfter: String
+) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $prNumber) {
+      id
+    }
+    # Hard cap: GitHub enforces a max of 100 items per connection page.
+    # The chain resolution phase follows pageInfo.endCursor until hasNextPage is false.
+    assignableUsers(first: 100, after: $assignableUsersAfter) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        id
+        login
+      }
+    }
+  }
+}

@@ -1,4 +1,4 @@
-mutation PrReviewsRequest($pullRequestId: ID!, $userIds: [ID!]!, $reviewRequestsFirst: Int!) {
+mutation PrReviewsRequest($pullRequestId: ID!, $userIds: [ID!]!, $reviewRequestsFirst: Int = 100) {
   requestReviews(input: { pullRequestId: $pullRequestId, userIds: $userIds }) {
     pullRequest {
       id

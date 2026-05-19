@@ -10,7 +10,10 @@ input_schema:
     prNumber: { type: integer, minimum: 1 }
     event:
       type: string
-      enum: [APPROVE, COMMENT, REQUEST_CHANGES]
+      # Uppercase values are canonical (GitHub's GraphQL enum); lowercase aliases
+      # are accepted for consistency with pr.merge. Normalization happens in the
+      # GraphQL handler.
+      enum: [APPROVE, COMMENT, REQUEST_CHANGES, approve, comment, request_changes]
     body:
       type: string
       minLength: 1
@@ -26,7 +29,8 @@ input_schema:
           line: { type: integer, minimum: 1 }
           side:
             type: string
-            enum: [LEFT, RIGHT]
+            # Uppercase values are canonical (GitHub's GraphQL enum); lowercase aliases accepted.
+            enum: [LEFT, RIGHT, left, right]
             description: "Diff side of the comment line (LEFT=base, RIGHT=head). Returned as diffSide in pr.threads.list output."
           startLine:
             type: integer
@@ -34,7 +38,8 @@ input_schema:
             description: "First line of a multi-line comment range. Omit for single-line comments."
           startSide:
             type: string
-            enum: [LEFT, RIGHT]
+            # Uppercase values are canonical (GitHub's GraphQL enum); lowercase aliases accepted.
+            enum: [LEFT, RIGHT, left, right]
             description: "Diff side of startLine (LEFT=base, RIGHT=head). Required if startLine is set."
         additionalProperties: false
   additionalProperties: false

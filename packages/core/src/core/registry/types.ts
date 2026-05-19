@@ -93,8 +93,54 @@ export interface NullLiteralInject {
   source: "null_literal"
 }
 
+/**
+ * Passes a value directly from the step's `input` into a mutation variable,
+ * normalized to upper case.
+ *
+ * Use when a user-facing input field accepts lower or mixed case (e.g. `method: "squash"`)
+ * but the GraphQL variable expects an uppercase enum value (e.g. `mergeMethod: "SQUASH"`).
+ *
+ * When the input field is missing or `null`, this inject returns `{}` (no key set) so the
+ * optional GraphQL variable falls through to its server-side default.
+ *
+ * @example
+ * ```yaml
+ * inject:
+ *   - target: mergeMethod
+ *     source: input_upper
+ *     from_input: method
+ * ```
+ */
+export interface InputUpperInject {
+  target: string
+  source: "input_upper"
+  from_input: string
+}
+
+/** Injects whether an input field is present and non-null. */
+export interface InputPresentInject {
+  target: string
+  source: "input_present"
+  from_input: string
+}
+
+/** Injects an input field value, or a static default when the field is absent or null. */
+export interface InputDefaultInject {
+  target: string
+  source: "input_default"
+  from_input: string
+  default: string | number | boolean | null
+}
+
 /** A specification for how to inject a resolved Phase 1 value into Phase 2. */
-export type InjectSpec = ScalarInject | MapArrayInject | InputPassthroughInject | NullLiteralInject
+export type InjectSpec =
+  | ScalarInject
+  | MapArrayInject
+  | InputPassthroughInject
+  | NullLiteralInject
+  | InputUpperInject
+  | InputPresentInject
+  | InputDefaultInject
 
 /** Defines the GraphQL query to run during the Phase 1 lookup. */
 export interface LookupSpec {

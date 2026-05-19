@@ -1,4 +1,5 @@
 import { compactRunResult } from "@core/cli/formatters/compact.js"
+import { applyRepoContextDefaultsToInput } from "@core/cli/repo-context.js"
 import { invalidateTokenCache, resolveGithubToken } from "@core/core/auth/resolve-token.js"
 import { errorCodes } from "@core/core/errors/codes.js"
 import type { TaskRequest } from "../../core/contracts/task.js"
@@ -133,8 +134,9 @@ export async function runCommand(argv: string[] = []): Promise<number> {
   }
 
   const { task, inputSource, skipGhPreflight, verbose } = parseRunFlags(argv)
-  const input =
+  const parsedInput =
     inputSource === "stdin" ? parseJsonInput(await readStdin()) : parseJsonInput(inputSource.raw)
+  const input = await applyRepoContextDefaultsToInput(task, parsedInput)
 
   const { token, source } = await resolveGithubToken()
 

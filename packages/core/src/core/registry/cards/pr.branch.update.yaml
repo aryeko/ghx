@@ -23,5 +23,19 @@ graphql:
   operationName: PrBranchUpdate
   operationType: mutation
   documentPath: src/gql/operations/pr-branch-update.graphql
+  # Resolution maps the user-facing inputs to the GraphQL mutation variables:
+  # - pullRequestId is the GraphQL node id, looked up from owner/name/prNumber.
+  resolution:
+    lookup:
+      operationName: PrNodeId
+      documentPath: src/gql/operations/pr-node-id.graphql
+      vars:
+        owner: owner
+        name: name
+        prNumber: prNumber
+    inject:
+      - target: pullRequestId
+        source: scalar
+        path: repository.pullRequest.id
 cli:
   command: pr update-branch

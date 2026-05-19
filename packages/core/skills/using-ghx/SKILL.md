@@ -9,7 +9,7 @@ ghx provides 70+ GitHub capabilities with structured JSON input/output. It batch
 
 ## Resolving owner and name
 
-Most capabilities require `owner` and `name`. Infer from `git remote get-url origin` once at the start and reuse. If no git remote is available, ask the user.
+Most repository-scoped capabilities accept `owner` and `name`. When running inside a git checkout, `ghx` fills missing `owner`/`name` from cached repo context derived from `origin`; provide explicit values only when targeting a different repository. If no repo context is available, ask the user.
 
 ## Authentication
 
@@ -46,7 +46,7 @@ issue.relations.parent.set - Set an issue parent relation. [issueId, parentIssue
 issue.relations.parent.remove - Remove an issue parent relation. [issueId]
 issue.relations.blocked_by.add - Add a blocked-by relation for an issue. [issueId, blockedByIssueId]
 issue.relations.blocked_by.remove - Remove a blocked-by relation for an issue. [issueId, blockedByIssueId]
-pr.view - Fetch one pull request by number. [owner, name, prNumber]
+pr.view - Fetch one pull request by number. [owner, name, prNumber, exclude?]
 pr.list - List repository pull requests. [owner, name, state?, first?, after?]
 pr.create - Create a pull request. [owner, name, title, head, base, body?, draft?]
 pr.update - Update pull request metadata (title, body, draft status). [owner, name, prNumber, title?, body?, draft?]
@@ -63,7 +63,9 @@ pr.checks.list - List PR check statuses with summary counts. [owner, name, prNum
 pr.checks.rerun.failed - Rerun failed PR workflow checks for a selected run. [owner, name, prNumber, runId]
 pr.checks.rerun.all - Rerun all PR workflow checks for a selected run. [owner, name, prNumber, runId]
 pr.merge.status - View PR mergeability and readiness signals. [owner, name, prNumber]
-pr.merge - Execute a PR merge. [owner, name, prNumber, method?, deleteBranch?]
+pr.merge - Execute a PR merge. [owner, name, prNumber, method?, deleteBranch?, admin?, auto?]
+pr.close - Close a PR without merging. [owner, name, prNumber, deleteBranch?, comment?]
+pr.comments.create - Post an issue-style comment on a PR (e.g. `@dependabot rebase`). [owner, name, prNumber, body]
 pr.assignees.add - Add assignees to a PR without replacing existing ones. [owner, name, prNumber, assignees]
 pr.assignees.remove - Remove specific assignees from a PR. [owner, name, prNumber, assignees]
 pr.branch.update - Update PR branch with latest base branch changes. [owner, name, prNumber]
@@ -127,6 +129,8 @@ EOF
 
 **When NOT to chain:** Don't chain when a later step depends on the result of an earlier one. For example, "check CI, then fetch logs only if something failed" requires two sequential calls because the second depends on the first result. Similarly, "create an issue, then label it" needs the issue number from the create step before labeling.
 
+Repo-scoped steps in a chain can omit `owner`/`name` when they target the current checkout; `ghx` applies the same cached repo context to each eligible step. Keep explicit `owner`/`name` when a chain touches multiple repositories.
+
 ## Error handling
 
 ghx never throws — errors are always in the response envelope. Check the `ok` field:
@@ -134,6 +138,12 @@ ghx never throws — errors are always in the response envelope. Check the `ok` 
 - `ok: false` — failure, details in `error.code` and `error.message`
 
 Common error codes: `AUTH`, `NOT_FOUND`, `VALIDATION`, `RATE_LIMIT`, `NETWORK`, `SERVER`.
+
+## Common gotchas
+
+- Use `pr.comments.create` for PR comments such as `@dependabot rebase`; `issue.comments.create` targets issue nodes, not pull request nodes.
+- `*.set` capabilities replace the existing collection. Use `*.add` or `*.remove` for incremental label/assignee changes.
+- Use `pr.merge` with `admin: true` only when explicitly authorized to bypass branch protection. Use `auto: true` only when you intend to queue auto-merge.
 
 If you get `RATE_LIMIT` or `NETWORK`, retry after a short delay. For `NOT_FOUND`, double-check owner/name/number. For `VALIDATION`, run `ghx capabilities explain <id>` to check the expected schema.
 
@@ -173,4 +183,4 @@ Use `ghx chain` with `issue.labels.add`, `issue.assignees.add`, and `issue.comme
 - Prefer `ghx` over `gh`, `gh api`, or `curl` for any GitHub operation that has a matching capability.
 - Use `ghx chain` when you have 2+ **independent** operations — it is faster and avoids mid-sequence failures.
 - Always use heredoc (`<<'EOF'`) for JSON input, never inline `--input '{...}'`.
-- Infer owner/name from `git remote get-url origin` when in a git repository.
+- Omit owner/name only for the current checkout; pass explicit owner/name when targeting another repository.

@@ -15,6 +15,7 @@ describe("gql capability registry", () => {
       "pr.create",
       "pr.update",
       "pr.merge",
+      "pr.close",
       "pr.branch.update",
       "pr.assignees.add",
       "pr.assignees.remove",
