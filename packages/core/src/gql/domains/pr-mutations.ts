@@ -348,13 +348,40 @@ export async function runSubmitPrReview(
   transport: GraphqlTransport,
   input: PrReviewSubmitInput,
 ): Promise<PrReviewSubmitData> {
-  assertPrReviewSubmitInput(input)
+  // Normalize case before assertion so lowercase aliases accepted by the card
+  // (`approve`, `comment`, `request_changes`, `left`, `right`) reach the GitHub
+  // GraphQL API in their canonical uppercase form.
+  const normalizedEvent =
+    typeof input.event === "string"
+      ? (input.event.toUpperCase() as PrReviewSubmitInput["event"])
+      : input.event
+  const normalizedComments: DraftComment[] | undefined = input.comments?.map((comment) => {
+    const next: DraftComment = {
+      path: comment.path,
+      body: comment.body,
+      line: comment.line,
+      ...(comment.startLine !== undefined ? { startLine: comment.startLine } : {}),
+    }
+    if (typeof comment.side === "string") {
+      next.side = comment.side.toUpperCase() as "LEFT" | "RIGHT"
+    }
+    if (typeof comment.startSide === "string") {
+      next.startSide = comment.startSide.toUpperCase() as "LEFT" | "RIGHT"
+    }
+    return next
+  })
+  const normalizedInput: PrReviewSubmitInput = {
+    ...input,
+    event: normalizedEvent,
+    ...(normalizedComments !== undefined ? { comments: normalizedComments } : {}),
+  }
+  assertPrReviewSubmitInput(normalizedInput)
 
   const client = createGraphqlRequestClient(transport)
   const prIdResult = await getPrNodeIdSdk(client).PrNodeId({
-    owner: input.owner,
-    name: input.name,
-    prNumber: input.prNumber,
+    owner: normalizedInput.owner,
+    name: normalizedInput.name,
+    prNumber: normalizedInput.prNumber,
   })
 
   const pullRequestId = prIdResult.repository?.pullRequest?.id
@@ -362,8 +389,8 @@ export async function runSubmitPrReview(
     throw new Error("Failed to retrieve pull request ID")
   }
 
-  const threads = input.comments
-    ? input.comments.map((comment: DraftComment) => ({
+  const threads = normalizedInput.comments
+    ? normalizedInput.comments.map((comment: DraftComment) => ({
         path: comment.path,
         body: comment.body,
         line: comment.line,
@@ -375,8 +402,8 @@ export async function runSubmitPrReview(
 
   const result = await getPrReviewSubmitSdk(client).PrReviewSubmit({
     pullRequestId,
-    event: input.event as PrReviewSubmitMutationVariables["event"],
-    ...(input.body === undefined ? {} : { body: input.body }),
+    event: normalizedInput.event as PrReviewSubmitMutationVariables["event"],
+    ...(normalizedInput.body === undefined ? {} : { body: normalizedInput.body }),
     ...(threads.length === 0 ? {} : { threads }),
   })
 

@@ -10,7 +10,10 @@ input_schema:
     prNumber: { type: integer, minimum: 1 }
     method:
       type: string
-      enum: [merge, squash, rebase]
+      # Lowercase values are canonical; uppercase aliases are accepted so callers
+      # familiar with GitHub's GraphQL enum (MERGE/SQUASH/REBASE) keep working.
+      # Normalization happens in the GraphQL/CLI handlers.
+      enum: [merge, squash, rebase, MERGE, SQUASH, REBASE]
     deleteBranch: { type: boolean }
   additionalProperties: false
 output_schema:

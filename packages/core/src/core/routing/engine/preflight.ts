@@ -2,7 +2,7 @@ import type { ChainStepResult, RouteSource } from "@core/core/contracts/envelope
 import { errorCodes } from "@core/core/errors/codes.js"
 import { mapErrorToCode } from "@core/core/errors/map-error.js"
 import { getOperationCard } from "@core/core/registry/index.js"
-import { validateInput } from "@core/core/registry/schema-validator.js"
+import { formatSchemaErrorDetails, validateInput } from "@core/core/registry/schema-validator.js"
 import type { OperationCard } from "@core/core/registry/types.js"
 import type { ClassifiedStep } from "./types.js"
 
@@ -36,9 +36,7 @@ export function runPreflight(
 
       const inputValidation = validateInput(card.input_schema, req.input)
       if (!inputValidation.ok) {
-        const details = inputValidation.errors
-          .map((e) => `${e.instancePath || "root"}: ${e.message}`)
-          .join("; ")
+        const details = formatSchemaErrorDetails(inputValidation.errors)
         throw new Error(`Input validation failed: ${details}`)
       }
 

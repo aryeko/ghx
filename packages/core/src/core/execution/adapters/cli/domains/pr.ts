@@ -510,7 +510,11 @@ const handlePrMerge: CliHandler = async (runner, params, card) => {
     const repo = owner && name ? `${owner}/${name}` : ""
     const prNumber = parseStrictPositiveInt(params.prNumber)
     if (prNumber === null) throw new Error("Missing or invalid prNumber for pr.merge")
-    const method = params.method === undefined ? "merge" : params.method
+    const rawMethod = params.method === undefined ? "merge" : params.method
+    // Accept any casing (merge/Merge/MERGE) since the card enum permits both
+    // lowercase and uppercase. `gh pr merge` only understands the lowercase
+    // long-flag form (`--squash`), so normalize before building the args.
+    const method = typeof rawMethod === "string" ? rawMethod.toLowerCase() : rawMethod
     if (method !== "merge" && method !== "squash" && method !== "rebase")
       throw new Error("Missing or invalid method for pr.merge")
     if (params.deleteBranch !== undefined && typeof params.deleteBranch !== "boolean")
