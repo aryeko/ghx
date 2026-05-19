@@ -495,6 +495,94 @@ describe("pr domain handlers", () => {
     })
   })
 
+  describe("pr.close", () => {
+    it("emits `gh pr close <num> --repo o/n` without flag by default", async () => {
+      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" })
+      const runner = { run: runSpy } as unknown as CliCommandRunner
+
+      const result = await h("pr.close")(
+        runner,
+        {
+          owner: "owner",
+          name: "repo",
+          prNumber: 123,
+        },
+        undefined,
+      )
+
+      expect(result.ok).toBe(true)
+      expect(result.data).toMatchObject({
+        prNumber: 123,
+        state: "CLOSED",
+        closed: true,
+        deleteBranch: false,
+      })
+      expect(runSpy).toHaveBeenCalledWith(
+        "gh",
+        ["pr", "close", "123", "--repo", "owner/repo"],
+        expect.any(Number),
+      )
+    })
+
+    it("appends --delete-branch when deleteBranch is true", async () => {
+      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" })
+      const runner = { run: runSpy } as unknown as CliCommandRunner
+
+      const result = await h("pr.close")(
+        runner,
+        {
+          owner: "owner",
+          name: "repo",
+          prNumber: 123,
+          deleteBranch: true,
+        },
+        undefined,
+      )
+
+      expect(result.ok).toBe(true)
+      expect(result.data).toMatchObject({
+        prNumber: 123,
+        state: "CLOSED",
+        closed: true,
+        deleteBranch: true,
+      })
+      expect(runSpy).toHaveBeenCalledWith(
+        "gh",
+        ["pr", "close", "123", "--repo", "owner/repo", "--delete-branch"],
+        expect.any(Number),
+      )
+    })
+
+    it("returns error envelope on non-zero exit code", async () => {
+      const runner = mockRunner(1, "", "pull request not found")
+      const result = await h("pr.close")(
+        runner,
+        { owner: "owner", name: "repo", prNumber: 123 },
+        undefined,
+      )
+      expect(result.ok).toBe(false)
+      expect(result.meta.capability_id).toBe("pr.close")
+    })
+
+    it("returns error envelope when prNumber is missing", async () => {
+      const runner = mockRunner(0, "", "")
+      const result = await h("pr.close")(runner, { owner: "owner", name: "repo" }, undefined)
+      expect(result.ok).toBe(false)
+      expect(result.error?.message).toMatch(/prNumber/)
+    })
+
+    it("returns error envelope when deleteBranch is not boolean", async () => {
+      const runner = mockRunner(0, "", "")
+      const result = await h("pr.close")(
+        runner,
+        { owner: "owner", name: "repo", prNumber: 123, deleteBranch: "yes" },
+        undefined,
+      )
+      expect(result.ok).toBe(false)
+      expect(result.error?.message).toMatch(/deleteBranch/)
+    })
+  })
+
   describe("pr.reviews.request", () => {
     it("succeeds with reviewers list", async () => {
       const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" })

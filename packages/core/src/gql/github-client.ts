@@ -45,6 +45,8 @@ import type {
   PrAssigneesRemoveInput,
   PrBranchUpdateData,
   PrBranchUpdateInput,
+  PrCloseData,
+  PrCloseInput,
   PrCommentCreateData,
   PrCommentCreateInput,
   PrCommentsListData,
@@ -153,6 +155,7 @@ export interface GithubClient extends GraphqlClient {
   createPr(input: PrCreateInput): Promise<PrCreateData>
   updatePr(input: PrUpdateInput): Promise<PrUpdateData>
   mergePr(input: PrMergeInput): Promise<PrMergeData>
+  closePr(input: PrCloseInput): Promise<PrCloseData>
   updatePrBranch(input: PrBranchUpdateInput): Promise<PrBranchUpdateData>
   addPrAssignees(input: PrAssigneesAddInput): Promise<PrAssigneesAddData>
   removePrAssignees(input: PrAssigneesRemoveInput): Promise<PrAssigneesRemoveData>
@@ -286,6 +289,7 @@ export function createGithubClient(transport: GraphqlTransport): GithubClient {
     createPr: async (input) => (await loadPrMutations()).runPrCreate(transport, input),
     updatePr: async (input) => (await loadPrMutations()).runPrUpdate(transport, input),
     mergePr: async (input) => (await loadPrMutations()).runPrMerge(transport, input),
+    closePr: async (input) => (await loadPrMutations()).runPrClose(transport, input),
     updatePrBranch: async (input) => (await loadPrMutations()).runPrBranchUpdate(transport, input),
     addPrAssignees: async (input) => (await loadPrMutations()).runPrAssigneesAdd(transport, input),
     removePrAssignees: async (input) =>

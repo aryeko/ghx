@@ -22,6 +22,7 @@ import type {
   PrAssigneesAddInput,
   PrAssigneesRemoveInput,
   PrBranchUpdateInput,
+  PrCloseInput,
   PrCommentCreateInput,
   PrCommentsListInput,
   PrCreateInput,
@@ -447,6 +448,17 @@ export function assertPrMergeInput(input: PrMergeInput): void {
       `mergeMethod "${input.mergeMethod}" is invalid. Expected one of: MERGE, SQUASH, REBASE`,
     )
   }
+  if (input.deleteBranch !== undefined && typeof input.deleteBranch !== "boolean") {
+    throw new Error("deleteBranch must be a boolean")
+  }
+}
+
+export function assertPrCloseInput(input: PrCloseInput): void {
+  assertPrInput({
+    owner: input.owner,
+    name: input.name,
+    prNumber: input.prNumber,
+  })
   if (input.deleteBranch !== undefined && typeof input.deleteBranch !== "boolean") {
     throw new Error("deleteBranch must be a boolean")
   }

@@ -230,6 +230,11 @@ describe("capabilityRegistry", () => {
         fallbackRoutes: ["cli"],
       },
       {
+        task: "pr.close",
+        defaultRoute: "graphql",
+        fallbackRoutes: ["cli"],
+      },
+      {
         task: "pr.assignees.add",
         defaultRoute: "graphql",
         fallbackRoutes: ["cli"],

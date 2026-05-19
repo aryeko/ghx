@@ -573,6 +573,59 @@ const handlePrMerge: CliHandler = async (runner, params, card) => {
   }
 }
 
+const handlePrClose: CliHandler = async (runner, params, card) => {
+  try {
+    const owner = String(params.owner ?? "")
+    const name = String(params.name ?? "")
+    const repo = owner && name ? `${owner}/${name}` : ""
+    const prNumber = parseStrictPositiveInt(params.prNumber)
+    if (prNumber === null) throw new Error("Missing or invalid prNumber for pr.close")
+    if (params.deleteBranch !== undefined && typeof params.deleteBranch !== "boolean")
+      throw new Error("Missing or invalid deleteBranch for pr.close")
+
+    const args = [...commandTokens(card, "pr close"), String(prNumber)]
+    if (repo) args.push("--repo", repo)
+    if (params.deleteBranch === true) args.push("--delete-branch")
+
+    const result = await runner.run("gh", args, DEFAULT_TIMEOUT_MS)
+    if (result.exitCode !== 0) {
+      const code = mapErrorToCode(result.stderr)
+      return normalizeError(
+        {
+          code,
+          message: sanitizeCliErrorMessage(result.stderr, result.exitCode),
+          retryable: isRetryableErrorCode(code),
+          details: { capabilityId: "pr.close", exitCode: result.exitCode },
+        },
+        "cli",
+        { capabilityId: "pr.close", reason: "CARD_FALLBACK" },
+      )
+    }
+
+    return normalizeResult(
+      {
+        prNumber,
+        state: "CLOSED",
+        closed: true,
+        deleteBranch: params.deleteBranch === true,
+      },
+      "cli",
+      { capabilityId: "pr.close", reason: "CARD_FALLBACK" },
+    )
+  } catch (error: unknown) {
+    const code = mapErrorToCode(error)
+    return normalizeError(
+      {
+        code,
+        message: error instanceof Error ? error.message : String(error),
+        retryable: isRetryableErrorCode(code),
+      },
+      "cli",
+      { capabilityId: "pr.close", reason: "CARD_FALLBACK" },
+    )
+  }
+}
+
 const handlePrChecksRerunFailed: CliHandler = async (runner, params, card) => {
   try {
     const owner = String(params.owner ?? "")
@@ -995,6 +1048,7 @@ export const handlers: Record<string, CliHandler> = {
   "pr.merge.status": handlePrMergeStatus,
   "pr.reviews.submit": handlePrReviewSubmit,
   "pr.merge": handlePrMerge,
+  "pr.close": handlePrClose,
   "pr.checks.rerun.failed": handlePrChecksRerunFailed,
   "pr.checks.rerun.all": handlePrChecksRerunAll,
   "pr.reviews.request": handlePrReviewRequest,

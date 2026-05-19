@@ -3,6 +3,7 @@ import {
   asRecord,
   assertPrAssigneesInput,
   assertPrBranchUpdateInput,
+  assertPrCloseInput,
   assertPrCommentCreateInput,
   assertPrCommentsListInput,
   assertPrCreateInput,
@@ -19,6 +20,7 @@ import { getSdk as getIssueCreateRepositoryIdSdk } from "../operations/issue-cre
 import { getSdk as getPrAssigneesAddSdk } from "../operations/pr-assignees-add.generated.js"
 import { getSdk as getPrAssigneesRemoveSdk } from "../operations/pr-assignees-remove.generated.js"
 import { getSdk as getPrBranchUpdateSdk } from "../operations/pr-branch-update.generated.js"
+import { getSdk as getPrCloseSdk } from "../operations/pr-close.generated.js"
 import { getSdk as getPrCommentReplySdk } from "../operations/pr-comment-reply.generated.js"
 import { getSdk as getPrCommentResolveSdk } from "../operations/pr-comment-resolve.generated.js"
 import { getSdk as getPrCommentUnresolveSdk } from "../operations/pr-comment-unresolve.generated.js"
@@ -44,6 +46,8 @@ import type {
   PrAssigneesRemoveInput,
   PrBranchUpdateData,
   PrBranchUpdateInput,
+  PrCloseData,
+  PrCloseInput,
   PrCommentCreateData,
   PrCommentCreateInput,
   PrCommentsListData,
@@ -530,6 +534,36 @@ export async function runPrMerge(
     isMethodAssumed: input.mergeMethod === undefined,
     // Note: GitHub GraphQL API does not expose merge queue state; queued is always false
     queued: false,
+    deleteBranch: input.deleteBranch ?? false,
+  }
+}
+
+export async function runPrClose(
+  transport: GraphqlTransport,
+  input: PrCloseInput,
+): Promise<PrCloseData> {
+  assertPrCloseInput(input)
+
+  if (input.deleteBranch === true) {
+    throw new Error(
+      "deleteBranch operation not available via GraphQL closePullRequest mutation; use the CLI route to delete the branch on close",
+    )
+  }
+
+  const client = createGraphqlRequestClient(transport)
+  const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
+
+  const result = await getPrCloseSdk(client).PrClose({ pullRequestId })
+
+  const pr = result.closePullRequest?.pullRequest
+  if (!pr) {
+    throw new Error("Failed to close pull request")
+  }
+
+  return {
+    prNumber: input.prNumber,
+    state: typeof pr.state === "string" ? pr.state : "CLOSED",
+    closed: Boolean(pr.closed),
     deleteBranch: input.deleteBranch ?? false,
   }
 }

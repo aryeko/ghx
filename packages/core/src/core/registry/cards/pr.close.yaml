@@ -1,0 +1,46 @@
+capability_id: pr.close
+version: "1.0.0"
+description: Close a pull request without merging it. Optionally delete the head branch via CLI fallback.
+input_schema:
+  type: object
+  required: [owner, name, prNumber]
+  properties:
+    owner: { type: string, minLength: 1 }
+    name: { type: string, minLength: 1 }
+    prNumber: { type: integer, minimum: 1 }
+    deleteBranch: { type: boolean }
+  additionalProperties: false
+output_schema:
+  type: object
+  required: [prNumber, state, closed, deleteBranch]
+  properties:
+    prNumber: { type: integer, minimum: 1 }
+    state: { type: string }
+    closed: { type: boolean }
+    deleteBranch: { type: boolean }
+  additionalProperties: false
+routing:
+  preferred: graphql
+  fallbacks: [cli]
+  suitability:
+    - when: params
+      predicate: cli if deleteBranch == true
+      reason: "gh CLI required for --delete-branch (closePullRequest GraphQL cannot delete refs)"
+graphql:
+  operationName: PrClose
+  operationType: mutation
+  documentPath: src/gql/operations/pr-close.graphql
+  resolution:
+    lookup:
+      operationName: PrNodeId
+      documentPath: src/gql/operations/pr-node-id.graphql
+      vars:
+        owner: owner
+        name: name
+        prNumber: prNumber
+    inject:
+      - target: pullRequestId
+        source: scalar
+        path: repository.pullRequest.id
+cli:
+  command: pr close

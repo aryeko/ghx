@@ -1,0 +1,10 @@
+mutation PrClose($pullRequestId: ID!) {
+  closePullRequest(input: { pullRequestId: $pullRequestId }) {
+    pullRequest {
+      id
+      number
+      state
+      closed
+    }
+  }
+}

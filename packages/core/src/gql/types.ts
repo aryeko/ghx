@@ -599,6 +599,20 @@ export type PrMergeData = {
   deleteBranch: boolean
 }
 
+export type PrCloseInput = {
+  owner: string
+  name: string
+  prNumber: number
+  deleteBranch?: boolean
+}
+
+export type PrCloseData = {
+  prNumber: number
+  state: string
+  closed: boolean
+  deleteBranch: boolean
+}
+
 export type PrBranchUpdateInput = {
   owner: string
   name: string

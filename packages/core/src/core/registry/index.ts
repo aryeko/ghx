@@ -62,6 +62,7 @@ function loadCardsFromYaml(): OperationCard[] {
     "pr.checks.rerun.all",
     "pr.merge.status",
     "pr.merge",
+    "pr.close",
     "pr.assignees.add",
     "pr.assignees.remove",
     "pr.branch.update",
