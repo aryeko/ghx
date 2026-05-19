@@ -7,6 +7,7 @@ export type PrAssigneesLookupByNumberQueryVariables = Types.Exact<{
   owner: Types.Scalars["String"]["input"]
   name: Types.Scalars["String"]["input"]
   prNumber: Types.Scalars["Int"]["input"]
+  assignableUsersAfter?: Types.InputMaybe<Types.Scalars["String"]["input"]>
 }>
 
 export type PrAssigneesLookupByNumberQuery = {
@@ -23,12 +24,12 @@ export type PrAssigneesLookupByNumberQuery = {
 }
 
 export const PrAssigneesLookupByNumberDocument = new TypedDocumentString(`
-    query PrAssigneesLookupByNumber($owner: String!, $name: String!, $prNumber: Int!) {
+    query PrAssigneesLookupByNumber($owner: String!, $name: String!, $prNumber: Int!, $assignableUsersAfter: String) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $prNumber) {
       id
     }
-    assignableUsers(first: 100) {
+    assignableUsers(first: 100, after: $assignableUsersAfter) {
       pageInfo {
         hasNextPage
         endCursor

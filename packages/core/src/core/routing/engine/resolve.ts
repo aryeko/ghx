@@ -9,6 +9,14 @@ import type { ClassifiedStep } from "./types.js"
 
 export type ResolutionResults = Record<number, unknown>
 
+type LookupInput = {
+  alias: string
+  query: string
+  variables: Record<string, unknown>
+  stepIndex: number
+  card: OperationCard
+}
+
 function buildLookupVars(
   card: OperationCard,
   input: Record<string, unknown>,
@@ -22,6 +30,130 @@ function buildLookupVars(
   return vars
 }
 
+function getAtPath(obj: unknown, path: string): unknown {
+  const parts = path.split(".")
+  let current = obj
+  for (const part of parts) {
+    if (current === null || typeof current !== "object") return undefined
+    current = (current as Record<string, unknown>)[part]
+  }
+  return current
+}
+
+function connectionPathForNodesPath(nodesPath: string): string | null {
+  return nodesPath.endsWith(".nodes") ? nodesPath.slice(0, -".nodes".length) : null
+}
+
+function afterVariableName(connectionPath: string): string {
+  const fieldName = connectionPath.split(".").at(-1)
+  if (!fieldName) {
+    throw new Error(`Resolution pagination failed: invalid connection path '${connectionPath}'`)
+  }
+  return `${fieldName}After`
+}
+
+function mapArrayConnectionPaths(card: OperationCard): string[] {
+  const paths = new Set<string>()
+  for (const spec of card.graphql?.resolution?.inject ?? []) {
+    if (spec.source !== "map_array") continue
+    const connectionPath = connectionPathForNodesPath(spec.nodes_path)
+    if (connectionPath !== null) paths.add(connectionPath)
+  }
+  return [...paths]
+}
+
+function mergeConnectionPage(
+  existingResult: unknown,
+  pageResult: unknown,
+  connectionPath: string,
+): void {
+  const existingConnection = getAtPath(existingResult, connectionPath)
+  const pageConnection = getAtPath(pageResult, connectionPath)
+  if (
+    typeof existingConnection !== "object" ||
+    existingConnection === null ||
+    Array.isArray(existingConnection) ||
+    typeof pageConnection !== "object" ||
+    pageConnection === null ||
+    Array.isArray(pageConnection)
+  ) {
+    return
+  }
+
+  const existingRecord = existingConnection as Record<string, unknown>
+  const pageRecord = pageConnection as Record<string, unknown>
+  const existingNodes = Array.isArray(existingRecord.nodes) ? existingRecord.nodes : []
+  const pageNodes = Array.isArray(pageRecord.nodes) ? pageRecord.nodes : []
+  existingRecord.nodes = [...existingNodes, ...pageNodes]
+  existingRecord.pageInfo = pageRecord.pageInfo
+}
+
+async function hydratePaginatedMapArrayLookups(
+  lookupInputs: LookupInput[],
+  lookupResults: ResolutionResults,
+  githubClient: GithubClient,
+): Promise<void> {
+  let guard = 0
+
+  while (guard < 100) {
+    guard += 1
+    const pageInputs: Array<LookupInput & { connectionPath: string }> = []
+
+    for (const lookup of lookupInputs) {
+      const result = lookupResults[lookup.stepIndex]
+      if (result === undefined) continue
+
+      for (const connectionPath of mapArrayConnectionPaths(lookup.card)) {
+        const pageInfo = getAtPath(result, `${connectionPath}.pageInfo`)
+        const hasNextPage =
+          typeof pageInfo === "object" &&
+          pageInfo !== null &&
+          !Array.isArray(pageInfo) &&
+          (pageInfo as Record<string, unknown>).hasNextPage === true
+        if (!hasNextPage) continue
+
+        const endCursor = (pageInfo as Record<string, unknown>).endCursor
+        if (typeof endCursor !== "string" || endCursor.length === 0) {
+          throw new Error(
+            `Resolution pagination failed for step ${lookup.stepIndex}: '${connectionPath}' hasNextPage is true but endCursor is missing`,
+          )
+        }
+
+        const afterVar = afterVariableName(connectionPath)
+        if (!lookup.query.includes(`$${afterVar}`)) {
+          continue
+        }
+
+        pageInputs.push({
+          ...lookup,
+          variables: { ...lookup.variables, [afterVar]: endCursor },
+          connectionPath,
+        })
+      }
+    }
+
+    if (pageInputs.length === 0) return
+
+    const { document, variables } = buildBatchQuery(
+      pageInputs.map(({ alias, query, variables }) => ({ alias, query, variables })),
+    )
+    logger.debug("resolution.pagination_start", { count: pageInputs.length, page: guard })
+    const rawResult = await githubClient.query(document, variables)
+    logger.debug("resolution.pagination_complete", { count: pageInputs.length, page: guard })
+
+    for (const pageInput of pageInputs) {
+      const rawValue = (rawResult as Record<string, unknown>)[pageInput.alias]
+      if (rawValue === undefined) continue
+
+      const rootFieldName = extractRootFieldName(pageInput.query)
+      const pageResult = rootFieldName !== null ? { [rootFieldName]: rawValue } : rawValue
+      mergeConnectionPage(lookupResults[pageInput.stepIndex], pageResult, pageInput.connectionPath)
+    }
+  }
+
+  throw new Error("Resolution pagination failed: exceeded 100 pages")
+}
+
 export async function runResolutionPhase(
   steps: ClassifiedStep[],
   requests: Array<{ task: string; input: Record<string, unknown> }>,
@@ -30,12 +162,7 @@ export async function runResolutionPhase(
 ): Promise<ResolutionResults> {
   const lookupResults: ResolutionResults = {}
 
-  const lookupInputs: Array<{
-    alias: string
-    query: string
-    variables: Record<string, unknown>
-    stepIndex: number
-  }> = []
+  const lookupInputs: LookupInput[] = []
 
   for (const step of steps) {
     const { card, index } = step
@@ -70,6 +197,7 @@ export async function runResolutionPhase(
       query: getLookupDocument(card.graphql.resolution.lookup.operationName),
       variables: lookupVars,
       stepIndex: index,
+      card,
     })
   }
 
@@ -103,12 +231,18 @@ export async function runResolutionPhase(
     const result = rootFieldName !== null ? { [rootFieldName]: rawValue } : rawValue
     lookupResults[stepIndex] = result
     logger.debug("resolution.step_resolved", { step: stepIndex, alias })
+  }
 
+  await hydratePaginatedMapArrayLookups(lookupInputs, lookupResults, githubClient)
+
+  for (const { stepIndex } of lookupInputs) {
     if (resolutionCache) {
       const step = steps.find((s) => s.index === stepIndex)
       const req = requests[stepIndex]
       if (step?.card.graphql?.resolution && req) {
         const lookupVars = buildLookupVars(step.card, req.input)
+        const result = lookupResults[stepIndex]
+        if (result === undefined) continue
         resolutionCache.set(
           buildCacheKey(step.card.graphql.resolution.lookup.operationName, lookupVars),
           result,
