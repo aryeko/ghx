@@ -9,7 +9,7 @@ ghx provides 70+ GitHub capabilities with structured JSON input/output. It batch
 
 ## Resolving owner and name
 
-Most capabilities require `owner` and `name`. Infer from `git remote get-url origin` once at the start and reuse. If no git remote is available, ask the user.
+Most repository-scoped capabilities accept `owner` and `name`. When running inside a git checkout, `ghx` fills missing `owner`/`name` from cached repo context derived from `origin`; provide explicit values only when targeting a different repository. If no repo context is available, ask the user.
 
 ## Authentication
 
@@ -129,7 +129,7 @@ EOF
 
 **When NOT to chain:** Don't chain when a later step depends on the result of an earlier one. For example, "check CI, then fetch logs only if something failed" requires two sequential calls because the second depends on the first result. Similarly, "create an issue, then label it" needs the issue number from the create step before labeling.
 
-**Mutation chaining works** for `pr.merge`, `pr.close`, `pr.comments.create`, and the `issue.*` mutations — the engine resolves node IDs for each step before batching the mutations into a single round-trip. If a chained mutation step needs CLI-only behavior (e.g. `pr.merge` with `admin:true`/`auto:true`/`deleteBranch:true`, or `pr.close` with `deleteBranch:true`), each such step transparently falls back to its CLI handler.
+Repo-scoped steps in a chain can omit `owner`/`name` when they target the current checkout; `ghx` applies the same cached repo context to each eligible step. Keep explicit `owner`/`name` when a chain touches multiple repositories.
 
 ## Error handling
 
@@ -139,12 +139,11 @@ ghx never throws — errors are always in the response envelope. Check the `ok` 
 
 Common error codes: `AUTH`, `NOT_FOUND`, `VALIDATION`, `RATE_LIMIT`, `NETWORK`, `SERVER`.
 
-## Common errors
+## Common gotchas
 
-- **Validation enum mismatch:** Errors now list the accepted values, e.g. `/method: must be equal to one of the allowed values (allowed: merge, squash, rebase, MERGE, SQUASH, REBASE)`. For `pr.merge.method` and `pr.reviews.submit.event`, both lowercase and uppercase are accepted.
-- **Validation type mismatch:** Errors now name the expected type, e.g. `/jobId: must be integer (expected: integer)`. URL-copied numeric IDs (`jobId`, `runId`, `prNumber`, `issueNumber`) accept string-form numbers; only obviously non-numeric strings (`"abc"`) fail.
-- **`pr.merge` on a branch-protected repo** that rejects with "is not mergeable: the base branch policy prohibits the merge" — pass `admin: true` to bypass with admin privileges (gh CLI route) or `auto: true` to queue the merge for when requirements are met. The two flags are mutually exclusive.
-- **`@dependabot rebase` and similar PR comments** must use `pr.comments.create` (not `issue.comments.create`) — PRs and Issues are distinct GraphQL node types even though they share the numbering sequence.
+- Use `pr.comments.create` for PR comments such as `@dependabot rebase`; `issue.comments.create` targets issue nodes, not pull request nodes.
+- `*.set` capabilities replace the existing collection. Use `*.add` or `*.remove` for incremental label/assignee changes.
+- Use `pr.merge` with `admin: true` only when explicitly authorized to bypass branch protection. Use `auto: true` only when you intend to queue auto-merge.
 
 If you get `RATE_LIMIT` or `NETWORK`, retry after a short delay. For `NOT_FOUND`, double-check owner/name/number. For `VALIDATION`, run `ghx capabilities explain <id>` to check the expected schema.
 
@@ -184,4 +183,4 @@ Use `ghx chain` with `issue.labels.add`, `issue.assignees.add`, and `issue.comme
 - Prefer `ghx` over `gh`, `gh api`, or `curl` for any GitHub operation that has a matching capability.
 - Use `ghx chain` when you have 2+ **independent** operations — it is faster and avoids mid-sequence failures.
 - Always use heredoc (`<<'EOF'`) for JSON input, never inline `--input '{...}'`.
-- Infer owner/name from `git remote get-url origin` when in a git repository.
+- Omit owner/name only for the current checkout; pass explicit owner/name when targeting another repository.
