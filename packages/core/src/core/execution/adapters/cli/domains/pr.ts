@@ -519,11 +519,17 @@ const handlePrMerge: CliHandler = async (runner, params, card) => {
       throw new Error("Missing or invalid method for pr.merge")
     if (params.deleteBranch !== undefined && typeof params.deleteBranch !== "boolean")
       throw new Error("Missing or invalid deleteBranch for pr.merge")
+    if (params.admin !== undefined && typeof params.admin !== "boolean")
+      throw new Error("Missing or invalid admin for pr.merge")
+    if (params.auto !== undefined && typeof params.auto !== "boolean")
+      throw new Error("Missing or invalid auto for pr.merge")
 
     const args = [...commandTokens(card, "pr merge"), String(prNumber)]
     if (repo) args.push("--repo", repo)
     args.push(`--${method}`)
     if (params.deleteBranch === true) args.push("--delete-branch")
+    if (params.admin === true) args.push("--admin")
+    if (params.auto === true) args.push("--auto")
 
     const result = await runner.run("gh", args, DEFAULT_TIMEOUT_MS)
     if (result.exitCode !== 0) {
@@ -547,6 +553,8 @@ const handlePrMerge: CliHandler = async (runner, params, card) => {
         isMethodAssumed: params.method === undefined,
         queued: true,
         deleteBranch: params.deleteBranch === true,
+        ...(params.admin === true ? { admin: true } : {}),
+        ...(params.auto === true ? { auto: true } : {}),
       },
       "cli",
       { capabilityId: "pr.merge", reason: "CARD_FALLBACK" },

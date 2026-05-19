@@ -15,7 +15,19 @@ input_schema:
       # Normalization happens in the GraphQL/CLI handlers.
       enum: [merge, squash, rebase, MERGE, SQUASH, REBASE]
     deleteBranch: { type: boolean }
+    admin:
+      type: boolean
+      description: "Use administrator privileges to bypass branch protection. Routes to gh CLI --admin."
+    auto:
+      type: boolean
+      description: "Enable auto-merge once branch protection requirements are satisfied. Routes to gh CLI --auto."
   additionalProperties: false
+  not:
+    type: object
+    properties:
+      admin: { const: true }
+      auto: { const: true }
+    required: [admin, auto]
 output_schema:
   type: object
   required: [prNumber, method, isMethodAssumed, queued, deleteBranch]
@@ -25,10 +37,19 @@ output_schema:
     isMethodAssumed: { type: boolean, description: "true when method was not specified by the caller and defaults to merge" }
     queued: { type: boolean }
     deleteBranch: { type: boolean }
+    admin: { type: boolean }
+    auto: { type: boolean }
   additionalProperties: false
 routing:
   preferred: graphql
   fallbacks: [cli]
+  suitability:
+    - when: params
+      predicate: cli if admin == true
+      reason: "gh CLI required for --admin (mergePullRequest GraphQL has no admin bypass)"
+    - when: params
+      predicate: cli if auto == true
+      reason: "gh CLI required for --auto"
 graphql:
   # GQL limitation: deleteBranch: true unsupported, triggers CLI fallback
   operationName: PrMerge
