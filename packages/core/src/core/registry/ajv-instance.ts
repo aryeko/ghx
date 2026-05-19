@@ -1,3 +1,3 @@
 import { Ajv } from "ajv"
 
-export const ajv = new Ajv({ allErrors: true, strict: false })
+export const ajv = new Ajv({ allErrors: true, strict: false, coerceTypes: true })
