@@ -153,12 +153,27 @@ async function readOriginRemoteUrl(gitRoot: string): Promise<string | null> {
 
 function parseOwnerNameFromRemoteUrl(remoteUrl: string): { owner: string; name: string } | null {
   const withoutTrailingSlash = remoteUrl.trim().replace(/\/+$/, "")
-  const sshMatch = /[:/]([^/:]+)\/([^/]+?)(?:\.git)?$/.exec(withoutTrailingSlash)
-  if (!sshMatch) {
+
+  const scpLikeMatch = /^[^@\s]+@[^:\s]+:([^/\s]+)\/([^/\s]+?)(?:\.git)?$/.exec(
+    withoutTrailingSlash,
+  )
+  if (scpLikeMatch?.[1] && scpLikeMatch[2]) {
+    return { owner: scpLikeMatch[1], name: scpLikeMatch[2] }
+  }
+
+  let url: URL
+  try {
+    url = new URL(withoutTrailingSlash)
+  } catch {
     return null
   }
 
-  const [, owner, name] = sshMatch
+  if (!url.hostname || url.protocol === "file:") {
+    return null
+  }
+
+  const [owner, nameWithSuffix] = url.pathname.split("/").filter(Boolean)
+  const name = nameWithSuffix?.replace(/\.git$/, "")
   if (!owner || !name) {
     return null
   }

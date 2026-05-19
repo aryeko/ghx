@@ -1,7 +1,7 @@
-import { randomUUID } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { dirname, join } from "node:path"
 import {
   applyRepoContextDefaultsToInput,
   applyRepoContextDefaultsToSteps,
@@ -20,6 +20,17 @@ async function writeGitRemote(root: string, remoteUrl: string): Promise<void> {
     `[core]\n\trepositoryformatversion = 0\n[remote "origin"]\n\turl = ${remoteUrl}\n`,
     "utf8",
   )
+}
+
+function cachePathFor(key: string, cacheRoot: string): string {
+  const hash = createHash("sha256").update(key).digest("hex").slice(0, 32)
+  return join(cacheRoot, "ghx", "repos", `${hash}.json`)
+}
+
+async function writeCacheEntry(key: string, value: unknown, cacheRoot: string): Promise<void> {
+  const path = cachePathFor(key, cacheRoot)
+  await mkdir(dirname(path), { recursive: true })
+  await writeFile(path, typeof value === "string" ? value : JSON.stringify(value), "utf8")
 }
 
 describe("repo context cache", () => {
@@ -71,6 +82,31 @@ describe("repo context cache", () => {
     })
   })
 
+  it("returns null for malformed GITHUB_REPOSITORY when no git context is available", async () => {
+    vi.stubEnv("GITHUB_REPOSITORY", "not/a/repo/path")
+
+    await expect(resolveRepoContext({ cwd: tempRoot })).resolves.toBeNull()
+  })
+
+  it("returns null when git metadata exists without an origin remote", async () => {
+    await mkdir(join(tempRoot, ".git"), { recursive: true })
+    await writeFile(join(tempRoot, ".git", "config"), '[remote "upstream"]\n\turl = x\n', "utf8")
+
+    await expect(resolveRepoContext({ cwd: tempRoot })).resolves.toBeNull()
+  })
+
+  it("returns null when origin remote cannot be parsed as owner/name", async () => {
+    await writeGitRemote(tempRoot, "file:///tmp/local-repo")
+
+    await expect(resolveRepoContext({ cwd: tempRoot })).resolves.toBeNull()
+  })
+
+  it("returns null when a .git file has no gitdir", async () => {
+    await writeFile(join(tempRoot, ".git"), "not a gitdir file\n", "utf8")
+
+    await expect(resolveRepoContext({ cwd: tempRoot })).resolves.toBeNull()
+  })
+
   it("resolves origin remote from a git worktree commondir", async () => {
     const gitDir = join(tempRoot, ".git-worktree", "worktrees", "feature")
     const commonDir = join(tempRoot, ".git-common")
@@ -87,6 +123,56 @@ describe("repo context cache", () => {
     await expect(resolveRepoContext({ cwd: tempRoot })).resolves.toMatchObject({
       owner: "acme",
       name: "worktree-repo",
+      source: "git",
+    })
+  })
+
+  it("resolves origin remote from a relative gitdir and relative commondir", async () => {
+    const gitDir = join(tempRoot, "gitdir", "worktrees", "feature")
+    const commonDir = join(tempRoot, "gitdir")
+    await mkdir(gitDir, { recursive: true })
+    await writeFile(join(tempRoot, ".git"), "gitdir: gitdir/worktrees/feature\n", "utf8")
+    await writeFile(join(gitDir, "commondir"), "../..\n", "utf8")
+    await writeFile(
+      join(commonDir, "config"),
+      `[remote "origin"]\n\turl = ssh://git@github.com/acme/relative-worktree.git\n`,
+      "utf8",
+    )
+
+    await expect(resolveRepoContext({ cwd: tempRoot })).resolves.toMatchObject({
+      owner: "acme",
+      name: "relative-worktree",
+      source: "git",
+    })
+  })
+
+  it("ignores invalid cached JSON and refreshes from git", async () => {
+    await writeGitRemote(tempRoot, "https://github.com/acme/widgets.git")
+    await writeCacheEntry(tempRoot, "{not-json", cacheRoot)
+
+    await expect(resolveRepoContext({ cwd: tempRoot })).resolves.toMatchObject({
+      owner: "acme",
+      name: "widgets",
+      source: "git",
+    })
+  })
+
+  it("ignores stale cache entries and refreshes from git", async () => {
+    await writeGitRemote(tempRoot, "https://github.com/acme/widgets.git")
+    await writeCacheEntry(
+      tempRoot,
+      {
+        version: 1,
+        owner: "stale",
+        name: "repo",
+        updatedAt: "2000-01-01T00:00:00.000Z",
+      },
+      cacheRoot,
+    )
+
+    await expect(resolveRepoContext({ cwd: tempRoot })).resolves.toMatchObject({
+      owner: "acme",
+      name: "widgets",
       source: "git",
     })
   })
@@ -123,6 +209,12 @@ describe("repo context cache", () => {
     ).resolves.toEqual({ projectNumber: 12 })
   })
 
+  it("leaves repo-scoped input unchanged when repo context is unavailable", async () => {
+    await expect(
+      applyRepoContextDefaultsToInput("pr.view", { prNumber: 7 }, { cwd: tempRoot }),
+    ).resolves.toEqual({ prNumber: 7 })
+  })
+
   it("fills each repo-scoped chain step from one resolved context", async () => {
     await writeGitRemote(tempRoot, "https://github.com/acme/widgets.git")
 
@@ -140,6 +232,14 @@ describe("repo context cache", () => {
       { task: "issue.view", input: { owner: "explicit", name: "widgets", issueNumber: 2 } },
       { task: "project_v2.items.list", input: { projectNumber: 3 } },
     ])
+  })
+
+  it("leaves repo-scoped chain steps unchanged when repo context is unavailable", async () => {
+    await expect(
+      applyRepoContextDefaultsToSteps([{ task: "pr.view", input: { prNumber: 1 } }], {
+        cwd: tempRoot,
+      }),
+    ).resolves.toEqual([{ task: "pr.view", input: { prNumber: 1 } }])
   })
 
   it("writes repo context under the ghx cache root", async () => {
