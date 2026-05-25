@@ -71,7 +71,7 @@
     "@nx/eslint": "22.7.2",
     "@nx/js": "22.7.2",
     "@types/node": "catalog:",
-    "@vitest/eslint-plugin": "^1.6.16",
+    "@vitest/eslint-plugin": "^1.6.18",
     "vite": "^8.0.13",
     "eslint": "^9.35.0",
     "globals": "^17.5.0",
