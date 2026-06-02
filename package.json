@@ -72,7 +72,7 @@
     "@nx/js": "22.7.2",
     "@types/node": "catalog:",
     "@vitest/eslint-plugin": "^1.6.16",
-    "vite": "^8.0.13",
+    "vite": "^8.0.16",
     "eslint": "^9.35.0",
     "globals": "^17.5.0",
     "lefthook": "^2.1.6",
