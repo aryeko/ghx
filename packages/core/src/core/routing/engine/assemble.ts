@@ -8,11 +8,14 @@ import type {
 } from "@core/core/contracts/envelope.js"
 import { errorCodes } from "@core/core/errors/codes.js"
 import { mapErrorToCode } from "@core/core/errors/map-error.js"
+import { isRetryableErrorCode } from "@core/core/errors/retryability.js"
 import { logger } from "@core/core/telemetry/log.js"
 import type { ClassifiedStep } from "./types.js"
 
+// Delegate to the shared retryability source of truth so chain results agree with
+// the single-run path (e.g. NOT_READY is retryable in both). See retryability.ts.
 export function isRetryableCode(code: string): boolean {
-  return code === errorCodes.RateLimit || code === errorCodes.Network || code === errorCodes.Server
+  return isRetryableErrorCode(code)
 }
 
 export type AssembleInput = {
