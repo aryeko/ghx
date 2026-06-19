@@ -129,6 +129,44 @@ describe("issue domain handlers", () => {
       )
     })
 
+    it.each([
+      ["open", "open"],
+      ["closed", "closed"],
+      ["all", "all"],
+      ["OPEN", "open"],
+      ["CLOSED", "closed"],
+    ])("passes state %s to gh issue list as --state %s", async (inputState, expectedState) => {
+      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "[]", stderr: "" })
+      const runner = { run: runSpy } as unknown as CliCommandRunner
+
+      await handleIssueList(
+        runner,
+        { owner: "owner", name: "repo", first: 30, state: inputState },
+        undefined,
+      )
+
+      expect(runSpy).toHaveBeenCalledWith(
+        "gh",
+        expect.arrayContaining(["issue", "list", "--state", expectedState]),
+        expect.any(Number),
+      )
+    })
+
+    it("returns an error before calling gh when state is invalid", async () => {
+      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "[]", stderr: "" })
+      const runner = { run: runSpy } as unknown as CliCommandRunner
+
+      const result = await handleIssueList(
+        runner,
+        { owner: "owner", name: "repo", first: 30, state: "merged" },
+        undefined,
+      )
+
+      expect(result.ok).toBe(false)
+      expect(result.error?.message).toBe("Invalid state for issue.list")
+      expect(runSpy).not.toHaveBeenCalled()
+    })
+
     it("returns error on non-zero exit code", async () => {
       const runner = mockRunner(1, "", "error fetching issues")
 

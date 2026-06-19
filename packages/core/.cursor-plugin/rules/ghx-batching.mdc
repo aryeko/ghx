@@ -9,8 +9,8 @@ Example:
 ```bash
 ghx chain --steps - <<'EOF'
 [
-  {"task":"pr.view","input":{"owner":"org","name":"repo","number":123}},
-  {"task":"pr.reviews.list","input":{"owner":"org","name":"repo","number":123}}
+  {"task":"pr.view","input":{"owner":"org","name":"repo","prNumber":123}},
+  {"task":"pr.reviews.list","input":{"owner":"org","name":"repo","prNumber":123}}
 ]
 EOF
 ```

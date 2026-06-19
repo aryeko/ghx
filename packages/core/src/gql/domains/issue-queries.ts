@@ -5,7 +5,7 @@ import {
 } from "../assertions.js"
 import type { IssueCommentsListQuery } from "../operations/issue-comments-list.generated.js"
 import { getSdk as getIssueCommentsListSdk } from "../operations/issue-comments-list.generated.js"
-import type { IssueListQuery } from "../operations/issue-list.generated.js"
+import type { IssueListQuery, IssueState } from "../operations/issue-list.generated.js"
 import { getSdk as getIssueListSdk } from "../operations/issue-list.generated.js"
 import type { IssueViewQuery } from "../operations/issue-view.generated.js"
 import { getSdk as getIssueViewSdk } from "../operations/issue-view.generated.js"
@@ -19,6 +19,22 @@ import type {
   IssueViewData,
   IssueViewInput,
 } from "../types.js"
+
+function normalizeIssueListStates(state: string | null | undefined): IssueState[] | undefined {
+  if (state === undefined || state === null) {
+    return undefined
+  }
+
+  const normalized = state.trim().toUpperCase()
+  if (!normalized || normalized === "ALL") {
+    return undefined
+  }
+  if (normalized !== "OPEN" && normalized !== "CLOSED") {
+    throw new Error("Invalid state for issue.list")
+  }
+
+  return [normalized]
+}
 
 export async function runIssueView(
   transport: GraphqlTransport,
@@ -51,7 +67,13 @@ export async function runIssueList(
   assertIssueListInput(input)
 
   const sdk = getIssueListSdk(createGraphqlRequestClient(transport))
-  const result: IssueListQuery = await sdk.IssueList(input)
+  const result: IssueListQuery = await sdk.IssueList({
+    owner: input.owner,
+    name: input.name,
+    first: input.first,
+    after: input.after,
+    states: normalizeIssueListStates(input.state),
+  })
   const issues = result.repository?.issues
   if (!issues) {
     throw new Error("Issues not found")

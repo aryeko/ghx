@@ -119,6 +119,45 @@ describe("pr domain handlers", () => {
         expect.any(Number),
       )
     })
+
+    it.each([
+      ["open", "open"],
+      ["closed", "closed"],
+      ["merged", "merged"],
+      ["all", "all"],
+      ["OPEN", "open"],
+      ["MERGED", "merged"],
+    ])("passes state %s to gh pr list as --state %s", async (inputState, expectedState) => {
+      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "[]", stderr: "" })
+      const runner = { run: runSpy } as unknown as CliCommandRunner
+
+      await h("pr.list")(
+        runner,
+        { owner: "owner", name: "repo", first: 30, state: inputState },
+        undefined,
+      )
+
+      expect(runSpy).toHaveBeenCalledWith(
+        "gh",
+        expect.arrayContaining(["pr", "list", "--state", expectedState]),
+        expect.any(Number),
+      )
+    })
+
+    it("returns an error before calling gh when state is invalid", async () => {
+      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "[]", stderr: "" })
+      const runner = { run: runSpy } as unknown as CliCommandRunner
+
+      const result = await h("pr.list")(
+        runner,
+        { owner: "owner", name: "repo", first: 30, state: "draft" },
+        undefined,
+      )
+
+      expect(result.ok).toBe(false)
+      expect(result.error?.message).toBe("Invalid state for pr.list")
+      expect(runSpy).not.toHaveBeenCalled()
+    })
   })
 
   describe("pr.create", () => {

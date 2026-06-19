@@ -14,6 +14,7 @@ import {
   normalizeListItem,
   parseCliData,
   parseListFirst,
+  parseListState,
   parseNonEmptyString,
   parseStrictPositiveInt,
   sanitizeCliErrorMessage,
@@ -97,9 +98,12 @@ const handlePrList: CliHandler = async (runner, params, card) => {
     const repo = owner && name ? `${owner}/${name}` : ""
     const first = parseListFirst(params.first)
     if (first === null) throw new Error("Missing or invalid first for pr.list")
+    const state = parseListState(params.state, ["open", "closed", "merged", "all"])
+    if (state === null) throw new Error("Invalid state for pr.list")
 
     const args = commandTokens(card, "pr list")
     if (repo) args.push("--repo", repo)
+    if (state) args.push("--state", state)
     args.push(
       "--limit",
       String(first),

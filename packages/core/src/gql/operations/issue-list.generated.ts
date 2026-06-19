@@ -22,6 +22,7 @@ export type IssueListQueryVariables = Exact<{
   name: string
   first: number
   after?: string | null | undefined
+  states?: Array<Types.IssueState> | Types.IssueState | null | undefined
 }>
 
 export type IssueListQuery = {
@@ -44,13 +45,14 @@ export type IssueListQuery = {
 }
 
 export const IssueListDocument = new TypedDocumentString(`
-    query IssueList($owner: String!, $name: String!, $first: Int!, $after: String) {
+    query IssueList($owner: String!, $name: String!, $first: Int!, $after: String, $states: [IssueState!]) {
   __typename
   repository(owner: $owner, name: $name) {
     __typename
     issues(
       first: $first
       after: $after
+      states: $states
       orderBy: {field: CREATED_AT, direction: DESC}
     ) {
       __typename

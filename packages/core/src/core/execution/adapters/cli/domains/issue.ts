@@ -11,6 +11,7 @@ import {
   normalizeListItem,
   parseCliData,
   parseListFirst,
+  parseListState,
   parseStrictPositiveInt,
   sanitizeCliErrorMessage,
 } from "../helpers.js"
@@ -102,10 +103,17 @@ export const handleIssueList: CliHandler = async (runner, params, card) => {
     if (first === null) {
       throw new Error("Missing or invalid first for issue.list")
     }
+    const state = parseListState(params.state, ["open", "closed", "all"])
+    if (state === null) {
+      throw new Error("Invalid state for issue.list")
+    }
 
     const args = commandTokens(card, "issue list")
     if (repo) {
       args.push("--repo", repo)
+    }
+    if (state) {
+      args.push("--state", state)
     }
     args.push(
       "--limit",
