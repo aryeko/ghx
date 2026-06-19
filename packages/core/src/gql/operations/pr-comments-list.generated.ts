@@ -84,12 +84,18 @@ export type PrCommentsListQuery = {
 
 export const PrCommentsListDocument = new TypedDocumentString(`
     query PrCommentsList($owner: String!, $name: String!, $prNumber: Int!, $first: Int!, $after: String) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     pullRequest(number: $prNumber) {
+      __typename
       reviewThreads(first: $first, after: $after) {
+        __typename
         edges {
+          __typename
           cursor
           node {
+            __typename
             id
             path
             line
@@ -102,15 +108,19 @@ export const PrCommentsListDocument = new TypedDocumentString(`
             viewerCanResolve
             viewerCanUnresolve
             resolvedBy {
+              __typename
               login
             }
             comments(first: 20) {
+              __typename
               nodes {
+                __typename
                 id
                 body
                 createdAt
                 url
                 author {
+                  __typename
                   login
                 }
               }
@@ -118,6 +128,7 @@ export const PrCommentsListDocument = new TypedDocumentString(`
           }
         }
         pageInfo {
+          __typename
           ...PageInfoFields
         }
       }

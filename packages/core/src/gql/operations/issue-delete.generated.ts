@@ -21,7 +21,9 @@ export type IssueDeleteMutation = {
 
 export const IssueDeleteDocument = new TypedDocumentString(`
     mutation IssueDelete($issueId: ID!) {
+  __typename
   deleteIssue(input: {issueId: $issueId}) {
+    __typename
     clientMutationId
   }
 }

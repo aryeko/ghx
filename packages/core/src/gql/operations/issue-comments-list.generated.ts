@@ -48,19 +48,26 @@ export type IssueCommentsListQuery = {
 
 export const IssueCommentsListDocument = new TypedDocumentString(`
     query IssueCommentsList($owner: String!, $name: String!, $issueNumber: Int!, $first: Int!, $after: String) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     issue(number: $issueNumber) {
+      __typename
       comments(first: $first, after: $after) {
+        __typename
         nodes {
+          __typename
           id
           body
           createdAt
           url
           author {
+            __typename
             login
           }
         }
         pageInfo {
+          __typename
           ...PageInfoFields
         }
       }

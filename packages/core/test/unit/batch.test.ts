@@ -18,6 +18,14 @@ describe("extractRootFieldName", () => {
     expect(extractRootFieldName(query)).toBe("node")
   })
 
+  it("skips a generated root typename selection", () => {
+    const query = `query Foo {
+  __typename
+  repository(owner: "o", name: "n") { id }
+}`
+    expect(extractRootFieldName(query)).toBe("repository")
+  })
+
   it("returns null when the query has no opening brace", () => {
     expect(extractRootFieldName("not a valid query")).toBeNull()
   })
@@ -40,6 +48,23 @@ describe("buildBatchQuery", () => {
     expect(result.document).toContain("step0:")
     expect(result.document).toContain("$step0_issueId: ID!")
     expect(result.variables).toEqual({ step0_issueId: "I_123" })
+  })
+
+  it("aliases the real query field after root typename", () => {
+    const result = buildBatchQuery([
+      {
+        alias: "step0",
+        query: `query PrNodeId($owner: String!, $name: String!, $prNumber: Int!) {
+  __typename
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $prNumber) { id }
+  }
+}`,
+        variables: { owner: "o", name: "n", prNumber: 1 },
+      },
+    ])
+    expect(result.document).toContain("__typename\n  step0: repository")
+    expect(result.document).not.toContain("step0: __typename")
   })
 
   it("merges two queries", () => {
@@ -129,6 +154,23 @@ describe("buildBatchMutation", () => {
     expect(result.document).toContain("mutation BatchComposite")
     expect(result.document).toContain("step0:")
     expect(result.variables).toEqual({ step0_issueId: "I_123" })
+  })
+
+  it("aliases the real mutation field after root typename", () => {
+    const result = buildBatchMutation([
+      {
+        alias: "step0",
+        mutation: `mutation CloseIssue($issueId: ID!) {
+  __typename
+  closeIssue(input: {issueId: $issueId}) {
+    issue { id }
+  }
+}`,
+        variables: { issueId: "I_123" },
+      },
+    ])
+    expect(result.document).toContain("__typename\n  step0: closeIssue")
+    expect(result.document).not.toContain("step0: __typename")
   })
 
   it("merges two mutations", () => {

@@ -132,61 +132,80 @@ export type ProjectV2FieldsListQuery = {
 
 export const ProjectV2FieldsListDocument = new TypedDocumentString(`
     query ProjectV2FieldsList($owner: String!, $projectNumber: Int!, $first: Int!, $after: String) {
+  __typename
   organization(login: $owner) {
+    __typename
     projectV2(number: $projectNumber) {
+      __typename
       fields(first: $first, after: $after) {
+        __typename
         nodes {
+          __typename
           ... on ProjectV2Field {
+            __typename
             id
             name
             dataType
           }
           ... on ProjectV2IterationField {
+            __typename
             id
             name
             dataType
           }
           ... on ProjectV2SingleSelectField {
+            __typename
             id
             name
             dataType
             options {
+              __typename
               id
               name
             }
           }
         }
         pageInfo {
+          __typename
           ...PageInfoFields
         }
       }
     }
   }
   user(login: $owner) {
+    __typename
     projectV2(number: $projectNumber) {
+      __typename
       fields(first: $first, after: $after) {
+        __typename
         nodes {
+          __typename
           ... on ProjectV2Field {
+            __typename
             id
             name
             dataType
           }
           ... on ProjectV2IterationField {
+            __typename
             id
             name
             dataType
           }
           ... on ProjectV2SingleSelectField {
+            __typename
             id
             name
             dataType
             options {
+              __typename
               id
               name
             }
           }
         }
         pageInfo {
+          __typename
           ...PageInfoFields
         }
       }

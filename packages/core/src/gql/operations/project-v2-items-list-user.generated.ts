@@ -54,27 +54,37 @@ export type ProjectV2ItemsListUserQuery = {
 
 export const ProjectV2ItemsListUserDocument = new TypedDocumentString(`
     query ProjectV2ItemsListUser($owner: String!, $projectNumber: Int!, $first: Int!, $after: String) {
+  __typename
   user(login: $owner) {
+    __typename
     projectV2(number: $projectNumber) {
+      __typename
       items(first: $first, after: $after) {
+        __typename
         nodes {
+          __typename
           id
           type
           content {
+            __typename
             ... on Issue {
+              __typename
               number
               title
             }
             ... on PullRequest {
+              __typename
               number
               title
             }
             ... on DraftIssue {
+              __typename
               title
             }
           }
         }
         pageInfo {
+          __typename
           ...PageInfoFields
         }
       }

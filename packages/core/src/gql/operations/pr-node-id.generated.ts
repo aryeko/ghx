@@ -26,8 +26,11 @@ export type PrNodeIdQuery = {
 
 export const PrNodeIdDocument = new TypedDocumentString(`
     query PrNodeId($owner: String!, $name: String!, $prNumber: Int!) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     pullRequest(number: $prNumber) {
+      __typename
       id
     }
   }

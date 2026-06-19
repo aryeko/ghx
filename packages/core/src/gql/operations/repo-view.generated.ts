@@ -32,7 +32,9 @@ export type RepoViewQuery = {
 
 export const RepoViewDocument = new TypedDocumentString(`
     query RepoView($owner: String!, $name: String!) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     id
     name
     nameWithOwner
@@ -41,6 +43,7 @@ export const RepoViewDocument = new TypedDocumentString(`
     forkCount
     url
     defaultBranchRef {
+      __typename
       name
     }
   }

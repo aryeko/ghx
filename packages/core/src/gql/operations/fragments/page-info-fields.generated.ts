@@ -17,6 +17,7 @@ export type PageInfoFieldsFragment = {
 export const PageInfoFieldsFragmentDoc = new TypedDocumentString(
   `
     fragment PageInfoFields on PageInfo {
+  __typename
   endCursor
   hasNextPage
 }

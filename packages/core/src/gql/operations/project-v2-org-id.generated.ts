@@ -25,8 +25,11 @@ export type ProjectV2OrgIdQuery = {
 
 export const ProjectV2OrgIdDocument = new TypedDocumentString(`
     query ProjectV2OrgId($org: String!, $projectNumber: Int!) {
+  __typename
   organization(login: $org) {
+    __typename
     projectV2(number: $projectNumber) {
+      __typename
       id
     }
   }

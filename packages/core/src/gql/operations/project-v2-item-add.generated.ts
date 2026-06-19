@@ -36,8 +36,11 @@ export type AddProjectV2ItemMutation = {
 
 export const AddProjectV2ItemDocument = new TypedDocumentString(`
     mutation AddProjectV2Item($projectId: ID!, $contentId: ID!) {
+  __typename
   addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+    __typename
     item {
+      __typename
       id
       type
     }

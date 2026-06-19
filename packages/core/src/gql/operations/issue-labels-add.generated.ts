@@ -36,12 +36,18 @@ export type IssueLabelsAddMutation = {
 
 export const IssueLabelsAddDocument = new TypedDocumentString(`
     mutation IssueLabelsAdd($labelableId: ID!, $labelIds: [ID!]!) {
+  __typename
   addLabelsToLabelable(input: {labelableId: $labelableId, labelIds: $labelIds}) {
+    __typename
     labelable {
+      __typename
       ... on Issue {
+        __typename
         id
         labels(first: 50) {
+          __typename
           nodes {
+            __typename
             name
           }
         }

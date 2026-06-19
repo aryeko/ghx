@@ -36,14 +36,20 @@ export type IssueLabelsRemoveMutation = {
 
 export const IssueLabelsRemoveDocument = new TypedDocumentString(`
     mutation IssueLabelsRemove($labelableId: ID!, $labelIds: [ID!]!) {
+  __typename
   removeLabelsFromLabelable(
     input: {labelableId: $labelableId, labelIds: $labelIds}
   ) {
+    __typename
     labelable {
+      __typename
       ... on Issue {
+        __typename
         id
         labels(first: 50) {
+          __typename
           nodes {
+            __typename
             name
           }
         }

@@ -45,8 +45,11 @@ export type ProjectV2IssueNodeIdQuery = {
 
 export const ProjectV2IssueNodeIdDocument = new TypedDocumentString(`
     query ProjectV2IssueNodeId($url: URI!) {
+  __typename
   resource(url: $url) {
+    __typename
     ... on Issue {
+      __typename
       id
     }
   }

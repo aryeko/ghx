@@ -45,12 +45,17 @@ export type IssueViewQuery = {
 
 export const IssueViewDocument = new TypedDocumentString(`
     query IssueView($owner: String!, $name: String!, $issueNumber: Int!) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     issue(number: $issueNumber) {
+      __typename
       ...IssueCoreFields
       body
       labels(first: 20) {
+        __typename
         nodes {
+          __typename
           name
         }
       }

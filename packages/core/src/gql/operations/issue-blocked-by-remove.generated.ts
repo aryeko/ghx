@@ -26,11 +26,15 @@ export type IssueBlockedByRemoveMutation = {
 
 export const IssueBlockedByRemoveDocument = new TypedDocumentString(`
     mutation IssueBlockedByRemove($issueId: ID!, $blockedByIssueId: ID!) {
+  __typename
   removeBlockedBy(input: {issueId: $issueId, blockingIssueId: $blockedByIssueId}) {
+    __typename
     issue {
+      __typename
       id
     }
     blockingIssue {
+      __typename
       id
     }
   }

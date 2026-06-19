@@ -29,10 +29,14 @@ export type IssueMilestoneSetMutation = {
 
 export const IssueMilestoneSetDocument = new TypedDocumentString(`
     mutation IssueMilestoneSet($issueId: ID!, $milestoneId: ID) {
+  __typename
   updateIssue(input: {id: $issueId, milestoneId: $milestoneId}) {
+    __typename
     issue {
+      __typename
       id
       milestone {
+        __typename
         number
       }
     }

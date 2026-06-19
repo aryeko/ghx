@@ -32,10 +32,13 @@ export type PrBranchUpdateMutation = {
 
 export const PrBranchUpdateDocument = new TypedDocumentString(`
     mutation PrBranchUpdate($pullRequestId: ID!, $updateMethod: PullRequestBranchUpdateMethod) {
+  __typename
   updatePullRequestBranch(
     input: {pullRequestId: $pullRequestId, updateMethod: $updateMethod}
   ) {
+    __typename
     pullRequest {
+      __typename
       id
       number
     }

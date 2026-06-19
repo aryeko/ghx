@@ -123,6 +123,7 @@ export type ProjectV2FieldsListOrgQuery = {
 export const ProjectV2CommonFieldsFragmentDoc = new TypedDocumentString(
   `
     fragment ProjectV2CommonFields on ProjectV2FieldCommon {
+  __typename
   id
   name
   dataType
@@ -132,21 +133,30 @@ export const ProjectV2CommonFieldsFragmentDoc = new TypedDocumentString(
 )
 export const ProjectV2FieldsListOrgDocument = new TypedDocumentString(`
     query ProjectV2FieldsListOrg($owner: String!, $projectNumber: Int!, $first: Int!, $after: String) {
+  __typename
   organization(login: $owner) {
+    __typename
     projectV2(number: $projectNumber) {
+      __typename
       fields(first: $first, after: $after) {
+        __typename
         nodes {
+          __typename
           ... on ProjectV2FieldCommon {
+            __typename
             ...ProjectV2CommonFields
           }
           ... on ProjectV2SingleSelectField {
+            __typename
             options {
+              __typename
               id
               name
             }
           }
         }
         pageInfo {
+          __typename
           ...PageInfoFields
         }
       }
@@ -154,6 +164,7 @@ export const ProjectV2FieldsListOrgDocument = new TypedDocumentString(`
   }
 }
     fragment ProjectV2CommonFields on ProjectV2FieldCommon {
+  __typename
   id
   name
   dataType

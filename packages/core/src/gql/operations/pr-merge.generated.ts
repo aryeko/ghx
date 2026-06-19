@@ -50,10 +50,13 @@ export type PrMergeMutation = {
 
 export const PrMergeDocument = new TypedDocumentString(`
     mutation PrMerge($pullRequestId: ID!, $mergeMethod: PullRequestMergeMethod) {
+  __typename
   mergePullRequest(
     input: {pullRequestId: $pullRequestId, mergeMethod: $mergeMethod}
   ) {
+    __typename
     pullRequest {
+      __typename
       id
       number
       state

@@ -63,12 +63,18 @@ export type PrReviewsListQuery = {
 
 export const PrReviewsListDocument = new TypedDocumentString(`
     query PrReviewsList($owner: String!, $name: String!, $prNumber: Int!, $first: Int!, $after: String) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     pullRequest(number: $prNumber) {
+      __typename
       reviews(first: $first, after: $after) {
+        __typename
         nodes {
+          __typename
           id
           author {
+            __typename
             login
           }
           body
@@ -76,10 +82,12 @@ export const PrReviewsListDocument = new TypedDocumentString(`
           submittedAt
           url
           commit {
+            __typename
             oid
           }
         }
         pageInfo {
+          __typename
           ...PageInfoFields
         }
       }

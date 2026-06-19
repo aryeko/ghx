@@ -25,10 +25,13 @@ export type PrCommentReplyMutation = {
 
 export const PrCommentReplyDocument = new TypedDocumentString(`
     mutation PrCommentReply($threadId: ID!, $body: String!) {
+  __typename
   addPullRequestReviewThreadReply(
     input: {pullRequestReviewThreadId: $threadId, body: $body}
   ) {
+    __typename
     comment {
+      __typename
       id
     }
   }

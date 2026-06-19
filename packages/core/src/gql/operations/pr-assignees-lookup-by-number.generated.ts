@@ -32,16 +32,22 @@ export type PrAssigneesLookupByNumberQuery = {
 
 export const PrAssigneesLookupByNumberDocument = new TypedDocumentString(`
     query PrAssigneesLookupByNumber($owner: String!, $name: String!, $prNumber: Int!, $assignableUsersAfter: String) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     pullRequest(number: $prNumber) {
+      __typename
       id
     }
     assignableUsers(first: 100, after: $assignableUsersAfter) {
+      __typename
       pageInfo {
+        __typename
         hasNextPage
         endCursor
       }
       nodes {
+        __typename
         id
         login
       }

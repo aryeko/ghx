@@ -31,8 +31,11 @@ export type IssueCloseMutation = {
 
 export const IssueCloseDocument = new TypedDocumentString(`
     mutation IssueClose($issueId: ID!) {
+  __typename
   closeIssue(input: {issueId: $issueId}) {
+    __typename
     issue {
+      __typename
       id
       number
       state

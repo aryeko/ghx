@@ -24,8 +24,11 @@ export type PrCommentUnresolveMutation = {
 
 export const PrCommentUnresolveDocument = new TypedDocumentString(`
     mutation PrCommentUnresolve($threadId: ID!) {
+  __typename
   unresolveReviewThread(input: {threadId: $threadId}) {
+    __typename
     thread {
+      __typename
       id
       isResolved
     }

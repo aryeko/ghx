@@ -32,11 +32,16 @@ export type IssueAssigneesUpdateMutation = {
 
 export const IssueAssigneesUpdateDocument = new TypedDocumentString(`
     mutation IssueAssigneesUpdate($issueId: ID!, $assigneeIds: [ID!]!) {
+  __typename
   updateIssue(input: {id: $issueId, assigneeIds: $assigneeIds}) {
+    __typename
     issue {
+      __typename
       id
       assignees(first: 50) {
+        __typename
         nodes {
+          __typename
           login
         }
       }

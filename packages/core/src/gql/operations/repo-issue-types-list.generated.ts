@@ -56,15 +56,20 @@ export type RepoIssueTypesListQuery = {
 
 export const RepoIssueTypesListDocument = new TypedDocumentString(`
     query RepoIssueTypesList($owner: String!, $name: String!, $first: Int!, $after: String) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     issueTypes(first: $first, after: $after) {
+      __typename
       nodes {
+        __typename
         id
         name
         color
         isEnabled
       }
       pageInfo {
+        __typename
         ...PageInfoFields
       }
     }

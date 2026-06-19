@@ -40,8 +40,11 @@ export type IssueCreateMutation = {
 
 export const IssueCreateDocument = new TypedDocumentString(`
     mutation IssueCreate($repositoryId: ID!, $title: String!, $body: String) {
+  __typename
   createIssue(input: {repositoryId: $repositoryId, title: $title, body: $body}) {
+    __typename
     issue {
+      __typename
       ...IssueCoreFields
     }
   }

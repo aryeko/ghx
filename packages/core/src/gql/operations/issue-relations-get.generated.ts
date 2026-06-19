@@ -39,22 +39,30 @@ export type IssueRelationsGetQuery = {
 
 export const IssueRelationsGetDocument = new TypedDocumentString(`
     query IssueRelationsGet($owner: String!, $name: String!, $issueNumber: Int!) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     issue(number: $issueNumber) {
+      __typename
       id
       number
       parent {
+        __typename
         id
         number
       }
       subIssues(first: 50) {
+        __typename
         nodes {
+          __typename
           id
           number
         }
       }
       blockedBy(first: 50) {
+        __typename
         nodes {
+          __typename
           id
           number
         }

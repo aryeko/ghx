@@ -26,11 +26,15 @@ export type IssueParentRemoveMutation = {
 
 export const IssueParentRemoveDocument = new TypedDocumentString(`
     mutation IssueParentRemove($issueId: ID!, $parentIssueId: ID!) {
+  __typename
   removeSubIssue(input: {issueId: $parentIssueId, subIssueId: $issueId}) {
+    __typename
     issue {
+      __typename
       id
     }
     subIssue {
+      __typename
       id
     }
   }

@@ -45,16 +45,21 @@ export type IssueListQuery = {
 
 export const IssueListDocument = new TypedDocumentString(`
     query IssueList($owner: String!, $name: String!, $first: Int!, $after: String) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     issues(
       first: $first
       after: $after
       orderBy: {field: CREATED_AT, direction: DESC}
     ) {
+      __typename
       nodes {
+        __typename
         ...IssueCoreFields
       }
       pageInfo {
+        __typename
         ...PageInfoFields
       }
     }

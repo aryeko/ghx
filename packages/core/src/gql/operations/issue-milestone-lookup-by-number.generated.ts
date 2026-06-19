@@ -28,11 +28,15 @@ export type IssueMilestoneLookupByNumberQuery = {
 
 export const IssueMilestoneLookupByNumberDocument = new TypedDocumentString(`
     query IssueMilestoneLookupByNumber($owner: String!, $name: String!, $issueNumber: Int!, $milestoneNumber: Int!) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     issue(number: $issueNumber) {
+      __typename
       id
     }
     milestone(number: $milestoneNumber) {
+      __typename
       id
     }
   }

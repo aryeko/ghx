@@ -33,8 +33,11 @@ export type ProjectV2OrgViewQuery = {
 
 export const ProjectV2OrgViewDocument = new TypedDocumentString(`
     query ProjectV2OrgView($org: String!, $projectNumber: Int!) {
+  __typename
   organization(login: $org) {
+    __typename
     projectV2(number: $projectNumber) {
+      __typename
       id
       title
       shortDescription

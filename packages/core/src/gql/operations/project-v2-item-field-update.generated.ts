@@ -41,10 +41,13 @@ export type UpdateProjectV2ItemFieldMutation = {
 
 export const UpdateProjectV2ItemFieldDocument = new TypedDocumentString(`
     mutation UpdateProjectV2ItemField($projectId: ID!, $itemId: ID!, $fieldId: ID!, $value: ProjectV2FieldValue!) {
+  __typename
   updateProjectV2ItemFieldValue(
     input: {projectId: $projectId, itemId: $itemId, fieldId: $fieldId, value: $value}
   ) {
+    __typename
     projectV2Item {
+      __typename
       id
     }
   }

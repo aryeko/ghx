@@ -42,17 +42,25 @@ export type PrReviewsRequestMutation = {
 
 export const PrReviewsRequestDocument = new TypedDocumentString(`
     mutation PrReviewsRequest($pullRequestId: ID!, $userIds: [ID!]!, $reviewRequestsFirst: Int = 100) {
+  __typename
   requestReviews(input: {pullRequestId: $pullRequestId, userIds: $userIds}) {
+    __typename
     pullRequest {
+      __typename
       id
       number
       reviewRequests(first: $reviewRequestsFirst) {
+        __typename
         nodes {
+          __typename
           requestedReviewer {
+            __typename
             ... on User {
+              __typename
               login
             }
             ... on Team {
+              __typename
               slug
             }
           }

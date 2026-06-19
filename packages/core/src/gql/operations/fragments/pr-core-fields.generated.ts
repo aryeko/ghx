@@ -29,6 +29,7 @@ export type PrCoreFieldsFragment = {
 export const PrCoreFieldsFragmentDoc = new TypedDocumentString(
   `
     fragment PrCoreFields on PullRequest {
+  __typename
   id
   number
   title

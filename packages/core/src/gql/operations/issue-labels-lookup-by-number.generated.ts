@@ -31,16 +31,22 @@ export type IssueLabelsLookupByNumberQuery = {
 
 export const IssueLabelsLookupByNumberDocument = new TypedDocumentString(`
     query IssueLabelsLookupByNumber($owner: String!, $name: String!, $issueNumber: Int!) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     issue(number: $issueNumber) {
+      __typename
       id
     }
     labels(first: 100) {
+      __typename
       pageInfo {
+        __typename
         hasNextPage
         endCursor
       }
       nodes {
+        __typename
         id
         name
       }

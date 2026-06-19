@@ -48,8 +48,11 @@ export type PrCloseMutation = {
 
 export const PrCloseDocument = new TypedDocumentString(`
     mutation PrClose($pullRequestId: ID!, $addComment: Boolean! = false, $commentBody: String! = "") {
+  __typename
   closePullRequest(input: {pullRequestId: $pullRequestId}) {
+    __typename
     pullRequest {
+      __typename
       id
       number
       state
@@ -57,8 +60,11 @@ export const PrCloseDocument = new TypedDocumentString(`
     }
   }
   addComment(input: {subjectId: $pullRequestId, body: $commentBody}) @include(if: $addComment) {
+    __typename
     commentEdge {
+      __typename
       node {
+        __typename
         id
       }
     }

@@ -294,15 +294,22 @@ export type IssueLabelsLookupQuery = {
 
 export const IssueLabelsLookupDocument = new TypedDocumentString(`
     query IssueLabelsLookup($issueId: ID!) {
+  __typename
   node(id: $issueId) {
+    __typename
     ... on Issue {
+      __typename
       repository {
+        __typename
         labels(first: 100) {
+          __typename
           pageInfo {
+            __typename
             hasNextPage
             endCursor
           }
           nodes {
+            __typename
             id
             name
           }

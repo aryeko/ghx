@@ -79,8 +79,11 @@ export type PrMergeStatusQuery = {
 
 export const PrMergeStatusDocument = new TypedDocumentString(`
     query PrMergeStatus($owner: String!, $name: String!, $prNumber: Int!) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     pullRequest(number: $prNumber) {
+      __typename
       mergeable
       mergeStateStatus
       reviewDecision

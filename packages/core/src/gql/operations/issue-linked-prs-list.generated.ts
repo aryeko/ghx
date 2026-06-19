@@ -101,15 +101,21 @@ export type IssueLinkedPrsListQuery = {
 
 export const IssueLinkedPrsListDocument = new TypedDocumentString(`
     query IssueLinkedPrsList($owner: String!, $name: String!, $issueNumber: Int!) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     issue(number: $issueNumber) {
+      __typename
       timelineItems(first: 50, itemTypes: [CONNECTED_EVENT]) {
+        __typename
         nodes {
           __typename
           ... on ConnectedEvent {
+            __typename
             subject {
               __typename
               ... on PullRequest {
+                __typename
                 ...PrCoreFields
               }
             }

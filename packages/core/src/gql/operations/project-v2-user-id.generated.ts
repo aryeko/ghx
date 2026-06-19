@@ -22,8 +22,11 @@ export type ProjectV2UserIdQuery = {
 
 export const ProjectV2UserIdDocument = new TypedDocumentString(`
     query ProjectV2UserId($login: String!, $number: Int!) {
+  __typename
   user(login: $login) {
+    __typename
     projectV2(number: $number) {
+      __typename
       id
     }
   }

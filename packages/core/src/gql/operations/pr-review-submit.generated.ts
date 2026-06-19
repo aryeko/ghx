@@ -84,10 +84,13 @@ export type PrReviewSubmitMutation = {
 
 export const PrReviewSubmitDocument = new TypedDocumentString(`
     mutation PrReviewSubmit($pullRequestId: ID!, $event: PullRequestReviewEvent!, $body: String, $threads: [DraftPullRequestReviewThread!]) {
+  __typename
   addPullRequestReview(
     input: {pullRequestId: $pullRequestId, event: $event, body: $body, threads: $threads}
   ) {
+    __typename
     pullRequestReview {
+      __typename
       id
       state
       url

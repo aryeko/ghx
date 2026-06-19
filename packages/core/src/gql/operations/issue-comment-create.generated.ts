@@ -28,9 +28,13 @@ export type IssueCommentCreateMutation = {
 
 export const IssueCommentCreateDocument = new TypedDocumentString(`
     mutation IssueCommentCreate($issueId: ID!, $body: String!) {
+  __typename
   addComment(input: {subjectId: $issueId, body: $body}) {
+    __typename
     commentEdge {
+      __typename
       node {
+        __typename
         id
         body
         url

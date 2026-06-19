@@ -26,11 +26,15 @@ export type IssueParentSetMutation = {
 
 export const IssueParentSetDocument = new TypedDocumentString(`
     mutation IssueParentSet($issueId: ID!, $parentIssueId: ID!) {
+  __typename
   addSubIssue(input: {issueId: $parentIssueId, subIssueId: $issueId}) {
+    __typename
     issue {
+      __typename
       id
     }
     subIssue {
+      __typename
       id
     }
   }

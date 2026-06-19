@@ -96,21 +96,30 @@ export type ProjectV2FieldsListUserQuery = {
 
 export const ProjectV2FieldsListUserDocument = new TypedDocumentString(`
     query ProjectV2FieldsListUser($owner: String!, $projectNumber: Int!, $first: Int!, $after: String) {
+  __typename
   user(login: $owner) {
+    __typename
     projectV2(number: $projectNumber) {
+      __typename
       fields(first: $first, after: $after) {
+        __typename
         nodes {
+          __typename
           ... on ProjectV2FieldCommon {
+            __typename
             ...ProjectV2CommonFields
           }
           ... on ProjectV2SingleSelectField {
+            __typename
             options {
+              __typename
               id
               name
             }
           }
         }
         pageInfo {
+          __typename
           ...PageInfoFields
         }
       }

@@ -295,15 +295,22 @@ export type IssueAssigneesLookupQuery = {
 
 export const IssueAssigneesLookupDocument = new TypedDocumentString(`
     query IssueAssigneesLookup($issueId: ID!, $assignableUsersAfter: String) {
+  __typename
   node(id: $issueId) {
+    __typename
     ... on Issue {
+      __typename
       repository {
+        __typename
         assignableUsers(first: 100, after: $assignableUsersAfter) {
+          __typename
           pageInfo {
+            __typename
             hasNextPage
             endCursor
           }
           nodes {
+            __typename
             id
             login
           }

@@ -35,14 +35,20 @@ export type PrAssigneesRemoveMutation = {
 
 export const PrAssigneesRemoveDocument = new TypedDocumentString(`
     mutation PrAssigneesRemove($assignableId: ID!, $assigneeIds: [ID!]!) {
+  __typename
   removeAssigneesFromAssignable(
     input: {assignableId: $assignableId, assigneeIds: $assigneeIds}
   ) {
+    __typename
     assignable {
+      __typename
       ... on PullRequest {
+        __typename
         id
         assignees(first: 50) {
+          __typename
           nodes {
+            __typename
             login
           }
         }

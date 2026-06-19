@@ -32,11 +32,16 @@ export type IssueLabelsUpdateMutation = {
 
 export const IssueLabelsUpdateDocument = new TypedDocumentString(`
     mutation IssueLabelsUpdate($issueId: ID!, $labelIds: [ID!]!) {
+  __typename
   updateIssue(input: {id: $issueId, labelIds: $labelIds}) {
+    __typename
     issue {
+      __typename
       id
       labels(first: 50) {
+        __typename
         nodes {
+          __typename
           name
         }
       }

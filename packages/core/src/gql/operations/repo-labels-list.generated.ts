@@ -38,13 +38,17 @@ export type RepoLabelsListQuery = {
 
 export const RepoLabelsListDocument = new TypedDocumentString(`
     query RepoLabelsList($owner: String!, $name: String!, $first: Int!, $after: String) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     labels(
       first: $first
       after: $after
       orderBy: {field: CREATED_AT, direction: DESC}
     ) {
+      __typename
       nodes {
+        __typename
         id
         name
         description
@@ -52,6 +56,7 @@ export const RepoLabelsListDocument = new TypedDocumentString(`
         isDefault
       }
       pageInfo {
+        __typename
         ...PageInfoFields
       }
     }

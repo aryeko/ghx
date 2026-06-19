@@ -40,15 +40,21 @@ export type PrDiffListFilesQuery = {
 
 export const PrDiffListFilesDocument = new TypedDocumentString(`
     query PrDiffListFiles($owner: String!, $name: String!, $prNumber: Int!, $first: Int!, $after: String) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     pullRequest(number: $prNumber) {
+      __typename
       files(first: $first, after: $after) {
+        __typename
         nodes {
+          __typename
           path
           additions
           deletions
         }
         pageInfo {
+          __typename
           ...PageInfoFields
         }
       }

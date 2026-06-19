@@ -291,10 +291,15 @@ export type IssueMilestoneLookupQuery = {
 
 export const IssueMilestoneLookupDocument = new TypedDocumentString(`
     query IssueMilestoneLookup($issueId: ID!, $milestoneNumber: Int!) {
+  __typename
   node(id: $issueId) {
+    __typename
     ... on Issue {
+      __typename
       repository {
+        __typename
         milestone(number: $milestoneNumber) {
+          __typename
           id
         }
       }

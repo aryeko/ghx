@@ -21,7 +21,9 @@ export type UserNodeIdQuery = {
 
 export const UserNodeIdDocument = new TypedDocumentString(`
     query UserNodeId($login: String!) {
+  __typename
   user(login: $login) {
+    __typename
     id
   }
 }

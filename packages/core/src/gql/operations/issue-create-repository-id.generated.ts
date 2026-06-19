@@ -22,7 +22,9 @@ export type IssueCreateRepositoryIdQuery = {
 
 export const IssueCreateRepositoryIdDocument = new TypedDocumentString(`
     query IssueCreateRepositoryId($owner: String!, $name: String!) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     id
   }
 }

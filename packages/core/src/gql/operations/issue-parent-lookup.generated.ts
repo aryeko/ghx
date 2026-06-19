@@ -284,10 +284,14 @@ export type IssueParentLookupQuery = {
 
 export const IssueParentLookupDocument = new TypedDocumentString(`
     query IssueParentLookup($issueId: ID!) {
+  __typename
   node(id: $issueId) {
+    __typename
     ... on Issue {
+      __typename
       id
       parent {
+        __typename
         id
       }
     }

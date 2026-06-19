@@ -74,53 +74,72 @@ export type ProjectV2ItemsListQuery = {
 
 export const ProjectV2ItemsListDocument = new TypedDocumentString(`
     query ProjectV2ItemsList($owner: String!, $projectNumber: Int!, $first: Int!, $after: String) {
+  __typename
   organization(login: $owner) {
+    __typename
     projectV2(number: $projectNumber) {
+      __typename
       items(first: $first, after: $after) {
+        __typename
         nodes {
+          __typename
           id
           type
           content {
+            __typename
             ... on Issue {
+              __typename
               number
               title
             }
             ... on PullRequest {
+              __typename
               number
               title
             }
             ... on DraftIssue {
+              __typename
               title
             }
           }
         }
         pageInfo {
+          __typename
           ...PageInfoFields
         }
       }
     }
   }
   user(login: $owner) {
+    __typename
     projectV2(number: $projectNumber) {
+      __typename
       items(first: $first, after: $after) {
+        __typename
         nodes {
+          __typename
           id
           type
           content {
+            __typename
             ... on Issue {
+              __typename
               number
               title
             }
             ... on PullRequest {
+              __typename
               number
               title
             }
             ... on DraftIssue {
+              __typename
               title
             }
           }
         }
         pageInfo {
+          __typename
           ...PageInfoFields
         }
       }

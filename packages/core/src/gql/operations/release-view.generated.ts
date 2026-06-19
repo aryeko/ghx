@@ -37,8 +37,11 @@ export type ReleaseViewQuery = {
 
 export const ReleaseViewDocument = new TypedDocumentString(`
     query ReleaseView($owner: String!, $name: String!, $tagName: String!) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     release(tagName: $tagName) {
+      __typename
       databaseId
       tagName
       name
@@ -46,6 +49,7 @@ export const ReleaseViewDocument = new TypedDocumentString(`
       isPrerelease
       url
       tagCommit {
+        __typename
         oid
       }
       createdAt

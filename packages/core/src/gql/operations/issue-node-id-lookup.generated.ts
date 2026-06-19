@@ -23,8 +23,11 @@ export type IssueNodeIdLookupQuery = {
 
 export const IssueNodeIdLookupDocument = new TypedDocumentString(`
     query IssueNodeIdLookup($owner: String!, $name: String!, $issueNumber: Int!) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     issue(number: $issueNumber) {
+      __typename
       id
     }
   }

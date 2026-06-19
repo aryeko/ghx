@@ -284,8 +284,11 @@ export type ReviewThreadStateQuery = {
 
 export const ReviewThreadStateDocument = new TypedDocumentString(`
     query ReviewThreadState($threadId: ID!) {
+  __typename
   node(id: $threadId) {
+    __typename
     ... on PullRequestReviewThread {
+      __typename
       id
       isResolved
     }

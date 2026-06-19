@@ -31,8 +31,11 @@ export type IssueReopenMutation = {
 
 export const IssueReopenDocument = new TypedDocumentString(`
     mutation IssueReopen($issueId: ID!) {
+  __typename
   reopenIssue(input: {issueId: $issueId}) {
+    __typename
     issue {
+      __typename
       id
       number
       state

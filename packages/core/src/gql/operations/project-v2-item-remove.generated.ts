@@ -25,7 +25,9 @@ export type RemoveProjectV2ItemMutation = {
 
 export const RemoveProjectV2ItemDocument = new TypedDocumentString(`
     mutation RemoveProjectV2Item($projectId: ID!, $itemId: ID!) {
+  __typename
   deleteProjectV2Item(input: {projectId: $projectId, itemId: $itemId}) {
+    __typename
     deletedItemId
   }
 }

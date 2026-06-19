@@ -43,10 +43,13 @@ export type PrUpdateMutation = {
 
 export const PrUpdateDocument = new TypedDocumentString(`
     mutation PrUpdate($pullRequestId: ID!, $title: String, $body: String) {
+  __typename
   updatePullRequest(
     input: {pullRequestId: $pullRequestId, title: $title, body: $body}
   ) {
+    __typename
     pullRequest {
+      __typename
       id
       number
       title

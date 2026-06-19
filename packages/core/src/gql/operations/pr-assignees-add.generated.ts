@@ -35,14 +35,20 @@ export type PrAssigneesAddMutation = {
 
 export const PrAssigneesAddDocument = new TypedDocumentString(`
     mutation PrAssigneesAdd($assignableId: ID!, $assigneeIds: [ID!]!) {
+  __typename
   addAssigneesToAssignable(
     input: {assignableId: $assignableId, assigneeIds: $assigneeIds}
   ) {
+    __typename
     assignable {
+      __typename
       ... on PullRequest {
+        __typename
         id
         assignees(first: 50) {
+          __typename
           nodes {
+            __typename
             login
           }
         }

@@ -47,16 +47,21 @@ export type PrListQuery = {
 
 export const PrListDocument = new TypedDocumentString(`
     query PrList($owner: String!, $name: String!, $first: Int!, $after: String) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     pullRequests(
       first: $first
       after: $after
       orderBy: {field: CREATED_AT, direction: DESC}
     ) {
+      __typename
       nodes {
+        __typename
         ...PrCoreFields
       }
       pageInfo {
+        __typename
         ...PageInfoFields
       }
     }

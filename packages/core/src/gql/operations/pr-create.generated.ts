@@ -46,10 +46,13 @@ export type PrCreateMutation = {
 
 export const PrCreateDocument = new TypedDocumentString(`
     mutation PrCreate($repositoryId: ID!, $baseRefName: String!, $headRefName: String!, $title: String!, $body: String, $draft: Boolean) {
+  __typename
   createPullRequest(
     input: {repositoryId: $repositoryId, baseRefName: $baseRefName, headRefName: $headRefName, title: $title, body: $body, draft: $draft}
   ) {
+    __typename
     pullRequest {
+      __typename
       id
       number
       title

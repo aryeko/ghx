@@ -47,12 +47,17 @@ export type PrViewQuery = {
 
 export const PrViewDocument = new TypedDocumentString(`
     query PrView($owner: String!, $name: String!, $prNumber: Int!) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     pullRequest(number: $prNumber) {
+      __typename
       ...PrCoreFields
       body
       labels(first: 20) {
+        __typename
         nodes {
+          __typename
           name
         }
       }

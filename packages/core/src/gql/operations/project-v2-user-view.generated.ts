@@ -33,8 +33,11 @@ export type ProjectV2UserViewQuery = {
 
 export const ProjectV2UserViewDocument = new TypedDocumentString(`
     query ProjectV2UserView($user: String!, $projectNumber: Int!) {
+  __typename
   user(login: $user) {
+    __typename
     projectV2(number: $projectNumber) {
+      __typename
       id
       title
       shortDescription

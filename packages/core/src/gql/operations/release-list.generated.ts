@@ -42,13 +42,17 @@ export type ReleaseListQuery = {
 
 export const ReleaseListDocument = new TypedDocumentString(`
     query ReleaseList($owner: String!, $name: String!, $first: Int!, $after: String) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     releases(
       first: $first
       after: $after
       orderBy: {field: CREATED_AT, direction: DESC}
     ) {
+      __typename
       nodes {
+        __typename
         databaseId
         tagName
         name
@@ -56,12 +60,14 @@ export const ReleaseListDocument = new TypedDocumentString(`
         isPrerelease
         url
         tagCommit {
+          __typename
           oid
         }
         createdAt
         publishedAt
       }
       pageInfo {
+        __typename
         ...PageInfoFields
       }
     }

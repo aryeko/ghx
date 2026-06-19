@@ -40,8 +40,11 @@ export type IssueUpdateMutation = {
 
 export const IssueUpdateDocument = new TypedDocumentString(`
     mutation IssueUpdate($issueId: ID!, $title: String, $body: String) {
+  __typename
   updateIssue(input: {id: $issueId, title: $title, body: $body}) {
+    __typename
     issue {
+      __typename
       id
       number
       title

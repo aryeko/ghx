@@ -27,6 +27,7 @@ export type IssueCoreFieldsFragment = {
 export const IssueCoreFieldsFragmentDoc = new TypedDocumentString(
   `
     fragment IssueCoreFields on Issue {
+  __typename
   id
   number
   title
