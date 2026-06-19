@@ -1,37 +1,47 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type ReleaseViewQueryVariables = Types.Exact<{
-  owner: Types.Scalars["String"]["input"]
-  name: Types.Scalars["String"]["input"]
-  tagName: Types.Scalars["String"]["input"]
+export type ReleaseViewQueryVariables = Exact<{
+  owner: string
+  name: string
+  tagName: string
 }>
 
 export type ReleaseViewQuery = {
-  __typename?: "Query"
-  repository?: {
-    __typename?: "Repository"
-    release?: {
-      __typename?: "Release"
-      databaseId?: number | null
+  __typename: "Query"
+  repository: {
+    __typename: "Repository"
+    release: {
+      __typename: "Release"
+      databaseId: number | null
       tagName: string
-      name?: string | null
+      name: string | null
       isDraft: boolean
       isPrerelease: boolean
       url: any
       createdAt: any
-      publishedAt?: any | null
-      tagCommit?: { __typename?: "Commit"; oid: any } | null
+      publishedAt: any
+      tagCommit: { __typename: "Commit"; oid: any } | null
     } | null
   } | null
 }
 
 export const ReleaseViewDocument = new TypedDocumentString(`
     query ReleaseView($owner: String!, $name: String!, $tagName: String!) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     release(tagName: $tagName) {
+      __typename
       databaseId
       tagName
       name
@@ -39,6 +49,7 @@ export const ReleaseViewDocument = new TypedDocumentString(`
       isPrerelease
       url
       tagCommit {
+        __typename
         oid
       }
       createdAt

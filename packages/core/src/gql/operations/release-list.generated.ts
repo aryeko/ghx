@@ -1,47 +1,58 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type ReleaseListQueryVariables = Types.Exact<{
-  owner: Types.Scalars["String"]["input"]
-  name: Types.Scalars["String"]["input"]
-  first: Types.Scalars["Int"]["input"]
-  after?: Types.InputMaybe<Types.Scalars["String"]["input"]>
+export type ReleaseListQueryVariables = Exact<{
+  owner: string
+  name: string
+  first: number
+  after?: string | null | undefined
 }>
 
 export type ReleaseListQuery = {
-  __typename?: "Query"
-  repository?: {
-    __typename?: "Repository"
+  __typename: "Query"
+  repository: {
+    __typename: "Repository"
     releases: {
-      __typename?: "ReleaseConnection"
-      nodes?: Array<{
-        __typename?: "Release"
-        databaseId?: number | null
+      __typename: "ReleaseConnection"
+      nodes: Array<{
+        __typename: "Release"
+        databaseId: number | null
         tagName: string
-        name?: string | null
+        name: string | null
         isDraft: boolean
         isPrerelease: boolean
         url: any
         createdAt: any
-        publishedAt?: any | null
-        tagCommit?: { __typename?: "Commit"; oid: any } | null
+        publishedAt: any
+        tagCommit: { __typename: "Commit"; oid: any } | null
       } | null> | null
-      pageInfo: { __typename?: "PageInfo"; endCursor?: string | null; hasNextPage: boolean }
+      pageInfo: { __typename: "PageInfo"; endCursor: string | null; hasNextPage: boolean }
     }
   } | null
 }
 
 export const ReleaseListDocument = new TypedDocumentString(`
     query ReleaseList($owner: String!, $name: String!, $first: Int!, $after: String) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     releases(
       first: $first
       after: $after
       orderBy: {field: CREATED_AT, direction: DESC}
     ) {
+      __typename
       nodes {
+        __typename
         databaseId
         tagName
         name
@@ -49,12 +60,14 @@ export const ReleaseListDocument = new TypedDocumentString(`
         isPrerelease
         url
         tagCommit {
+          __typename
           oid
         }
         createdAt
         publishedAt
       }
       pageInfo {
+        __typename
         ...PageInfoFields
       }
     }

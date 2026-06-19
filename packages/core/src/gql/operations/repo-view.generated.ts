@@ -1,17 +1,24 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type RepoViewQueryVariables = Types.Exact<{
-  owner: Types.Scalars["String"]["input"]
-  name: Types.Scalars["String"]["input"]
+export type RepoViewQueryVariables = Exact<{
+  owner: string
+  name: string
 }>
 
 export type RepoViewQuery = {
-  __typename?: "Query"
-  repository?: {
-    __typename?: "Repository"
+  __typename: "Query"
+  repository: {
+    __typename: "Repository"
     id: string
     name: string
     nameWithOwner: string
@@ -19,13 +26,15 @@ export type RepoViewQuery = {
     stargazerCount: number
     forkCount: number
     url: any
-    defaultBranchRef?: { __typename?: "Ref"; name: string } | null
+    defaultBranchRef: { __typename: "Ref"; name: string } | null
   } | null
 }
 
 export const RepoViewDocument = new TypedDocumentString(`
     query RepoView($owner: String!, $name: String!) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     id
     name
     nameWithOwner
@@ -34,6 +43,7 @@ export const RepoViewDocument = new TypedDocumentString(`
     forkCount
     url
     defaultBranchRef {
+      __typename
       name
     }
   }

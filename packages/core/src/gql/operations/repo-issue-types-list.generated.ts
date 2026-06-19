@@ -1,44 +1,75 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type RepoIssueTypesListQueryVariables = Types.Exact<{
-  owner: Types.Scalars["String"]["input"]
-  name: Types.Scalars["String"]["input"]
-  first: Types.Scalars["Int"]["input"]
-  after?: Types.InputMaybe<Types.Scalars["String"]["input"]>
+/** The possible color for an issue type */
+export type IssueTypeColor =
+  /** blue */
+  | "BLUE"
+  /** gray */
+  | "GRAY"
+  /** green */
+  | "GREEN"
+  /** orange */
+  | "ORANGE"
+  /** pink */
+  | "PINK"
+  /** purple */
+  | "PURPLE"
+  /** red */
+  | "RED"
+  /** yellow */
+  | "YELLOW"
+
+export type RepoIssueTypesListQueryVariables = Exact<{
+  owner: string
+  name: string
+  first: number
+  after?: string | null | undefined
 }>
 
 export type RepoIssueTypesListQuery = {
-  __typename?: "Query"
-  repository?: {
-    __typename?: "Repository"
-    issueTypes?: {
-      __typename?: "IssueTypeConnection"
-      nodes?: Array<{
-        __typename?: "IssueType"
+  __typename: "Query"
+  repository: {
+    __typename: "Repository"
+    issueTypes: {
+      __typename: "IssueTypeConnection"
+      nodes: Array<{
+        __typename: "IssueType"
         id: string
         name: string
         color: Types.IssueTypeColor
         isEnabled: boolean
       } | null> | null
-      pageInfo: { __typename?: "PageInfo"; endCursor?: string | null; hasNextPage: boolean }
+      pageInfo: { __typename: "PageInfo"; endCursor: string | null; hasNextPage: boolean }
     } | null
   } | null
 }
 
 export const RepoIssueTypesListDocument = new TypedDocumentString(`
     query RepoIssueTypesList($owner: String!, $name: String!, $first: Int!, $after: String) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     issueTypes(first: $first, after: $after) {
+      __typename
       nodes {
+        __typename
         id
         name
         color
         isEnabled
       }
       pageInfo {
+        __typename
         ...PageInfoFields
       }
     }

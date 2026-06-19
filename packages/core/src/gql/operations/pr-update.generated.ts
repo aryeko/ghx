@@ -1,20 +1,36 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type PrUpdateMutationVariables = Types.Exact<{
-  pullRequestId: Types.Scalars["ID"]["input"]
-  title?: Types.InputMaybe<Types.Scalars["String"]["input"]>
-  body?: Types.InputMaybe<Types.Scalars["String"]["input"]>
+/** The possible states of a pull request. */
+export type PullRequestState =
+  /** A pull request that has been closed without being merged. */
+  | "CLOSED"
+  /** A pull request that has been closed by being merged. */
+  | "MERGED"
+  /** A pull request that is still open. */
+  | "OPEN"
+
+export type PrUpdateMutationVariables = Exact<{
+  pullRequestId: string | number
+  title?: string | null | undefined
+  body?: string | null | undefined
 }>
 
 export type PrUpdateMutation = {
-  __typename?: "Mutation"
-  updatePullRequest?: {
-    __typename?: "UpdatePullRequestPayload"
-    pullRequest?: {
-      __typename?: "PullRequest"
+  __typename: "Mutation"
+  updatePullRequest: {
+    __typename: "UpdatePullRequestPayload"
+    pullRequest: {
+      __typename: "PullRequest"
       id: string
       number: number
       title: string
@@ -27,10 +43,13 @@ export type PrUpdateMutation = {
 
 export const PrUpdateDocument = new TypedDocumentString(`
     mutation PrUpdate($pullRequestId: ID!, $title: String, $body: String) {
+  __typename
   updatePullRequest(
     input: {pullRequestId: $pullRequestId, title: $title, body: $body}
   ) {
+    __typename
     pullRequest {
+      __typename
       id
       number
       title

@@ -1,4 +1,54 @@
 import type { CodegenConfig } from "@graphql-codegen/cli"
+import type { ASTNode, DocumentNode, OperationDefinitionNode } from "graphql"
+import { Kind, visit } from "graphql"
+
+type LoadedDocument = {
+  document?: DocumentNode
+  [key: string]: unknown
+}
+
+function isOperationDefinitionNode(
+  node: ASTNode | readonly ASTNode[] | undefined,
+): node is OperationDefinitionNode {
+  if (node == null || Array.isArray(node)) {
+    return false
+  }
+
+  return (node as ASTNode).kind === Kind.OPERATION_DEFINITION
+}
+
+const addTypenameSelectionDocumentTransform = {
+  transform({ documents }: { documents: LoadedDocument[] }) {
+    return documents.map((document) => ({
+      ...document,
+      document: document.document
+        ? visit(document.document, {
+            SelectionSet(node, _key, parent) {
+              const isSubscriptionRoot =
+                isOperationDefinitionNode(parent) && parent.operation === "subscription"
+              if (
+                isSubscriptionRoot ||
+                node.selections.some(
+                  (selection) =>
+                    selection.kind === Kind.FIELD && selection.name.value === "__typename",
+                )
+              ) {
+                return undefined
+              }
+
+              return {
+                ...node,
+                selections: [
+                  { kind: Kind.FIELD, name: { kind: Kind.NAME, value: "__typename" } },
+                  ...node.selections,
+                ],
+              }
+            },
+          })
+        : undefined,
+    }))
+  },
+} as const
 
 const config = {
   schema: "src/gql/schema.graphql",
@@ -19,6 +69,7 @@ const config = {
       // The `add` plugin injects the TypedDocumentString import that v7 of
       // typescript-graphql-request requires (it emits `new TypedDocumentString()`
       // but does not generate the import itself when using near-operation-file preset).
+      documentTransforms: [addTypenameSelectionDocumentTransform],
       plugins: [
         {
           add: {
@@ -32,6 +83,8 @@ const config = {
         useTypeImports: true,
         documentMode: "string",
         preResolveTypes: true,
+        defaultScalarType: "any",
+        nonOptionalTypename: true,
         onlyOperationTypes: true,
         emitLegacyCommonJSImports: false,
         rawRequest: false,

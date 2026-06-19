@@ -1,29 +1,43 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type IssueViewQueryVariables = Types.Exact<{
-  owner: Types.Scalars["String"]["input"]
-  name: Types.Scalars["String"]["input"]
-  issueNumber: Types.Scalars["Int"]["input"]
+/** The possible states of an issue. */
+export type IssueState =
+  /** An issue that has been closed */
+  | "CLOSED"
+  /** An issue that is still open */
+  | "OPEN"
+
+export type IssueViewQueryVariables = Exact<{
+  owner: string
+  name: string
+  issueNumber: number
 }>
 
 export type IssueViewQuery = {
-  __typename?: "Query"
-  repository?: {
-    __typename?: "Repository"
-    issue?: {
-      __typename?: "Issue"
+  __typename: "Query"
+  repository: {
+    __typename: "Repository"
+    issue: {
+      __typename: "Issue"
       body: string
       id: string
       number: number
       title: string
       state: Types.IssueState
       url: any
-      labels?: {
-        __typename?: "LabelConnection"
-        nodes?: Array<{ __typename?: "Label"; name: string } | null> | null
+      labels: {
+        __typename: "LabelConnection"
+        nodes: Array<{ __typename: "Label"; name: string } | null> | null
       } | null
     } | null
   } | null
@@ -31,12 +45,17 @@ export type IssueViewQuery = {
 
 export const IssueViewDocument = new TypedDocumentString(`
     query IssueView($owner: String!, $name: String!, $issueNumber: Int!) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     issue(number: $issueNumber) {
+      __typename
       ...IssueCoreFields
       body
       labels(first: 20) {
+        __typename
         nodes {
+          __typename
           name
         }
       }

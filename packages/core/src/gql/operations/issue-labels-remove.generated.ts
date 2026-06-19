@@ -1,42 +1,55 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type IssueLabelsRemoveMutationVariables = Types.Exact<{
-  labelableId: Types.Scalars["ID"]["input"]
-  labelIds: Array<Types.Scalars["ID"]["input"]> | Types.Scalars["ID"]["input"]
+export type IssueLabelsRemoveMutationVariables = Exact<{
+  labelableId: string | number
+  labelIds: Array<string | number> | string | number
 }>
 
 export type IssueLabelsRemoveMutation = {
-  __typename?: "Mutation"
-  removeLabelsFromLabelable?: {
-    __typename?: "RemoveLabelsFromLabelablePayload"
-    labelable?:
-      | { __typename?: "Discussion" }
+  __typename: "Mutation"
+  removeLabelsFromLabelable: {
+    __typename: "RemoveLabelsFromLabelablePayload"
+    labelable:
+      | { __typename: "Discussion" }
       | {
-          __typename?: "Issue"
+          __typename: "Issue"
           id: string
-          labels?: {
-            __typename?: "LabelConnection"
-            nodes?: Array<{ __typename?: "Label"; name: string } | null> | null
+          labels: {
+            __typename: "LabelConnection"
+            nodes: Array<{ __typename: "Label"; name: string } | null> | null
           } | null
         }
-      | { __typename?: "PullRequest" }
+      | { __typename: "PullRequest" }
       | null
   } | null
 }
 
 export const IssueLabelsRemoveDocument = new TypedDocumentString(`
     mutation IssueLabelsRemove($labelableId: ID!, $labelIds: [ID!]!) {
+  __typename
   removeLabelsFromLabelable(
     input: {labelableId: $labelableId, labelIds: $labelIds}
   ) {
+    __typename
     labelable {
+      __typename
       ... on Issue {
+        __typename
         id
         labels(first: 50) {
+          __typename
           nodes {
+            __typename
             name
           }
         }

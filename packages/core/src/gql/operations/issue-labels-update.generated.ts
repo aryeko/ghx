@@ -1,23 +1,30 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type IssueLabelsUpdateMutationVariables = Types.Exact<{
-  issueId: Types.Scalars["ID"]["input"]
-  labelIds: Array<Types.Scalars["ID"]["input"]> | Types.Scalars["ID"]["input"]
+export type IssueLabelsUpdateMutationVariables = Exact<{
+  issueId: string | number
+  labelIds: Array<string | number> | string | number
 }>
 
 export type IssueLabelsUpdateMutation = {
-  __typename?: "Mutation"
-  updateIssue?: {
-    __typename?: "UpdateIssuePayload"
-    issue?: {
-      __typename?: "Issue"
+  __typename: "Mutation"
+  updateIssue: {
+    __typename: "UpdateIssuePayload"
+    issue: {
+      __typename: "Issue"
       id: string
-      labels?: {
-        __typename?: "LabelConnection"
-        nodes?: Array<{ __typename?: "Label"; name: string } | null> | null
+      labels: {
+        __typename: "LabelConnection"
+        nodes: Array<{ __typename: "Label"; name: string } | null> | null
       } | null
     } | null
   } | null
@@ -25,11 +32,16 @@ export type IssueLabelsUpdateMutation = {
 
 export const IssueLabelsUpdateDocument = new TypedDocumentString(`
     mutation IssueLabelsUpdate($issueId: ID!, $labelIds: [ID!]!) {
+  __typename
   updateIssue(input: {id: $issueId, labelIds: $labelIds}) {
+    __typename
     issue {
+      __typename
       id
       labels(first: 50) {
+        __typename
         nodes {
+          __typename
           name
         }
       }

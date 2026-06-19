@@ -1,20 +1,36 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type PrCloseMutationVariables = Types.Exact<{
-  pullRequestId: Types.Scalars["ID"]["input"]
-  addComment?: Types.Scalars["Boolean"]["input"]
-  commentBody?: Types.Scalars["String"]["input"]
+/** The possible states of a pull request. */
+export type PullRequestState =
+  /** A pull request that has been closed without being merged. */
+  | "CLOSED"
+  /** A pull request that has been closed by being merged. */
+  | "MERGED"
+  /** A pull request that is still open. */
+  | "OPEN"
+
+export type PrCloseMutationVariables = Exact<{
+  pullRequestId: string | number
+  addComment?: boolean
+  commentBody?: string
 }>
 
 export type PrCloseMutation = {
-  __typename?: "Mutation"
-  closePullRequest?: {
-    __typename?: "ClosePullRequestPayload"
-    pullRequest?: {
-      __typename?: "PullRequest"
+  __typename: "Mutation"
+  closePullRequest: {
+    __typename: "ClosePullRequestPayload"
+    pullRequest: {
+      __typename: "PullRequest"
       id: string
       number: number
       state: Types.PullRequestState
@@ -22,18 +38,21 @@ export type PrCloseMutation = {
     } | null
   } | null
   addComment?: {
-    __typename?: "AddCommentPayload"
-    commentEdge?: {
-      __typename?: "IssueCommentEdge"
-      node?: { __typename?: "IssueComment"; id: string } | null
+    __typename: "AddCommentPayload"
+    commentEdge: {
+      __typename: "IssueCommentEdge"
+      node: { __typename: "IssueComment"; id: string } | null
     } | null
   } | null
 }
 
 export const PrCloseDocument = new TypedDocumentString(`
     mutation PrClose($pullRequestId: ID!, $addComment: Boolean! = false, $commentBody: String! = "") {
+  __typename
   closePullRequest(input: {pullRequestId: $pullRequestId}) {
+    __typename
     pullRequest {
+      __typename
       id
       number
       state
@@ -41,8 +60,11 @@ export const PrCloseDocument = new TypedDocumentString(`
     }
   }
   addComment(input: {subjectId: $pullRequestId, body: $commentBody}) @include(if: $addComment) {
+    __typename
     commentEdge {
+      __typename
       node {
+        __typename
         id
       }
     }

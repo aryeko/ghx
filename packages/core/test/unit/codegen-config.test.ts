@@ -4,6 +4,8 @@ describe("codegen config", () => {
   it("uses local schema and operation generation settings", async () => {
     const { default: config } = await import("../../codegen.js")
     const generatedOutput = config.generates["src/gql/operations/"] as {
+      config?: Record<string, unknown>
+      documentTransforms?: Array<unknown>
       plugins?: Array<string>
       preset?: string
       presetConfig?: Record<string, unknown>
@@ -23,5 +25,12 @@ describe("codegen config", () => {
       "typescript-operations",
       "typescript-graphql-request",
     ])
+    expect(generatedOutput.documentTransforms).toHaveLength(1)
+    expect(generatedOutput.config).toEqual(
+      expect.objectContaining({
+        defaultScalarType: "any",
+        nonOptionalTypename: true,
+      }),
+    )
   })
 })

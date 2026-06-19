@@ -1,23 +1,39 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type IssueLinkedPrsListQueryVariables = Types.Exact<{
-  owner: Types.Scalars["String"]["input"]
-  name: Types.Scalars["String"]["input"]
-  issueNumber: Types.Scalars["Int"]["input"]
+/** The possible states of a pull request. */
+export type PullRequestState =
+  /** A pull request that has been closed without being merged. */
+  | "CLOSED"
+  /** A pull request that has been closed by being merged. */
+  | "MERGED"
+  /** A pull request that is still open. */
+  | "OPEN"
+
+export type IssueLinkedPrsListQueryVariables = Exact<{
+  owner: string
+  name: string
+  issueNumber: number
 }>
 
 export type IssueLinkedPrsListQuery = {
-  __typename?: "Query"
-  repository?: {
-    __typename?: "Repository"
-    issue?: {
-      __typename?: "Issue"
+  __typename: "Query"
+  repository: {
+    __typename: "Repository"
+    issue: {
+      __typename: "Issue"
       timelineItems: {
-        __typename?: "IssueTimelineItemsConnection"
-        nodes?: Array<
+        __typename: "IssueTimelineItemsConnection"
+        nodes: Array<
           | { __typename: "AddedToProjectEvent" }
           | { __typename: "AddedToProjectV2Event" }
           | { __typename: "AssignedEvent" }
@@ -85,15 +101,21 @@ export type IssueLinkedPrsListQuery = {
 
 export const IssueLinkedPrsListDocument = new TypedDocumentString(`
     query IssueLinkedPrsList($owner: String!, $name: String!, $issueNumber: Int!) {
+  __typename
   repository(owner: $owner, name: $name) {
+    __typename
     issue(number: $issueNumber) {
+      __typename
       timelineItems(first: 50, itemTypes: [CONNECTED_EVENT]) {
+        __typename
         nodes {
           __typename
           ... on ConnectedEvent {
+            __typename
             subject {
               __typename
               ... on PullRequest {
+                __typename
                 ...PrCoreFields
               }
             }

@@ -1,25 +1,32 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type PrAssigneesRemoveMutationVariables = Types.Exact<{
-  assignableId: Types.Scalars["ID"]["input"]
-  assigneeIds: Array<Types.Scalars["ID"]["input"]> | Types.Scalars["ID"]["input"]
+export type PrAssigneesRemoveMutationVariables = Exact<{
+  assignableId: string | number
+  assigneeIds: Array<string | number> | string | number
 }>
 
 export type PrAssigneesRemoveMutation = {
-  __typename?: "Mutation"
-  removeAssigneesFromAssignable?: {
-    __typename?: "RemoveAssigneesFromAssignablePayload"
-    assignable?:
-      | { __typename?: "Issue" }
+  __typename: "Mutation"
+  removeAssigneesFromAssignable: {
+    __typename: "RemoveAssigneesFromAssignablePayload"
+    assignable:
+      | { __typename: "Issue" }
       | {
-          __typename?: "PullRequest"
+          __typename: "PullRequest"
           id: string
           assignees: {
-            __typename?: "UserConnection"
-            nodes?: Array<{ __typename?: "User"; login: string } | null> | null
+            __typename: "UserConnection"
+            nodes: Array<{ __typename: "User"; login: string } | null> | null
           }
         }
       | null
@@ -28,14 +35,20 @@ export type PrAssigneesRemoveMutation = {
 
 export const PrAssigneesRemoveDocument = new TypedDocumentString(`
     mutation PrAssigneesRemove($assignableId: ID!, $assigneeIds: [ID!]!) {
+  __typename
   removeAssigneesFromAssignable(
     input: {assignableId: $assignableId, assigneeIds: $assigneeIds}
   ) {
+    __typename
     assignable {
+      __typename
       ... on PullRequest {
+        __typename
         id
         assignees(first: 50) {
+          __typename
           nodes {
+            __typename
             login
           }
         }

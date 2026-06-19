@@ -1,45 +1,55 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type ProjectV2IssueNodeIdQueryVariables = Types.Exact<{
-  url: Types.Scalars["URI"]["input"]
+export type ProjectV2IssueNodeIdQueryVariables = Exact<{
+  url: any
 }>
 
 export type ProjectV2IssueNodeIdQuery = {
-  __typename?: "Query"
-  resource?:
-    | { __typename?: "Bot" }
-    | { __typename?: "CheckRun" }
-    | { __typename?: "ClosedEvent" }
-    | { __typename?: "Commit" }
-    | { __typename?: "ConvertToDraftEvent" }
-    | { __typename?: "CrossReferencedEvent" }
-    | { __typename?: "Gist" }
-    | { __typename?: "Issue"; id: string }
-    | { __typename?: "Mannequin" }
-    | { __typename?: "MergedEvent" }
-    | { __typename?: "Milestone" }
-    | { __typename?: "Organization" }
-    | { __typename?: "PullRequest" }
-    | { __typename?: "PullRequestCommit" }
-    | { __typename?: "ReadyForReviewEvent" }
-    | { __typename?: "Release" }
-    | { __typename?: "Repository" }
-    | { __typename?: "RepositoryTopic" }
-    | { __typename?: "ReviewDismissedEvent" }
-    | { __typename?: "User" }
-    | { __typename?: "Workflow" }
-    | { __typename?: "WorkflowRun" }
-    | { __typename?: "WorkflowRunFile" }
+  __typename: "Query"
+  resource:
+    | { __typename: "Bot" }
+    | { __typename: "CheckRun" }
+    | { __typename: "ClosedEvent" }
+    | { __typename: "Commit" }
+    | { __typename: "ConvertToDraftEvent" }
+    | { __typename: "CrossReferencedEvent" }
+    | { __typename: "Gist" }
+    | { __typename: "Issue"; id: string }
+    | { __typename: "Mannequin" }
+    | { __typename: "MergedEvent" }
+    | { __typename: "Milestone" }
+    | { __typename: "Organization" }
+    | { __typename: "PullRequest" }
+    | { __typename: "PullRequestCommit" }
+    | { __typename: "ReadyForReviewEvent" }
+    | { __typename: "Release" }
+    | { __typename: "Repository" }
+    | { __typename: "RepositoryTopic" }
+    | { __typename: "ReviewDismissedEvent" }
+    | { __typename: "User" }
+    | { __typename: "Workflow" }
+    | { __typename: "WorkflowRun" }
+    | { __typename: "WorkflowRunFile" }
     | null
 }
 
 export const ProjectV2IssueNodeIdDocument = new TypedDocumentString(`
     query ProjectV2IssueNodeId($url: URI!) {
+  __typename
   resource(url: $url) {
+    __typename
     ... on Issue {
+      __typename
       id
     }
   }

@@ -1,27 +1,37 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type PrCommentReplyMutationVariables = Types.Exact<{
-  threadId: Types.Scalars["ID"]["input"]
-  body: Types.Scalars["String"]["input"]
+export type PrCommentReplyMutationVariables = Exact<{
+  threadId: string | number
+  body: string
 }>
 
 export type PrCommentReplyMutation = {
-  __typename?: "Mutation"
-  addPullRequestReviewThreadReply?: {
-    __typename?: "AddPullRequestReviewThreadReplyPayload"
-    comment?: { __typename?: "PullRequestReviewComment"; id: string } | null
+  __typename: "Mutation"
+  addPullRequestReviewThreadReply: {
+    __typename: "AddPullRequestReviewThreadReplyPayload"
+    comment: { __typename: "PullRequestReviewComment"; id: string } | null
   } | null
 }
 
 export const PrCommentReplyDocument = new TypedDocumentString(`
     mutation PrCommentReply($threadId: ID!, $body: String!) {
+  __typename
   addPullRequestReviewThreadReply(
     input: {pullRequestReviewThreadId: $threadId, body: $body}
   ) {
+    __typename
     comment {
+      __typename
       id
     }
   }

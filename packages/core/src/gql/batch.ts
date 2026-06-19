@@ -27,8 +27,7 @@ export function extractRootFieldName(query: string): string | null {
   const headerEnd = query.indexOf("{")
   if (headerEnd === -1) return null
   const body = query.slice(headerEnd + 1)
-  const match = body.match(/^\s*(\w+)/)
-  return match?.[1] ?? null
+  return findFirstRootField(body)?.name ?? null
 }
 
 export function buildBatchMutation(operations: BatchOperationInput[]): BatchMutationResult {
@@ -68,8 +67,9 @@ export function buildBatchMutation(operations: BatchOperationInput[]): BatchMuta
       )
     }
 
-    // Add alias prefix to the top-level field
-    const aliasedBody = body.replace(/^\s*(\w+)/, `${op.alias}: $1`)
+    // Add alias prefix to the top-level operation field. Generated documents may
+    // include a root __typename selection before the field that belongs to this step.
+    const aliasedBody = aliasFirstRootField(body, op.alias)
     allSelections.push(aliasedBody)
 
     // Prefix variable values
@@ -93,6 +93,24 @@ type ParsedOperation = {
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
+function findFirstRootField(body: string): { index: number; name: string } | null {
+  const namePattern = /[_A-Za-z][_0-9A-Za-z]*/g
+  let match: RegExpExecArray | null
+  while ((match = namePattern.exec(body)) !== null) {
+    const name = match[0]
+    if (name !== "__typename") {
+      return { index: match.index, name }
+    }
+  }
+  return null
+}
+
+function aliasFirstRootField(body: string, alias: string): string {
+  const rootField = findFirstRootField(body)
+  if (rootField === null) return body
+  return `${body.slice(0, rootField.index)}${alias}: ${body.slice(rootField.index)}`
 }
 
 function parseOperation(document: string): ParsedOperation {
@@ -206,7 +224,7 @@ export function buildBatchQuery(operations: BatchQueryInput[]): BatchQueryResult
       )
     }
 
-    const aliasedBody = body.replace(/^\s*(\w+)/, `${op.alias}: $1`)
+    const aliasedBody = aliasFirstRootField(body, op.alias)
     allSelections.push(aliasedBody)
 
     for (const [key, value] of Object.entries(op.variables)) {

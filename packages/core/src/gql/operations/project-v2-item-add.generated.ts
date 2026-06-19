@@ -1,25 +1,46 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type AddProjectV2ItemMutationVariables = Types.Exact<{
-  projectId: Types.Scalars["ID"]["input"]
-  contentId: Types.Scalars["ID"]["input"]
+/** The type of a project item. */
+export type ProjectV2ItemType =
+  /** Draft Issue */
+  | "DRAFT_ISSUE"
+  /** Issue */
+  | "ISSUE"
+  /** Pull Request */
+  | "PULL_REQUEST"
+  /** Redacted Item */
+  | "REDACTED"
+
+export type AddProjectV2ItemMutationVariables = Exact<{
+  projectId: string | number
+  contentId: string | number
 }>
 
 export type AddProjectV2ItemMutation = {
-  __typename?: "Mutation"
-  addProjectV2ItemById?: {
-    __typename?: "AddProjectV2ItemByIdPayload"
-    item?: { __typename?: "ProjectV2Item"; id: string; type: Types.ProjectV2ItemType } | null
+  __typename: "Mutation"
+  addProjectV2ItemById: {
+    __typename: "AddProjectV2ItemByIdPayload"
+    item: { __typename: "ProjectV2Item"; id: string; type: Types.ProjectV2ItemType } | null
   } | null
 }
 
 export const AddProjectV2ItemDocument = new TypedDocumentString(`
     mutation AddProjectV2Item($projectId: ID!, $contentId: ID!) {
+  __typename
   addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
+    __typename
     item {
+      __typename
       id
       type
     }

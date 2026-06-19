@@ -1,24 +1,41 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type IssueCloseMutationVariables = Types.Exact<{
-  issueId: Types.Scalars["ID"]["input"]
+/** The possible states of an issue. */
+export type IssueState =
+  /** An issue that has been closed */
+  | "CLOSED"
+  /** An issue that is still open */
+  | "OPEN"
+
+export type IssueCloseMutationVariables = Exact<{
+  issueId: string | number
 }>
 
 export type IssueCloseMutation = {
-  __typename?: "Mutation"
-  closeIssue?: {
-    __typename?: "CloseIssuePayload"
-    issue?: { __typename?: "Issue"; id: string; number: number; state: Types.IssueState } | null
+  __typename: "Mutation"
+  closeIssue: {
+    __typename: "CloseIssuePayload"
+    issue: { __typename: "Issue"; id: string; number: number; state: Types.IssueState } | null
   } | null
 }
 
 export const IssueCloseDocument = new TypedDocumentString(`
     mutation IssueClose($issueId: ID!) {
+  __typename
   closeIssue(input: {issueId: $issueId}) {
+    __typename
     issue {
+      __typename
       id
       number
       state
