@@ -76,17 +76,24 @@ function mapReactionGroups(
     })
     const totalCount = group.reactors.totalCount
 
+    const reactorsTruncated = totalCount > collectedLogins.length
+
     if (filter.reactorLogin !== undefined) {
-      if (!collectedLogins.includes(filter.reactorLogin)) {
+      const matched = collectedLogins.includes(filter.reactorLogin)
+      // Only confidently drop the group when the login is absent AND every
+      // reactor was fetched. When the reactor list is truncated, absence from
+      // the first page is inconclusive — keep the group (with reactorsTruncated:
+      // true) rather than returning a false "did not react".
+      if (!matched && !reactorsTruncated) {
         return []
       }
       return [
         {
           content: group.content,
           reactorCount: totalCount,
-          reactorLogins: [filter.reactorLogin],
+          reactorLogins: matched ? [filter.reactorLogin] : [],
           viewerHasReacted: group.viewerHasReacted,
-          reactorsTruncated: totalCount > collectedLogins.length,
+          reactorsTruncated,
         },
       ]
     }
@@ -97,7 +104,7 @@ function mapReactionGroups(
         reactorCount: totalCount,
         reactorLogins: collectedLogins,
         viewerHasReacted: group.viewerHasReacted,
-        reactorsTruncated: totalCount > collectedLogins.length,
+        reactorsTruncated,
       },
     ]
   })

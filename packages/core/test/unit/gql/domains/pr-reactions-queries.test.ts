@@ -176,6 +176,41 @@ describe("runPrReactionsList", () => {
     expect(result.items).toEqual([])
   })
 
+  it("keeps a group as inconclusive when reactorLogin is absent but reactors are truncated", async () => {
+    const execute = vi.fn().mockResolvedValue(
+      reactionsResponse([
+        {
+          content: "EYES",
+          viewerHasReacted: false,
+          // 5 total reactors, only 2 returned → absence of "nobody" is inconclusive
+          reactors: {
+            totalCount: 5,
+            nodes: [
+              { __typename: "User", login: "alice" },
+              { __typename: "User", login: "bob" },
+            ],
+          },
+        },
+      ]),
+    )
+    const transport: GraphqlTransport = { execute }
+
+    const result = await runPrReactionsList(transport, {
+      ...baseReactionsInput,
+      reactorLogin: "nobody",
+    })
+
+    expect(result.items).toEqual([
+      {
+        content: "EYES",
+        reactorCount: 5,
+        reactorLogins: [],
+        viewerHasReacted: false,
+        reactorsTruncated: true,
+      },
+    ])
+  })
+
   it("handles null reactionGroups and null reactor nodes arrays", async () => {
     const execute = vi.fn().mockResolvedValue({
       repository: {
