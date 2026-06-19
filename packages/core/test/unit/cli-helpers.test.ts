@@ -90,6 +90,7 @@ describe("check bucket helpers", () => {
 })
 
 import {
+  isNoChecksReported,
   requireRepo,
   shouldFallbackRerunFailedToAll,
 } from "@core/core/execution/adapters/cli/helpers.js"
@@ -120,5 +121,26 @@ describe("shouldFallbackRerunFailedToAll", () => {
   })
   it("returns false for unrelated stderr", () => {
     expect(shouldFallbackRerunFailedToAll("permission denied")).toBe(false)
+  })
+})
+
+describe("isNoChecksReported", () => {
+  it("returns true for the exact gh sentinel message", () => {
+    expect(isNoChecksReported("no checks reported on the 'main' branch")).toBe(true)
+  })
+  it("returns true when message is mixed case", () => {
+    expect(isNoChecksReported("No Checks Reported on the 'main' branch")).toBe(true)
+  })
+  it("returns true even when branch name contains auth-like text", () => {
+    expect(isNoChecksReported("no checks reported on the 'oauth-fix' branch")).toBe(true)
+  })
+  it("returns false for genuine check failure stderr", () => {
+    expect(isNoChecksReported("Some checks were not successful")).toBe(false)
+  })
+  it("returns false for unrelated stderr", () => {
+    expect(isNoChecksReported("checks failed")).toBe(false)
+  })
+  it("returns false for empty string", () => {
+    expect(isNoChecksReported("")).toBe(false)
   })
 })

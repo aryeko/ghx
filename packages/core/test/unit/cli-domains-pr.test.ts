@@ -1098,6 +1098,33 @@ describe("pr domain handlers – additional coverage", () => {
       expect(result.error?.code).toBeDefined()
     })
 
+    it("returns empty success when stderr contains no-checks sentinel (main branch)", async () => {
+      const result = await h("pr.checks.list")(
+        mockRunner(1, "", "no checks reported on the 'main' branch"),
+        { owner: "o", name: "r", prNumber: 1 },
+        undefined,
+      )
+      expect(result.ok).toBe(true)
+      const data = result.data as Record<string, unknown>
+      expect(data.items).toEqual([])
+      const summary = data.summary as Record<string, number>
+      expect(summary.total).toBe(0)
+      expect(summary.failed).toBe(0)
+      expect(summary.pending).toBe(0)
+      expect(summary.passed).toBe(0)
+    })
+
+    it("returns empty success for no-checks sentinel even when branch name contains 'auth' (was mislabeled AUTH)", async () => {
+      const result = await h("pr.checks.list")(
+        mockRunner(1, "", "no checks reported on the 'oauth-fix' branch"),
+        { owner: "o", name: "r", prNumber: 2 },
+        undefined,
+      )
+      expect(result.ok).toBe(true)
+      const data = result.data as Record<string, unknown>
+      expect(data.items).toEqual([])
+    })
+
     it("returns error on malformed JSON", async () => {
       const result = await h("pr.checks.list")(
         mockRunner(0, "not-json"),

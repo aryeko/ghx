@@ -10,6 +10,7 @@ import type { ClassifiedStep } from "./types.js"
 
 export const SINGLE_HANDLER_GRAPHQL_TASKS = new Set([
   "pr.comments.reactions.list",
+  "pr.threads.list",
   "project_v2.fields.list",
   "project_v2.items.list",
 ])

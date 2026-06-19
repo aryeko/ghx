@@ -653,20 +653,10 @@ export async function runIssueCommentCreate(
   }
 }
 
-export async function runIssueLinkedPrsList(
-  transport: GraphqlTransport,
-  input: IssueLinkedPrsListInput,
-): Promise<IssueLinkedPrsListData> {
-  assertIssueLinkedPrsListInput(input)
-
-  const result = await getIssueLinkedPrsListSdk(
-    createGraphqlRequestClient(transport),
-  ).IssueLinkedPrsList({
-    owner: input.owner,
-    name: input.name,
-    issueNumber: input.issueNumber,
-  })
-
+export function normalizeIssueLinkedPrsListResult(
+  result: unknown,
+  _input: IssueLinkedPrsListInput,
+): IssueLinkedPrsListData {
   const issue = asRecord(asRecord(asRecord(result)?.repository)?.issue)
   const timelineItems = asRecord(issue?.timelineItems)
   const nodes = Array.isArray(timelineItems?.nodes) ? timelineItems.nodes : []
@@ -706,6 +696,23 @@ export async function runIssueLinkedPrsList(
   }
 }
 
+export async function runIssueLinkedPrsList(
+  transport: GraphqlTransport,
+  input: IssueLinkedPrsListInput,
+): Promise<IssueLinkedPrsListData> {
+  assertIssueLinkedPrsListInput(input)
+
+  const result = await getIssueLinkedPrsListSdk(
+    createGraphqlRequestClient(transport),
+  ).IssueLinkedPrsList({
+    owner: input.owner,
+    name: input.name,
+    issueNumber: input.issueNumber,
+  })
+
+  return normalizeIssueLinkedPrsListResult(result, input)
+}
+
 function parseIssueRelationNode(node: unknown): IssueRelationNodeData | null {
   const record = asRecord(node)
   if (!record || typeof record.id !== "string" || typeof record.number !== "number") {
@@ -718,20 +725,10 @@ function parseIssueRelationNode(node: unknown): IssueRelationNodeData | null {
   }
 }
 
-export async function runIssueRelationsGet(
-  transport: GraphqlTransport,
-  input: IssueRelationsGetInput,
-): Promise<IssueRelationsGetData> {
-  assertIssueRelationsGetInput(input)
-
-  const result = await getIssueRelationsGetSdk(
-    createGraphqlRequestClient(transport),
-  ).IssueRelationsGet({
-    owner: input.owner,
-    name: input.name,
-    issueNumber: input.issueNumber,
-  })
-
+export function normalizeIssueRelationsGetResult(
+  result: unknown,
+  _input: IssueRelationsGetInput,
+): IssueRelationsGetData {
   const issue = asRecord(asRecord(asRecord(result)?.repository)?.issue)
   const currentIssue = parseIssueRelationNode(issue)
   if (!currentIssue) {
@@ -756,6 +753,23 @@ export async function runIssueRelationsGet(
       .map((node) => parseIssueRelationNode(node))
       .flatMap((node) => (node ? [node] : [])),
   }
+}
+
+export async function runIssueRelationsGet(
+  transport: GraphqlTransport,
+  input: IssueRelationsGetInput,
+): Promise<IssueRelationsGetData> {
+  assertIssueRelationsGetInput(input)
+
+  const result = await getIssueRelationsGetSdk(
+    createGraphqlRequestClient(transport),
+  ).IssueRelationsGet({
+    owner: input.owner,
+    name: input.name,
+    issueNumber: input.issueNumber,
+  })
+
+  return normalizeIssueRelationsGetResult(result, input)
 }
 
 export async function runIssueParentSet(

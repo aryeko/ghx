@@ -98,14 +98,11 @@ export function buildFieldValue(input: ProjectV2ItemFieldUpdateInput): Types.Pro
   throw new Error("At least one value field must be provided")
 }
 
-export async function runProjectV2OrgView(
-  transport: GraphqlTransport,
+export function normalizeProjectV2OrgViewResult(
+  result: unknown,
   input: ProjectV2OrgViewInput,
-): Promise<ProjectV2OrgViewData> {
-  assertProjectOrgInput(input)
-  const sdk = getProjectV2OrgViewSdk(createGraphqlRequestClient(transport))
-  const result: ProjectV2OrgViewQuery = await sdk.ProjectV2OrgView(input)
-  const project = result.organization?.projectV2
+): ProjectV2OrgViewData {
+  const project = (result as ProjectV2OrgViewQuery).organization?.projectV2
   if (!project) {
     throw new Error(`Project ${input.projectNumber} not found for org ${input.org}`)
   }
@@ -119,14 +116,11 @@ export async function runProjectV2OrgView(
   }
 }
 
-export async function runProjectV2UserView(
-  transport: GraphqlTransport,
+export function normalizeProjectV2UserViewResult(
+  result: unknown,
   input: ProjectV2UserViewInput,
-): Promise<ProjectV2UserViewData> {
-  assertProjectUserInput(input)
-  const sdk = getProjectV2UserViewSdk(createGraphqlRequestClient(transport))
-  const result: ProjectV2UserViewQuery = await sdk.ProjectV2UserView(input)
-  const project = result.user?.projectV2
+): ProjectV2UserViewData {
+  const project = (result as ProjectV2UserViewQuery).user?.projectV2
   if (!project) {
     throw new Error(`Project ${input.projectNumber} not found for user ${input.user}`)
   }
@@ -138,6 +132,26 @@ export async function runProjectV2UserView(
     closed: project.closed ?? null,
     url: project.url != null ? String(project.url) : null,
   }
+}
+
+export async function runProjectV2OrgView(
+  transport: GraphqlTransport,
+  input: ProjectV2OrgViewInput,
+): Promise<ProjectV2OrgViewData> {
+  assertProjectOrgInput(input)
+  const sdk = getProjectV2OrgViewSdk(createGraphqlRequestClient(transport))
+  const result: ProjectV2OrgViewQuery = await sdk.ProjectV2OrgView(input)
+  return normalizeProjectV2OrgViewResult(result, input)
+}
+
+export async function runProjectV2UserView(
+  transport: GraphqlTransport,
+  input: ProjectV2UserViewInput,
+): Promise<ProjectV2UserViewData> {
+  assertProjectUserInput(input)
+  const sdk = getProjectV2UserViewSdk(createGraphqlRequestClient(transport))
+  const result: ProjectV2UserViewQuery = await sdk.ProjectV2UserView(input)
+  return normalizeProjectV2UserViewResult(result, input)
 }
 
 export async function runProjectV2FieldsList(
