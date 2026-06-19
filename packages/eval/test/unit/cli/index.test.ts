@@ -80,11 +80,11 @@ describe("direct run initialization", () => {
 
     vi.resetModules()
     await import("@eval/cli/index.js")
-    // flush microtask queue so the unhandled .catch() runs
-    await new Promise((resolve) => setTimeout(resolve, 0))
 
     expect(mockParseAsync).toHaveBeenCalledWith(process.argv)
-    expect(consoleErrorSpy).toHaveBeenCalledWith("startup-error")
+    await vi.waitFor(() => {
+      expect(consoleErrorSpy).toHaveBeenCalledWith("startup-error")
+    })
     expect(processExitSpy).toHaveBeenCalledWith(1)
   })
 
@@ -106,9 +106,10 @@ describe("direct run initialization", () => {
 
     vi.resetModules()
     await import("@eval/cli/index.js")
-    await new Promise((resolve) => setTimeout(resolve, 0))
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith("plain-string-error")
+    await vi.waitFor(() => {
+      expect(consoleErrorSpy).toHaveBeenCalledWith("plain-string-error")
+    })
     expect(processExitSpy).toHaveBeenCalledWith(1)
   })
 })
