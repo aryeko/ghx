@@ -22,6 +22,10 @@ const mockRunner = (
   run: vi.fn().mockResolvedValue({ exitCode, stdout, stderr }),
 })
 
+function encodeWorkflowCursor(page: number): string {
+  return Buffer.from(JSON.stringify({ v: 1, page }), "utf8").toString("base64url")
+}
+
 describe("workflow domain handlers", () => {
   describe("handleWorkflowRunsList", () => {
     it("returns success with items array", async () => {
@@ -805,6 +809,42 @@ Final line`
   })
 
   describe("handleWorkflowRunsList – additional coverage", () => {
+    it("uses the opaque after cursor as the REST page", async () => {
+      const runSpy = vi.fn().mockResolvedValue({
+        exitCode: 0,
+        stdout: '{"total_count":45,"workflow_runs":[]}',
+        stderr: "",
+      })
+      const runner = { run: runSpy } as unknown as CliCommandRunner
+
+      const result = await handleWorkflowRunsList(
+        runner,
+        { owner: "owner", name: "repo", first: 30, after: encodeWorkflowCursor(2) },
+        undefined,
+      )
+
+      expect(result.ok).toBe(true)
+      expect(runSpy).toHaveBeenCalledWith(
+        "gh",
+        expect.arrayContaining(["-f", "page=2"]),
+        expect.any(Number),
+      )
+      expect(result.data).toMatchObject({ pageInfo: { hasNextPage: false, endCursor: null } })
+    })
+
+    it("returns an error for malformed after cursors", async () => {
+      const runner = mockRunner(0, '{"total_count":0,"workflow_runs":[]}')
+
+      const result = await handleWorkflowRunsList(
+        runner,
+        { owner: "owner", name: "repo", first: 30, after: "not-json" },
+        undefined,
+      )
+
+      expect(result.ok).toBe(false)
+      expect(result.error?.message).toContain("Invalid after cursor")
+    })
+
     it("includes optional event filter", async () => {
       const runSpy = vi.fn().mockResolvedValue({
         exitCode: 0,
@@ -892,6 +932,40 @@ Final line`
   })
 
   describe("handleWorkflowList – additional coverage", () => {
+    it("returns a next-page cursor when more workflows are available", async () => {
+      const runner = mockRunner(
+        0,
+        JSON.stringify({
+          total_count: 31,
+          workflows: [{ id: 1, name: "CI", path: ".github/workflows/ci.yml", state: "active" }],
+        }),
+      )
+
+      const result = await handleWorkflowList(
+        runner,
+        { owner: "owner", name: "repo", first: 30 },
+        undefined,
+      )
+
+      expect(result.ok).toBe(true)
+      expect(result.data).toMatchObject({
+        pageInfo: { hasNextPage: true, endCursor: expect.any(String) },
+      })
+    })
+
+    it("returns an error for non-string after cursors", async () => {
+      const runner = mockRunner(0, '{"total_count":0,"workflows":[]}')
+
+      const result = await handleWorkflowList(
+        runner,
+        { owner: "owner", name: "repo", first: 30, after: 2 },
+        undefined,
+      )
+
+      expect(result.ok).toBe(false)
+      expect(result.error?.message).toContain("Invalid after cursor")
+    })
+
     it("returns error on SyntaxError from malformed JSON", async () => {
       const runner = mockRunner(0, "not-json")
 
@@ -1004,6 +1078,42 @@ Final line`
   })
 
   describe("handleWorkflowRunArtifactsList – additional coverage", () => {
+    it("maps snake_case artifact fields and returns a next-page cursor", async () => {
+      const runner = mockRunner(
+        0,
+        JSON.stringify({
+          total_count: 2,
+          artifacts: [
+            {
+              id: 10,
+              name: "coverage",
+              size_in_bytes: 123,
+              archive_download_url: "https://example.test/artifacts/10",
+            },
+          ],
+        }),
+      )
+
+      const result = await handleWorkflowRunArtifactsList(
+        runner,
+        { owner: "owner", name: "repo", runId: 1, first: 1 },
+        undefined,
+      )
+
+      expect(result.ok).toBe(true)
+      expect(result.data).toMatchObject({
+        items: [
+          {
+            id: 10,
+            name: "coverage",
+            sizeInBytes: 123,
+            archiveDownloadUrl: "https://example.test/artifacts/10",
+          },
+        ],
+        pageInfo: { hasNextPage: true, endCursor: expect.any(String) },
+      })
+    })
+
     it("handles non-object artifact item gracefully", async () => {
       const runner = mockRunner(0, JSON.stringify({ artifacts: [null, "bad"] }))
 
