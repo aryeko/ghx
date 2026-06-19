@@ -26,6 +26,7 @@ export interface SuitabilityRule {
 export interface ScalarInject {
   target: string
   source: "scalar"
+  from_lookup?: string
   path: string
 }
 
@@ -49,10 +50,21 @@ export interface ScalarInject {
 export interface MapArrayInject {
   target: string
   source: "map_array"
+  from_lookup?: string
   from_input: string
   nodes_path: string
   match_field: string
   extract_field: string
+}
+
+/** Uses the first non-empty scalar found across multiple lookup results. */
+export interface FirstScalarInject {
+  target: string
+  source: "first_scalar"
+  paths: Array<{
+    from_lookup?: string
+    path: string
+  }>
 }
 
 /**
@@ -132,18 +144,35 @@ export interface InputDefaultInject {
   default: string | number | boolean | null
 }
 
+/** Builds a GitHub DraftPullRequestReviewThread array from card comments input. */
+export interface DraftReviewThreadsInject {
+  target: string
+  source: "draft_review_threads"
+  from_input: string
+}
+
+/** Builds a GitHub ProjectV2FieldValue object from the project item field inputs. */
+export interface ProjectV2FieldValueInject {
+  target: string
+  source: "project_v2_field_value"
+}
+
 /** A specification for how to inject a resolved Phase 1 value into Phase 2. */
 export type InjectSpec =
   | ScalarInject
   | MapArrayInject
+  | FirstScalarInject
   | InputPassthroughInject
   | NullLiteralInject
   | InputUpperInject
   | InputPresentInject
   | InputDefaultInject
+  | DraftReviewThreadsInject
+  | ProjectV2FieldValueInject
 
 /** Defines the GraphQL query to run during the Phase 1 lookup. */
 export interface LookupSpec {
+  id?: string
   operationName: string
   documentPath: string
   vars: Record<string, string>
@@ -151,7 +180,8 @@ export interface LookupSpec {
 
 /** Configuration for a Phase 1 node ID lookup prior to mutation execution. */
 export interface ResolutionConfig {
-  lookup: LookupSpec
+  lookup?: LookupSpec
+  lookups?: LookupSpec[]
   inject: InjectSpec[]
 }
 

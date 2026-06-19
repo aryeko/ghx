@@ -12,6 +12,52 @@ import { createGithubClient } from "../helpers/engine-fixtures.js"
 // path relies on the card's `graphql.resolution` block.
 
 describe("executeTasks chaining — pr.update resolution (issue #4)", () => {
+  it("routes explicit draft updates in a chain through the CLI route", async () => {
+    const queryMock = vi.fn()
+    const queryRawMock = vi.fn()
+    const cliRunner = {
+      run: vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" }),
+    }
+
+    const result = await executeTasks(
+      [
+        {
+          task: "pr.update",
+          input: { owner: "acme", name: "repo", prNumber: 1, draft: true },
+        },
+        {
+          task: "pr.update",
+          input: { owner: "acme", name: "repo", prNumber: 2, draft: false },
+        },
+      ],
+      {
+        githubClient: createGithubClient({
+          query: queryMock,
+          queryRaw: queryRawMock,
+        }),
+        cliRunner,
+        skipGhPreflight: true,
+      },
+    )
+
+    expect(result.status).toBe("success")
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(queryRawMock).not.toHaveBeenCalled()
+    expect(cliRunner.run).toHaveBeenCalledTimes(2)
+    expect(cliRunner.run).toHaveBeenNthCalledWith(
+      1,
+      "gh",
+      expect.arrayContaining(["pr", "ready", "1", "--undo"]),
+      expect.any(Number),
+    )
+    expect(cliRunner.run).toHaveBeenNthCalledWith(
+      2,
+      "gh",
+      expect.arrayContaining(["pr", "ready", "2"]),
+      expect.any(Number),
+    )
+  })
+
   it("resolves pullRequestId for a 2-step pr.update chain", async () => {
     // Phase 1 (resolution lookup): batched PrNodeId query returns one node per step alias.
     const queryMock = vi.fn().mockResolvedValueOnce({

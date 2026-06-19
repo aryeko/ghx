@@ -50,7 +50,7 @@ describe("card resolution blocks", () => {
     expect(card).toBeDefined()
     if (!card) return
     expect(card.graphql?.resolution).toBeDefined()
-    expect(card.graphql?.resolution?.lookup.operationName).toBe("IssueLabelsLookupByNumber")
+    expect(card.graphql?.resolution?.lookup?.operationName).toBe("IssueLabelsLookupByNumber")
     expect(card.graphql?.resolution?.inject[1]?.source).toBe("map_array")
   })
 

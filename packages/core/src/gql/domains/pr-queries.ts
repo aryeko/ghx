@@ -54,6 +54,44 @@ type RawReactionGroup = {
   }
 }
 
+type RawPrReactionsResult = {
+  repository?: {
+    pullRequest?: {
+      id: string
+      url: unknown
+      reactionGroups?: ReadonlyArray<RawReactionGroup> | null
+    } | null
+  } | null
+}
+
+type RawCommentReactionNode = {
+  __typename: string
+  id: string
+  url: unknown
+  author?: { login?: string | null } | null
+  reactionGroups?: ReadonlyArray<RawReactionGroup> | null
+}
+
+type RawPrCommentsReactionsResult = {
+  repository?: {
+    pullRequest?: {
+      comments: {
+        pageInfo: { hasNextPage: boolean }
+        nodes?: ReadonlyArray<RawCommentReactionNode | null> | null
+      }
+      reviewThreads: {
+        pageInfo: { hasNextPage: boolean }
+        nodes?: ReadonlyArray<{
+          comments: {
+            pageInfo: { hasNextPage: boolean }
+            nodes?: ReadonlyArray<RawCommentReactionNode | null> | null
+          }
+        } | null> | null
+      }
+    } | null
+  } | null
+}
+
 function readReactorLogin(node: RawReactor): string | null {
   if (node === null || typeof node.login !== "string" || node.login.length === 0) {
     return null
@@ -108,6 +146,109 @@ function mapReactionGroups(
       },
     ]
   })
+}
+
+export function normalizePrReactionsListResult(
+  result: unknown,
+  input: PrReactionsListInput,
+): PrReactionsListData {
+  const pr = (result as RawPrReactionsResult).repository?.pullRequest
+  if (!pr) {
+    throw new Error("Pull request not found")
+  }
+
+  const filter: ReactionFilter = {
+    ...(input.reactorLogin !== undefined ? { reactorLogin: input.reactorLogin } : {}),
+    ...(input.content !== undefined ? { content: input.content } : {}),
+  }
+
+  return {
+    subject: { type: "PullRequest", id: pr.id, url: String(pr.url) },
+    items: mapReactionGroups(pr.reactionGroups ?? [], filter),
+    filterApplied: {
+      reactorLogin: input.reactorLogin ?? null,
+      content: input.content ?? null,
+    },
+  }
+}
+
+export function normalizePrCommentsReactionsListResult(
+  result: unknown,
+  input: PrCommentsReactionsListInput,
+): PrCommentsReactionsListData {
+  const pr = (result as RawPrCommentsReactionsResult).repository?.pullRequest
+  if (!pr) {
+    throw new Error("Pull request not found")
+  }
+
+  const filter: ReactionFilter = {
+    ...(input.reactorLogin !== undefined ? { reactorLogin: input.reactorLogin } : {}),
+    ...(input.content !== undefined ? { content: input.content } : {}),
+  }
+
+  const issueCommentItems: PrCommentReactionSubjectData[] = (pr.comments.nodes ?? []).flatMap(
+    (node) => {
+      if (!node) {
+        return []
+      }
+      const groups = mapReactionGroups(node.reactionGroups ?? [], filter)
+      if (groups.length === 0) {
+        return []
+      }
+      return [
+        {
+          subjectType: node.__typename,
+          subjectId: node.id,
+          subjectUrl: String(node.url),
+          authorLogin: node.author?.login ?? null,
+          groups,
+        },
+      ]
+    },
+  )
+
+  let threadCommentsTruncated = false
+  const reviewCommentItems: PrCommentReactionSubjectData[] = (pr.reviewThreads.nodes ?? []).flatMap(
+    (thread) => {
+      if (!thread) {
+        return []
+      }
+      if (thread.comments.pageInfo.hasNextPage) {
+        threadCommentsTruncated = true
+      }
+      return (thread.comments.nodes ?? []).flatMap((node) => {
+        if (!node) {
+          return []
+        }
+        const groups = mapReactionGroups(node.reactionGroups ?? [], filter)
+        if (groups.length === 0) {
+          return []
+        }
+        return [
+          {
+            subjectType: node.__typename,
+            subjectId: node.id,
+            subjectUrl: String(node.url),
+            authorLogin: node.author?.login ?? null,
+            groups,
+          },
+        ]
+      })
+    },
+  )
+
+  return {
+    items: [...issueCommentItems, ...reviewCommentItems],
+    filterApplied: {
+      reactorLogin: input.reactorLogin ?? null,
+      content: input.content ?? null,
+    },
+    scan: {
+      commentsTruncated: pr.comments.pageInfo.hasNextPage,
+      threadsTruncated: pr.reviewThreads.pageInfo.hasNextPage,
+      threadCommentsTruncated,
+    },
+  }
 }
 
 export async function runPrView(
@@ -227,24 +368,7 @@ export async function runPrReactionsList(
     name: input.name,
     prNumber: input.prNumber,
   })
-  const pr = result.repository?.pullRequest
-  if (!pr) {
-    throw new Error("Pull request not found")
-  }
-
-  const filter: ReactionFilter = {
-    ...(input.reactorLogin !== undefined ? { reactorLogin: input.reactorLogin } : {}),
-    ...(input.content !== undefined ? { content: input.content } : {}),
-  }
-
-  return {
-    subject: { type: "PullRequest", id: pr.id, url: String(pr.url) },
-    items: mapReactionGroups(pr.reactionGroups ?? [], filter),
-    filterApplied: {
-      reactorLogin: input.reactorLogin ?? null,
-      content: input.content ?? null,
-    },
-  }
+  return normalizePrReactionsListResult(result, input)
 }
 
 export async function runPrCommentsReactionsList(
@@ -262,79 +386,7 @@ export async function runPrCommentsReactionsList(
     threadsFirst: input.threadsFirst ?? 30,
     threadCommentsFirst: input.threadCommentsFirst ?? 30,
   })
-  const pr = result.repository?.pullRequest
-  if (!pr) {
-    throw new Error("Pull request not found")
-  }
-
-  const filter: ReactionFilter = {
-    ...(input.reactorLogin !== undefined ? { reactorLogin: input.reactorLogin } : {}),
-    ...(input.content !== undefined ? { content: input.content } : {}),
-  }
-
-  const issueCommentItems: PrCommentReactionSubjectData[] = (pr.comments.nodes ?? []).flatMap(
-    (node) => {
-      if (!node) {
-        return []
-      }
-      const groups = mapReactionGroups(node.reactionGroups ?? [], filter)
-      if (groups.length === 0) {
-        return []
-      }
-      return [
-        {
-          subjectType: node.__typename,
-          subjectId: node.id,
-          subjectUrl: String(node.url),
-          authorLogin: node.author?.login ?? null,
-          groups,
-        },
-      ]
-    },
-  )
-
-  let threadCommentsTruncated = false
-  const reviewCommentItems: PrCommentReactionSubjectData[] = (pr.reviewThreads.nodes ?? []).flatMap(
-    (thread) => {
-      if (!thread) {
-        return []
-      }
-      if (thread.comments.pageInfo.hasNextPage) {
-        threadCommentsTruncated = true
-      }
-      return (thread.comments.nodes ?? []).flatMap((node) => {
-        if (!node) {
-          return []
-        }
-        const groups = mapReactionGroups(node.reactionGroups ?? [], filter)
-        if (groups.length === 0) {
-          return []
-        }
-        return [
-          {
-            subjectType: node.__typename,
-            subjectId: node.id,
-            subjectUrl: String(node.url),
-            authorLogin: node.author?.login ?? null,
-            groups,
-          },
-        ]
-      })
-    },
-  )
-
-  return {
-    items: [...issueCommentItems, ...reviewCommentItems],
-    filterApplied: {
-      reactorLogin: input.reactorLogin ?? null,
-      content: input.content ?? null,
-    },
-    scan: {
-      commentsTruncated: pr.comments.pageInfo.hasNextPage,
-      threadsTruncated: pr.reviewThreads.pageInfo.hasNextPage,
-      threadCommentsTruncated,
-    },
-  }
+  return normalizePrCommentsReactionsListResult(result, input)
 }
 
 export async function runPrDiffListFiles(

@@ -10,6 +10,11 @@ import { errorCodes } from "@core/core/errors/codes.js"
 import { mapErrorToCode } from "@core/core/errors/map-error.js"
 import { isRetryableErrorCode } from "@core/core/errors/retryability.js"
 import { logger } from "@core/core/telemetry/log.js"
+import {
+  normalizePrCommentsReactionsListResult,
+  normalizePrReactionsListResult,
+} from "@core/gql/domains/pr-queries.js"
+import type { PrCommentsReactionsListInput, PrReactionsListInput } from "@core/gql/types.js"
 import type { ClassifiedStep } from "./types.js"
 
 // Delegate to the shared retryability source of truth so chain results agree with
@@ -66,6 +71,28 @@ function applyInputExclusions(data: unknown, input: Record<string, unknown>): un
   }
 
   return stripExcludedFields(data, excludedFields)
+}
+
+function applyQueryPostprocessing(
+  task: string,
+  data: unknown,
+  input: Record<string, unknown>,
+): unknown {
+  if (task === "pr.reactions.list") {
+    return normalizePrReactionsListResult(
+      { repository: data },
+      input as unknown as PrReactionsListInput,
+    )
+  }
+
+  if (task === "pr.comments.reactions.list") {
+    return normalizePrCommentsReactionsListResult(
+      { repository: data },
+      input as unknown as PrCommentsReactionsListInput,
+    )
+  }
+
+  return applyInputExclusions(data, input)
 }
 
 export function assembleChainResult(input: AssembleInput): ChainResultEnvelope {
@@ -135,7 +162,7 @@ export function assembleChainResult(input: AssembleInput): ChainResultEnvelope {
       return {
         task: req.task,
         ok: true,
-        data: applyInputExclusions(queryRawResult[alias], req.input),
+        data: applyQueryPostprocessing(req.task, queryRawResult[alias], req.input),
       }
     }
 

@@ -57,7 +57,7 @@ describe("runResolutionPhase pagination", () => {
 
   it("does not paginate map_array connections when the lookup document has no cursor variable", async () => {
     const base = getOperationCard("pr.assignees.add")
-    if (!base?.graphql?.resolution) {
+    if (!base?.graphql?.resolution?.lookup) {
       throw new Error("Missing pr.assignees.add resolution")
     }
 
@@ -100,7 +100,7 @@ describe("runResolutionPhase pagination", () => {
     )
 
     expect(query).toHaveBeenCalledTimes(1)
-    expect(result[0]).toMatchObject({
+    expect(result[0]?.default).toMatchObject({
       repository: {
         pullRequest: {
           pageInfo: { hasNextPage: true, endCursor: "cursor-1" },

@@ -5,6 +5,7 @@ import { getOperationCard } from "@core/core/registry/index.js"
 import { formatSchemaErrorDetails, validateInput } from "@core/core/registry/schema-validator.js"
 import type { OperationCard } from "@core/core/registry/types.js"
 import { selectPreferredRoute } from "@core/core/routing/suitability.js"
+import { resolutionLookups } from "./resolve.js"
 import type { ClassifiedStep } from "./types.js"
 
 export type PreflightSuccess = {
@@ -48,12 +49,13 @@ export function runPreflight(
       }
 
       if (card.graphql?.resolution) {
-        const { lookup } = card.graphql.resolution
-        for (const [, inputField] of Object.entries(lookup.vars)) {
-          if (req.input[inputField] === undefined) {
-            throw new Error(
-              `Resolution pre-flight failed for '${req.task}': lookup var '${inputField}' is missing from input`,
-            )
+        for (const lookup of resolutionLookups(card)) {
+          for (const [, inputField] of Object.entries(lookup.vars)) {
+            if (req.input[inputField] === undefined) {
+              throw new Error(
+                `Resolution pre-flight failed for '${req.task}': lookup var '${inputField}' is missing from input`,
+              )
+            }
           }
         }
       }

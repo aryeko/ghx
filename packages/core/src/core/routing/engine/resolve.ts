@@ -1,4 +1,4 @@
-import type { OperationCard } from "@core/core/registry/types.js"
+import type { InjectSpec, LookupSpec, OperationCard } from "@core/core/registry/types.js"
 import { logger } from "@core/core/telemetry/log.js"
 import { buildBatchQuery, extractRootFieldName } from "@core/gql/batch.js"
 import { getLookupDocument } from "@core/gql/document-registry.js"
@@ -7,25 +7,65 @@ import type { ResolutionCache } from "../resolution-cache.js"
 import { buildCacheKey } from "../resolution-cache.js"
 import type { ClassifiedStep } from "./types.js"
 
-export type ResolutionResults = Record<number, unknown>
+export const DEFAULT_LOOKUP_ID = "default"
+
+export type StepResolutionResults = Record<string, unknown>
+export type ResolutionResults = Record<number, StepResolutionResults>
 
 type LookupInput = {
   alias: string
   query: string
   variables: Record<string, unknown>
   stepIndex: number
+  lookupId: string
+  lookup: LookupSpec & { id: string }
   card: OperationCard
 }
 
+export function resolutionLookups(card: OperationCard): Array<LookupSpec & { id: string }> {
+  const resolution = card.graphql?.resolution
+  if (!resolution) return []
+
+  const lookups: Array<LookupSpec & { id: string }> = []
+  if (resolution.lookup) {
+    lookups.push({ ...resolution.lookup, id: resolution.lookup.id ?? DEFAULT_LOOKUP_ID })
+  }
+  for (const lookup of resolution.lookups ?? []) {
+    lookups.push({ ...lookup, id: lookup.id ?? DEFAULT_LOOKUP_ID })
+  }
+  return lookups
+}
+
+export function defaultLookupId(card: OperationCard): string {
+  const lookups = resolutionLookups(card)
+  if (lookups.length !== 1) {
+    throw new Error(
+      `Resolution failed for '${card.capability_id}': inject must specify from_lookup when multiple lookups are configured`,
+    )
+  }
+  const lookup = lookups[0]
+  if (!lookup) {
+    throw new Error(
+      `Resolution failed for '${card.capability_id}': inject requires a lookup but none is configured`,
+    )
+  }
+  return lookup.id
+}
+
+export function lookupIdForInject(card: OperationCard, spec: InjectSpec): string | null {
+  if (spec.source === "scalar" || spec.source === "map_array") {
+    return spec.from_lookup ?? defaultLookupId(card)
+  }
+  return null
+}
+
 function buildLookupVars(
-  card: OperationCard,
+  lookup: LookupSpec,
   input: Record<string, unknown>,
 ): Record<string, unknown> {
   const vars: Record<string, unknown> = {}
-  if (card.graphql?.resolution) {
-    for (const [lookupVar, inputField] of Object.entries(card.graphql.resolution.lookup.vars)) {
-      vars[lookupVar] = input[inputField]
-    }
+  for (const [lookupVar, inputField] of Object.entries(lookup.vars)) {
+    vars[lookupVar] = input[inputField]
   }
   return vars
 }
@@ -52,10 +92,11 @@ function afterVariableName(connectionPath: string): string {
   return `${fieldName}After`
 }
 
-function mapArrayConnectionPaths(card: OperationCard): string[] {
+function mapArrayConnectionPaths(card: OperationCard, lookupId: string): string[] {
   const paths = new Set<string>()
   for (const spec of card.graphql?.resolution?.inject ?? []) {
     if (spec.source !== "map_array") continue
+    if (lookupIdForInject(card, spec) !== lookupId) continue
     const connectionPath = connectionPathForNodesPath(spec.nodes_path)
     if (connectionPath !== null) paths.add(connectionPath)
   }
@@ -100,10 +141,10 @@ async function hydratePaginatedMapArrayLookups(
     const pageInputs: Array<LookupInput & { connectionPath: string }> = []
 
     for (const lookup of lookupInputs) {
-      const result = lookupResults[lookup.stepIndex]
+      const result = lookupResults[lookup.stepIndex]?.[lookup.lookupId]
       if (result === undefined) continue
 
-      for (const connectionPath of mapArrayConnectionPaths(lookup.card)) {
+      for (const connectionPath of mapArrayConnectionPaths(lookup.card, lookup.lookupId)) {
         const pageInfo = getAtPath(result, `${connectionPath}.pageInfo`)
         const hasNextPage =
           typeof pageInfo === "object" &&
@@ -147,7 +188,11 @@ async function hydratePaginatedMapArrayLookups(
 
       const rootFieldName = extractRootFieldName(pageInput.query)
       const pageResult = rootFieldName !== null ? { [rootFieldName]: rawValue } : rawValue
-      mergeConnectionPage(lookupResults[pageInput.stepIndex], pageResult, pageInput.connectionPath)
+      mergeConnectionPage(
+        lookupResults[pageInput.stepIndex]?.[pageInput.lookupId],
+        pageResult,
+        pageInput.connectionPath,
+      )
     }
   }
 
@@ -171,34 +216,41 @@ export async function runResolutionPhase(
     const req = requests[index]
     if (req === undefined) continue
 
-    const lookupVars = buildLookupVars(card, req.input)
+    for (const lookup of resolutionLookups(card)) {
+      const lookupVars = buildLookupVars(lookup, req.input)
 
-    // Check resolution cache before scheduling network call
-    if (resolutionCache) {
-      const cacheKey = buildCacheKey(card.graphql.resolution.lookup.operationName, lookupVars)
-      const cached = resolutionCache.get(cacheKey)
-      if (cached !== undefined) {
-        lookupResults[index] = cached
-        logger.debug("resolution.cache_hit", {
-          step: index,
-          operation: card.graphql.resolution.lookup.operationName,
-          key: cacheKey,
-        })
-        continue
+      // Check resolution cache before scheduling network call
+      if (resolutionCache) {
+        const cacheKey = buildCacheKey(`${lookup.id}:${lookup.operationName}`, lookupVars)
+        const cached = resolutionCache.get(cacheKey)
+        if (cached !== undefined) {
+          lookupResults[index] ??= {}
+          lookupResults[index][lookup.id] = cached
+          logger.debug("resolution.cache_hit", {
+            step: index,
+            lookup: lookup.id,
+            operation: lookup.operationName,
+            key: cacheKey,
+          })
+          continue
+        }
       }
-    }
 
-    logger.debug("resolution.lookup_scheduled", {
-      step: index,
-      operation: card.graphql.resolution.lookup.operationName,
-    })
-    lookupInputs.push({
-      alias: `step${index}`,
-      query: getLookupDocument(card.graphql.resolution.lookup.operationName),
-      variables: lookupVars,
-      stepIndex: index,
-      card,
-    })
+      logger.debug("resolution.lookup_scheduled", {
+        step: index,
+        lookup: lookup.id,
+        operation: lookup.operationName,
+      })
+      lookupInputs.push({
+        alias: lookup.id === DEFAULT_LOOKUP_ID ? `step${index}` : `step${index}_${lookup.id}`,
+        query: getLookupDocument(lookup.operationName),
+        variables: lookupVars,
+        stepIndex: index,
+        lookupId: lookup.id,
+        lookup,
+        card,
+      })
+    }
   }
 
   if (lookupInputs.length === 0) {
@@ -218,40 +270,34 @@ export async function runResolutionPhase(
   const rawResult = await githubClient.query(document, variables)
   logger.debug("query.batch_complete", { count: lookupInputs.length })
 
-  // Un-alias results: BatchChain result has keys like "step0", "step2", etc.
+  // Un-alias results: BatchChain result has keys like "step0", "step0_projectOrg", etc.
   // GitHub returns the root field value directly under the alias key — no extra wrapper.
   // Re-wrap it so applyInject path traversal (e.g. "repository.issue.id") works correctly.
-  for (const { alias, query, stepIndex } of lookupInputs) {
+  for (const { alias, query, stepIndex, lookupId } of lookupInputs) {
     const rawValue = (rawResult as Record<string, unknown>)[alias]
     if (rawValue === undefined) {
-      logger.debug("resolution.step_missing", { step: stepIndex, alias })
+      logger.debug("resolution.step_missing", { step: stepIndex, lookup: lookupId, alias })
       continue
     }
     const rootFieldName = extractRootFieldName(query)
     const result = rootFieldName !== null ? { [rootFieldName]: rawValue } : rawValue
-    lookupResults[stepIndex] = result
-    logger.debug("resolution.step_resolved", { step: stepIndex, alias })
+    lookupResults[stepIndex] ??= {}
+    lookupResults[stepIndex][lookupId] = result
+    logger.debug("resolution.step_resolved", { step: stepIndex, lookup: lookupId, alias })
   }
 
   await hydratePaginatedMapArrayLookups(lookupInputs, lookupResults, githubClient)
 
-  for (const { stepIndex } of lookupInputs) {
+  for (const { stepIndex, lookupId, lookup, variables } of lookupInputs) {
     if (resolutionCache) {
-      const step = steps.find((s) => s.index === stepIndex)
-      const req = requests[stepIndex]
-      if (step?.card.graphql?.resolution && req) {
-        const lookupVars = buildLookupVars(step.card, req.input)
-        const result = lookupResults[stepIndex]
-        if (result === undefined) continue
-        resolutionCache.set(
-          buildCacheKey(step.card.graphql.resolution.lookup.operationName, lookupVars),
-          result,
-        )
-        logger.debug("resolution.cache_set", {
-          step: stepIndex,
-          operation: step.card.graphql.resolution.lookup.operationName,
-        })
-      }
+      const result = lookupResults[stepIndex]?.[lookupId]
+      if (result === undefined) continue
+      resolutionCache.set(buildCacheKey(`${lookupId}:${lookup.operationName}`, variables), result)
+      logger.debug("resolution.cache_set", {
+        step: stepIndex,
+        lookup: lookupId,
+        operation: lookup.operationName,
+      })
     }
   }
 

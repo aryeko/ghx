@@ -3,7 +3,7 @@ import { logger } from "@core/core/telemetry/log.js"
 import { buildBatchMutation, buildBatchQuery } from "@core/gql/batch.js"
 import { getDocument } from "@core/gql/document-registry.js"
 import { applyInject, buildOperationVars } from "@core/gql/resolve.js"
-import type { ResolutionResults } from "./resolve.js"
+import { lookupIdForInject, type ResolutionResults } from "./resolve.js"
 import type { ClassifiedStep, ExecutionDeps } from "./types.js"
 
 export type GqlExecutePhaseResults = {
@@ -43,9 +43,13 @@ export async function runGqlExecutePhase(
     try {
       logger.debug("resolution.inject", { step: index, capability_id: req.task })
       const resolved: Record<string, unknown> = {}
-      if (card.graphql?.resolution && lookupResults[index] !== undefined) {
+      if (card.graphql?.resolution) {
+        const stepLookupResults = lookupResults[index] ?? {}
         for (const spec of card.graphql.resolution.inject) {
-          Object.assign(resolved, applyInject(spec, lookupResults[index], req.input))
+          const lookupId = lookupIdForInject(card, spec)
+          const lookupResult =
+            spec.source === "first_scalar" ? stepLookupResults : stepLookupResults[lookupId ?? ""]
+          Object.assign(resolved, applyInject(spec, lookupResult, req.input))
         }
       }
 
@@ -53,7 +57,7 @@ export async function runGqlExecutePhase(
         throw new Error(`Step ${index}: card has no graphql config for route '${route}'`)
       }
       const doc = getDocument(card.graphql.operationName)
-      const vars = buildOperationVars(doc, req.input, resolved)
+      const vars = buildOperationVars(doc, req.input, resolved, card.graphql.variables)
 
       if (route === "gql-mutation") {
         mutationInputs.push({
