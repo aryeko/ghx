@@ -1,6 +1,6 @@
 # Capabilities Reference
 
-All 70+ capabilities in `@ghx-dev/core`, grouped by domain.
+All 74 capabilities in `@ghx-dev/core`, grouped by domain.
 
 ## Repository
 
@@ -38,7 +38,7 @@ All 70+ capabilities in `@ghx-dev/core`, grouped by domain.
 | `issue.relations.blocked_by.add` | Add blocked-by relationship | graphql |
 | `issue.relations.blocked_by.remove` | Remove blocked-by relationship | graphql |
 
-## Pull Requests (23)
+## Pull Requests (25)
 
 | Capability ID | Description | Preferred Route |
 |---|---|---|
@@ -46,6 +46,7 @@ All 70+ capabilities in `@ghx-dev/core`, grouped by domain.
 | `pr.list` | List PRs with filters | graphql |
 | `pr.create` | Create a new PR | cli |
 | `pr.update` | Update PR title/body | graphql |
+| `pr.close` | Close a PR without merging | graphql |
 | `pr.merge` | Merge a PR | graphql |
 | `pr.merge.status` | Check PR merge status | graphql |
 | `pr.diff.view` | View raw PR diff | cli |
@@ -54,6 +55,7 @@ All 70+ capabilities in `@ghx-dev/core`, grouped by domain.
 | `pr.threads.reply` | Reply to a review thread | graphql |
 | `pr.threads.resolve` | Resolve a review thread | graphql |
 | `pr.threads.unresolve` | Unresolve a review thread | graphql |
+| `pr.comments.create` | Add an issue-style comment to a PR | graphql |
 | `pr.comments.reactions.list` | List reactions on PR issue & review comments | graphql |
 | `pr.reactions.list` | List reactions on the PR itself | graphql |
 | `pr.reviews.list` | List PR reviews | graphql |

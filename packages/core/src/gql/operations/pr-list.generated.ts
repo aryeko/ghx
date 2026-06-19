@@ -24,6 +24,7 @@ export type PrListQueryVariables = Exact<{
   name: string
   first: number
   after?: string | null | undefined
+  states?: Array<Types.PullRequestState> | Types.PullRequestState | null | undefined
 }>
 
 export type PrListQuery = {
@@ -46,13 +47,14 @@ export type PrListQuery = {
 }
 
 export const PrListDocument = new TypedDocumentString(`
-    query PrList($owner: String!, $name: String!, $first: Int!, $after: String) {
+    query PrList($owner: String!, $name: String!, $first: Int!, $after: String, $states: [PullRequestState!]) {
   __typename
   repository(owner: $owner, name: $name) {
     __typename
     pullRequests(
       first: $first
       after: $after
+      states: $states
       orderBy: {field: CREATED_AT, direction: DESC}
     ) {
       __typename

@@ -104,6 +104,20 @@ describe("setupCommand", () => {
     expect(stdout.mock.calls.map((call) => String(call[0])).join("")).toContain("Verify passed")
   })
 
+  it("verify fails when installed skill content is stale", async () => {
+    await setupCommand(["--scope", "user", "--yes"])
+    const skillPath = join(tempRoot, ".agents", "skills", "using-ghx", "SKILL.md")
+    writeFileSync(skillPath, "# stale skill\n\nghx capabilities list\n", "utf8")
+    const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true)
+
+    const code = await setupCommand(["--scope", "user", "--verify"])
+
+    expect(code).toBe(1)
+    const output = stderr.mock.calls.map((call) => String(call[0])).join("")
+    expect(output).toContain("out of date")
+    expect(output).toContain("ghx setup --scope user --yes")
+  })
+
   it("verify fails when skill is missing", async () => {
     const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true)
 

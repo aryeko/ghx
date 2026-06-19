@@ -7,7 +7,7 @@ The `ghx` CLI provides command-line access to all capabilities.
 | Flag | Description |
 |---|---|
 | `--help`, `-h` | Show help |
-| `--version` | Show version |
+| `--version`, `-v`, `-V` | Show version |
 
 ## Commands
 
@@ -17,16 +17,22 @@ Execute a single capability.
 
 ```bash
 ghx run <capability_id> --input '<json>'
+ghx run <capability_id> --input - < input.json
 ```
 
 | Flag | Required | Description |
 |---|---|---|
-| `--input`, `-i` | Yes | JSON input matching the capability's input schema |
+| `--input` | Yes | JSON object matching the capability's input schema. Use `-` for stdin |
+| `--check-gh-preflight` | No | Check `gh` authentication before execution |
+| `--verbose` | No | Emit diagnostic details on stderr |
 
 **Examples:**
 
 ```bash
 ghx run repo.view --input '{"owner":"aryeko","name":"ghx"}'
+ghx run repo.view --input - <<'EOF'
+{"owner":"aryeko","name":"ghx"}
+EOF
 ghx run pr.view --input '{"owner":"acme","name":"repo","prNumber":42}'
 ghx run issue.create --input '{"owner":"acme","name":"repo","title":"Bug report","body":"Details..."}'
 ```
@@ -46,7 +52,9 @@ ghx chain --steps - < steps.json    # read from stdin
 
 | Flag | Required | Description |
 |---|---|---|
-| `--steps`, `-s` | Yes | JSON array of `{task, input}` objects. Use `-` for stdin |
+| `--steps` | Yes | JSON array of `{task, input}` objects. Use `-` for stdin |
+| `--check-gh-preflight` | No | Check `gh` authentication before execution |
+| `--verbose` | No | Emit diagnostic details on stderr |
 
 **Example:**
 
@@ -71,13 +79,16 @@ ghx capabilities list [--domain <domain>]
 
 | Flag | Required | Description |
 |---|---|---|
-| `--domain`, `-d` | No | Filter by domain (e.g. `issue`, `pr`, `workflow`, `release`, `project_v2`, `repo`) |
+| `--domain` | No | Filter by domain (e.g. `issue`, `pr`, `workflow`, `release`, `project_v2`, `repo`) |
+| `--json` | No | Print the capability list as JSON |
+| `--compact` | No | Print a compact agent-friendly list |
 
 **Example:**
 
 ```bash
 ghx capabilities list
 ghx capabilities list --domain pr
+ghx capabilities list --domain pr --compact
 ```
 
 ---
@@ -87,13 +98,18 @@ ghx capabilities list --domain pr
 Show detailed information about a capability.
 
 ```bash
-ghx capabilities explain <capability_id>
+ghx capabilities explain <capability_id> [--json]
 ```
+
+| Flag | Required | Description |
+|---|---|---|
+| `--json` | No | Print the full capability card as JSON |
 
 **Example:**
 
 ```bash
 ghx capabilities explain pr.threads.list
+ghx capabilities explain pr.reactions.list --json
 ```
 
 **Output:** Capability description, input schema, output schema, routing config, examples.
@@ -105,19 +121,22 @@ ghx capabilities explain pr.threads.list
 Install the ghx skill file for agent integration.
 
 ```bash
-ghx setup --scope <project|user> [--yes] [--verify]
+ghx setup --scope <project|user> [--yes] [--dry-run] [--verify] [--track]
 ```
 
 | Flag | Required | Description |
 |---|---|---|
 | `--scope` | Yes | `project` (writes to `.agents/skills/using-ghx/SKILL.md`) or `user` (writes to `~/.agents/skills/using-ghx/SKILL.md`) |
 | `--yes` | No | Skip confirmation prompt |
-| `--verify` | No | Verify the installation is correct |
+| `--dry-run` | No | Print the target path without writing files |
+| `--verify` | No | Verify the installed skill exists and matches the packaged skill |
+| `--track` | No | Write a local setup telemetry event |
 
 **Example:**
 
 ```bash
 ghx setup --scope project --yes
+ghx setup --scope project --dry-run
 ghx setup --scope project --verify
 ```
 

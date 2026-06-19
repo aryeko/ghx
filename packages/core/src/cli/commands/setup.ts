@@ -19,6 +19,7 @@ type SetupOptions = {
 }
 
 type SetupError = Error & { code?: ErrorCode }
+type VerifySkillStatus = "ok" | "missing" | "outdated"
 
 const ajv = new Ajv({ allErrors: true, strict: false })
 
@@ -181,17 +182,20 @@ async function confirmOverwrite(skillPath: string): Promise<boolean> {
   }
 }
 
-async function verifySkill(skillPath: string): Promise<boolean> {
+async function verifySkill(skillPath: string): Promise<VerifySkillStatus> {
+  let installedContent: string
   try {
-    const content = await readFile(skillPath, "utf8")
-    return content.includes("ghx capabilities")
+    installedContent = await readFile(skillPath, "utf8")
   } catch (error) {
     if (isENOENT(error)) {
-      return false
+      return "missing"
     }
 
     throw error
   }
+
+  const packagedContent = await loadSetupSkillContent()
+  return installedContent === packagedContent ? "ok" : "outdated"
 }
 
 async function skillFileExists(skillPath: string): Promise<boolean> {
@@ -218,13 +222,19 @@ export async function setupCommand(argv: string[] = []): Promise<number> {
 
   try {
     if (parsed.verifyOnly) {
-      const ok = await verifySkill(skillPath)
-      if (!ok) {
+      const status = await verifySkill(skillPath)
+      if (status === "missing") {
         process.stderr.write(`Verify failed: skill not installed at ${skillPath}\n`)
         return 1
       }
+      if (status === "outdated") {
+        process.stderr.write(
+          `Verify failed: skill at ${skillPath} is out of date. Run: ghx setup --scope ${parsed.scope} --yes\n`,
+        )
+        return 1
+      }
 
-      process.stdout.write(`Verify passed: skill installed at ${skillPath}\n`)
+      process.stdout.write(`Verify passed: skill installed and current at ${skillPath}\n`)
       return 0
     }
 

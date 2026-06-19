@@ -119,6 +119,29 @@ describe("pr domain handlers", () => {
         expect.any(Number),
       )
     })
+
+    it.each([
+      ["open", "open"],
+      ["closed", "closed"],
+      ["merged", "merged"],
+      ["OPEN", "open"],
+      ["MERGED", "merged"],
+    ])("passes state %s to gh pr list as --state %s", async (inputState, expectedState) => {
+      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "[]", stderr: "" })
+      const runner = { run: runSpy } as unknown as CliCommandRunner
+
+      await h("pr.list")(
+        runner,
+        { owner: "owner", name: "repo", first: 30, state: inputState },
+        undefined,
+      )
+
+      expect(runSpy).toHaveBeenCalledWith(
+        "gh",
+        expect.arrayContaining(["pr", "list", "--state", expectedState]),
+        expect.any(Number),
+      )
+    })
   })
 
   describe("pr.create", () => {

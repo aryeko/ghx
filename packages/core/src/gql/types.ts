@@ -18,9 +18,13 @@ import type { RepoViewQueryVariables } from "./operations/repo-view.generated.js
 
 export type RepoViewInput = RepoViewQueryVariables
 export type IssueCommentsListInput = IssueCommentsListQueryVariables
-export type IssueListInput = IssueListQueryVariables
+export type IssueListInput = Omit<IssueListQueryVariables, "states"> & {
+  state?: string | null
+}
 export type IssueViewInput = IssueViewQueryVariables
-export type PrListInput = PrListQueryVariables
+export type PrListInput = Omit<PrListQueryVariables, "states"> & {
+  state?: string | null
+}
 export type PrViewExcludeField = "body"
 
 export type PrViewInput = PrViewQueryVariables & {

@@ -9,6 +9,6 @@ Example:
 ```bash
 # Instead of: gh pr view 123 --json title,state
 ghx run pr.view --input - <<'EOF'
-{"owner":"org","name":"repo","number":123}
+{"owner":"org","name":"repo","prNumber":123}
 EOF
 ```

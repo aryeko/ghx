@@ -129,6 +129,28 @@ describe("issue domain handlers", () => {
       )
     })
 
+    it.each([
+      ["open", "open"],
+      ["closed", "closed"],
+      ["OPEN", "open"],
+      ["CLOSED", "closed"],
+    ])("passes state %s to gh issue list as --state %s", async (inputState, expectedState) => {
+      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "[]", stderr: "" })
+      const runner = { run: runSpy } as unknown as CliCommandRunner
+
+      await handleIssueList(
+        runner,
+        { owner: "owner", name: "repo", first: 30, state: inputState },
+        undefined,
+      )
+
+      expect(runSpy).toHaveBeenCalledWith(
+        "gh",
+        expect.arrayContaining(["issue", "list", "--state", expectedState]),
+        expect.any(Number),
+      )
+    })
+
     it("returns error on non-zero exit code", async () => {
       const runner = mockRunner(1, "", "error fetching issues")
 

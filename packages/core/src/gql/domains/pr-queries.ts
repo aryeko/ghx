@@ -9,7 +9,7 @@ import {
 import { getSdk as getPrCommentsReactionsListSdk } from "../operations/pr-comments-reactions-list.generated.js"
 import type { PrDiffListFilesQuery } from "../operations/pr-diff-list-files.generated.js"
 import { getSdk as getPrDiffListFilesSdk } from "../operations/pr-diff-list-files.generated.js"
-import type { PrListQuery } from "../operations/pr-list.generated.js"
+import type { PrListQuery, PullRequestState } from "../operations/pr-list.generated.js"
 import { getSdk as getPrListSdk } from "../operations/pr-list.generated.js"
 import { getSdk as getPrMergeStatusSdk } from "../operations/pr-merge-status.generated.js"
 import { getSdk as getPrReactionsListSdk } from "../operations/pr-reactions-list.generated.js"
@@ -274,6 +274,22 @@ function mapCommentReactionSubject(
   ]
 }
 
+function normalizePrListStates(state: string | null | undefined): PullRequestState[] | undefined {
+  if (state === undefined || state === null) {
+    return undefined
+  }
+
+  const normalized = state.trim().toUpperCase()
+  if (!normalized || normalized === "ALL") {
+    return undefined
+  }
+  if (normalized !== "OPEN" && normalized !== "CLOSED" && normalized !== "MERGED") {
+    throw new Error("Invalid state for pr.list")
+  }
+
+  return [normalized]
+}
+
 export async function runPrView(
   transport: GraphqlTransport,
   input: PrViewInput,
@@ -316,7 +332,13 @@ export async function runPrList(
   assertPrListInput(input)
 
   const sdk = getPrListSdk(createGraphqlRequestClient(transport))
-  const result: PrListQuery = await sdk.PrList(input)
+  const result: PrListQuery = await sdk.PrList({
+    owner: input.owner,
+    name: input.name,
+    first: input.first,
+    after: input.after,
+    states: normalizePrListStates(input.state),
+  })
   const prs = result.repository?.pullRequests
   if (!prs) {
     throw new Error("Pull requests not found")

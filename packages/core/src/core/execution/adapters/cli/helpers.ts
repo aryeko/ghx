@@ -66,6 +66,22 @@ export function parseNonEmptyString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null
 }
 
+export function parseListState(
+  value: unknown,
+  allowedStates: readonly string[],
+): string | null | undefined {
+  if (value === undefined || value === null) {
+    return undefined
+  }
+
+  const state = parseNonEmptyString(value)?.toLowerCase()
+  if (!state) {
+    return null
+  }
+
+  return allowedStates.includes(state) ? state : null
+}
+
 export function requireRepo(owner: string, name: string, capabilityId: string): void {
   if (!owner || !name) {
     throw new Error(`Missing owner/name for ${capabilityId}`)
