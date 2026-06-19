@@ -28,5 +28,9 @@ graphql:
   operationName: UpdateProjectV2ItemField
   operationType: mutation
   documentPath: src/gql/operations/project-v2-item-field-update.graphql
+  resolution:
+    inject:
+      - target: value
+        source: project_v2_field_value
 cli:
   command: project item-edit

@@ -379,8 +379,8 @@ describe("executeTasks — resolution cache", () => {
     const cachedData = {
       repository: { labels: { nodes: [{ id: "L1", name: "bug" }] } },
     }
-    cache.set(buildCacheKey("IssueLabelsLookup", { issueId: "I1" }), cachedData)
-    cache.set(buildCacheKey("IssueLabelsLookup", { issueId: "I2" }), cachedData)
+    cache.set(buildCacheKey("default:IssueLabelsLookup", { issueId: "I1" }), cachedData)
+    cache.set(buildCacheKey("default:IssueLabelsLookup", { issueId: "I2" }), cachedData)
 
     const queryRawMock = vi.fn().mockResolvedValueOnce({
       data: {

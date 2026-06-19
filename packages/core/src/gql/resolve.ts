@@ -28,6 +28,20 @@ export function applyInject(
     return { [spec.target]: value }
   }
 
+  if (spec.source === "first_scalar") {
+    for (const candidate of spec.paths) {
+      const candidateResult =
+        candidate.from_lookup && lookupResult && typeof lookupResult === "object"
+          ? (lookupResult as Record<string, unknown>)[candidate.from_lookup]
+          : lookupResult
+      const value = getAtPath(candidateResult, candidate.path)
+      if (value !== undefined && value !== null) {
+        return { [spec.target]: value }
+      }
+    }
+    throw new Error(`Resolution failed for '${spec.target}': no candidate path had a value`)
+  }
+
   if (spec.source === "input") {
     const value = input[spec.from_input]
     if (value === undefined || value === null) {
@@ -62,6 +76,76 @@ export function applyInject(
   if (spec.source === "input_default") {
     const value = input[spec.from_input]
     return { [spec.target]: value === undefined || value === null ? spec.default : value }
+  }
+
+  if (spec.source === "draft_review_threads") {
+    const value = input[spec.from_input]
+    if (value === undefined || value === null) {
+      return {}
+    }
+    if (!Array.isArray(value)) {
+      throw new Error(
+        `Resolution failed for '${spec.target}': input field '${spec.from_input}' is not an array`,
+      )
+    }
+    if (value.length === 0) {
+      return {}
+    }
+
+    return {
+      [spec.target]: value.map((comment) => {
+        if (typeof comment !== "object" || comment === null || Array.isArray(comment)) {
+          throw new Error(`Resolution failed for '${spec.target}': expected comment object`)
+        }
+
+        const record = comment as Record<string, unknown>
+        const thread: Record<string, unknown> = {
+          path: record.path,
+          body: record.body,
+          line: record.line,
+        }
+        if (record.side !== undefined) {
+          if (typeof record.side !== "string") {
+            throw new Error(`Resolution failed for '${spec.target}': side must be a string`)
+          }
+          thread.side = record.side.toUpperCase()
+        }
+        if (record.startLine !== undefined) {
+          thread.startLine = record.startLine
+        }
+        if (record.startSide !== undefined) {
+          if (typeof record.startSide !== "string") {
+            throw new Error(`Resolution failed for '${spec.target}': startSide must be a string`)
+          }
+          thread.startSide = record.startSide.toUpperCase()
+        }
+        return thread
+      }),
+    }
+  }
+
+  if (spec.source === "project_v2_field_value") {
+    if (
+      input.clear === true &&
+      (input.valueText !== undefined ||
+        input.valueNumber !== undefined ||
+        input.valueDate !== undefined ||
+        input.valueSingleSelectOptionId !== undefined ||
+        input.valueIterationId !== undefined)
+    ) {
+      throw new Error("Cannot set clear and a value field simultaneously")
+    }
+    if (input.clear === true) return { [spec.target]: {} }
+    if (input.valueText !== undefined) return { [spec.target]: { text: input.valueText } }
+    if (input.valueNumber !== undefined) return { [spec.target]: { number: input.valueNumber } }
+    if (input.valueDate !== undefined) return { [spec.target]: { date: input.valueDate } }
+    if (input.valueSingleSelectOptionId !== undefined) {
+      return { [spec.target]: { singleSelectOptionId: input.valueSingleSelectOptionId } }
+    }
+    if (input.valueIterationId !== undefined) {
+      return { [spec.target]: { iterationId: input.valueIterationId } }
+    }
+    throw new Error("At least one value field must be provided")
   }
 
   // map_array
@@ -117,6 +201,7 @@ export function buildOperationVars(
   operationDoc: string,
   input: Record<string, unknown>,
   resolved: Record<string, unknown>,
+  variableMappings?: Record<string, string>,
 ): GraphqlVariables {
   // Extract variable names declared in the mutation header
   const headerMatch = operationDoc.match(/(?:query|mutation)\s+\w+\s*\(([^)]*)\)/)
@@ -132,6 +217,11 @@ export function buildOperationVars(
   for (const varName of mutVarNames) {
     if (varName in input) {
       vars[varName] = input[varName] as GraphqlVariables[string]
+    }
+  }
+  for (const [varName, inputField] of Object.entries(variableMappings ?? {})) {
+    if (mutVarNames.has(varName) && inputField in input) {
+      vars[varName] = input[inputField] as GraphqlVariables[string]
     }
   }
   // Apply resolved values (may override pass-through)

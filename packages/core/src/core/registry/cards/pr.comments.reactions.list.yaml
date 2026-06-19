@@ -8,9 +8,9 @@ input_schema:
     owner: { type: string, minLength: 1 }
     name: { type: string, minLength: 1 }
     prNumber: { type: integer, minimum: 1 }
-    commentsFirst: { type: integer, minimum: 1, maximum: 100 }
-    threadsFirst: { type: integer, minimum: 1, maximum: 100 }
-    threadCommentsFirst: { type: integer, minimum: 1, maximum: 100 }
+    commentsFirst: { type: integer, minimum: 1, maximum: 100, default: 30 }
+    threadsFirst: { type: integer, minimum: 1, maximum: 100, default: 30 }
+    threadCommentsFirst: { type: integer, minimum: 1, maximum: 100, default: 30 }
     reactorLogin: { type: string, minLength: 1 }
     content:
       type: string

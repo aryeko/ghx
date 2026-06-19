@@ -25,6 +25,13 @@ output_schema:
 routing:
   preferred: graphql
   fallbacks: [cli]
+  suitability:
+    - when: params
+      predicate: cli if draft == true
+      reason: draft updates require CLI
+    - when: params
+      predicate: cli if draft == false
+      reason: draft updates require CLI
 graphql:
   # GQL limitation: draft-only updates fall back to CLI
   operationName: PrUpdate

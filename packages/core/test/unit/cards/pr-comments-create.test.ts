@@ -72,6 +72,6 @@ describe("pr.comments.create operation card", () => {
     if (!card) return
 
     expect(card.graphql?.resolution).toBeDefined()
-    expect(card.graphql?.resolution?.lookup.operationName).toBe("PrNodeId")
+    expect(card.graphql?.resolution?.lookup?.operationName).toBe("PrNodeId")
   })
 })

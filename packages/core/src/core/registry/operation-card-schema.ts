@@ -54,17 +54,33 @@ export const operationCardSchema = {
         },
         resolution: {
           type: "object",
-          required: ["lookup", "inject"],
+          required: ["inject"],
           properties: {
             lookup: {
               type: "object",
               required: ["operationName", "documentPath", "vars"],
               properties: {
+                id: { type: "string", minLength: 1 },
                 operationName: { type: "string", minLength: 1 },
                 documentPath: { type: "string", minLength: 1 },
                 vars: { type: "object" },
               },
               additionalProperties: false,
+            },
+            lookups: {
+              type: "array",
+              minItems: 1,
+              items: {
+                type: "object",
+                required: ["id", "operationName", "documentPath", "vars"],
+                properties: {
+                  id: { type: "string", minLength: 1 },
+                  operationName: { type: "string", minLength: 1 },
+                  documentPath: { type: "string", minLength: 1 },
+                  vars: { type: "object" },
+                },
+                additionalProperties: false,
+              },
             },
             inject: {
               type: "array",
@@ -77,7 +93,30 @@ export const operationCardSchema = {
                     properties: {
                       target: { type: "string", minLength: 1 },
                       source: { const: "scalar" },
+                      from_lookup: { type: "string", minLength: 1 },
                       path: { type: "string", minLength: 1 },
+                    },
+                    additionalProperties: false,
+                  },
+                  {
+                    type: "object",
+                    required: ["target", "source", "paths"],
+                    properties: {
+                      target: { type: "string", minLength: 1 },
+                      source: { const: "first_scalar" },
+                      paths: {
+                        type: "array",
+                        minItems: 1,
+                        items: {
+                          type: "object",
+                          required: ["path"],
+                          properties: {
+                            from_lookup: { type: "string", minLength: 1 },
+                            path: { type: "string", minLength: 1 },
+                          },
+                          additionalProperties: false,
+                        },
+                      },
                     },
                     additionalProperties: false,
                   },
@@ -94,6 +133,7 @@ export const operationCardSchema = {
                     properties: {
                       target: { type: "string", minLength: 1 },
                       source: { const: "map_array" },
+                      from_lookup: { type: "string", minLength: 1 },
                       from_input: { type: "string", minLength: 1 },
                       nodes_path: { type: "string", minLength: 1, pattern: "\\.nodes$" },
                       match_field: { type: "string", minLength: 1 },
@@ -155,6 +195,25 @@ export const operationCardSchema = {
                           { type: "null" },
                         ],
                       },
+                    },
+                    additionalProperties: false,
+                  },
+                  {
+                    type: "object",
+                    required: ["target", "source", "from_input"],
+                    properties: {
+                      target: { type: "string", minLength: 1 },
+                      source: { const: "draft_review_threads" },
+                      from_input: { type: "string", minLength: 1 },
+                    },
+                    additionalProperties: false,
+                  },
+                  {
+                    type: "object",
+                    required: ["target", "source"],
+                    properties: {
+                      target: { type: "string", minLength: 1 },
+                      source: { const: "project_v2_field_value" },
                     },
                     additionalProperties: false,
                   },

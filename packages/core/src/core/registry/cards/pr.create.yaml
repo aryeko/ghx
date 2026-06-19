@@ -30,5 +30,22 @@ graphql:
   operationName: PrCreate
   operationType: mutation
   documentPath: src/gql/operations/pr-create.graphql
+  resolution:
+    lookup:
+      operationName: IssueCreateRepositoryId
+      documentPath: src/gql/operations/issue-create-repository-id.graphql
+      vars:
+        owner: owner
+        name: name
+    inject:
+      - target: repositoryId
+        source: scalar
+        path: repository.id
+      - target: baseRefName
+        source: input
+        from_input: base
+      - target: headRefName
+        source: input
+        from_input: head
 cli:
   command: pr create

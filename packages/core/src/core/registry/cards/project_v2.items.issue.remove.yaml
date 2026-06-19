@@ -22,5 +22,27 @@ graphql:
   operationName: RemoveProjectV2Item
   operationType: mutation
   documentPath: src/gql/operations/project-v2-item-remove.graphql
+  resolution:
+    lookups:
+      - id: projectOrg
+        operationName: ProjectV2OrgId
+        documentPath: src/gql/operations/project-v2-org-id.graphql
+        vars:
+          org: owner
+          projectNumber: projectNumber
+      - id: projectUser
+        operationName: ProjectV2UserId
+        documentPath: src/gql/operations/project-v2-user-id.graphql
+        vars:
+          login: owner
+          number: projectNumber
+    inject:
+      - target: projectId
+        source: first_scalar
+        paths:
+          - from_lookup: projectOrg
+            path: organization.projectV2.id
+          - from_lookup: projectUser
+            path: user.projectV2.id
 cli:
   command: project item-delete

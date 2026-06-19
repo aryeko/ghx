@@ -39,7 +39,7 @@ describe("pr.close operation card", () => {
     expect(card.graphql?.operationName).toBe("PrClose")
     expect(card.graphql?.operationType).toBe("mutation")
     expect(card.graphql?.documentPath).toBe("src/gql/operations/pr-close.graphql")
-    expect(card.graphql?.resolution?.lookup.operationName).toBe("PrNodeId")
+    expect(card.graphql?.resolution?.lookup?.operationName).toBe("PrNodeId")
   })
 
   it("declares the gh pr close CLI command", () => {

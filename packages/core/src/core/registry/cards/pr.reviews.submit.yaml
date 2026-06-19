@@ -71,3 +71,9 @@ graphql:
       - target: pullRequestId
         source: scalar
         path: repository.pullRequest.id
+      - target: event
+        source: input_upper
+        from_input: event
+      - target: threads
+        source: draft_review_threads
+        from_input: comments

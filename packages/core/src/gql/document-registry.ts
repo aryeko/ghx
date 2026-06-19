@@ -52,11 +52,14 @@ import { PrReviewsRequestDocument } from "./operations/pr-reviews-request.genera
 import { PrUpdateDocument } from "./operations/pr-update.generated.js"
 import { PrViewDocument } from "./operations/pr-view.generated.js"
 import { ProjectV2FieldsListOrgDocument } from "./operations/project-v2-fields-list-org.generated.js"
+import { ProjectV2IssueNodeIdDocument } from "./operations/project-v2-issue-node-id.generated.js"
 import { AddProjectV2ItemDocument } from "./operations/project-v2-item-add.generated.js"
 import { UpdateProjectV2ItemFieldDocument } from "./operations/project-v2-item-field-update.generated.js"
 import { RemoveProjectV2ItemDocument } from "./operations/project-v2-item-remove.generated.js"
 import { ProjectV2ItemsListOrgDocument } from "./operations/project-v2-items-list-org.generated.js"
+import { ProjectV2OrgIdDocument } from "./operations/project-v2-org-id.generated.js"
 import { ProjectV2OrgViewDocument } from "./operations/project-v2-org-view.generated.js"
+import { ProjectV2UserIdDocument } from "./operations/project-v2-user-id.generated.js"
 import { ProjectV2UserViewDocument } from "./operations/project-v2-user-view.generated.js"
 import { ReleaseListDocument } from "./operations/release-list.generated.js"
 import { ReleaseViewDocument } from "./operations/release-view.generated.js"
@@ -80,6 +83,9 @@ const DOCUMENTS: Record<string, string | { toString(): string }> = {
   IssueParentLookup: IssueParentLookupDocument,
   PrAssigneesLookupByNumber: PrAssigneesLookupByNumberDocument,
   PrNodeId: PrNodeIdDocument,
+  ProjectV2IssueNodeId: ProjectV2IssueNodeIdDocument,
+  ProjectV2OrgId: ProjectV2OrgIdDocument,
+  ProjectV2UserId: ProjectV2UserIdDocument,
   UserNodeId: UserNodeIdDocument,
 
   // Mutation documents

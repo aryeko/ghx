@@ -37,7 +37,7 @@ graphql:
         name: name
         issueNumber: issueNumber
     inject:
-      - target: assignableId
+      - target: issueId
         source: scalar
         path: repository.issue.id
       - target: assigneeIds
