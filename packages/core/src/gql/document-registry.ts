@@ -38,12 +38,14 @@ import { PrCommentReplyDocument } from "./operations/pr-comment-reply.generated.
 import { PrCommentResolveDocument } from "./operations/pr-comment-resolve.generated.js"
 import { PrCommentUnresolveDocument } from "./operations/pr-comment-unresolve.generated.js"
 import { PrCommentsListDocument } from "./operations/pr-comments-list.generated.js"
+import { PrCommentsReactionsListDocument } from "./operations/pr-comments-reactions-list.generated.js"
 import { PrCreateDocument } from "./operations/pr-create.generated.js"
 import { PrDiffListFilesDocument } from "./operations/pr-diff-list-files.generated.js"
 import { PrListDocument } from "./operations/pr-list.generated.js"
 import { PrMergeDocument } from "./operations/pr-merge.generated.js"
 import { PrMergeStatusDocument } from "./operations/pr-merge-status.generated.js"
 import { PrNodeIdDocument } from "./operations/pr-node-id.generated.js"
+import { PrReactionsListDocument } from "./operations/pr-reactions-list.generated.js"
 import { PrReviewSubmitDocument } from "./operations/pr-review-submit.generated.js"
 import { PrReviewsListDocument } from "./operations/pr-reviews-list.generated.js"
 import { PrReviewsRequestDocument } from "./operations/pr-reviews-request.generated.js"
@@ -126,6 +128,8 @@ const DOCUMENTS: Record<string, string | { toString(): string }> = {
   PrMergeStatus: PrMergeStatusDocument,
   PrCommentsList: PrCommentsListDocument,
   PrReviewsList: PrReviewsListDocument,
+  PrReactionsList: PrReactionsListDocument,
+  PrCommentsReactionsList: PrCommentsReactionsListDocument,
   RepoView: RepoViewDocument,
   RepoLabelsList: RepoLabelsListDocument,
   RepoIssueTypesList: RepoIssueTypesListDocument,

@@ -195,6 +195,16 @@ describe("capabilityRegistry", () => {
         fallbackRoutes: [],
       },
       {
+        task: "pr.reactions.list",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
+        task: "pr.comments.reactions.list",
+        defaultRoute: "graphql",
+        fallbackRoutes: [],
+      },
+      {
         task: "pr.diff.files",
         defaultRoute: "graphql",
         fallbackRoutes: [],

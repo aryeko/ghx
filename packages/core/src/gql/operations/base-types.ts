@@ -17,6 +17,7 @@ export type DiffSide = string
 export type PullRequestReviewThreadSubjectType = string
 export type PullRequestReviewState = string
 export type PullRequestReviewEvent = string
+export type ReactionContent = string
 export type MergeableState = string
 export type MergeStateStatus = string
 export type PullRequestReviewDecision = string

@@ -1,0 +1,14 @@
+fragment ReactionGroupFields on ReactionGroup {
+  content
+  viewerHasReacted
+  reactors(first: 100) {
+    totalCount
+    nodes {
+      __typename
+      ... on User { login }
+      ... on Bot { login }
+      ... on Organization { login }
+      ... on Mannequin { login }
+    }
+  }
+}

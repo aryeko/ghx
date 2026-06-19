@@ -22,6 +22,8 @@ function mockClient(overrides: Partial<GithubClient> = {}): GithubClient {
     fetchPrView: vi.fn(),
     fetchPrList: vi.fn(),
     fetchPrReviewsList: vi.fn(),
+    fetchPrReactionsList: vi.fn(),
+    fetchPrCommentsReactionsList: vi.fn(),
     fetchPrDiffListFiles: vi.fn(),
     fetchPrMergeStatus: vi.fn(),
     fetchPrCommentsList: vi.fn(),
@@ -124,6 +126,20 @@ describe("query handlers", () => {
     const handler = requireHandler("pr.reviews.list")
     await handler(client, { owner: "acme", name: "repo", prNumber: 1, first: 10 })
     expect(client.fetchPrReviewsList).toHaveBeenCalled()
+  })
+
+  it("pr.reactions.list delegates to fetchPrReactionsList", async () => {
+    const client = mockClient({ fetchPrReactionsList: vi.fn().mockResolvedValue({}) })
+    const handler = requireHandler("pr.reactions.list")
+    await handler(client, { owner: "acme", name: "repo", prNumber: 1 })
+    expect(client.fetchPrReactionsList).toHaveBeenCalled()
+  })
+
+  it("pr.comments.reactions.list delegates to fetchPrCommentsReactionsList", async () => {
+    const client = mockClient({ fetchPrCommentsReactionsList: vi.fn().mockResolvedValue({}) })
+    const handler = requireHandler("pr.comments.reactions.list")
+    await handler(client, { owner: "acme", name: "repo", prNumber: 1 })
+    expect(client.fetchPrCommentsReactionsList).toHaveBeenCalled()
   })
 
   it("pr.diff.files delegates to fetchPrDiffListFiles", async () => {

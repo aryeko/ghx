@@ -25,12 +25,14 @@ import type {
   PrCloseInput,
   PrCommentCreateInput,
   PrCommentsListInput,
+  PrCommentsReactionsListInput,
   PrCreateInput,
   PrDiffListFilesInput,
   PrListInput,
   PrMergeInput,
   ProjectV2OrgViewInput,
   ProjectV2UserViewInput,
+  PrReactionsListInput,
   PrReviewSubmitInput,
   PrReviewsListInput,
   PrReviewsRequestInput,
@@ -320,6 +322,81 @@ export function assertPrCommentsListInput(input: PrCommentsListInput): void {
   if (input.after !== undefined && input.after !== null && typeof input.after !== "string") {
     throw new Error("After cursor must be a string")
   }
+}
+
+const VALID_REACTION_CONTENTS = new Set([
+  "THUMBS_UP",
+  "THUMBS_DOWN",
+  "LAUGH",
+  "HOORAY",
+  "CONFUSED",
+  "HEART",
+  "EYES",
+  "ROCKET",
+])
+
+function assertOptionalReactionContent(value: unknown): void {
+  if (value === undefined) {
+    return
+  }
+  if (typeof value !== "string" || !VALID_REACTION_CONTENTS.has(value)) {
+    throw new Error(
+      "content must be one of: THUMBS_UP, THUMBS_DOWN, LAUGH, HOORAY, CONFUSED, HEART, EYES, ROCKET",
+    )
+  }
+}
+
+function assertOptionalReactorLogin(value: unknown): void {
+  if (value === undefined) {
+    return
+  }
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error("reactorLogin must be a non-empty string")
+  }
+}
+
+function assertOptionalPageSize(value: unknown, fieldName: string): void {
+  if (value === undefined) {
+    return
+  }
+  if (!Number.isInteger(value) || (value as number) < 1 || (value as number) > 100) {
+    throw new Error(`${fieldName} must be an integer between 1 and 100`)
+  }
+}
+
+export function assertPrReactionsListInput(input: PrReactionsListInput): void {
+  if (
+    typeof input.owner !== "string" ||
+    typeof input.name !== "string" ||
+    input.owner.trim().length === 0 ||
+    input.name.trim().length === 0
+  ) {
+    throw new Error("Repository owner and name are required")
+  }
+  if (!Number.isInteger(input.prNumber) || input.prNumber <= 0) {
+    throw new Error("PR number must be a positive integer")
+  }
+  assertOptionalReactorLogin(input.reactorLogin)
+  assertOptionalReactionContent(input.content)
+}
+
+export function assertPrCommentsReactionsListInput(input: PrCommentsReactionsListInput): void {
+  if (
+    typeof input.owner !== "string" ||
+    typeof input.name !== "string" ||
+    input.owner.trim().length === 0 ||
+    input.name.trim().length === 0
+  ) {
+    throw new Error("Repository owner and name are required")
+  }
+  if (!Number.isInteger(input.prNumber) || input.prNumber <= 0) {
+    throw new Error("PR number must be a positive integer")
+  }
+  assertOptionalPageSize(input.commentsFirst, "commentsFirst")
+  assertOptionalPageSize(input.threadsFirst, "threadsFirst")
+  assertOptionalPageSize(input.threadCommentsFirst, "threadCommentsFirst")
+  assertOptionalReactorLogin(input.reactorLogin)
+  assertOptionalReactionContent(input.content)
 }
 
 export function asRecord(value: unknown): Record<string, unknown> | null {

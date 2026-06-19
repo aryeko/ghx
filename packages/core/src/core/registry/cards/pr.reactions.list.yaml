@@ -1,0 +1,56 @@
+capability_id: pr.reactions.list
+version: "1.0.0"
+description: "List emoji reactions on the pull request itself (the issue node). Use pr.comments.reactions.list for reactions on comments."
+input_schema:
+  type: object
+  required: [owner, name, prNumber]
+  properties:
+    owner: { type: string, minLength: 1 }
+    name: { type: string, minLength: 1 }
+    prNumber: { type: integer, minimum: 1 }
+    reactorLogin: { type: string, minLength: 1 }
+    content:
+      type: string
+      enum: [THUMBS_UP, THUMBS_DOWN, LAUGH, HOORAY, CONFUSED, HEART, EYES, ROCKET]
+  additionalProperties: false
+output_schema:
+  type: object
+  required: [subject, items, filterApplied]
+  properties:
+    subject:
+      type: object
+      required: [type, id, url]
+      properties:
+        type: { type: string }
+        id: { type: string, minLength: 1 }
+        url: { type: string, minLength: 1 }
+      additionalProperties: false
+    items:
+      type: array
+      items:
+        type: object
+        required: [content, reactorCount, reactorLogins, viewerHasReacted, reactorsTruncated]
+        properties:
+          content: { type: string }
+          reactorCount: { type: integer, minimum: 0 }
+          reactorLogins:
+            type: array
+            items: { type: string }
+          viewerHasReacted: { type: boolean }
+          reactorsTruncated: { type: boolean }
+        additionalProperties: false
+    filterApplied:
+      type: object
+      required: [reactorLogin, content]
+      properties:
+        reactorLogin: { type: [string, "null"] }
+        content: { type: [string, "null"] }
+      additionalProperties: false
+  additionalProperties: false
+routing:
+  preferred: graphql
+  fallbacks: []
+graphql:
+  operationName: PrReactionsList
+  operationType: query
+  documentPath: src/gql/operations/pr-reactions-list.graphql

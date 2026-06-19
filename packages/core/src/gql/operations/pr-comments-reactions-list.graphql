@@ -1,0 +1,38 @@
+query PrCommentsReactionsList(
+  $owner: String!
+  $name: String!
+  $prNumber: Int!
+  $commentsFirst: Int!
+  $threadsFirst: Int!
+  $threadCommentsFirst: Int!
+) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $prNumber) {
+      comments(first: $commentsFirst) {
+        pageInfo { hasNextPage }
+        nodes {
+          __typename
+          id
+          url
+          author { login }
+          reactionGroups { ...ReactionGroupFields }
+        }
+      }
+      reviewThreads(first: $threadsFirst) {
+        pageInfo { hasNextPage }
+        nodes {
+          comments(first: $threadCommentsFirst) {
+            pageInfo { hasNextPage }
+            nodes {
+              __typename
+              id
+              url
+              author { login }
+              reactionGroups { ...ReactionGroupFields }
+            }
+          }
+        }
+      }
+    }
+  }
+}

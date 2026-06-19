@@ -51,6 +51,8 @@ import type {
   PrCommentCreateInput,
   PrCommentsListData,
   PrCommentsListInput,
+  PrCommentsReactionsListData,
+  PrCommentsReactionsListInput,
   PrCreateData,
   PrCreateInput,
   PrDiffListFilesData,
@@ -75,6 +77,8 @@ import type {
   ProjectV2OrgViewInput,
   ProjectV2UserViewData,
   ProjectV2UserViewInput,
+  PrReactionsListData,
+  PrReactionsListInput,
   PrReviewSubmitData,
   PrReviewSubmitInput,
   PrReviewsListData,
@@ -138,6 +142,10 @@ export interface GithubClient extends GraphqlClient {
   createPrComment(input: PrCommentCreateInput): Promise<PrCommentCreateData>
   fetchPrCommentsList(input: PrCommentsListInput): Promise<PrCommentsListData>
   fetchPrReviewsList(input: PrReviewsListInput): Promise<PrReviewsListData>
+  fetchPrReactionsList(input: PrReactionsListInput): Promise<PrReactionsListData>
+  fetchPrCommentsReactionsList(
+    input: PrCommentsReactionsListInput,
+  ): Promise<PrCommentsReactionsListData>
   fetchPrDiffListFiles(input: PrDiffListFilesInput): Promise<PrDiffListFilesData>
   fetchPrMergeStatus(input: PrMergeStatusInput): Promise<PrMergeStatusData>
   replyToReviewThread(input: ReplyToReviewThreadInput): Promise<ReviewThreadMutationData>
@@ -259,6 +267,10 @@ export function createGithubClient(transport: GraphqlTransport): GithubClient {
     fetchPrView: async (input) => (await loadPrQueries()).runPrView(transport, input),
     fetchPrList: async (input) => (await loadPrQueries()).runPrList(transport, input),
     fetchPrReviewsList: async (input) => (await loadPrQueries()).runPrReviewsList(transport, input),
+    fetchPrReactionsList: async (input) =>
+      (await loadPrQueries()).runPrReactionsList(transport, input),
+    fetchPrCommentsReactionsList: async (input) =>
+      (await loadPrQueries()).runPrCommentsReactionsList(transport, input),
     fetchPrDiffListFiles: async (input) =>
       (await loadPrQueries()).runPrDiffListFiles(transport, input),
     fetchPrMergeStatus: async (input) => (await loadPrQueries()).runPrMergeStatus(transport, input),
