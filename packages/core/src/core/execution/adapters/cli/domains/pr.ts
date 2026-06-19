@@ -9,6 +9,7 @@ import {
   isCheckFailureBucket,
   isCheckPassBucket,
   isCheckPendingBucket,
+  isNoChecksReported,
   jsonFieldsFromCard,
   normalizeCheckItem,
   normalizeListItem,
@@ -310,6 +311,13 @@ const handlePrChecksList: CliHandler = async (runner, params, card) => {
 
     const result = await runner.run("gh", args, DEFAULT_TIMEOUT_MS)
     if (result.exitCode !== 0) {
+      if (isNoChecksReported(result.stderr)) {
+        return normalizeResult(
+          { items: [], summary: { total: 0, failed: 0, pending: 0, passed: 0 } },
+          "cli",
+          { capabilityId: "pr.checks.list", reason: "CARD_FALLBACK" },
+        )
+      }
       const code = mapErrorToCode(result.stderr)
       return normalizeError(
         {

@@ -16,40 +16,32 @@ import type {
   RepoViewInput,
 } from "../types.js"
 
-export async function runRepoView(
-  transport: GraphqlTransport,
-  input: RepoViewInput,
-): Promise<RepoViewData> {
-  assertRepoInput(input)
-  const sdk = getSdk(createGraphqlRequestClient(transport))
-  const result: RepoViewQuery = await sdk.RepoView(input)
-  if (!result.repository) {
+export function normalizeRepoViewResult(result: unknown, _input: RepoViewInput): RepoViewData {
+  const repo = (result as RepoViewQuery).repository
+  if (!repo) {
     throw new Error("Repository not found")
   }
-
   return {
-    id: result.repository.id,
-    name: result.repository.name,
-    nameWithOwner: result.repository.nameWithOwner,
-    isPrivate: result.repository.isPrivate,
-    stargazerCount: result.repository.stargazerCount,
-    forkCount: result.repository.forkCount,
-    url: result.repository.url,
-    defaultBranch: result.repository.defaultBranchRef?.name ?? null,
+    id: repo.id,
+    name: repo.name,
+    nameWithOwner: repo.nameWithOwner,
+    isPrivate: repo.isPrivate,
+    stargazerCount: repo.stargazerCount,
+    forkCount: repo.forkCount,
+    url: repo.url,
+    defaultBranch: repo.defaultBranchRef?.name ?? null,
   }
 }
 
-export async function runRepoLabelsList(
-  transport: GraphqlTransport,
+export function normalizeRepoLabelsListResult(
+  result: unknown,
   input: RepoLabelsListInput,
-): Promise<RepoLabelsListData> {
-  assertRepoAndPaginationInput(input)
-  const sdk = getRepoLabelsListSdk(createGraphqlRequestClient(transport))
-  const result: RepoLabelsListQuery = await sdk.RepoLabelsList(input)
-  if (!result.repository) {
+): RepoLabelsListData {
+  const repo = (result as RepoLabelsListQuery).repository
+  if (!repo) {
     throw new Error(`Repository ${input.owner}/${input.name} not found`)
   }
-  const conn = result.repository?.labels
+  const conn = repo.labels
   return {
     items: (conn?.nodes ?? []).map((n) => ({
       id: n?.id ?? null,
@@ -65,17 +57,15 @@ export async function runRepoLabelsList(
   }
 }
 
-export async function runRepoIssueTypesList(
-  transport: GraphqlTransport,
+export function normalizeRepoIssueTypesListResult(
+  result: unknown,
   input: RepoIssueTypesListInput,
-): Promise<RepoIssueTypesListData> {
-  assertRepoAndPaginationInput(input)
-  const sdk = getRepoIssueTypesListSdk(createGraphqlRequestClient(transport))
-  const result: RepoIssueTypesListQuery = await sdk.RepoIssueTypesList(input)
-  if (!result.repository) {
+): RepoIssueTypesListData {
+  const repo = (result as RepoIssueTypesListQuery).repository
+  if (!repo) {
     throw new Error(`Repository ${input.owner}/${input.name} not found`)
   }
-  const conn = result.repository?.issueTypes
+  const conn = repo.issueTypes
   return {
     items: (conn?.nodes ?? []).map((n) => ({
       id: n?.id ?? null,
@@ -88,4 +78,34 @@ export async function runRepoIssueTypesList(
       endCursor: conn?.pageInfo.endCursor ?? null,
     },
   }
+}
+
+export async function runRepoView(
+  transport: GraphqlTransport,
+  input: RepoViewInput,
+): Promise<RepoViewData> {
+  assertRepoInput(input)
+  const sdk = getSdk(createGraphqlRequestClient(transport))
+  const result: RepoViewQuery = await sdk.RepoView(input)
+  return normalizeRepoViewResult(result, input)
+}
+
+export async function runRepoLabelsList(
+  transport: GraphqlTransport,
+  input: RepoLabelsListInput,
+): Promise<RepoLabelsListData> {
+  assertRepoAndPaginationInput(input)
+  const sdk = getRepoLabelsListSdk(createGraphqlRequestClient(transport))
+  const result: RepoLabelsListQuery = await sdk.RepoLabelsList(input)
+  return normalizeRepoLabelsListResult(result, input)
+}
+
+export async function runRepoIssueTypesList(
+  transport: GraphqlTransport,
+  input: RepoIssueTypesListInput,
+): Promise<RepoIssueTypesListData> {
+  assertRepoAndPaginationInput(input)
+  const sdk = getRepoIssueTypesListSdk(createGraphqlRequestClient(transport))
+  const result: RepoIssueTypesListQuery = await sdk.RepoIssueTypesList(input)
+  return normalizeRepoIssueTypesListResult(result, input)
 }

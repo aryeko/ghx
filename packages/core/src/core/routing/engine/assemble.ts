@@ -10,8 +10,7 @@ import { errorCodes } from "@core/core/errors/codes.js"
 import { mapErrorToCode } from "@core/core/errors/map-error.js"
 import { isRetryableErrorCode } from "@core/core/errors/retryability.js"
 import { logger } from "@core/core/telemetry/log.js"
-import { normalizePrReactionsListResult } from "@core/gql/domains/pr-queries.js"
-import type { PrReactionsListInput } from "@core/gql/types.js"
+import { getQueryNormalizer } from "@core/gql/query-normalizers.js"
 import type { ClassifiedStep } from "./types.js"
 
 // Delegate to the shared retryability source of truth so chain results agree with
@@ -75,11 +74,9 @@ function applyQueryPostprocessing(
   data: unknown,
   input: Record<string, unknown>,
 ): unknown {
-  if (task === "pr.reactions.list") {
-    return normalizePrReactionsListResult(
-      { repository: data },
-      input as unknown as PrReactionsListInput,
-    )
+  const entry = getQueryNormalizer(task)
+  if (entry) {
+    return entry.normalize({ [entry.rootField]: data }, input)
   }
 
   return applyInputExclusions(data, input)

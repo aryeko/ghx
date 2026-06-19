@@ -44,6 +44,10 @@ export function shouldFallbackRerunFailedToAll(stderr: string): boolean {
   return normalized.includes("cannot be rerun") && normalized.includes("cannot be retried")
 }
 
+export function isNoChecksReported(stderr: string): boolean {
+  return stderr.toLowerCase().includes("no checks reported")
+}
+
 export function parseStrictPositiveInt(value: unknown): number | null {
   return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null
 }

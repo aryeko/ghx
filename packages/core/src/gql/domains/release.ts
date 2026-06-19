@@ -39,6 +39,35 @@ function mapReleaseNode(r: ReleaseNode): ReleaseItemData {
   }
 }
 
+export function normalizeReleaseViewResult(
+  result: unknown,
+  _input: ReleaseViewInput,
+): ReleaseViewData {
+  const repo = (result as ReleaseViewQuery).repository
+  if (!repo?.release) {
+    throw new Error("Release not found")
+  }
+  return mapReleaseNode(repo.release)
+}
+
+export function normalizeReleaseListResult(
+  result: unknown,
+  input: ReleaseListInput,
+): ReleaseListData {
+  const repo = (result as ReleaseListQuery).repository
+  if (!repo) {
+    throw new Error(`Repository ${input.owner}/${input.name} not found`)
+  }
+  const conn = repo.releases
+  return {
+    items: (conn?.nodes ?? []).flatMap((n) => (n ? [mapReleaseNode(n)] : [])),
+    pageInfo: {
+      hasNextPage: conn?.pageInfo.hasNextPage ?? false,
+      endCursor: conn?.pageInfo.endCursor ?? null,
+    },
+  }
+}
+
 export async function runReleaseView(
   transport: GraphqlTransport,
   input: ReleaseViewInput,
@@ -46,10 +75,7 @@ export async function runReleaseView(
   assertReleaseViewInput(input)
   const sdk = getReleaseViewSdk(createGraphqlRequestClient(transport))
   const result: ReleaseViewQuery = await sdk.ReleaseView(input)
-  if (!result.repository?.release) {
-    throw new Error("Release not found")
-  }
-  return mapReleaseNode(result.repository.release)
+  return normalizeReleaseViewResult(result, input)
 }
 
 export async function runReleaseList(
@@ -59,15 +85,5 @@ export async function runReleaseList(
   assertRepoAndPaginationInput(input)
   const sdk = getReleaseListSdk(createGraphqlRequestClient(transport))
   const result: ReleaseListQuery = await sdk.ReleaseList(input)
-  if (!result.repository) {
-    throw new Error(`Repository ${input.owner}/${input.name} not found`)
-  }
-  const conn = result.repository.releases
-  return {
-    items: (conn?.nodes ?? []).flatMap((n) => (n ? [mapReleaseNode(n)] : [])),
-    pageInfo: {
-      hasNextPage: conn?.pageInfo.hasNextPage ?? false,
-      endCursor: conn?.pageInfo.endCursor ?? null,
-    },
-  }
+  return normalizeReleaseListResult(result, input)
 }

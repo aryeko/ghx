@@ -2077,6 +2077,258 @@ describe("executeTasks — non-Error thrown paths", () => {
 })
 
 // ===========================================================================
+// Chain query normalization (Part 1 fix for #212)
+// ===========================================================================
+
+describe("executeTasks — chain query normalization", () => {
+  it("normalizes pr.merge.status + pr.reviews.list in a 2-step query chain", async () => {
+    const prMergeStatusCard = {
+      ...baseCard,
+      graphql: {
+        operationName: "PrMergeStatus",
+        documentPath: "src/gql/operations/pr-merge-status.graphql",
+        operationType: "query" as const,
+      },
+    }
+    const prReviewsListCard = {
+      ...baseCard,
+      graphql: {
+        operationName: "PrReviewsList",
+        documentPath: "src/gql/operations/pr-reviews-list.graphql",
+        operationType: "query" as const,
+      },
+    }
+    getOperationCardMock
+      .mockReturnValueOnce(prMergeStatusCard as OperationCard)
+      .mockReturnValueOnce(prReviewsListCard as OperationCard)
+
+    vi.doMock("@core/gql/document-registry.js", () => ({
+      getDocument: vi
+        .fn()
+        .mockImplementation((op: string) =>
+          op === "PrMergeStatus"
+            ? "query PrMergeStatus($owner:String!,$name:String!,$prNumber:Int!){repository(owner:$owner,name:$name){pullRequest(number:$prNumber){isDraft mergeStateStatus mergeable reviewDecision state}}}"
+            : "query PrReviewsList($owner:String!,$name:String!,$prNumber:Int!){repository(owner:$owner,name:$name){pullRequest(number:$prNumber){reviews(first:10){nodes{id state body author{login} submittedAt url commit{oid}} pageInfo{hasNextPage endCursor}}}}}",
+        ),
+      getMutationDocument: vi.fn(),
+      getLookupDocument: vi.fn(),
+    }))
+    vi.doMock("@core/gql/batch.js", () => ({
+      buildBatchQuery: vi.fn().mockReturnValue({
+        document:
+          "query Batch { step0: repository { pullRequest { isDraft } } step1: repository { pullRequest { reviews { nodes { id } } } } }",
+        variables: {},
+      }),
+      buildBatchMutation: vi.fn(),
+    }))
+
+    const { executeTasks } = await import("@core/core/routing/engine/index.js")
+
+    const result = await executeTasks(
+      [
+        { task: "pr.merge.status", input: { owner: "acme", name: "repo", prNumber: 1 } },
+        { task: "pr.reviews.list", input: { owner: "acme", name: "repo", prNumber: 1 } },
+      ],
+      {
+        githubClient: createGithubClient({
+          query: vi.fn().mockResolvedValue({
+            step0: {
+              pullRequest: {
+                isDraft: false,
+                mergeStateStatus: "CLEAN",
+                mergeable: "MERGEABLE",
+                reviewDecision: "APPROVED",
+                state: "OPEN",
+              },
+            },
+            step1: {
+              pullRequest: {
+                reviews: {
+                  nodes: [
+                    {
+                      id: "R1",
+                      state: "APPROVED",
+                      body: "LGTM",
+                      author: { login: "reviewer" },
+                      submittedAt: "2024-01-01T00:00:00Z",
+                      url: "https://github.com/review/1",
+                      commit: { oid: "abc123" },
+                    },
+                  ],
+                  pageInfo: { hasNextPage: false, endCursor: null },
+                },
+              },
+            },
+          }),
+        }),
+      },
+    )
+
+    expect(result.status).toBe("success")
+    expect(result.results).toHaveLength(2)
+
+    // step0: pr.merge.status — normalized flat object, not raw { pullRequest: {...} }
+    const step0Data = result.results[0]?.data as Record<string, unknown>
+    expect(Object.keys(step0Data).sort()).toEqual(
+      ["isDraft", "mergeStateStatus", "mergeable", "reviewDecision", "state"].sort(),
+    )
+    expect(step0Data.isDraft).toBe(false)
+    expect(step0Data.mergeable).toBe("MERGEABLE")
+
+    // step1: pr.reviews.list — normalized { items, pageInfo }, not raw { pullRequest: {...} }
+    const step1Data = result.results[1]?.data as Record<string, unknown>
+    expect(Array.isArray(step1Data.items)).toBe(true)
+    expect((step1Data.items as unknown[]).length).toBe(1)
+    expect(step1Data.pageInfo).toBeDefined()
+  })
+
+  it("returns partial status when mid-batch query payload has null pullRequest (normalizer throws)", async () => {
+    const prMergeStatusCard = {
+      ...baseCard,
+      graphql: {
+        operationName: "PrMergeStatus",
+        documentPath: "src/gql/operations/pr-merge-status.graphql",
+        operationType: "query" as const,
+      },
+    }
+    const prReviewsListCard = {
+      ...baseCard,
+      graphql: {
+        operationName: "PrReviewsList",
+        documentPath: "src/gql/operations/pr-reviews-list.graphql",
+        operationType: "query" as const,
+      },
+    }
+    getOperationCardMock
+      .mockReturnValueOnce(prMergeStatusCard as OperationCard)
+      .mockReturnValueOnce(prReviewsListCard as OperationCard)
+
+    vi.doMock("@core/gql/document-registry.js", () => ({
+      getDocument: vi
+        .fn()
+        .mockReturnValue(
+          "query PrMergeStatus($owner:String!,$name:String!,$prNumber:Int!){repository(owner:$owner,name:$name){pullRequest(number:$prNumber){isDraft mergeStateStatus mergeable reviewDecision state}}}",
+        ),
+      getMutationDocument: vi.fn(),
+      getLookupDocument: vi.fn(),
+    }))
+    vi.doMock("@core/gql/batch.js", () => ({
+      buildBatchQuery: vi.fn().mockReturnValue({
+        document: "query Batch { step0: repository {...} step1: repository {...} }",
+        variables: {},
+      }),
+      buildBatchMutation: vi.fn(),
+    }))
+
+    const { executeTasks } = await import("@core/core/routing/engine/index.js")
+
+    const result = await executeTasks(
+      [
+        { task: "pr.merge.status", input: { owner: "acme", name: "repo", prNumber: 99 } },
+        { task: "pr.reviews.list", input: { owner: "acme", name: "repo", prNumber: 2 } },
+      ],
+      {
+        githubClient: createGithubClient({
+          query: vi.fn().mockResolvedValue({
+            // step0: null pullRequest → normalizer throws "Pull request not found"
+            step0: { pullRequest: null },
+            step1: {
+              pullRequest: {
+                reviews: {
+                  nodes: [],
+                  pageInfo: { hasNextPage: false, endCursor: null },
+                },
+              },
+            },
+          }),
+        }),
+      },
+    )
+
+    expect(result.status).toBe("partial")
+    expect(result.results[0]?.ok).toBe(false)
+    expect(result.results[0]?.error?.message).toContain("Pull request not found")
+    expect(result.results[1]?.ok).toBe(true)
+    const step1Data = result.results[1]?.data as Record<string, unknown>
+    expect(Array.isArray(step1Data.items)).toBe(true)
+  })
+
+  it("excludes body from pr.view when exclude:[body] passed in 2-step query chain", async () => {
+    const prViewCard = {
+      ...baseCard,
+      graphql: {
+        operationName: "PrView",
+        documentPath: "src/gql/operations/pr-view.graphql",
+        operationType: "query" as const,
+      },
+    }
+    getOperationCardMock
+      .mockReturnValueOnce(prViewCard as OperationCard)
+      .mockReturnValueOnce(prViewCard as OperationCard)
+
+    vi.doMock("@core/gql/document-registry.js", () => ({
+      getDocument: vi
+        .fn()
+        .mockReturnValue(
+          "query PrView($owner:String!,$name:String!,$prNumber:Int!){repository(owner:$owner,name:$name){pullRequest(number:$prNumber){id number title state url body labels{nodes{name}}}}}",
+        ),
+      getMutationDocument: vi.fn(),
+      getLookupDocument: vi.fn(),
+    }))
+    vi.doMock("@core/gql/batch.js", () => ({
+      buildBatchQuery: vi.fn().mockReturnValue({
+        document: "query Batch { step0: repository {...} step1: repository {...} }",
+        variables: {},
+      }),
+      buildBatchMutation: vi.fn(),
+    }))
+
+    const { executeTasks } = await import("@core/core/routing/engine/index.js")
+
+    const prPayload = {
+      pullRequest: {
+        id: "PR_1",
+        number: 1,
+        title: "Fix the bug",
+        state: "OPEN",
+        url: "https://github.com/acme/repo/pull/1",
+        body: "Detailed description",
+        labels: { nodes: [] },
+      },
+    }
+
+    const result = await executeTasks(
+      [
+        {
+          task: "pr.view",
+          input: { owner: "acme", name: "repo", prNumber: 1, exclude: ["body"] },
+        },
+        { task: "pr.view", input: { owner: "acme", name: "repo", prNumber: 1 } },
+      ],
+      {
+        githubClient: createGithubClient({
+          query: vi.fn().mockResolvedValue({
+            step0: prPayload,
+            step1: prPayload,
+          }),
+        }),
+      },
+    )
+
+    expect(result.status).toBe("success")
+    const step0Data = result.results[0]?.data as Record<string, unknown>
+    const step1Data = result.results[1]?.data as Record<string, unknown>
+
+    // step0 had exclude:["body"] → body must be absent
+    expect("body" in step0Data).toBe(false)
+    expect(step0Data.title).toBe("Fix the bug")
+
+    // step1 without exclude → body present
+    expect(step1Data.body).toBe("Detailed description")
+  })
+})
+
+// ===========================================================================
 // Branch coverage — invariant guards with undefined array elements
 // ===========================================================================
 

@@ -36,19 +36,11 @@ function normalizeIssueListStates(state: string | null | undefined): IssueState[
   return [normalized]
 }
 
-export async function runIssueView(
-  transport: GraphqlTransport,
-  input: IssueViewInput,
-): Promise<IssueViewData> {
-  assertIssueInput(input)
-
-  const sdk = getIssueViewSdk(createGraphqlRequestClient(transport))
-  const result: IssueViewQuery = await sdk.IssueView(input)
-  const issue = result.repository?.issue
+export function normalizeIssueViewResult(result: unknown, _input: IssueViewInput): IssueViewData {
+  const issue = (result as IssueViewQuery).repository?.issue
   if (!issue) {
     throw new Error("Issue not found")
   }
-
   return {
     id: issue.id,
     number: issue.number,
@@ -58,6 +50,17 @@ export async function runIssueView(
     body: issue.body ?? "",
     labels: (issue.labels?.nodes ?? []).flatMap((n) => (n ? [n.name] : [])),
   }
+}
+
+export async function runIssueView(
+  transport: GraphqlTransport,
+  input: IssueViewInput,
+): Promise<IssueViewData> {
+  assertIssueInput(input)
+
+  const sdk = getIssueViewSdk(createGraphqlRequestClient(transport))
+  const result: IssueViewQuery = await sdk.IssueView(input)
+  return normalizeIssueViewResult(result, input)
 }
 
 export async function runIssueList(
@@ -100,19 +103,14 @@ export async function runIssueList(
   }
 }
 
-export async function runIssueCommentsList(
-  transport: GraphqlTransport,
-  input: IssueCommentsListInput,
-): Promise<IssueCommentsListData> {
-  assertIssueCommentsListInput(input)
-
-  const sdk = getIssueCommentsListSdk(createGraphqlRequestClient(transport))
-  const result: IssueCommentsListQuery = await sdk.IssueCommentsList(input)
-  const comments = result.repository?.issue?.comments
+export function normalizeIssueCommentsListResult(
+  result: unknown,
+  _input: IssueCommentsListInput,
+): IssueCommentsListData {
+  const comments = (result as IssueCommentsListQuery).repository?.issue?.comments
   if (!comments) {
     throw new Error("Issue comments not found")
   }
-
   return {
     items: (comments.nodes ?? []).flatMap((comment) =>
       comment
@@ -132,4 +130,15 @@ export async function runIssueCommentsList(
       hasNextPage: comments.pageInfo.hasNextPage,
     },
   }
+}
+
+export async function runIssueCommentsList(
+  transport: GraphqlTransport,
+  input: IssueCommentsListInput,
+): Promise<IssueCommentsListData> {
+  assertIssueCommentsListInput(input)
+
+  const sdk = getIssueCommentsListSdk(createGraphqlRequestClient(transport))
+  const result: IssueCommentsListQuery = await sdk.IssueCommentsList(input)
+  return normalizeIssueCommentsListResult(result, input)
 }

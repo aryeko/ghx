@@ -11,6 +11,7 @@ import type { PrDiffListFilesQuery } from "../operations/pr-diff-list-files.gene
 import { getSdk as getPrDiffListFilesSdk } from "../operations/pr-diff-list-files.generated.js"
 import type { PrListQuery, PullRequestState } from "../operations/pr-list.generated.js"
 import { getSdk as getPrListSdk } from "../operations/pr-list.generated.js"
+import type { PrMergeStatusQuery } from "../operations/pr-merge-status.generated.js"
 import { getSdk as getPrMergeStatusSdk } from "../operations/pr-merge-status.generated.js"
 import { getSdk as getPrReactionsListSdk } from "../operations/pr-reactions-list.generated.js"
 import type { PrReviewsListQuery } from "../operations/pr-reviews-list.generated.js"
@@ -290,19 +291,8 @@ function normalizePrListStates(state: string | null | undefined): PullRequestSta
   return [normalized]
 }
 
-export async function runPrView(
-  transport: GraphqlTransport,
-  input: PrViewInput,
-): Promise<PrViewData> {
-  assertPrInput(input)
-
-  const sdk = getPrViewSdk(createGraphqlRequestClient(transport))
-  const result: PrViewQuery = await sdk.PrView({
-    owner: input.owner,
-    name: input.name,
-    prNumber: input.prNumber,
-  })
-  const pr = result.repository?.pullRequest
+export function normalizePrViewResult(result: unknown, input: PrViewInput): PrViewData {
+  const pr = (result as PrViewQuery).repository?.pullRequest
   if (!pr) {
     throw new Error("Pull request not found")
   }
@@ -323,6 +313,21 @@ export async function runPrView(
   }
 
   return { ...base, body: pr.body ?? "" }
+}
+
+export async function runPrView(
+  transport: GraphqlTransport,
+  input: PrViewInput,
+): Promise<PrViewData> {
+  assertPrInput(input)
+
+  const sdk = getPrViewSdk(createGraphqlRequestClient(transport))
+  const result: PrViewQuery = await sdk.PrView({
+    owner: input.owner,
+    name: input.name,
+    prNumber: input.prNumber,
+  })
+  return normalizePrViewResult(result, input)
 }
 
 export async function runPrList(
@@ -365,19 +370,14 @@ export async function runPrList(
   }
 }
 
-export async function runPrReviewsList(
-  transport: GraphqlTransport,
-  input: PrReviewsListInput,
-): Promise<PrReviewsListData> {
-  assertPrReviewsListInput(input)
-
-  const sdk = getPrReviewsListSdk(createGraphqlRequestClient(transport))
-  const result: PrReviewsListQuery = await sdk.PrReviewsList(input)
-  const reviews = result.repository?.pullRequest?.reviews
+export function normalizePrReviewsListResult(
+  result: unknown,
+  _input: PrReviewsListInput,
+): PrReviewsListData {
+  const reviews = (result as PrReviewsListQuery).repository?.pullRequest?.reviews
   if (!reviews) {
     throw new Error("Pull request reviews not found")
   }
-
   return {
     items: (reviews.nodes ?? []).flatMap((review) =>
       review
@@ -399,6 +399,17 @@ export async function runPrReviewsList(
       hasNextPage: reviews.pageInfo.hasNextPage,
     },
   }
+}
+
+export async function runPrReviewsList(
+  transport: GraphqlTransport,
+  input: PrReviewsListInput,
+): Promise<PrReviewsListData> {
+  assertPrReviewsListInput(input)
+
+  const sdk = getPrReviewsListSdk(createGraphqlRequestClient(transport))
+  const result: PrReviewsListQuery = await sdk.PrReviewsList(input)
+  return normalizePrReviewsListResult(result, input)
 }
 
 export async function runPrReactionsList(
@@ -622,19 +633,14 @@ export async function runPrCommentsReactionsList(
   }
 }
 
-export async function runPrDiffListFiles(
-  transport: GraphqlTransport,
-  input: PrDiffListFilesInput,
-): Promise<PrDiffListFilesData> {
-  assertPrDiffListFilesInput(input)
-
-  const sdk = getPrDiffListFilesSdk(createGraphqlRequestClient(transport))
-  const result: PrDiffListFilesQuery = await sdk.PrDiffListFiles(input)
-  const files = result.repository?.pullRequest?.files
+export function normalizePrDiffListFilesResult(
+  result: unknown,
+  _input: PrDiffListFilesInput,
+): PrDiffListFilesData {
+  const files = (result as PrDiffListFilesQuery).repository?.pullRequest?.files
   if (!files) {
     throw new Error("Pull request files not found")
   }
-
   return {
     items: (files.nodes ?? []).flatMap((file) =>
       file
@@ -654,6 +660,34 @@ export async function runPrDiffListFiles(
   }
 }
 
+export async function runPrDiffListFiles(
+  transport: GraphqlTransport,
+  input: PrDiffListFilesInput,
+): Promise<PrDiffListFilesData> {
+  assertPrDiffListFilesInput(input)
+
+  const sdk = getPrDiffListFilesSdk(createGraphqlRequestClient(transport))
+  const result: PrDiffListFilesQuery = await sdk.PrDiffListFiles(input)
+  return normalizePrDiffListFilesResult(result, input)
+}
+
+export function normalizePrMergeStatusResult(
+  result: unknown,
+  _input: PrMergeStatusInput,
+): PrMergeStatusData {
+  const pr = (result as PrMergeStatusQuery).repository?.pullRequest
+  if (!pr) {
+    throw new Error("Pull request not found")
+  }
+  return {
+    mergeable: pr.mergeable ?? null,
+    mergeStateStatus: pr.mergeStateStatus ?? null,
+    reviewDecision: pr.reviewDecision ?? null,
+    isDraft: pr.isDraft,
+    state: pr.state,
+  }
+}
+
 export async function runPrMergeStatus(
   transport: GraphqlTransport,
   input: PrMergeStatusInput,
@@ -665,17 +699,5 @@ export async function runPrMergeStatus(
     name: input.name,
     prNumber: input.prNumber,
   })
-
-  const pr = result.repository?.pullRequest
-  if (!pr) {
-    throw new Error("Pull request not found")
-  }
-
-  return {
-    mergeable: pr.mergeable ?? null,
-    mergeStateStatus: pr.mergeStateStatus ?? null,
-    reviewDecision: pr.reviewDecision ?? null,
-    isDraft: pr.isDraft,
-    state: pr.state,
-  }
+  return normalizePrMergeStatusResult(result, input)
 }
