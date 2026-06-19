@@ -1,5 +1,11 @@
 # @ghx-dev/core
 
+## 0.6.1
+
+### Patch Changes
+
+- 518bd54: Fix `ghx chain`: multi-step chains now return normalized per-step `.data` matching `ghx run` (previously raw GraphQL with dropped list items). Also fix `pr.checks.list` to return an empty result instead of an error when a branch has no checks. (#212)
+
 ## 0.6.0
 
 ### Minor Changes
