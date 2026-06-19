@@ -8,7 +8,7 @@ import { selectPreferredRoute } from "@core/core/routing/suitability.js"
 import { resolutionLookups } from "./resolve.js"
 import type { ClassifiedStep } from "./types.js"
 
-const SINGLE_HANDLER_GRAPHQL_TASKS = new Set([
+export const SINGLE_HANDLER_GRAPHQL_TASKS = new Set([
   "pr.comments.reactions.list",
   "project_v2.fields.list",
   "project_v2.items.list",

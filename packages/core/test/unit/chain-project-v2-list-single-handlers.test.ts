@@ -26,7 +26,6 @@ describe("executeTasks chaining - project_v2 list handlers", () => {
         },
       ],
       {
-        githubToken: "test-token",
         githubClient: createGithubClient({
           fetchProjectV2FieldsList,
           fetchProjectV2ItemsList,

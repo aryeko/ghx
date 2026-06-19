@@ -389,7 +389,11 @@ describe("runPrCommentsReactionsList", () => {
     const transport: GraphqlTransport = { execute }
     const after = encodeCommentsCursor({ v: 1, phase: "issue-comments", after: "comment-cursor" })
 
-    const result = await runPrCommentsReactionsList(transport, { ...baseCommentsInput, after })
+    const result = await runPrCommentsReactionsList(transport, {
+      ...baseCommentsInput,
+      after,
+      first: 1,
+    })
 
     expect(execute.mock.calls[0]?.[1]).toMatchObject({ after: "comment-cursor" })
     expect(result.items[0]?.subjectId).toBe("IC_resume")
@@ -431,7 +435,11 @@ describe("runPrCommentsReactionsList", () => {
       threadsAfter: "thread-cursor",
     })
 
-    const result = await runPrCommentsReactionsList(transport, { ...baseCommentsInput, after })
+    const result = await runPrCommentsReactionsList(transport, {
+      ...baseCommentsInput,
+      after,
+      first: 1,
+    })
 
     expect(execute.mock.calls[0]?.[1]).toMatchObject({ after: "thread-cursor" })
     expect(result.items[0]?.subjectId).toBe("PRRC_resume")
@@ -497,6 +505,33 @@ describe("runPrCommentsReactionsList", () => {
     expect(execute).not.toHaveBeenCalled()
   })
 
+  it("rejects unsupported opaque cursor shapes before querying", async () => {
+    const invalidCursors = [
+      { v: 2, phase: "issue-comments", after: null },
+      { v: 1, phase: "issue-comments", after: 123 },
+      {
+        v: 1,
+        phase: "review-threads",
+        threadsAfter: null,
+        currentThread: { id: 123, threadCursor: null, commentsAfter: null },
+      },
+      { v: 1, phase: "unknown", after: null },
+    ]
+
+    for (const cursor of invalidCursors) {
+      const execute = vi.fn()
+      const transport: GraphqlTransport = { execute }
+
+      await expect(
+        runPrCommentsReactionsList(transport, {
+          ...baseCommentsInput,
+          after: encodeCommentsCursor(cursor),
+        }),
+      ).rejects.toThrow("Invalid after cursor")
+      expect(execute).not.toHaveBeenCalled()
+    }
+  })
+
   it("throws when GitHub omits a required pagination cursor", async () => {
     const execute = vi.fn().mockResolvedValue({
       repository: {
@@ -536,6 +571,124 @@ describe("runPrCommentsReactionsList", () => {
     await expect(
       runPrCommentsReactionsList(transport, { ...baseCommentsInput, after }),
     ).rejects.toThrow("Pull request review thread not found")
+  })
+
+  it("continues after a resumed review thread has no more comment pages", async () => {
+    const execute = vi.fn().mockResolvedValue({
+      node: {
+        __typename: "PullRequestReviewThread",
+        comments: {
+          pageInfo: { hasNextPage: false },
+          nodes: [
+            {
+              __typename: "PullRequestReviewComment",
+              id: "PRRC_done",
+              url: "https://example.test/prrc-done",
+              author: null,
+              reactionGroups: [
+                {
+                  content: "HEART",
+                  viewerHasReacted: false,
+                  reactors: { totalCount: 1, nodes: [{ __typename: "User", login: "bob" }] },
+                },
+              ],
+            },
+          ],
+        },
+      },
+    })
+    const transport: GraphqlTransport = { execute }
+    const after = encodeCommentsCursor({
+      v: 1,
+      phase: "review-threads",
+      threadsAfter: "threads-page",
+      currentThread: {
+        id: "THREAD_1",
+        threadCursor: "thread-edge",
+        commentsAfter: "thread-comment-cursor",
+      },
+    })
+
+    const result = await runPrCommentsReactionsList(transport, {
+      ...baseCommentsInput,
+      after,
+      first: 1,
+    })
+
+    expect(result.items[0]?.subjectId).toBe("PRRC_done")
+    expect(result.pageInfo).toEqual({ hasNextPage: true, endCursor: expect.any(String) })
+  })
+
+  it("keeps scanning review-thread pages when the thread connection has more pages", async () => {
+    const execute = vi.fn().mockResolvedValue(
+      commentsResponse({
+        reviewThreads: { hasNextPage: true, endCursor: "threads-next", nodes: [] },
+      }),
+    )
+    const transport: GraphqlTransport = { execute }
+    const after = encodeCommentsCursor({ v: 1, phase: "review-threads", threadsAfter: null })
+
+    const result = await runPrCommentsReactionsList(transport, {
+      ...baseCommentsInput,
+      after,
+      first: 1,
+    })
+
+    expect(execute).toHaveBeenCalledTimes(5)
+    expect(result.pageInfo).toEqual({ hasNextPage: true, endCursor: expect.any(String) })
+    expect(result.scan).toEqual({ pagesScanned: 5, sourceItemsScanned: 0, scanTruncated: true })
+  })
+
+  it("throws when the review-thread page cannot find the pull request", async () => {
+    const execute = vi.fn().mockResolvedValue({ repository: { pullRequest: null } })
+    const transport: GraphqlTransport = { execute }
+    const after = encodeCommentsCursor({ v: 1, phase: "review-threads", threadsAfter: null })
+
+    await expect(
+      runPrCommentsReactionsList(transport, { ...baseCommentsInput, after }),
+    ).rejects.toThrow("Pull request not found")
+  })
+
+  it("stops collecting issue comments once the requested page is full", async () => {
+    const execute = vi.fn().mockResolvedValue(
+      commentsResponse({
+        comments: {
+          nodes: [
+            {
+              __typename: "IssueComment",
+              id: "IC_first",
+              url: "https://example.test/ic-first",
+              author: null,
+              reactionGroups: [
+                {
+                  content: "HEART",
+                  viewerHasReacted: false,
+                  reactors: { totalCount: 1, nodes: [{ __typename: "User", login: "bob" }] },
+                },
+              ],
+            },
+            {
+              __typename: "IssueComment",
+              id: "IC_second",
+              url: "https://example.test/ic-second",
+              author: null,
+              reactionGroups: [
+                {
+                  content: "HEART",
+                  viewerHasReacted: false,
+                  reactors: { totalCount: 1, nodes: [{ __typename: "User", login: "alice" }] },
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    )
+    const transport: GraphqlTransport = { execute }
+
+    const result = await runPrCommentsReactionsList(transport, { ...baseCommentsInput, first: 1 })
+
+    expect(result.items.map((item) => item.subjectId)).toEqual(["IC_first"])
   })
 
   it("maps issue comments and tags subjectType as IssueComment", async () => {

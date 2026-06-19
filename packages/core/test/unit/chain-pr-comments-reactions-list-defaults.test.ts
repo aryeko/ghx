@@ -29,7 +29,6 @@ describe("executeTasks chaining - pr.comments.reactions.list defaults", () => {
         },
       ],
       {
-        githubToken: "test-token",
         githubClient: createGithubClient({
           fetchPrCommentsReactionsList,
           query: queryMock,

@@ -6,6 +6,7 @@ import { logger } from "../telemetry/log.js"
 export type PreflightInput = {
   route: RouteSource
   githubToken?: string | null
+  githubClientPresent?: boolean
   ghCliAvailable?: boolean
   ghAuthenticated?: boolean
 }
@@ -46,8 +47,8 @@ export function preflightCheck(input: PreflightInput): PreflightResult {
 
   if (input.route === "graphql") {
     const token = input.githubToken?.trim()
-    if (!token) {
-      return fail(errorCodes.Auth, "GitHub token is required for graphql route")
+    if (!token && input.githubClientPresent !== true) {
+      return fail(errorCodes.Auth, "GitHub token or client is required for graphql route")
     }
   }
 

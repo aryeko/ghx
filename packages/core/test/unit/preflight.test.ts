@@ -7,7 +7,12 @@ describe("preflightCheck", () => {
     expect(result).toEqual({ ok: true })
   })
 
-  it("fails graphql route when token missing", () => {
+  it("passes graphql route when a client is already available", () => {
+    const result = preflightCheck({ route: "graphql", githubClientPresent: true })
+    expect(result).toEqual({ ok: true })
+  })
+
+  it("fails graphql route when token and client are both missing", () => {
     const result = preflightCheck({ route: "graphql", githubToken: "" })
     expect(result.ok).toBe(false)
     expect(result).toHaveProperty("code", "AUTH")

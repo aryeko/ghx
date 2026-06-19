@@ -905,6 +905,54 @@ Final line`
       expect(items[0]).toMatchObject({ id: 0, workflowName: null })
     })
 
+    it("treats a non-object REST response as an empty run page", async () => {
+      const result = await handleWorkflowRunsList(
+        mockRunner(0, "[]"),
+        { owner: "owner", name: "repo", first: 30 },
+        undefined,
+      )
+
+      expect(result.ok).toBe(true)
+      expect(result.data).toMatchObject({
+        items: [],
+        pageInfo: { hasNextPage: false, endCursor: null },
+      })
+    })
+
+    it("maps REST snake_case run fields", async () => {
+      const result = await handleWorkflowRunsList(
+        mockRunner(
+          0,
+          JSON.stringify({
+            workflow_runs: [
+              {
+                id: 11,
+                name: "CI",
+                status: "completed",
+                conclusion: "success",
+                head_branch: "main",
+                html_url: "https://example.test/run/11",
+              },
+            ],
+          }),
+        ),
+        { owner: "owner", name: "repo", first: 30 },
+        undefined,
+      )
+
+      expect(result.ok).toBe(true)
+      expect(result.data).toMatchObject({
+        items: [
+          {
+            id: 11,
+            workflowName: "CI",
+            headBranch: "main",
+            url: "https://example.test/run/11",
+          },
+        ],
+      })
+    })
+
     it("returns error on SyntaxError from malformed JSON", async () => {
       const runner = mockRunner(0, "not-json")
 
@@ -964,6 +1012,20 @@ Final line`
 
       expect(result.ok).toBe(false)
       expect(result.error?.message).toContain("Invalid after cursor")
+    })
+
+    it("treats a non-object REST response as an empty workflow page", async () => {
+      const result = await handleWorkflowList(
+        mockRunner(0, "[]"),
+        { owner: "owner", name: "repo", first: 30 },
+        undefined,
+      )
+
+      expect(result.ok).toBe(true)
+      expect(result.data).toMatchObject({
+        items: [],
+        pageInfo: { hasNextPage: false, endCursor: null },
+      })
     })
 
     it("returns error on SyntaxError from malformed JSON", async () => {
@@ -1111,6 +1173,20 @@ Final line`
           },
         ],
         pageInfo: { hasNextPage: true, endCursor: expect.any(String) },
+      })
+    })
+
+    it("treats a non-object REST response as an empty artifact page", async () => {
+      const result = await handleWorkflowRunArtifactsList(
+        mockRunner(0, "[]"),
+        { owner: "owner", name: "repo", runId: 1, first: 30 },
+        undefined,
+      )
+
+      expect(result.ok).toBe(true)
+      expect(result.data).toMatchObject({
+        items: [],
+        pageInfo: { hasNextPage: false, endCursor: null },
       })
     })
 
