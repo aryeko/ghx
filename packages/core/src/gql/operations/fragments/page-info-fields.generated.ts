@@ -1,11 +1,16 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "../base-types.js"
 import { TypedDocumentString } from "../typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type PageInfoFieldsFragment = {
-  __typename?: "PageInfo"
-  endCursor?: string | null
+  __typename: "PageInfo"
+  endCursor: string | null
   hasNextPage: boolean
 }
 

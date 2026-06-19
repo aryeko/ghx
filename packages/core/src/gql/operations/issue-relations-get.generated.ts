@@ -1,30 +1,37 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type IssueRelationsGetQueryVariables = Types.Exact<{
-  owner: Types.Scalars["String"]["input"]
-  name: Types.Scalars["String"]["input"]
-  issueNumber: Types.Scalars["Int"]["input"]
+export type IssueRelationsGetQueryVariables = Exact<{
+  owner: string
+  name: string
+  issueNumber: number
 }>
 
 export type IssueRelationsGetQuery = {
-  __typename?: "Query"
-  repository?: {
-    __typename?: "Repository"
-    issue?: {
-      __typename?: "Issue"
+  __typename: "Query"
+  repository: {
+    __typename: "Repository"
+    issue: {
+      __typename: "Issue"
       id: string
       number: number
-      parent?: { __typename?: "Issue"; id: string; number: number } | null
+      parent: { __typename: "Issue"; id: string; number: number } | null
       subIssues: {
-        __typename?: "IssueConnection"
-        nodes?: Array<{ __typename?: "Issue"; id: string; number: number } | null> | null
+        __typename: "IssueConnection"
+        nodes: Array<{ __typename: "Issue"; id: string; number: number } | null> | null
       }
       blockedBy: {
-        __typename?: "IssueConnection"
-        nodes?: Array<{ __typename?: "Issue"; id: string; number: number } | null> | null
+        __typename: "IssueConnection"
+        nodes: Array<{ __typename: "Issue"; id: string; number: number } | null> | null
       }
     } | null
   } | null

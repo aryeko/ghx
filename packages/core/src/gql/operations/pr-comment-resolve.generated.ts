@@ -1,17 +1,24 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type PrCommentResolveMutationVariables = Types.Exact<{
-  threadId: Types.Scalars["ID"]["input"]
+export type PrCommentResolveMutationVariables = Exact<{
+  threadId: string | number
 }>
 
 export type PrCommentResolveMutation = {
-  __typename?: "Mutation"
-  resolveReviewThread?: {
-    __typename?: "ResolveReviewThreadPayload"
-    thread?: { __typename?: "PullRequestReviewThread"; id: string; isResolved: boolean } | null
+  __typename: "Mutation"
+  resolveReviewThread: {
+    __typename: "ResolveReviewThreadPayload"
+    thread: { __typename: "PullRequestReviewThread"; id: string; isResolved: boolean } | null
   } | null
 }
 

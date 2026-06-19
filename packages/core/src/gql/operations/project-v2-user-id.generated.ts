@@ -1,16 +1,23 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type ProjectV2UserIdQueryVariables = Types.Exact<{
-  login: Types.Scalars["String"]["input"]
-  number: Types.Scalars["Int"]["input"]
+export type ProjectV2UserIdQueryVariables = Exact<{
+  login: string
+  number: number
 }>
 
 export type ProjectV2UserIdQuery = {
-  __typename?: "Query"
-  user?: { __typename?: "User"; projectV2?: { __typename?: "ProjectV2"; id: string } | null } | null
+  __typename: "Query"
+  user: { __typename: "User"; projectV2: { __typename: "ProjectV2"; id: string } | null } | null
 }
 
 export const ProjectV2UserIdDocument = new TypedDocumentString(`

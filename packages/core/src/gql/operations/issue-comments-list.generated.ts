@@ -1,39 +1,46 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type IssueCommentsListQueryVariables = Types.Exact<{
-  owner: Types.Scalars["String"]["input"]
-  name: Types.Scalars["String"]["input"]
-  issueNumber: Types.Scalars["Int"]["input"]
-  first: Types.Scalars["Int"]["input"]
-  after?: Types.InputMaybe<Types.Scalars["String"]["input"]>
+export type IssueCommentsListQueryVariables = Exact<{
+  owner: string
+  name: string
+  issueNumber: number
+  first: number
+  after?: string | null | undefined
 }>
 
 export type IssueCommentsListQuery = {
-  __typename?: "Query"
-  repository?: {
-    __typename?: "Repository"
-    issue?: {
-      __typename?: "Issue"
+  __typename: "Query"
+  repository: {
+    __typename: "Repository"
+    issue: {
+      __typename: "Issue"
       comments: {
-        __typename?: "IssueCommentConnection"
-        nodes?: Array<{
-          __typename?: "IssueComment"
+        __typename: "IssueCommentConnection"
+        nodes: Array<{
+          __typename: "IssueComment"
           id: string
           body: string
           createdAt: any
           url: any
-          author?:
-            | { __typename?: "Bot"; login: string }
-            | { __typename?: "EnterpriseUserAccount"; login: string }
-            | { __typename?: "Mannequin"; login: string }
-            | { __typename?: "Organization"; login: string }
-            | { __typename?: "User"; login: string }
+          author:
+            | { __typename: "Bot"; login: string }
+            | { __typename: "EnterpriseUserAccount"; login: string }
+            | { __typename: "Mannequin"; login: string }
+            | { __typename: "Organization"; login: string }
+            | { __typename: "User"; login: string }
             | null
         } | null> | null
-        pageInfo: { __typename?: "PageInfo"; endCursor?: string | null; hasNextPage: boolean }
+        pageInfo: { __typename: "PageInfo"; endCursor: string | null; hasNextPage: boolean }
       }
     } | null
   } | null

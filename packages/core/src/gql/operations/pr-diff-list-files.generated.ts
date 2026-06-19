@@ -1,31 +1,38 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type PrDiffListFilesQueryVariables = Types.Exact<{
-  owner: Types.Scalars["String"]["input"]
-  name: Types.Scalars["String"]["input"]
-  prNumber: Types.Scalars["Int"]["input"]
-  first: Types.Scalars["Int"]["input"]
-  after?: Types.InputMaybe<Types.Scalars["String"]["input"]>
+export type PrDiffListFilesQueryVariables = Exact<{
+  owner: string
+  name: string
+  prNumber: number
+  first: number
+  after?: string | null | undefined
 }>
 
 export type PrDiffListFilesQuery = {
-  __typename?: "Query"
-  repository?: {
-    __typename?: "Repository"
-    pullRequest?: {
-      __typename?: "PullRequest"
-      files?: {
-        __typename?: "PullRequestChangedFileConnection"
-        nodes?: Array<{
-          __typename?: "PullRequestChangedFile"
+  __typename: "Query"
+  repository: {
+    __typename: "Repository"
+    pullRequest: {
+      __typename: "PullRequest"
+      files: {
+        __typename: "PullRequestChangedFileConnection"
+        nodes: Array<{
+          __typename: "PullRequestChangedFile"
           path: string
           additions: number
           deletions: number
         } | null> | null
-        pageInfo: { __typename?: "PageInfo"; endCursor?: string | null; hasNextPage: boolean }
+        pageInfo: { __typename: "PageInfo"; endCursor: string | null; hasNextPage: boolean }
       } | null
     } | null
   } | null

@@ -1,30 +1,44 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type IssueListQueryVariables = Types.Exact<{
-  owner: Types.Scalars["String"]["input"]
-  name: Types.Scalars["String"]["input"]
-  first: Types.Scalars["Int"]["input"]
-  after?: Types.InputMaybe<Types.Scalars["String"]["input"]>
+/** The possible states of an issue. */
+export type IssueState =
+  /** An issue that has been closed */
+  | "CLOSED"
+  /** An issue that is still open */
+  | "OPEN"
+
+export type IssueListQueryVariables = Exact<{
+  owner: string
+  name: string
+  first: number
+  after?: string | null | undefined
 }>
 
 export type IssueListQuery = {
-  __typename?: "Query"
-  repository?: {
-    __typename?: "Repository"
+  __typename: "Query"
+  repository: {
+    __typename: "Repository"
     issues: {
-      __typename?: "IssueConnection"
-      nodes?: Array<{
-        __typename?: "Issue"
+      __typename: "IssueConnection"
+      nodes: Array<{
+        __typename: "Issue"
         id: string
         number: number
         title: string
         state: Types.IssueState
         url: any
       } | null> | null
-      pageInfo: { __typename?: "PageInfo"; endCursor?: string | null; hasNextPage: boolean }
+      pageInfo: { __typename: "PageInfo"; endCursor: string | null; hasNextPage: boolean }
     }
   } | null
 }

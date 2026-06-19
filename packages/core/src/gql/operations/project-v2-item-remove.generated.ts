@@ -1,18 +1,25 @@
-import type { GraphQLClient, RequestOptions } from "graphql-request"
+/** Internal type. DO NOT USE DIRECTLY. */
+type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] }
+/** Internal type. DO NOT USE DIRECTLY. */
+export type Incremental<T> =
+  | T
+  | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
+
+import { type GraphQLClient, type RequestOptions } from "graphql-request"
 import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type RemoveProjectV2ItemMutationVariables = Types.Exact<{
-  projectId: Types.Scalars["ID"]["input"]
-  itemId: Types.Scalars["ID"]["input"]
+export type RemoveProjectV2ItemMutationVariables = Exact<{
+  projectId: string | number
+  itemId: string | number
 }>
 
 export type RemoveProjectV2ItemMutation = {
-  __typename?: "Mutation"
-  deleteProjectV2Item?: {
-    __typename?: "DeleteProjectV2ItemPayload"
-    deletedItemId?: string | null
+  __typename: "Mutation"
+  deleteProjectV2Item: {
+    __typename: "DeleteProjectV2ItemPayload"
+    deletedItemId: string | null
   } | null
 }
 

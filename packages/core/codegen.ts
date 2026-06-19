@@ -32,6 +32,8 @@ const config = {
         useTypeImports: true,
         documentMode: "string",
         preResolveTypes: true,
+        defaultScalarType: "any",
+        nonOptionalTypename: true,
         onlyOperationTypes: true,
         emitLegacyCommonJSImports: false,
         rawRequest: false,
