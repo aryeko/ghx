@@ -5,6 +5,7 @@ import {
   isCheckPendingBucket,
   parseCliData,
   parseListFirst,
+  parseListState,
   parseNonEmptyString,
   parseStrictPositiveInt,
   sanitizeCliErrorMessage,
@@ -23,6 +24,26 @@ describe("parseListFirst", () => {
   it("returns DEFAULT_LIST_FIRST when undefined", () => expect(parseListFirst(undefined)).toBe(30))
   it("returns value for positive int", () => expect(parseListFirst(10)).toBe(10))
   it("returns null for zero", () => expect(parseListFirst(0)).toBeNull())
+})
+
+describe("parseListState", () => {
+  const allowedStates = ["open", "closed", "all"] as const
+
+  it("returns undefined when state is omitted", () => {
+    expect(parseListState(undefined, allowedStates)).toBeUndefined()
+    expect(parseListState(null, allowedStates)).toBeUndefined()
+  })
+
+  it("normalizes allowed state strings", () => {
+    expect(parseListState(" OPEN ", allowedStates)).toBe("open")
+    expect(parseListState("all", allowedStates)).toBe("all")
+  })
+
+  it("rejects blank, non-string, and unsupported states", () => {
+    expect(parseListState(" ", allowedStates)).toBeNull()
+    expect(parseListState(123, allowedStates)).toBeNull()
+    expect(parseListState("merged", allowedStates)).toBeNull()
+  })
 })
 
 describe("parseNonEmptyString", () => {
