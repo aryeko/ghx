@@ -138,9 +138,11 @@ describe("operation cards registry", () => {
     expect(card?.routing.fallbacks).toEqual([])
   })
 
-  it("requires explicit pagination input for issue.comments.list", () => {
+  it("defaults pagination input for issue.comments.list", () => {
     const card = getOperationCard("issue.comments.list")
-    expect(card?.input_schema.required).toEqual(["owner", "name", "issueNumber", "first"])
+    expect(card?.input_schema.required).toEqual(["owner", "name", "issueNumber"])
+    const properties = card?.input_schema.properties as Record<string, unknown>
+    expect(properties.first).toEqual(expect.objectContaining({ default: 30 }))
   })
 
   it("requires explicit pagination input for list capabilities", () => {

@@ -2,7 +2,11 @@ import type { ResultEnvelope, RouteSource } from "../contracts/envelope.js"
 import type { ErrorCode } from "../errors/codes.js"
 import { errorCodes } from "../errors/codes.js"
 import { normalizeError } from "../execution/normalizer.js"
-import { validateInput, validateOutput } from "../registry/schema-validator.js"
+import {
+  formatSchemaErrorDetails,
+  validateInput,
+  validateOutput,
+} from "../registry/schema-validator.js"
 import type { OperationCard } from "../registry/types.js"
 import { selectPreferredRoute } from "../routing/suitability.js"
 import { logger } from "../telemetry/log.js"
@@ -46,7 +50,7 @@ export async function execute(options: ExecuteOptions): Promise<ResultEnvelope> 
     return normalizeError(
       {
         code: errorCodes.Validation,
-        message: "Input schema validation failed",
+        message: `Input validation failed: ${formatSchemaErrorDetails(inputValidation.errors)}`,
         retryable: false,
         details: { ajvErrors: inputValidation.errors },
       },
@@ -158,7 +162,7 @@ export async function execute(options: ExecuteOptions): Promise<ResultEnvelope> 
           const envelope = normalizeError(
             {
               code: errorCodes.Server,
-              message: "Output schema validation failed",
+              message: `Output schema validation failed: ${formatSchemaErrorDetails(outputValidation.errors)}`,
               retryable: false,
               details: { ajvErrors: outputValidation.errors },
             },

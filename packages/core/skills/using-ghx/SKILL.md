@@ -131,6 +131,8 @@ EOF
 
 Repo-scoped steps in a chain can omit `owner`/`name` when they target the current checkout; `ghx` applies the same cached repo context to each eligible step. Keep explicit `owner`/`name` when a chain touches multiple repositories.
 
+A step that targets a **different** repo than the current checkout must set its own `owner`/`name`; otherwise it inherits the checkout's repo. A `NOT_FOUND` ("Could not resolve to an Issue/PullRequest with the number of N") usually means a wrong number or a step pointing at the wrong repo — double-check `owner`/`name`/number. List capabilities default `first` to 30 when omitted, so you don't need to set it explicitly (this applies to chain steps too).
+
 ## Error handling
 
 ghx never throws — errors are always in the response envelope. Check the `ok` field:

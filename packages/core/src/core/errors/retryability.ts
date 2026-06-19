@@ -4,6 +4,7 @@ const retryableCodes = new Set<string>([
   errorCodes.Network,
   errorCodes.RateLimit,
   errorCodes.Server,
+  errorCodes.NotReady,
 ])
 
 export function isRetryableErrorCode(code: string): boolean {

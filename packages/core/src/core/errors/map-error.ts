@@ -20,8 +20,23 @@ export function mapErrorToCode(error: unknown): ErrorCode {
     return errorCodes.RateLimit
   }
 
+  // Must come before the SERVER regex: "Could not resolve to an Issue with the number of 500"
+  // should be NOT_FOUND, not SERVER.
+  if (message.includes("could not resolve to")) {
+    return errorCodes.NotFound
+  }
+
   if (/\b(500|502|503|504)\b/.test(message)) {
     return errorCodes.Server
+  }
+
+  // Must come after SERVER: job-in-progress messages are retryable but not server errors.
+  if (message.includes("still in progress")) {
+    return errorCodes.NotReady
+  }
+
+  if (message.includes("too large")) {
+    return errorCodes.TooLarge
   }
 
   if (message.includes("timeout")) {

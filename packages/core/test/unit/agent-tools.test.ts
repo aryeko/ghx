@@ -36,9 +36,10 @@ describe("agent interface tools", () => {
     expect(() => explainCapability("unknown.capability")).toThrow("Unknown capability")
   })
 
-  it("explain tool includes pagination input for issue comments", () => {
+  it("explain tool exposes first as optional input for issue comments", () => {
     const explained = explainCapability("issue.comments.list")
-    expect(explained.required_inputs).toContain("first")
+    expect(explained.required_inputs).not.toContain("first")
+    expect(explained.optional_inputs).toHaveProperty("first")
   })
 
   it("explain pr.reviews.submit optional_inputs.comments has startLine and startSide", () => {

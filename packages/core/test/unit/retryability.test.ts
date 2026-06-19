@@ -12,4 +12,12 @@ describe("isRetryableErrorCode", () => {
     expect(isRetryableErrorCode("VALIDATION")).toBe(false)
     expect(isRetryableErrorCode("AUTH")).toBe(false)
   })
+
+  it("returns true for NOT_READY", () => {
+    expect(isRetryableErrorCode("NOT_READY")).toBe(true)
+  })
+
+  it("returns false for TOO_LARGE", () => {
+    expect(isRetryableErrorCode("TOO_LARGE")).toBe(false)
+  })
 })

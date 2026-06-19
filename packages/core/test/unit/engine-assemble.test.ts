@@ -89,6 +89,10 @@ describe("isRetryableCode", () => {
     expect(isRetryableCode(errorCodes.Server)).toBe(true)
   })
 
+  it("returns true for NotReady code (delegates to shared retryability)", () => {
+    expect(isRetryableCode(errorCodes.NotReady)).toBe(true)
+  })
+
   it("returns false for Unknown code", () => {
     expect(isRetryableCode(errorCodes.Unknown)).toBe(false)
   })
