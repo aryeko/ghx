@@ -212,6 +212,35 @@ describe("assembleChainResult", () => {
     expect(result.meta.failed).toBe(1)
   })
 
+  it("converts query postprocessing failures into per-step errors", () => {
+    const requests = [makeRequest("pr.reactions.list"), makeRequest("repo.view")]
+    const steps = [makeGqlQueryStep(0), makeGqlQueryStep(1)]
+    const input = baseAssembleInput({
+      steps,
+      requests,
+      queryRawResult: {
+        step0: { pullRequest: null },
+        step1: { name: "ghx" },
+      },
+      cliStepCount: 0,
+    })
+
+    const result = assembleChainResult(input)
+
+    expect(result.status).toBe("partial")
+    expect(result.results[0]).toMatchObject({
+      ok: false,
+      error: {
+        code: errorCodes.Unknown,
+        message: "Pull request not found",
+        retryable: false,
+      },
+    })
+    expect(result.results[1]).toMatchObject({ ok: true, data: { name: "ghx" } })
+    expect(result.meta.succeeded).toBe(1)
+    expect(result.meta.failed).toBe(1)
+  })
+
   it("CLI step success — uses cliResult.data", () => {
     const requests = [makeRequest("issue.list")]
     const steps = [makeCliStep(0)]

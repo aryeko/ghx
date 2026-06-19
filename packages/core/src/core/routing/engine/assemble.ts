@@ -95,6 +95,10 @@ function applyQueryPostprocessing(
   return applyInputExclusions(data, input)
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
 export function assembleChainResult(input: AssembleInput): ChainResultEnvelope {
   const {
     steps,
@@ -159,10 +163,27 @@ export function assembleChainResult(input: AssembleInput): ChainResultEnvelope {
     }
 
     if (alias in queryRawResult) {
+      let data: unknown
+      try {
+        data = applyQueryPostprocessing(req.task, queryRawResult[alias], req.input)
+      } catch (error) {
+        const message = errorMessage(error)
+        const code = mapErrorToCode(message)
+        return {
+          task: req.task,
+          ok: false,
+          error: {
+            code,
+            message,
+            retryable: isRetryableCode(code),
+          },
+        }
+      }
+
       return {
         task: req.task,
         ok: true,
-        data: applyQueryPostprocessing(req.task, queryRawResult[alias], req.input),
+        data,
       }
     }
 

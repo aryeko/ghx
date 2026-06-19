@@ -194,6 +194,130 @@ describe("applyInject", () => {
     })
     expect(applyInject(spec, {}, {})).toEqual({ commentBody: "" })
   })
+
+  describe("first_scalar", () => {
+    it("returns the first non-null candidate from keyed lookup results", () => {
+      const spec: InjectSpec = {
+        target: "projectId",
+        source: "first_scalar",
+        paths: [
+          { from_lookup: "org", path: "organization.projectV2.id" },
+          { from_lookup: "user", path: "user.projectV2.id" },
+        ],
+      }
+
+      expect(
+        applyInject(
+          spec,
+          {
+            org: { organization: { projectV2: null } },
+            user: { user: { projectV2: { id: "PVT_user" } } },
+          },
+          {},
+        ),
+      ).toEqual({ projectId: "PVT_user" })
+    })
+
+    it("throws when no candidate path has a value", () => {
+      const spec: InjectSpec = {
+        target: "projectId",
+        source: "first_scalar",
+        paths: [
+          { from_lookup: "org", path: "organization.projectV2.id" },
+          { from_lookup: "user", path: "user.projectV2.id" },
+        ],
+      }
+
+      expect(() => applyInject(spec, { org: {}, user: {} }, {})).toThrow(
+        "no candidate path had a value",
+      )
+    })
+  })
+
+  describe("draft_review_threads", () => {
+    const spec: InjectSpec = {
+      target: "threads",
+      source: "draft_review_threads",
+      from_input: "comments",
+    }
+
+    it("omits threads when comments are absent or empty", () => {
+      expect(applyInject(spec, {}, {})).toEqual({})
+      expect(applyInject(spec, {}, { comments: [] })).toEqual({})
+    })
+
+    it("normalizes side and startSide values", () => {
+      expect(
+        applyInject(
+          spec,
+          {},
+          {
+            comments: [
+              {
+                path: "src/a.ts",
+                body: "nit",
+                line: 4,
+                side: "right",
+                startLine: 2,
+                startSide: "left",
+              },
+            ],
+          },
+        ),
+      ).toEqual({
+        threads: [
+          {
+            path: "src/a.ts",
+            body: "nit",
+            line: 4,
+            side: "RIGHT",
+            startLine: 2,
+            startSide: "LEFT",
+          },
+        ],
+      })
+    })
+
+    it("rejects malformed comments input", () => {
+      expect(() => applyInject(spec, {}, { comments: "not-array" })).toThrow("is not an array")
+      expect(() => applyInject(spec, {}, { comments: [null] })).toThrow("expected comment object")
+      expect(() => applyInject(spec, {}, { comments: [{ side: 42 }] })).toThrow(
+        "side must be a string",
+      )
+      expect(() => applyInject(spec, {}, { comments: [{ startSide: 42 }] })).toThrow(
+        "startSide must be a string",
+      )
+    })
+  })
+
+  describe("project_v2_field_value", () => {
+    const spec: InjectSpec = {
+      target: "value",
+      source: "project_v2_field_value",
+    }
+
+    it("synthesizes the selected project field value shape", () => {
+      expect(applyInject(spec, {}, { clear: true })).toEqual({ value: {} })
+      expect(applyInject(spec, {}, { valueText: "Ready" })).toEqual({ value: { text: "Ready" } })
+      expect(applyInject(spec, {}, { valueNumber: 3 })).toEqual({ value: { number: 3 } })
+      expect(applyInject(spec, {}, { valueDate: "2026-06-19" })).toEqual({
+        value: { date: "2026-06-19" },
+      })
+      expect(applyInject(spec, {}, { valueSingleSelectOptionId: "opt-1" })).toEqual({
+        value: { singleSelectOptionId: "opt-1" },
+      })
+      expect(applyInject(spec, {}, { valueIterationId: "iter-1" })).toEqual({
+        value: { iterationId: "iter-1" },
+      })
+    })
+
+    it("rejects clear combined with value fields and missing value input", () => {
+      expect(() => applyInject(spec, {}, { clear: true, valueText: "Ready" })).toThrow(
+        "Cannot set clear and a value field simultaneously",
+      )
+      expect(() => applyInject(spec, {}, {})).toThrow("At least one value field must be provided")
+    })
+  })
 })
 
 describe("buildOperationVars", () => {
@@ -211,5 +335,13 @@ describe("buildOperationVars", () => {
     const resolved = { labelIds: ["L_1"] }
     const vars = buildOperationVars(mutDoc, input, resolved)
     expect(vars).toEqual({ issueId: "I_123", labelIds: ["L_1"] })
+  })
+
+  it("maps input fields to differently named GraphQL variables", () => {
+    const mutDoc = `mutation PullRequestCreate($baseRefName: String!, $headRefName: String!) { createPullRequest(input: {baseRefName: $baseRefName, headRefName: $headRefName}) { pullRequest { id } } }`
+    const input = { base: "main", head: "feature" }
+    const vars = buildOperationVars(mutDoc, input, {}, { baseRefName: "base", headRefName: "head" })
+
+    expect(vars).toEqual({ baseRefName: "main", headRefName: "feature" })
   })
 })
