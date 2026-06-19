@@ -1,5 +1,33 @@
 # @ghx-dev/core
 
+## 0.6.0
+
+### Minor Changes
+
+- 231829f: Enforce consistent list pagination contracts for operation cards and standardize PR comment reactions and workflow list capabilities on `first`/`after` plus `pageInfo`.
+- 38b0fcc: Fix several GitHub error-handling and input-defaulting issues surfaced by agent-usage analysis:
+
+  - `first` page-size now defaults (30) for list capabilities on both `ghx run` and `ghx chain` — previously chain steps that omitted `first` failed with a raw GraphQL `Int!` validation error.
+  - GitHub "Could not resolve to an Issue/PullRequest" responses now map to `NOT_FOUND` instead of `UNKNOWN`/`SERVER` (a PR number like 500 previously collided with the server-status regex), restoring the documented retry guidance.
+  - Input-validation errors on the single-`run` path now name the failing field instead of a generic "Input schema validation failed".
+  - New dedicated error codes: `NOT_READY` (retryable; e.g. workflow job logs not yet available) and `TOO_LARGE` (non-retryable; e.g. diff too large), replacing `UNKNOWN` for those conditions.
+
+- a44407e: Add read-only reaction capabilities: `pr.reactions.list` and `pr.comments.reactions.list`.
+
+  - `pr.reactions.list` returns the emoji reaction groups on the pull request itself (the issue node).
+  - `pr.comments.reactions.list` returns reaction groups on the PR's issue comments and review-thread comments in a single call, each tagged with its subject; comments with no reactions are omitted.
+  - Both accept optional `reactorLogin` and `content` filters and follow the standard `{ ok, data, error, meta }` envelope, so a consumer can fetch the full review-readiness snapshot — including 👀/👍 reactions — inside one `ghx chain` alongside `pr.reviews.list`, `pr.threads.list`, `pr.checks.list`, and `pr.merge.status`.
+
+### Patch Changes
+
+- 5784246: Harden `ghx chain` GraphQL variable assembly so card-declared lookups, input transforms, and defaults are applied consistently across batched execution.
+- 71c4e4e: Fix release-audit sync issues for list filtering, setup verification, and agent-facing docs.
+
+  - Forward `state` filters through `pr.list` and `issue.list` in both CLI and GraphQL routes.
+  - Make `ghx setup --verify` fail when the installed skill differs from the packaged skill.
+  - Sync the ghx skill, Cursor rules, capabilities reference, and CLI reference with the current registry and help output.
+  - Remove a stale `gql:generate` formatter path so GraphQL verification no longer emits a missing-directory diagnostic.
+
 ## 0.5.0
 
 ### Minor Changes
