@@ -1,15 +1,14 @@
-query PrCommentsReactionsList(
+query PrCommentsReactionsIssueCommentsPage(
   $owner: String!
   $name: String!
   $prNumber: Int!
-  $commentsFirst: Int!
-  $threadsFirst: Int!
-  $threadCommentsFirst: Int!
+  $first: Int!
+  $after: String
 ) {
   repository(owner: $owner, name: $name) {
     pullRequest(number: $prNumber) {
-      comments(first: $commentsFirst) {
-        pageInfo { hasNextPage }
+      comments(first: $first, after: $after) {
+        pageInfo { ...PageInfoFields }
         nodes {
           __typename
           id
@@ -18,19 +17,57 @@ query PrCommentsReactionsList(
           reactionGroups { ...ReactionGroupFields }
         }
       }
-      reviewThreads(first: $threadsFirst) {
-        pageInfo { hasNextPage }
-        nodes {
-          comments(first: $threadCommentsFirst) {
-            pageInfo { hasNextPage }
-            nodes {
-              __typename
-              id
-              url
-              author { login }
-              reactionGroups { ...ReactionGroupFields }
+    }
+  }
+}
+
+query PrCommentsReactionsReviewThreadsPage(
+  $owner: String!
+  $name: String!
+  $prNumber: Int!
+  $first: Int!
+  $after: String
+) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $prNumber) {
+      reviewThreads(first: $first, after: $after) {
+        pageInfo { ...PageInfoFields }
+        edges {
+          cursor
+          node {
+            id
+            comments(first: $first) {
+              pageInfo { ...PageInfoFields }
+              nodes {
+                __typename
+                id
+                url
+                author { login }
+                reactionGroups { ...ReactionGroupFields }
+              }
             }
           }
+        }
+      }
+    }
+  }
+}
+
+query PrCommentsReactionsThreadCommentsPage(
+  $threadId: ID!
+  $first: Int!
+  $after: String
+) {
+  node(id: $threadId) {
+    ... on PullRequestReviewThread {
+      comments(first: $first, after: $after) {
+        pageInfo { ...PageInfoFields }
+        nodes {
+          __typename
+          id
+          url
+          author { login }
+          reactionGroups { ...ReactionGroupFields }
         }
       }
     }

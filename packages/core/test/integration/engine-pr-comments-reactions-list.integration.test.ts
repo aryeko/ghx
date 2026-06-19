@@ -32,64 +32,79 @@ describe("executeTask pr.comments.reactions.list", () => {
   })
 
   it("maps issue + review-thread comment reactions and omits reaction-less comments", async () => {
+    let executeCount = 0
     const githubClient = createGithubClient({
       async execute<TData>(): Promise<TData> {
+        executeCount += 1
+        if (executeCount === 1) {
+          return {
+            repository: {
+              pullRequest: {
+                comments: {
+                  pageInfo: { hasNextPage: false, endCursor: null },
+                  nodes: [
+                    {
+                      __typename: "IssueComment",
+                      id: "IC_1",
+                      url: "https://github.com/go-modkit/modkit/pull/7#issuecomment-1",
+                      author: { login: "alice" },
+                      reactionGroups: [
+                        {
+                          content: "THUMBS_UP",
+                          viewerHasReacted: false,
+                          reactors: {
+                            totalCount: 1,
+                            nodes: [{ __typename: "User", login: "bob" }],
+                          },
+                        },
+                      ],
+                    },
+                    {
+                      __typename: "IssueComment",
+                      id: "IC_2",
+                      url: "https://github.com/go-modkit/modkit/pull/7#issuecomment-2",
+                      author: { login: "carol" },
+                      reactionGroups: [],
+                    },
+                    null,
+                  ],
+                },
+              },
+            },
+          } as TData
+        }
+
         return {
           repository: {
             pullRequest: {
-              comments: {
-                pageInfo: { hasNextPage: false },
-                nodes: [
-                  {
-                    __typename: "IssueComment",
-                    id: "IC_1",
-                    url: "https://github.com/go-modkit/modkit/pull/7#issuecomment-1",
-                    author: { login: "alice" },
-                    reactionGroups: [
-                      {
-                        content: "THUMBS_UP",
-                        viewerHasReacted: false,
-                        reactors: {
-                          totalCount: 1,
-                          nodes: [{ __typename: "User", login: "bob" }],
-                        },
-                      },
-                    ],
-                  },
-                  {
-                    __typename: "IssueComment",
-                    id: "IC_2",
-                    url: "https://github.com/go-modkit/modkit/pull/7#issuecomment-2",
-                    author: { login: "carol" },
-                    reactionGroups: [],
-                  },
-                  null,
-                ],
-              },
               reviewThreads: {
-                pageInfo: { hasNextPage: true },
-                nodes: [
+                pageInfo: { hasNextPage: false, endCursor: null },
+                edges: [
                   {
-                    comments: {
-                      pageInfo: { hasNextPage: true },
-                      nodes: [
-                        {
-                          __typename: "PullRequestReviewComment",
-                          id: "PRRC_1",
-                          url: "https://github.com/go-modkit/modkit/pull/7#discussion_r1",
-                          author: { login: "dave" },
-                          reactionGroups: [
-                            {
-                              content: "ROCKET",
-                              viewerHasReacted: true,
-                              reactors: {
-                                totalCount: 5,
-                                nodes: [{ __typename: "User", login: "erin" }],
+                    cursor: "thread-cursor-1",
+                    node: {
+                      id: "THREAD_1",
+                      comments: {
+                        pageInfo: { hasNextPage: false, endCursor: null },
+                        nodes: [
+                          {
+                            __typename: "PullRequestReviewComment",
+                            id: "PRRC_1",
+                            url: "https://github.com/go-modkit/modkit/pull/7#discussion_r1",
+                            author: { login: "dave" },
+                            reactionGroups: [
+                              {
+                                content: "ROCKET",
+                                viewerHasReacted: true,
+                                reactors: {
+                                  totalCount: 5,
+                                  nodes: [{ __typename: "User", login: "erin" }],
+                                },
                               },
-                            },
-                          ],
-                        },
-                      ],
+                            ],
+                          },
+                        ],
+                      },
                     },
                   },
                 ],
@@ -151,10 +166,11 @@ describe("executeTask pr.comments.reactions.list", () => {
         },
       ],
       filterApplied: { reactorLogin: null, content: null },
+      pageInfo: { hasNextPage: false, endCursor: null },
       scan: {
-        commentsTruncated: false,
-        threadsTruncated: true,
-        threadCommentsTruncated: true,
+        pagesScanned: 2,
+        sourceItemsScanned: 4,
+        scanTruncated: false,
       },
     })
   })

@@ -22,29 +22,36 @@ const mockRunner = (
   run: vi.fn().mockResolvedValue({ exitCode, stdout, stderr }),
 })
 
+function encodeWorkflowCursor(page: number): string {
+  return Buffer.from(JSON.stringify({ v: 1, page }), "utf8").toString("base64url")
+}
+
 describe("workflow domain handlers", () => {
   describe("handleWorkflowRunsList", () => {
     it("returns success with items array", async () => {
       const runner = mockRunner(
         0,
-        JSON.stringify([
-          {
-            databaseId: 123456,
-            workflowName: "CI",
-            status: "completed",
-            conclusion: "success",
-            headBranch: "main",
-            url: "https://github.com/owner/repo/actions/runs/123456",
-          },
-          {
-            databaseId: 123457,
-            workflowName: "CD",
-            status: "in_progress",
-            conclusion: null,
-            headBranch: "develop",
-            url: "https://github.com/owner/repo/actions/runs/123457",
-          },
-        ]),
+        JSON.stringify({
+          total_count: 2,
+          workflow_runs: [
+            {
+              databaseId: 123456,
+              workflowName: "CI",
+              status: "completed",
+              conclusion: "success",
+              headBranch: "main",
+              url: "https://github.com/owner/repo/actions/runs/123456",
+            },
+            {
+              databaseId: 123457,
+              workflowName: "CD",
+              status: "in_progress",
+              conclusion: null,
+              headBranch: "develop",
+              url: "https://github.com/owner/repo/actions/runs/123457",
+            },
+          ],
+        }),
       )
 
       const result = await handleWorkflowRunsList(
@@ -65,20 +72,37 @@ describe("workflow domain handlers", () => {
     })
 
     it("verifies call includes limit flag", async () => {
-      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "[]", stderr: "" })
+      const runSpy = vi.fn().mockResolvedValue({
+        exitCode: 0,
+        stdout: '{"total_count":0,"workflow_runs":[]}',
+        stderr: "",
+      })
       const runner = { run: runSpy } as unknown as CliCommandRunner
 
       await handleWorkflowRunsList(runner, { owner: "owner", name: "repo", first: 50 }, undefined)
 
       expect(runSpy).toHaveBeenCalledWith(
         "gh",
-        expect.arrayContaining(["run", "list", "--limit", "50"]),
+        expect.arrayContaining([
+          "api",
+          "repos/owner/repo/actions/runs",
+          "--method",
+          "GET",
+          "-f",
+          "per_page=50",
+          "-f",
+          "page=1",
+        ]),
         expect.any(Number),
       )
     })
 
     it("includes optional branch filter", async () => {
-      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "[]", stderr: "" })
+      const runSpy = vi.fn().mockResolvedValue({
+        exitCode: 0,
+        stdout: '{"total_count":0,"workflow_runs":[]}',
+        stderr: "",
+      })
       const runner = { run: runSpy } as unknown as CliCommandRunner
 
       await handleWorkflowRunsList(
@@ -89,7 +113,7 @@ describe("workflow domain handlers", () => {
 
       expect(runSpy).toHaveBeenCalledWith(
         "gh",
-        expect.arrayContaining(["--branch", "main"]),
+        expect.arrayContaining(["-f", "branch=main"]),
         expect.any(Number),
       )
     })
@@ -109,7 +133,7 @@ describe("workflow domain handlers", () => {
     })
 
     it("returns error when owner/name missing", async () => {
-      const runner = mockRunner(0, "[]")
+      const runner = mockRunner(0, '{"total_count":0,"workflow_runs":[]}')
 
       const result = await handleWorkflowRunsList(runner, { first: 30 }, undefined)
 
@@ -245,20 +269,23 @@ Final line`
     it("returns success with normalized workflow items", async () => {
       const runner = mockRunner(
         0,
-        JSON.stringify([
-          {
-            id: 111,
-            name: "CI",
-            path: ".github/workflows/ci.yml",
-            state: "active",
-          },
-          {
-            id: 222,
-            name: "Release",
-            path: ".github/workflows/release.yml",
-            state: "disabled",
-          },
-        ]),
+        JSON.stringify({
+          total_count: 2,
+          workflows: [
+            {
+              id: 111,
+              name: "CI",
+              path: ".github/workflows/ci.yml",
+              state: "active",
+            },
+            {
+              id: 222,
+              name: "Release",
+              path: ".github/workflows/release.yml",
+              state: "disabled",
+            },
+          ],
+        }),
       )
 
       const result = await handleWorkflowList(
@@ -279,14 +306,25 @@ Final line`
     })
 
     it("verifies call includes limit flag", async () => {
-      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "[]", stderr: "" })
+      const runSpy = vi
+        .fn()
+        .mockResolvedValue({ exitCode: 0, stdout: '{"total_count":0,"workflows":[]}', stderr: "" })
       const runner = { run: runSpy } as unknown as CliCommandRunner
 
       await handleWorkflowList(runner, { owner: "owner", name: "repo", first: 20 }, undefined)
 
       expect(runSpy).toHaveBeenCalledWith(
         "gh",
-        expect.arrayContaining(["workflow", "list", "--limit", "20"]),
+        expect.arrayContaining([
+          "api",
+          "repos/owner/repo/actions/workflows",
+          "--method",
+          "GET",
+          "-f",
+          "per_page=20",
+          "-f",
+          "page=1",
+        ]),
         expect.any(Number),
       )
     })
@@ -560,14 +598,16 @@ Final line`
             {
               id: "A_1",
               name: "build-output",
-              sizeInBytes: 5242880,
-              archiveDownloadUrl: "https://github.com/owner/repo/suites/123/artifacts/A_1/download",
+              size_in_bytes: 5242880,
+              archive_download_url:
+                "https://github.com/owner/repo/suites/123/artifacts/A_1/download",
             },
             {
               id: "A_2",
               name: "test-reports",
-              sizeInBytes: 1048576,
-              archiveDownloadUrl: "https://github.com/owner/repo/suites/123/artifacts/A_2/download",
+              size_in_bytes: 1048576,
+              archive_download_url:
+                "https://github.com/owner/repo/suites/123/artifacts/A_2/download",
             },
           ],
         }),
@@ -769,8 +809,48 @@ Final line`
   })
 
   describe("handleWorkflowRunsList – additional coverage", () => {
+    it("uses the opaque after cursor as the REST page", async () => {
+      const runSpy = vi.fn().mockResolvedValue({
+        exitCode: 0,
+        stdout: '{"total_count":45,"workflow_runs":[]}',
+        stderr: "",
+      })
+      const runner = { run: runSpy } as unknown as CliCommandRunner
+
+      const result = await handleWorkflowRunsList(
+        runner,
+        { owner: "owner", name: "repo", first: 30, after: encodeWorkflowCursor(2) },
+        undefined,
+      )
+
+      expect(result.ok).toBe(true)
+      expect(runSpy).toHaveBeenCalledWith(
+        "gh",
+        expect.arrayContaining(["-f", "page=2"]),
+        expect.any(Number),
+      )
+      expect(result.data).toMatchObject({ pageInfo: { hasNextPage: false, endCursor: null } })
+    })
+
+    it("returns an error for malformed after cursors", async () => {
+      const runner = mockRunner(0, '{"total_count":0,"workflow_runs":[]}')
+
+      const result = await handleWorkflowRunsList(
+        runner,
+        { owner: "owner", name: "repo", first: 30, after: "not-json" },
+        undefined,
+      )
+
+      expect(result.ok).toBe(false)
+      expect(result.error?.message).toContain("Invalid after cursor")
+    })
+
     it("includes optional event filter", async () => {
-      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "[]", stderr: "" })
+      const runSpy = vi.fn().mockResolvedValue({
+        exitCode: 0,
+        stdout: '{"total_count":0,"workflow_runs":[]}',
+        stderr: "",
+      })
       const runner = { run: runSpy } as unknown as CliCommandRunner
 
       await handleWorkflowRunsList(
@@ -781,13 +861,17 @@ Final line`
 
       expect(runSpy).toHaveBeenCalledWith(
         "gh",
-        expect.arrayContaining(["--event", "push"]),
+        expect.arrayContaining(["-f", "event=push"]),
         expect.any(Number),
       )
     })
 
     it("includes optional status filter", async () => {
-      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "[]", stderr: "" })
+      const runSpy = vi.fn().mockResolvedValue({
+        exitCode: 0,
+        stdout: '{"total_count":0,"workflow_runs":[]}',
+        stderr: "",
+      })
       const runner = { run: runSpy } as unknown as CliCommandRunner
 
       await handleWorkflowRunsList(
@@ -798,13 +882,16 @@ Final line`
 
       expect(runSpy).toHaveBeenCalledWith(
         "gh",
-        expect.arrayContaining(["--status", "completed"]),
+        expect.arrayContaining(["-f", "status=completed"]),
         expect.any(Number),
       )
     })
 
     it("handles non-object run item gracefully", async () => {
-      const runner = mockRunner(0, JSON.stringify([null, "bad", 42]))
+      const runner = mockRunner(
+        0,
+        JSON.stringify({ total_count: 3, workflow_runs: [null, "bad", 42] }),
+      )
 
       const result = await handleWorkflowRunsList(
         runner,
@@ -816,6 +903,54 @@ Final line`
       const items = (result.data as { items: unknown[] }).items
       expect(items).toHaveLength(3)
       expect(items[0]).toMatchObject({ id: 0, workflowName: null })
+    })
+
+    it("treats a non-object REST response as an empty run page", async () => {
+      const result = await handleWorkflowRunsList(
+        mockRunner(0, "[]"),
+        { owner: "owner", name: "repo", first: 30 },
+        undefined,
+      )
+
+      expect(result.ok).toBe(true)
+      expect(result.data).toMatchObject({
+        items: [],
+        pageInfo: { hasNextPage: false, endCursor: null },
+      })
+    })
+
+    it("maps REST snake_case run fields", async () => {
+      const result = await handleWorkflowRunsList(
+        mockRunner(
+          0,
+          JSON.stringify({
+            workflow_runs: [
+              {
+                id: 11,
+                name: "CI",
+                status: "completed",
+                conclusion: "success",
+                head_branch: "main",
+                html_url: "https://example.test/run/11",
+              },
+            ],
+          }),
+        ),
+        { owner: "owner", name: "repo", first: 30 },
+        undefined,
+      )
+
+      expect(result.ok).toBe(true)
+      expect(result.data).toMatchObject({
+        items: [
+          {
+            id: 11,
+            workflowName: "CI",
+            headBranch: "main",
+            url: "https://example.test/run/11",
+          },
+        ],
+      })
     })
 
     it("returns error on SyntaxError from malformed JSON", async () => {
@@ -832,7 +967,7 @@ Final line`
     })
 
     it("returns error when first is invalid", async () => {
-      const runner = mockRunner(0, "[]")
+      const runner = mockRunner(0, '{"total_count":0,"workflow_runs":[]}')
 
       const result = await handleWorkflowRunsList(
         runner,
@@ -845,6 +980,54 @@ Final line`
   })
 
   describe("handleWorkflowList – additional coverage", () => {
+    it("returns a next-page cursor when more workflows are available", async () => {
+      const runner = mockRunner(
+        0,
+        JSON.stringify({
+          total_count: 31,
+          workflows: [{ id: 1, name: "CI", path: ".github/workflows/ci.yml", state: "active" }],
+        }),
+      )
+
+      const result = await handleWorkflowList(
+        runner,
+        { owner: "owner", name: "repo", first: 30 },
+        undefined,
+      )
+
+      expect(result.ok).toBe(true)
+      expect(result.data).toMatchObject({
+        pageInfo: { hasNextPage: true, endCursor: expect.any(String) },
+      })
+    })
+
+    it("returns an error for non-string after cursors", async () => {
+      const runner = mockRunner(0, '{"total_count":0,"workflows":[]}')
+
+      const result = await handleWorkflowList(
+        runner,
+        { owner: "owner", name: "repo", first: 30, after: 2 },
+        undefined,
+      )
+
+      expect(result.ok).toBe(false)
+      expect(result.error?.message).toContain("Invalid after cursor")
+    })
+
+    it("treats a non-object REST response as an empty workflow page", async () => {
+      const result = await handleWorkflowList(
+        mockRunner(0, "[]"),
+        { owner: "owner", name: "repo", first: 30 },
+        undefined,
+      )
+
+      expect(result.ok).toBe(true)
+      expect(result.data).toMatchObject({
+        items: [],
+        pageInfo: { hasNextPage: false, endCursor: null },
+      })
+    })
+
     it("returns error on SyntaxError from malformed JSON", async () => {
       const runner = mockRunner(0, "not-json")
 
@@ -859,7 +1042,7 @@ Final line`
     })
 
     it("returns error when first is invalid", async () => {
-      const runner = mockRunner(0, "[]")
+      const runner = mockRunner(0, '{"total_count":0,"workflows":[]}')
 
       const result = await handleWorkflowList(
         runner,
@@ -957,6 +1140,56 @@ Final line`
   })
 
   describe("handleWorkflowRunArtifactsList – additional coverage", () => {
+    it("maps snake_case artifact fields and returns a next-page cursor", async () => {
+      const runner = mockRunner(
+        0,
+        JSON.stringify({
+          total_count: 2,
+          artifacts: [
+            {
+              id: 10,
+              name: "coverage",
+              size_in_bytes: 123,
+              archive_download_url: "https://example.test/artifacts/10",
+            },
+          ],
+        }),
+      )
+
+      const result = await handleWorkflowRunArtifactsList(
+        runner,
+        { owner: "owner", name: "repo", runId: 1, first: 1 },
+        undefined,
+      )
+
+      expect(result.ok).toBe(true)
+      expect(result.data).toMatchObject({
+        items: [
+          {
+            id: 10,
+            name: "coverage",
+            sizeInBytes: 123,
+            archiveDownloadUrl: "https://example.test/artifacts/10",
+          },
+        ],
+        pageInfo: { hasNextPage: true, endCursor: expect.any(String) },
+      })
+    })
+
+    it("treats a non-object REST response as an empty artifact page", async () => {
+      const result = await handleWorkflowRunArtifactsList(
+        mockRunner(0, "[]"),
+        { owner: "owner", name: "repo", runId: 1, first: 30 },
+        undefined,
+      )
+
+      expect(result.ok).toBe(true)
+      expect(result.data).toMatchObject({
+        items: [],
+        pageInfo: { hasNextPage: false, endCursor: null },
+      })
+    })
+
     it("handles non-object artifact item gracefully", async () => {
       const runner = mockRunner(0, JSON.stringify({ artifacts: [null, "bad"] }))
 

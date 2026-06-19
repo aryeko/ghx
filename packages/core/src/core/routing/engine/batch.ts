@@ -32,11 +32,13 @@ export async function executeBatch(
 
   const { steps } = preflight
   const cliSteps = steps.filter((s) => s.route === "cli")
+  const singleSteps = steps.filter((s) => s.route === "single")
+  const directlyExecutedSteps = [...cliSteps, ...singleSteps]
   const gqlSteps = steps.filter((s) => s.route === "gql-query" || s.route === "gql-mutation")
   const cliStepCount = cliSteps.length
 
   // Start CLI steps concurrently with Phase 1 resolution
-  const cliPromises = startCliSteps(steps, requests, deps)
+  const directStepPromises = startCliSteps(directlyExecutedSteps, requests, deps)
 
   // Phase 1: batch resolution queries (runs concurrently with CLI steps)
   let lookupResults: import("./resolve.js").ResolutionResults = {}
@@ -55,7 +57,7 @@ export async function executeBatch(
       error_code: code,
       message: errorMsg,
     })
-    const cliResults = await collectCliResults(cliPromises, cliSteps, requests)
+    const cliResults = await collectCliResults(directStepPromises, directlyExecutedSteps, requests)
     return assembleResolutionFailure(
       requests,
       steps,
@@ -77,7 +79,7 @@ export async function executeBatch(
   )
 
   // Collect CLI results (they've been running concurrently since Phase 1 started)
-  const cliResults = await collectCliResults(cliPromises, cliSteps, requests)
+  const cliResults = await collectCliResults(directStepPromises, directlyExecutedSteps, requests)
 
   // Assemble final result
   return assembleChainResult({

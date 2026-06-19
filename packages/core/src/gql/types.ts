@@ -438,9 +438,8 @@ export type PrCommentsReactionsListInput = {
   owner: string
   name: string
   prNumber: number
-  commentsFirst?: number
-  threadsFirst?: number
-  threadCommentsFirst?: number
+  first?: number
+  after?: string | null
   reactorLogin?: string
   content?: ReactionContentInput
 }
@@ -448,7 +447,11 @@ export type PrCommentsReactionsListInput = {
 export type PrCommentsReactionsListData = {
   items: PrCommentReactionSubjectData[]
   filterApplied: { reactorLogin: string | null; content: string | null }
-  scan: { commentsTruncated: boolean; threadsTruncated: boolean; threadCommentsTruncated: boolean }
+  pageInfo: {
+    endCursor: string | null
+    hasNextPage: boolean
+  }
+  scan: { pagesScanned: number; sourceItemsScanned: number; scanTruncated: boolean }
 }
 
 export type PrDiffFileData = {

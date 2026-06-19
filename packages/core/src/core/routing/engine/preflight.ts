@@ -8,6 +8,12 @@ import { selectPreferredRoute } from "@core/core/routing/suitability.js"
 import { resolutionLookups } from "./resolve.js"
 import type { ClassifiedStep } from "./types.js"
 
+export const SINGLE_HANDLER_GRAPHQL_TASKS = new Set([
+  "pr.comments.reactions.list",
+  "project_v2.fields.list",
+  "project_v2.items.list",
+])
+
 export type PreflightSuccess = {
   ok: true
   steps: ClassifiedStep[]
@@ -104,7 +110,9 @@ export function runPreflight(
 
     let route: ClassifiedStep["route"]
     const preferredRoute = selectPreferredRoute(card, req.input, {})
-    if (preferredRoute === "cli" && card.cli) {
+    if (SINGLE_HANDLER_GRAPHQL_TASKS.has(req.task) && card.graphql) {
+      route = "single"
+    } else if (preferredRoute === "cli" && card.cli) {
       route = "cli"
     } else if (!card.graphql && card.cli) {
       route = "cli"

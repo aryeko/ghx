@@ -13,6 +13,7 @@ import { routePreferenceOrder } from "@core/core/routing/policy.js"
 import type { RouteReasonCode } from "@core/core/routing/reason-codes.js"
 import { logger } from "@core/core/telemetry/log.js"
 import { defaultCliRunner, detectCliEnvironmentCached } from "./cli-detect.js"
+import { SINGLE_HANDLER_GRAPHQL_TASKS } from "./preflight.js"
 import type { ExecutionDeps } from "./types.js"
 
 const DEFAULT_REASON: RouteReasonCode = "DEFAULT_POLICY"
@@ -41,6 +42,8 @@ export async function runSingleTask(
   const startMs = Date.now()
 
   const cliRunner = deps.cliRunner ?? defaultCliRunner
+  const githubClientSatisfiesGraphqlPreflight =
+    deps.githubClient !== undefined && SINGLE_HANDLER_GRAPHQL_TASKS.has(task)
 
   const result = await execute({
     card,
@@ -57,6 +60,9 @@ export async function runSingleTask(
       const preflightInput: Parameters<typeof preflightCheck>[0] = { route }
       if (deps.githubToken !== undefined) {
         preflightInput.githubToken = deps.githubToken
+      }
+      if (route === "graphql") {
+        preflightInput.githubClientPresent = githubClientSatisfiesGraphqlPreflight
       }
 
       if (route === "cli") {

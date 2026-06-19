@@ -3,20 +3,13 @@ import { describe, expect, it, vi } from "vitest"
 import { createGithubClient } from "../helpers/engine-fixtures.js"
 
 describe("executeTasks chaining - pr.comments.reactions.list defaults", () => {
-  it("applies default page sizes before building batched query variables", async () => {
-    const queryMock = vi.fn().mockResolvedValueOnce({
-      step0: {
-        pullRequest: {
-          comments: { pageInfo: { hasNextPage: false }, nodes: [] },
-          reviewThreads: { pageInfo: { hasNextPage: false }, nodes: [] },
-        },
-      },
-      step1: {
-        pullRequest: {
-          comments: { pageInfo: { hasNextPage: false }, nodes: [] },
-          reviewThreads: { pageInfo: { hasNextPage: false }, nodes: [] },
-        },
-      },
+  it("applies standard first defaults before running non-batchable handlers", async () => {
+    const queryMock = vi.fn()
+    const fetchPrCommentsReactionsList = vi.fn().mockResolvedValue({
+      items: [],
+      filterApplied: { reactorLogin: null, content: null },
+      pageInfo: { hasNextPage: false, endCursor: null },
+      scan: { pagesScanned: 0, sourceItemsScanned: 0, scanTruncated: false },
     })
 
     const result = await executeTasks(
@@ -31,28 +24,33 @@ describe("executeTasks chaining - pr.comments.reactions.list defaults", () => {
             owner: "acme",
             name: "repo",
             prNumber: 2,
-            commentsFirst: 10,
-            threadsFirst: 20,
-            threadCommentsFirst: 5,
+            first: 10,
           },
         },
       ],
       {
         githubClient: createGithubClient({
+          fetchPrCommentsReactionsList,
           query: queryMock,
           queryRaw: vi.fn(),
         }),
       },
     )
 
-    expect(queryMock).toHaveBeenCalledTimes(1)
-    const queryVars = queryMock.mock.calls[0]?.[1] as Record<string, unknown>
-    expect(queryVars.step0_commentsFirst).toBe(30)
-    expect(queryVars.step0_threadsFirst).toBe(30)
-    expect(queryVars.step0_threadCommentsFirst).toBe(30)
-    expect(queryVars.step1_commentsFirst).toBe(10)
-    expect(queryVars.step1_threadsFirst).toBe(20)
-    expect(queryVars.step1_threadCommentsFirst).toBe(5)
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(fetchPrCommentsReactionsList).toHaveBeenCalledTimes(2)
+    expect(fetchPrCommentsReactionsList).toHaveBeenNthCalledWith(1, {
+      owner: "acme",
+      name: "repo",
+      prNumber: 1,
+      first: 30,
+    })
+    expect(fetchPrCommentsReactionsList).toHaveBeenNthCalledWith(2, {
+      owner: "acme",
+      name: "repo",
+      prNumber: 2,
+      first: 10,
+    })
     expect(result.status).toBe("success")
   })
 })

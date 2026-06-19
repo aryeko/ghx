@@ -64,7 +64,7 @@ type RawPrReactionsResult = {
   } | null
 }
 
-type RawCommentReactionNode = {
+type RawCommentReactionSubject = {
   __typename: string
   id: string
   url: unknown
@@ -72,24 +72,102 @@ type RawCommentReactionNode = {
   reactionGroups?: ReadonlyArray<RawReactionGroup> | null
 }
 
-type RawPrCommentsReactionsResult = {
-  repository?: {
-    pullRequest?: {
-      comments: {
-        pageInfo: { hasNextPage: boolean }
-        nodes?: ReadonlyArray<RawCommentReactionNode | null> | null
+type CommentsReactionCursor =
+  | { v: 1; phase: "issue-comments"; after: string | null }
+  | {
+      v: 1
+      phase: "review-threads"
+      threadsAfter: string | null
+      currentThread?: {
+        id: string
+        threadCursor: string | null
+        commentsAfter: string | null
       }
-      reviewThreads: {
-        pageInfo: { hasNextPage: boolean }
-        nodes?: ReadonlyArray<{
-          comments: {
-            pageInfo: { hasNextPage: boolean }
-            nodes?: ReadonlyArray<RawCommentReactionNode | null> | null
-          }
-        } | null> | null
+    }
+
+const PR_COMMENTS_REACTIONS_CURSOR_VERSION = 1
+const MAX_PR_COMMENTS_REACTIONS_SCAN_PAGES = 5
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null
+}
+
+function encodeCommentsReactionCursor(cursor: CommentsReactionCursor): string {
+  return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url")
+}
+
+function decodeCommentsReactionCursor(after: string | null | undefined): CommentsReactionCursor {
+  if (after === undefined || after === null) {
+    return { v: PR_COMMENTS_REACTIONS_CURSOR_VERSION, phase: "issue-comments", after: null }
+  }
+
+  try {
+    const parsed = JSON.parse(Buffer.from(after, "base64url").toString("utf8")) as unknown
+    const record = asRecord(parsed)
+    if (!record || record.v !== PR_COMMENTS_REACTIONS_CURSOR_VERSION) {
+      throw new Error("cursor version mismatch")
+    }
+    if (record.phase === "issue-comments") {
+      const sourceAfter = record.after
+      if (sourceAfter !== null && typeof sourceAfter !== "string") {
+        throw new Error("invalid issue-comments cursor")
       }
-    } | null
-  } | null
+      return {
+        v: PR_COMMENTS_REACTIONS_CURSOR_VERSION,
+        phase: "issue-comments",
+        after: sourceAfter,
+      }
+    }
+    if (record.phase === "review-threads") {
+      const threadsAfter = record.threadsAfter
+      if (threadsAfter !== null && typeof threadsAfter !== "string") {
+        throw new Error("invalid review-threads cursor")
+      }
+
+      const currentThread = record.currentThread
+      if (currentThread === undefined) {
+        return {
+          v: PR_COMMENTS_REACTIONS_CURSOR_VERSION,
+          phase: "review-threads",
+          threadsAfter,
+        }
+      }
+
+      const thread = asRecord(currentThread)
+      if (
+        !thread ||
+        typeof thread.id !== "string" ||
+        (thread.threadCursor !== null && typeof thread.threadCursor !== "string") ||
+        (thread.commentsAfter !== null && typeof thread.commentsAfter !== "string")
+      ) {
+        throw new Error("invalid current thread cursor")
+      }
+
+      return {
+        v: PR_COMMENTS_REACTIONS_CURSOR_VERSION,
+        phase: "review-threads",
+        threadsAfter,
+        currentThread: {
+          id: thread.id,
+          threadCursor: thread.threadCursor,
+          commentsAfter: thread.commentsAfter,
+        },
+      }
+    }
+  } catch {
+    throw new Error("Invalid after cursor")
+  }
+
+  throw new Error("Invalid after cursor")
+}
+
+function readEndCursor(pageInfo: { hasNextPage: boolean; endCursor?: string | null }): string {
+  if (typeof pageInfo.endCursor !== "string" || pageInfo.endCursor.length === 0) {
+    throw new Error("Pagination cursor missing from GitHub response")
+  }
+  return pageInfo.endCursor
 }
 
 function readReactorLogin(node: RawReactor): string | null {
@@ -172,83 +250,28 @@ export function normalizePrReactionsListResult(
   }
 }
 
-export function normalizePrCommentsReactionsListResult(
-  result: unknown,
-  input: PrCommentsReactionsListInput,
-): PrCommentsReactionsListData {
-  const pr = (result as RawPrCommentsReactionsResult).repository?.pullRequest
-  if (!pr) {
-    throw new Error("Pull request not found")
+function mapCommentReactionSubject(
+  node: RawCommentReactionSubject | null,
+  filter: ReactionFilter,
+): PrCommentReactionSubjectData[] {
+  if (!node) {
+    return []
   }
 
-  const filter: ReactionFilter = {
-    ...(input.reactorLogin !== undefined ? { reactorLogin: input.reactorLogin } : {}),
-    ...(input.content !== undefined ? { content: input.content } : {}),
+  const groups = mapReactionGroups(node.reactionGroups ?? [], filter)
+  if (groups.length === 0) {
+    return []
   }
 
-  const issueCommentItems: PrCommentReactionSubjectData[] = (pr.comments.nodes ?? []).flatMap(
-    (node) => {
-      if (!node) {
-        return []
-      }
-      const groups = mapReactionGroups(node.reactionGroups ?? [], filter)
-      if (groups.length === 0) {
-        return []
-      }
-      return [
-        {
-          subjectType: node.__typename,
-          subjectId: node.id,
-          subjectUrl: String(node.url),
-          authorLogin: node.author?.login ?? null,
-          groups,
-        },
-      ]
+  return [
+    {
+      subjectType: node.__typename,
+      subjectId: node.id,
+      subjectUrl: String(node.url),
+      authorLogin: node.author?.login ?? null,
+      groups,
     },
-  )
-
-  let threadCommentsTruncated = false
-  const reviewCommentItems: PrCommentReactionSubjectData[] = (pr.reviewThreads.nodes ?? []).flatMap(
-    (thread) => {
-      if (!thread) {
-        return []
-      }
-      if (thread.comments.pageInfo.hasNextPage) {
-        threadCommentsTruncated = true
-      }
-      return (thread.comments.nodes ?? []).flatMap((node) => {
-        if (!node) {
-          return []
-        }
-        const groups = mapReactionGroups(node.reactionGroups ?? [], filter)
-        if (groups.length === 0) {
-          return []
-        }
-        return [
-          {
-            subjectType: node.__typename,
-            subjectId: node.id,
-            subjectUrl: String(node.url),
-            authorLogin: node.author?.login ?? null,
-            groups,
-          },
-        ]
-      })
-    },
-  )
-
-  return {
-    items: [...issueCommentItems, ...reviewCommentItems],
-    filterApplied: {
-      reactorLogin: input.reactorLogin ?? null,
-      content: input.content ?? null,
-    },
-    scan: {
-      commentsTruncated: pr.comments.pageInfo.hasNextPage,
-      threadsTruncated: pr.reviewThreads.pageInfo.hasNextPage,
-      threadCommentsTruncated,
-    },
-  }
+  ]
 }
 
 export async function runPrView(
@@ -378,15 +401,203 @@ export async function runPrCommentsReactionsList(
   assertPrCommentsReactionsListInput(input)
 
   const sdk = getPrCommentsReactionsListSdk(createGraphqlRequestClient(transport))
-  const result = await sdk.PrCommentsReactionsList({
-    owner: input.owner,
-    name: input.name,
-    prNumber: input.prNumber,
-    commentsFirst: input.commentsFirst ?? 30,
-    threadsFirst: input.threadsFirst ?? 30,
-    threadCommentsFirst: input.threadCommentsFirst ?? 30,
-  })
-  return normalizePrCommentsReactionsListResult(result, input)
+  const first = input.first ?? 30
+  let cursor = decodeCommentsReactionCursor(input.after)
+  const filter: ReactionFilter = {
+    ...(input.reactorLogin !== undefined ? { reactorLogin: input.reactorLogin } : {}),
+    ...(input.content !== undefined ? { content: input.content } : {}),
+  }
+
+  const items: PrCommentReactionSubjectData[] = []
+  let pagesScanned = 0
+  let sourceItemsScanned = 0
+  let nextCursor: CommentsReactionCursor | null = cursor
+
+  while (
+    cursor.phase === "issue-comments" &&
+    items.length < first &&
+    pagesScanned < MAX_PR_COMMENTS_REACTIONS_SCAN_PAGES
+  ) {
+    const result = await sdk.PrCommentsReactionsIssueCommentsPage({
+      owner: input.owner,
+      name: input.name,
+      prNumber: input.prNumber,
+      first: first - items.length,
+      after: cursor.after,
+    })
+    const pr = result.repository?.pullRequest
+    if (!pr) {
+      throw new Error("Pull request not found")
+    }
+
+    pagesScanned += 1
+    const nodes = pr.comments.nodes ?? []
+    sourceItemsScanned += nodes.length
+    for (const node of nodes) {
+      if (items.length >= first) {
+        break
+      }
+      items.push(...mapCommentReactionSubject(node, filter))
+    }
+
+    if (pr.comments.pageInfo.hasNextPage) {
+      const after = readEndCursor(pr.comments.pageInfo)
+      cursor = { v: PR_COMMENTS_REACTIONS_CURSOR_VERSION, phase: "issue-comments", after }
+      nextCursor = cursor
+    } else {
+      cursor = {
+        v: PR_COMMENTS_REACTIONS_CURSOR_VERSION,
+        phase: "review-threads",
+        threadsAfter: null,
+      }
+      nextCursor = cursor
+    }
+  }
+
+  while (
+    cursor.phase === "review-threads" &&
+    items.length < first &&
+    pagesScanned < MAX_PR_COMMENTS_REACTIONS_SCAN_PAGES
+  ) {
+    if (cursor.currentThread) {
+      const threadResult = await sdk.PrCommentsReactionsThreadCommentsPage({
+        threadId: cursor.currentThread.id,
+        first: first - items.length,
+        after: cursor.currentThread.commentsAfter,
+      })
+      const thread = threadResult.node
+      if (!thread || thread.__typename !== "PullRequestReviewThread") {
+        throw new Error("Pull request review thread not found")
+      }
+
+      pagesScanned += 1
+      const nodes = thread.comments.nodes ?? []
+      sourceItemsScanned += nodes.length
+      for (const node of nodes) {
+        if (items.length >= first) {
+          break
+        }
+        items.push(...mapCommentReactionSubject(node, filter))
+      }
+
+      if (thread.comments.pageInfo.hasNextPage) {
+        cursor = {
+          v: PR_COMMENTS_REACTIONS_CURSOR_VERSION,
+          phase: "review-threads",
+          threadsAfter: cursor.threadsAfter,
+          currentThread: {
+            id: cursor.currentThread.id,
+            threadCursor: cursor.currentThread.threadCursor,
+            commentsAfter: readEndCursor(thread.comments.pageInfo),
+          },
+        }
+        nextCursor = cursor
+      } else {
+        cursor = {
+          v: PR_COMMENTS_REACTIONS_CURSOR_VERSION,
+          phase: "review-threads",
+          threadsAfter: cursor.currentThread.threadCursor,
+        }
+        nextCursor = cursor
+      }
+      continue
+    }
+
+    const result = await sdk.PrCommentsReactionsReviewThreadsPage({
+      owner: input.owner,
+      name: input.name,
+      prNumber: input.prNumber,
+      first: Math.max(1, first - items.length),
+      after: cursor.threadsAfter,
+    })
+    const pr = result.repository?.pullRequest
+    if (!pr) {
+      throw new Error("Pull request not found")
+    }
+
+    pagesScanned += 1
+    const edges = pr.reviewThreads.edges ?? []
+    for (const edge of edges) {
+      if (!edge?.node) {
+        continue
+      }
+      const thread = edge.node
+      const threadCursor = typeof edge.cursor === "string" ? edge.cursor : null
+      const nodes = thread.comments.nodes ?? []
+      sourceItemsScanned += nodes.length
+
+      for (const node of nodes) {
+        if (items.length >= first) {
+          break
+        }
+        items.push(...mapCommentReactionSubject(node, filter))
+      }
+
+      if (thread.comments.pageInfo.hasNextPage) {
+        cursor = {
+          v: PR_COMMENTS_REACTIONS_CURSOR_VERSION,
+          phase: "review-threads",
+          threadsAfter: cursor.threadsAfter,
+          currentThread: {
+            id: thread.id,
+            threadCursor,
+            commentsAfter: readEndCursor(thread.comments.pageInfo),
+          },
+        }
+        nextCursor = cursor
+        break
+      }
+
+      cursor = {
+        v: PR_COMMENTS_REACTIONS_CURSOR_VERSION,
+        phase: "review-threads",
+        threadsAfter: threadCursor,
+      }
+      nextCursor = cursor
+
+      if (items.length >= first) {
+        break
+      }
+    }
+
+    if (items.length >= first || cursor.currentThread) {
+      continue
+    }
+
+    if (pr.reviewThreads.pageInfo.hasNextPage) {
+      cursor = {
+        v: PR_COMMENTS_REACTIONS_CURSOR_VERSION,
+        phase: "review-threads",
+        threadsAfter: readEndCursor(pr.reviewThreads.pageInfo),
+      }
+      nextCursor = cursor
+    } else {
+      nextCursor = null
+      break
+    }
+  }
+
+  const scanTruncated =
+    nextCursor !== null &&
+    pagesScanned >= MAX_PR_COMMENTS_REACTIONS_SCAN_PAGES &&
+    items.length < first
+
+  return {
+    items,
+    filterApplied: {
+      reactorLogin: input.reactorLogin ?? null,
+      content: input.content ?? null,
+    },
+    pageInfo: {
+      hasNextPage: nextCursor !== null,
+      endCursor: nextCursor !== null ? encodeCommentsReactionCursor(nextCursor) : null,
+    },
+    scan: {
+      pagesScanned,
+      sourceItemsScanned,
+      scanTruncated,
+    },
+  }
 }
 
 export async function runPrDiffListFiles(

@@ -17,6 +17,55 @@ import {
   sanitizeCliErrorMessage,
 } from "../helpers.js"
 
+const WORKFLOW_PAGE_CURSOR_VERSION = 1
+
+function encodeWorkflowPageCursor(page: number): string {
+  return Buffer.from(JSON.stringify({ v: WORKFLOW_PAGE_CURSOR_VERSION, page }), "utf8").toString(
+    "base64url",
+  )
+}
+
+function decodeWorkflowPageCursor(value: unknown, capabilityId: string): number {
+  if (value === undefined || value === null || value === "") {
+    return 1
+  }
+  if (typeof value !== "string") {
+    throw new Error(`Invalid after cursor for ${capabilityId}`)
+  }
+
+  try {
+    const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as unknown
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      throw new Error("cursor payload must be an object")
+    }
+    const payload = parsed as Record<string, unknown>
+    if (
+      payload.v !== WORKFLOW_PAGE_CURSOR_VERSION ||
+      !Number.isInteger(payload.page) ||
+      (payload.page as number) < 1
+    ) {
+      throw new Error("cursor payload is invalid")
+    }
+    return payload.page as number
+  } catch {
+    throw new Error(`Invalid after cursor for ${capabilityId}`)
+  }
+}
+
+function pageInfoFromRestTotal(totalCount: number, first: number, page: number) {
+  const hasNextPage = page * first < totalCount
+  return {
+    hasNextPage,
+    endCursor: hasNextPage ? encodeWorkflowPageCursor(page + 1) : null,
+  }
+}
+
+function restTotalCount(root: Record<string, unknown>, itemCount: number): number {
+  return typeof root.total_count === "number" && Number.isFinite(root.total_count)
+    ? root.total_count
+    : itemCount
+}
+
 export const handleWorkflowRunsList: CliHandler = async (runner, params, card) => {
   try {
     const owner = String(params.owner ?? "")
@@ -31,31 +80,26 @@ export const handleWorkflowRunsList: CliHandler = async (runner, params, card) =
     if (first === null) {
       throw new Error("Missing or invalid first for workflow.runs.list")
     }
+    const page = decodeWorkflowPageCursor(params.after, "workflow.runs.list")
 
-    const args = commandTokens(card, "run list")
-    args.push("--repo", repo)
+    const args = commandTokens(card, "api")
+    args.push(`repos/${owner}/${name}/actions/runs`, "--method", "GET")
+    args.push("-f", `per_page=${String(first)}`, "-f", `page=${String(page)}`)
 
     const branch = parseNonEmptyString(params.branch)
     if (branch) {
-      args.push("--branch", branch)
+      args.push("-f", `branch=${branch}`)
     }
 
     const event = parseNonEmptyString(params.event)
     if (event) {
-      args.push("--event", event)
+      args.push("-f", `event=${event}`)
     }
 
     const status = parseNonEmptyString(params.status)
     if (status) {
-      args.push("--status", status)
+      args.push("-f", `status=${status}`)
     }
-
-    args.push(
-      "--limit",
-      String(first),
-      "--json",
-      jsonFieldsFromCard(card, "databaseId,workflowName,status,conclusion,headBranch,url"),
-    )
 
     const result = await runner.run("gh", args, DEFAULT_TIMEOUT_MS)
 
@@ -74,7 +118,12 @@ export const handleWorkflowRunsList: CliHandler = async (runner, params, card) =
     }
 
     const data = parseCliData(result.stdout)
-    const runs = Array.isArray(data) ? data : []
+    const root =
+      typeof data === "object" && data !== null && !Array.isArray(data)
+        ? (data as Record<string, unknown>)
+        : {}
+    const runs = Array.isArray(root.workflow_runs) ? root.workflow_runs : []
+    const totalCount = restTotalCount(root, runs.length)
 
     const normalized = {
       items: runs.map((run) => {
@@ -91,15 +140,35 @@ export const handleWorkflowRunsList: CliHandler = async (runner, params, card) =
 
         const input = run as Record<string, unknown>
         return {
-          id: typeof input.databaseId === "number" ? input.databaseId : 0,
-          workflowName: typeof input.workflowName === "string" ? input.workflowName : null,
+          id:
+            typeof input.databaseId === "number"
+              ? input.databaseId
+              : typeof input.id === "number"
+                ? input.id
+                : 0,
+          workflowName:
+            typeof input.workflowName === "string"
+              ? input.workflowName
+              : typeof input.name === "string"
+                ? input.name
+                : null,
           status: typeof input.status === "string" ? input.status : null,
           conclusion: typeof input.conclusion === "string" ? input.conclusion : null,
-          headBranch: typeof input.headBranch === "string" ? input.headBranch : null,
-          url: typeof input.url === "string" ? input.url : null,
+          headBranch:
+            typeof input.headBranch === "string"
+              ? input.headBranch
+              : typeof input.head_branch === "string"
+                ? input.head_branch
+                : null,
+          url:
+            typeof input.url === "string"
+              ? input.url
+              : typeof input.html_url === "string"
+                ? input.html_url
+                : null,
         }
       }),
-      pageInfo: { hasNextPage: false, endCursor: null },
+      pageInfo: pageInfoFromRestTotal(totalCount, first, page),
     }
 
     return normalizeResult(normalized, "cli", {
@@ -295,10 +364,11 @@ export const handleWorkflowList: CliHandler = async (runner, params, card) => {
     if (first === null) {
       throw new Error("Missing or invalid first for workflow.list")
     }
+    const page = decodeWorkflowPageCursor(params.after, "workflow.list")
 
-    const args = commandTokens(card, "workflow list")
-    args.push("--repo", repo)
-    args.push("--limit", String(first), "--json", jsonFieldsFromCard(card, "id,name,path,state"))
+    const args = commandTokens(card, "api")
+    args.push(`repos/${owner}/${name}/actions/workflows`, "--method", "GET")
+    args.push("-f", `per_page=${String(first)}`, "-f", `page=${String(page)}`)
 
     const result = await runner.run("gh", args, DEFAULT_TIMEOUT_MS)
 
@@ -317,11 +387,16 @@ export const handleWorkflowList: CliHandler = async (runner, params, card) => {
     }
 
     const data = parseCliData(result.stdout)
-    const workflows = Array.isArray(data) ? data : []
+    const root =
+      typeof data === "object" && data !== null && !Array.isArray(data)
+        ? (data as Record<string, unknown>)
+        : {}
+    const workflows = Array.isArray(root.workflows) ? root.workflows : []
+    const totalCount = restTotalCount(root, workflows.length)
 
     const normalized = {
       items: workflows.map((workflow) => normalizeWorkflowItem(workflow)),
-      pageInfo: { hasNextPage: false, endCursor: null },
+      pageInfo: pageInfoFromRestTotal(totalCount, first, page),
     }
 
     return normalizeResult(normalized, "cli", {
@@ -672,21 +747,22 @@ export const handleWorkflowRunArtifactsList: CliHandler = async (runner, params,
   try {
     const owner = String(params.owner ?? "")
     const name = String(params.name ?? "")
-    const repo = owner && name ? `${owner}/${name}` : ""
 
     const runId = parseStrictPositiveInt(params.runId)
     if (runId === null) {
       throw new Error("Missing or invalid runId for workflow.run.artifacts.list")
     }
-
-    const args = commandTokens(card, "run view")
-    args.push(String(runId))
-
-    if (repo) {
-      args.push("--repo", repo)
+    const first = parseListFirst(params.first)
+    if (first === null) {
+      throw new Error("Missing or invalid first for workflow.run.artifacts.list")
     }
+    const page = decodeWorkflowPageCursor(params.after, "workflow.run.artifacts.list")
 
-    args.push("--json", jsonFieldsFromCard(card, "artifacts"))
+    requireRepo(owner, name, "workflow.run.artifacts.list")
+
+    const args = commandTokens(card, "api")
+    args.push(`repos/${owner}/${name}/actions/runs/${String(runId)}/artifacts`, "--method", "GET")
+    args.push("-f", `per_page=${String(first)}`, "-f", `page=${String(page)}`)
 
     const result = await runner.run("gh", args, DEFAULT_TIMEOUT_MS)
 
@@ -711,6 +787,7 @@ export const handleWorkflowRunArtifactsList: CliHandler = async (runner, params,
         : {}
 
     const artifactsArray = Array.isArray(root.artifacts) ? root.artifacts : []
+    const totalCount = restTotalCount(root, artifactsArray.length)
 
     const normalized = {
       items: artifactsArray.map((artifact) => {
@@ -727,12 +804,21 @@ export const handleWorkflowRunArtifactsList: CliHandler = async (runner, params,
         return {
           id: typeof input.id === "string" || typeof input.id === "number" ? input.id : null,
           name: typeof input.name === "string" ? input.name : null,
-          sizeInBytes: typeof input.sizeInBytes === "number" ? input.sizeInBytes : null,
+          sizeInBytes:
+            typeof input.sizeInBytes === "number"
+              ? input.sizeInBytes
+              : typeof input.size_in_bytes === "number"
+                ? input.size_in_bytes
+                : null,
           archiveDownloadUrl:
-            typeof input.archiveDownloadUrl === "string" ? input.archiveDownloadUrl : null,
+            typeof input.archiveDownloadUrl === "string"
+              ? input.archiveDownloadUrl
+              : typeof input.archive_download_url === "string"
+                ? input.archive_download_url
+                : null,
         }
       }),
-      pageInfo: { hasNextPage: false, endCursor: null },
+      pageInfo: pageInfoFromRestTotal(totalCount, first, page),
     }
 
     return normalizeResult(normalized, "cli", {

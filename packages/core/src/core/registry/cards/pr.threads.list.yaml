@@ -8,7 +8,7 @@ input_schema:
     owner: { type: string, minLength: 1 }
     name: { type: string, minLength: 1 }
     prNumber: { type: integer, minimum: 1 }
-    first: { type: integer, minimum: 1, default: 30 }
+    first: { type: integer, minimum: 1, maximum: 100, default: 30 }
     after: { type: [string, "null"] }
     unresolvedOnly: { type: boolean }
     includeOutdated: { type: boolean }
