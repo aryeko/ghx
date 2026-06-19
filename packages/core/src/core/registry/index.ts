@@ -55,6 +55,8 @@ function loadCardsFromYaml(): OperationCard[] {
     "pr.reviews.list",
     "pr.reviews.request",
     "pr.reviews.submit",
+    "pr.reactions.list",
+    "pr.comments.reactions.list",
     "pr.diff.files",
     "pr.diff.view",
     "pr.checks.list",

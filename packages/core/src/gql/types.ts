@@ -394,6 +394,63 @@ export type PrReviewsListData = {
   }
 }
 
+export type ReactionContentInput =
+  | "THUMBS_UP"
+  | "THUMBS_DOWN"
+  | "LAUGH"
+  | "HOORAY"
+  | "CONFUSED"
+  | "HEART"
+  | "EYES"
+  | "ROCKET"
+
+export type PrReactionGroupData = {
+  content: string
+  reactorCount: number
+  reactorLogins: string[]
+  viewerHasReacted: boolean
+  reactorsTruncated: boolean
+}
+
+export type PrReactionsListInput = {
+  owner: string
+  name: string
+  prNumber: number
+  reactorLogin?: string
+  content?: ReactionContentInput
+}
+
+export type PrReactionsListData = {
+  subject: { type: string; id: string; url: string }
+  items: PrReactionGroupData[]
+  filterApplied: { reactorLogin: string | null; content: string | null }
+}
+
+export type PrCommentReactionSubjectData = {
+  subjectType: string
+  subjectId: string
+  subjectUrl: string
+  authorLogin: string | null
+  groups: PrReactionGroupData[]
+}
+
+export type PrCommentsReactionsListInput = {
+  owner: string
+  name: string
+  prNumber: number
+  commentsFirst?: number
+  threadsFirst?: number
+  threadCommentsFirst?: number
+  reactorLogin?: string
+  content?: ReactionContentInput
+}
+
+export type PrCommentsReactionsListData = {
+  items: PrCommentReactionSubjectData[]
+  filterApplied: { reactorLogin: string | null; content: string | null }
+  scan: { commentsTruncated: boolean; threadsTruncated: boolean; threadCommentsTruncated: boolean }
+}
+
 export type PrDiffFileData = {
   path: string
   additions: number

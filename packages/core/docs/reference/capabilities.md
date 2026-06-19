@@ -38,7 +38,7 @@ All 70+ capabilities in `@ghx-dev/core`, grouped by domain.
 | `issue.relations.blocked_by.add` | Add blocked-by relationship | graphql |
 | `issue.relations.blocked_by.remove` | Remove blocked-by relationship | graphql |
 
-## Pull Requests (21)
+## Pull Requests (23)
 
 | Capability ID | Description | Preferred Route |
 |---|---|---|
@@ -54,6 +54,8 @@ All 70+ capabilities in `@ghx-dev/core`, grouped by domain.
 | `pr.threads.reply` | Reply to a review thread | graphql |
 | `pr.threads.resolve` | Resolve a review thread | graphql |
 | `pr.threads.unresolve` | Unresolve a review thread | graphql |
+| `pr.comments.reactions.list` | List reactions on PR issue & review comments | graphql |
+| `pr.reactions.list` | List reactions on the PR itself | graphql |
 | `pr.reviews.list` | List PR reviews | graphql |
 | `pr.reviews.submit` | Submit a PR review | graphql |
 | `pr.reviews.request` | Request reviewers | graphql |

@@ -1,14 +1,18 @@
 import {
+  assertPrCommentsReactionsListInput,
   assertPrDiffListFilesInput,
   assertPrInput,
   assertPrListInput,
+  assertPrReactionsListInput,
   assertPrReviewsListInput,
 } from "../assertions.js"
+import { getSdk as getPrCommentsReactionsListSdk } from "../operations/pr-comments-reactions-list.generated.js"
 import type { PrDiffListFilesQuery } from "../operations/pr-diff-list-files.generated.js"
 import { getSdk as getPrDiffListFilesSdk } from "../operations/pr-diff-list-files.generated.js"
 import type { PrListQuery } from "../operations/pr-list.generated.js"
 import { getSdk as getPrListSdk } from "../operations/pr-list.generated.js"
 import { getSdk as getPrMergeStatusSdk } from "../operations/pr-merge-status.generated.js"
+import { getSdk as getPrReactionsListSdk } from "../operations/pr-reactions-list.generated.js"
 import type { PrReviewsListQuery } from "../operations/pr-reviews-list.generated.js"
 import { getSdk as getPrReviewsListSdk } from "../operations/pr-reviews-list.generated.js"
 import type { PrViewQuery } from "../operations/pr-view.generated.js"
@@ -16,17 +20,95 @@ import { getSdk as getPrViewSdk } from "../operations/pr-view.generated.js"
 import type { GraphqlTransport } from "../transport.js"
 import { createGraphqlRequestClient } from "../transport.js"
 import type {
+  PrCommentReactionSubjectData,
+  PrCommentsReactionsListData,
+  PrCommentsReactionsListInput,
   PrDiffListFilesData,
   PrDiffListFilesInput,
   PrListData,
   PrListInput,
   PrMergeStatusData,
   PrMergeStatusInput,
+  PrReactionGroupData,
+  PrReactionsListData,
+  PrReactionsListInput,
   PrReviewsListData,
   PrReviewsListInput,
   PrViewData,
   PrViewInput,
 } from "../types.js"
+
+type ReactionFilter = {
+  reactorLogin?: string
+  content?: string
+}
+
+type RawReactor = { login?: string | null } | null
+
+type RawReactionGroup = {
+  content: string
+  viewerHasReacted: boolean
+  reactors: {
+    totalCount: number
+    nodes?: ReadonlyArray<RawReactor> | null
+  }
+}
+
+function readReactorLogin(node: RawReactor): string | null {
+  if (node === null || typeof node.login !== "string" || node.login.length === 0) {
+    return null
+  }
+  return node.login
+}
+
+function mapReactionGroups(
+  groups: ReadonlyArray<RawReactionGroup>,
+  filter: ReactionFilter,
+): PrReactionGroupData[] {
+  return groups.flatMap((group) => {
+    if (filter.content !== undefined && group.content !== filter.content) {
+      return []
+    }
+
+    const collectedLogins = (group.reactors.nodes ?? []).flatMap((node) => {
+      const login = readReactorLogin(node)
+      return login !== null ? [login] : []
+    })
+    const totalCount = group.reactors.totalCount
+
+    const reactorsTruncated = totalCount > collectedLogins.length
+
+    if (filter.reactorLogin !== undefined) {
+      const matched = collectedLogins.includes(filter.reactorLogin)
+      // Only confidently drop the group when the login is absent AND every
+      // reactor was fetched. When the reactor list is truncated, absence from
+      // the first page is inconclusive — keep the group (with reactorsTruncated:
+      // true) rather than returning a false "did not react".
+      if (!matched && !reactorsTruncated) {
+        return []
+      }
+      return [
+        {
+          content: group.content,
+          reactorCount: totalCount,
+          reactorLogins: matched ? [filter.reactorLogin] : [],
+          viewerHasReacted: group.viewerHasReacted,
+          reactorsTruncated,
+        },
+      ]
+    }
+
+    return [
+      {
+        content: group.content,
+        reactorCount: totalCount,
+        reactorLogins: collectedLogins,
+        viewerHasReacted: group.viewerHasReacted,
+        reactorsTruncated,
+      },
+    ]
+  })
+}
 
 export async function runPrView(
   transport: GraphqlTransport,
@@ -129,6 +211,128 @@ export async function runPrReviewsList(
     pageInfo: {
       endCursor: reviews.pageInfo.endCursor ?? null,
       hasNextPage: reviews.pageInfo.hasNextPage,
+    },
+  }
+}
+
+export async function runPrReactionsList(
+  transport: GraphqlTransport,
+  input: PrReactionsListInput,
+): Promise<PrReactionsListData> {
+  assertPrReactionsListInput(input)
+
+  const sdk = getPrReactionsListSdk(createGraphqlRequestClient(transport))
+  const result = await sdk.PrReactionsList({
+    owner: input.owner,
+    name: input.name,
+    prNumber: input.prNumber,
+  })
+  const pr = result.repository?.pullRequest
+  if (!pr) {
+    throw new Error("Pull request not found")
+  }
+
+  const filter: ReactionFilter = {
+    ...(input.reactorLogin !== undefined ? { reactorLogin: input.reactorLogin } : {}),
+    ...(input.content !== undefined ? { content: input.content } : {}),
+  }
+
+  return {
+    subject: { type: "PullRequest", id: pr.id, url: String(pr.url) },
+    items: mapReactionGroups(pr.reactionGroups ?? [], filter),
+    filterApplied: {
+      reactorLogin: input.reactorLogin ?? null,
+      content: input.content ?? null,
+    },
+  }
+}
+
+export async function runPrCommentsReactionsList(
+  transport: GraphqlTransport,
+  input: PrCommentsReactionsListInput,
+): Promise<PrCommentsReactionsListData> {
+  assertPrCommentsReactionsListInput(input)
+
+  const sdk = getPrCommentsReactionsListSdk(createGraphqlRequestClient(transport))
+  const result = await sdk.PrCommentsReactionsList({
+    owner: input.owner,
+    name: input.name,
+    prNumber: input.prNumber,
+    commentsFirst: input.commentsFirst ?? 30,
+    threadsFirst: input.threadsFirst ?? 30,
+    threadCommentsFirst: input.threadCommentsFirst ?? 30,
+  })
+  const pr = result.repository?.pullRequest
+  if (!pr) {
+    throw new Error("Pull request not found")
+  }
+
+  const filter: ReactionFilter = {
+    ...(input.reactorLogin !== undefined ? { reactorLogin: input.reactorLogin } : {}),
+    ...(input.content !== undefined ? { content: input.content } : {}),
+  }
+
+  const issueCommentItems: PrCommentReactionSubjectData[] = (pr.comments.nodes ?? []).flatMap(
+    (node) => {
+      if (!node) {
+        return []
+      }
+      const groups = mapReactionGroups(node.reactionGroups ?? [], filter)
+      if (groups.length === 0) {
+        return []
+      }
+      return [
+        {
+          subjectType: node.__typename,
+          subjectId: node.id,
+          subjectUrl: String(node.url),
+          authorLogin: node.author?.login ?? null,
+          groups,
+        },
+      ]
+    },
+  )
+
+  let threadCommentsTruncated = false
+  const reviewCommentItems: PrCommentReactionSubjectData[] = (pr.reviewThreads.nodes ?? []).flatMap(
+    (thread) => {
+      if (!thread) {
+        return []
+      }
+      if (thread.comments.pageInfo.hasNextPage) {
+        threadCommentsTruncated = true
+      }
+      return (thread.comments.nodes ?? []).flatMap((node) => {
+        if (!node) {
+          return []
+        }
+        const groups = mapReactionGroups(node.reactionGroups ?? [], filter)
+        if (groups.length === 0) {
+          return []
+        }
+        return [
+          {
+            subjectType: node.__typename,
+            subjectId: node.id,
+            subjectUrl: String(node.url),
+            authorLogin: node.author?.login ?? null,
+            groups,
+          },
+        ]
+      })
+    },
+  )
+
+  return {
+    items: [...issueCommentItems, ...reviewCommentItems],
+    filterApplied: {
+      reactorLogin: input.reactorLogin ?? null,
+      content: input.content ?? null,
+    },
+    scan: {
+      commentsTruncated: pr.comments.pageInfo.hasNextPage,
+      threadsTruncated: pr.reviewThreads.pageInfo.hasNextPage,
+      threadCommentsTruncated,
     },
   }
 }

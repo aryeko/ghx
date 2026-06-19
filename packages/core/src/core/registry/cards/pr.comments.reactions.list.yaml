@@ -1,0 +1,70 @@
+capability_id: pr.comments.reactions.list
+version: "1.0.0"
+description: "List emoji reactions on a pull request's issue comments and review-thread comments. Comments with no matching reactions are omitted."
+input_schema:
+  type: object
+  required: [owner, name, prNumber]
+  properties:
+    owner: { type: string, minLength: 1 }
+    name: { type: string, minLength: 1 }
+    prNumber: { type: integer, minimum: 1 }
+    commentsFirst: { type: integer, minimum: 1, maximum: 100 }
+    threadsFirst: { type: integer, minimum: 1, maximum: 100 }
+    threadCommentsFirst: { type: integer, minimum: 1, maximum: 100 }
+    reactorLogin: { type: string, minLength: 1 }
+    content:
+      type: string
+      enum: [THUMBS_UP, THUMBS_DOWN, LAUGH, HOORAY, CONFUSED, HEART, EYES, ROCKET]
+  additionalProperties: false
+output_schema:
+  type: object
+  required: [items, filterApplied, scan]
+  properties:
+    items:
+      type: array
+      items:
+        type: object
+        required: [subjectType, subjectId, subjectUrl, authorLogin, groups]
+        properties:
+          subjectType: { type: string }
+          subjectId: { type: string, minLength: 1 }
+          subjectUrl: { type: string, minLength: 1 }
+          authorLogin: { type: [string, "null"] }
+          groups:
+            type: array
+            items:
+              type: object
+              required: [content, reactorCount, reactorLogins, viewerHasReacted, reactorsTruncated]
+              properties:
+                content: { type: string }
+                reactorCount: { type: integer, minimum: 0 }
+                reactorLogins:
+                  type: array
+                  items: { type: string }
+                viewerHasReacted: { type: boolean }
+                reactorsTruncated: { type: boolean }
+              additionalProperties: false
+        additionalProperties: false
+    filterApplied:
+      type: object
+      required: [reactorLogin, content]
+      properties:
+        reactorLogin: { type: [string, "null"] }
+        content: { type: [string, "null"] }
+      additionalProperties: false
+    scan:
+      type: object
+      required: [commentsTruncated, threadsTruncated, threadCommentsTruncated]
+      properties:
+        commentsTruncated: { type: boolean }
+        threadsTruncated: { type: boolean }
+        threadCommentsTruncated: { type: boolean }
+      additionalProperties: false
+  additionalProperties: false
+routing:
+  preferred: graphql
+  fallbacks: []
+graphql:
+  operationName: PrCommentsReactionsList
+  operationType: query
+  documentPath: src/gql/operations/pr-comments-reactions-list.graphql

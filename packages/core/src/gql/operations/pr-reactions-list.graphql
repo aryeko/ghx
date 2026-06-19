@@ -1,0 +1,11 @@
+query PrReactionsList($owner: String!, $name: String!, $prNumber: Int!) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $prNumber) {
+      id
+      url
+      reactionGroups {
+        ...ReactionGroupFields
+      }
+    }
+  }
+}
