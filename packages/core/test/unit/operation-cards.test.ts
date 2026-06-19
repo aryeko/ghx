@@ -9,6 +9,38 @@ import {
 import { describe, expect, it } from "vitest"
 
 describe("operation cards registry", () => {
+  const basePolicyCard = {
+    capability_id: "test.list",
+    version: "1.0.0",
+    description: "Test list capability.",
+    input_schema: {
+      type: "object",
+      properties: {
+        first: { type: "integer", minimum: 1, maximum: 100, default: 30 },
+        after: { type: ["string", "null"] },
+      },
+      additionalProperties: false,
+    },
+    output_schema: {
+      type: "object",
+      required: ["items", "pageInfo"],
+      properties: {
+        items: { type: "array", items: { type: "object" } },
+        pageInfo: {
+          type: "object",
+          required: ["hasNextPage", "endCursor"],
+          properties: {
+            hasNextPage: { type: "boolean" },
+            endCursor: { type: ["string", "null"] },
+          },
+          additionalProperties: false,
+        },
+      },
+      additionalProperties: false,
+    },
+    routing: { preferred: "graphql", fallbacks: [] },
+  }
+
   it("lists all v1 thin-slice capabilities", () => {
     const capabilities = listOperationCards().map((card) => card.capability_id)
 
@@ -229,6 +261,151 @@ describe("operation cards registry", () => {
     })
 
     expect(result.ok).toBe(false)
+  })
+
+  it("enforces cursor inputs when a card exposes pageInfo", () => {
+    const result = validateOperationCard({
+      ...basePolicyCard,
+      input_schema: {
+        ...basePolicyCard.input_schema,
+        properties: {
+          first: { type: "integer", minimum: 1, maximum: 100, default: 30 },
+        },
+      },
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      error: 'test.list exposes pageInfo and must define input after as { type: [string, "null"] }',
+    })
+  })
+
+  it("enforces a bounded first input when a card exposes pageInfo", () => {
+    const result = validateOperationCard({
+      ...basePolicyCard,
+      input_schema: {
+        ...basePolicyCard.input_schema,
+        properties: {
+          ...basePolicyCard.input_schema.properties,
+          first: { type: "integer", minimum: 1, default: 30 },
+        },
+      },
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      error:
+        "test.list exposes pageInfo and must define input first as { type: integer, minimum: 1, maximum: 100, default: 30 }",
+    })
+  })
+
+  it("enforces the standard pageInfo output shape", () => {
+    const result = validateOperationCard({
+      ...basePolicyCard,
+      output_schema: {
+        ...basePolicyCard.output_schema,
+        properties: {
+          ...basePolicyCard.output_schema.properties,
+          pageInfo: {
+            type: "object",
+            required: ["hasNextPage"],
+            properties: {
+              hasNextPage: { type: "boolean" },
+            },
+            additionalProperties: false,
+          },
+        },
+      },
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      error:
+        "test.list exposes pageInfo and must define output pageInfo as { hasNextPage: boolean, endCursor: string | null }",
+    })
+  })
+
+  it("allows the standard scan diagnostic shape with pageInfo", () => {
+    const result = validateOperationCard({
+      ...basePolicyCard,
+      output_schema: {
+        ...basePolicyCard.output_schema,
+        required: ["items", "pageInfo", "scan"],
+        properties: {
+          ...basePolicyCard.output_schema.properties,
+          scan: {
+            type: "object",
+            required: ["pagesScanned", "sourceItemsScanned", "scanTruncated"],
+            properties: {
+              pagesScanned: { type: "integer", minimum: 0 },
+              sourceItemsScanned: { type: "integer", minimum: 0 },
+              scanTruncated: { type: "boolean" },
+            },
+            additionalProperties: false,
+          },
+        },
+      },
+    })
+
+    expect(result).toEqual({ ok: true })
+  })
+
+  it("rejects legacy source-specific truncation scan fields", () => {
+    const result = validateOperationCard({
+      ...basePolicyCard,
+      output_schema: {
+        ...basePolicyCard.output_schema,
+        required: ["items", "pageInfo", "scan"],
+        properties: {
+          ...basePolicyCard.output_schema.properties,
+          scan: {
+            type: "object",
+            required: ["commentsTruncated", "threadsTruncated"],
+            properties: {
+              commentsTruncated: { type: "boolean" },
+              threadsTruncated: { type: "boolean" },
+            },
+            additionalProperties: false,
+          },
+        },
+      },
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      error:
+        "test.list defines scan and must use { pagesScanned, sourceItemsScanned, scanTruncated }",
+    })
+  })
+
+  it("allows non-pagination truncation fields outside scan", () => {
+    const result = validateOperationCard({
+      ...basePolicyCard,
+      output_schema: {
+        ...basePolicyCard.output_schema,
+        properties: {
+          ...basePolicyCard.output_schema.properties,
+          items: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                reactorsTruncated: { type: "boolean" },
+              },
+            },
+          },
+          truncated: { type: "boolean" },
+        },
+      },
+    })
+
+    expect(result).toEqual({ ok: true })
+  })
+
+  it("enforces pagination policy on every loaded card", () => {
+    for (const card of listOperationCards()) {
+      expect(validateOperationCard(card)).toEqual({ ok: true })
+    }
   })
 
   it("documents mutating PR capabilities as graphql-preferred operations with cli fallback", () => {

@@ -26,14 +26,18 @@ describe("executeTask workflow.run.artifacts.list", () => {
       ghAuthenticated: true,
       cliRunner: {
         run: async () => ({
-          stdout: JSON.stringify([
-            {
-              id: 789,
-              name: "build",
-              size: 1024,
-              url: "https://github.com/go-modkit/modkit/actions/runs/456/artifacts/789",
-            },
-          ]),
+          stdout: JSON.stringify({
+            total_count: 1,
+            artifacts: [
+              {
+                id: 789,
+                name: "build",
+                size_in_bytes: 1024,
+                archive_download_url:
+                  "https://github.com/go-modkit/modkit/actions/runs/456/artifacts/789",
+              },
+            ],
+          }),
           stderr: "",
           exitCode: 0,
         }),
@@ -45,6 +49,7 @@ describe("executeTask workflow.run.artifacts.list", () => {
     expect(result.data).toEqual(
       expect.objectContaining({
         items: expect.any(Array),
+        pageInfo: { hasNextPage: false, endCursor: null },
       }),
     )
   })

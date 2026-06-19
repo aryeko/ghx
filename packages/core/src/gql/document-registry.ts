@@ -38,7 +38,7 @@ import { PrCommentReplyDocument } from "./operations/pr-comment-reply.generated.
 import { PrCommentResolveDocument } from "./operations/pr-comment-resolve.generated.js"
 import { PrCommentUnresolveDocument } from "./operations/pr-comment-unresolve.generated.js"
 import { PrCommentsListDocument } from "./operations/pr-comments-list.generated.js"
-import { PrCommentsReactionsListDocument } from "./operations/pr-comments-reactions-list.generated.js"
+import { PrCommentsReactionsIssueCommentsPageDocument } from "./operations/pr-comments-reactions-list.generated.js"
 import { PrCreateDocument } from "./operations/pr-create.generated.js"
 import { PrDiffListFilesDocument } from "./operations/pr-diff-list-files.generated.js"
 import { PrListDocument } from "./operations/pr-list.generated.js"
@@ -135,7 +135,7 @@ const DOCUMENTS: Record<string, string | { toString(): string }> = {
   PrCommentsList: PrCommentsListDocument,
   PrReviewsList: PrReviewsListDocument,
   PrReactionsList: PrReactionsListDocument,
-  PrCommentsReactionsList: PrCommentsReactionsListDocument,
+  PrCommentsReactionsIssueCommentsPage: PrCommentsReactionsIssueCommentsPageDocument,
   RepoView: RepoViewDocument,
   RepoLabelsList: RepoLabelsListDocument,
   RepoIssueTypesList: RepoIssueTypesListDocument,

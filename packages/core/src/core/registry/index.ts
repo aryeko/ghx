@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url"
 
 import { load as parseYaml } from "js-yaml"
 import { ajv } from "./ajv-instance.js"
+import { validateOperationCardPolicy } from "./operation-card-policy.js"
 import { operationCardSchema } from "./operation-card-schema.js"
 import type { OperationCard } from "./types.js"
 
@@ -130,6 +131,11 @@ export function validateOperationCard(card: unknown): { ok: true } | { ok: false
   if (!valid) {
     const message = validateCard.errors?.[0]?.message ?? "Operation card schema validation failed"
     return { ok: false, error: message }
+  }
+
+  const policyValidation = validateOperationCardPolicy(card as OperationCard)
+  if (!policyValidation.ok) {
+    return policyValidation
   }
 
   return { ok: true }

@@ -1037,16 +1037,19 @@ describe("runCliCapability", () => {
   it("normalizes workflow runs list", async () => {
     const runner = {
       run: vi.fn(async () => ({
-        stdout: JSON.stringify([
-          {
-            databaseId: 1,
-            workflowName: "CI",
-            status: "completed",
-            conclusion: "success",
-            headBranch: "main",
-            url: "https://example.com/run/1",
-          },
-        ]),
+        stdout: JSON.stringify({
+          total_count: 1,
+          workflow_runs: [
+            {
+              databaseId: 1,
+              workflowName: "CI",
+              status: "completed",
+              conclusion: "success",
+              headBranch: "main",
+              url: "https://example.com/run/1",
+            },
+          ],
+        }),
         stderr: "",
         exitCode: 0,
       })),
@@ -1062,6 +1065,7 @@ describe("runCliCapability", () => {
     expect(result.data).toEqual(
       expect.objectContaining({
         items: [expect.objectContaining({ id: 1, workflowName: "CI" })],
+        pageInfo: { hasNextPage: false, endCursor: null },
       }),
     )
   })
@@ -1166,9 +1170,9 @@ describe("runCliCapability", () => {
   it("includes workflow filters and undo flag in generated args", async () => {
     const runner = {
       run: vi.fn(async (_command: string, args: string[]) => {
-        if (args[0] === "run" && args[1] === "list") {
+        if (args[0] === "api" && args[1] === "repos/acme/modkit/actions/runs") {
           return {
-            stdout: "[]",
+            stdout: JSON.stringify({ total_count: 0, workflow_runs: [] }),
             stderr: "",
             exitCode: 0,
           }
@@ -1198,10 +1202,11 @@ describe("runCliCapability", () => {
     })
 
     const workflowRunCall = runner.run.mock.calls.find(
-      (call: [string, string[]]) => call[1][0] === "run" && call[1][1] === "list",
+      (call: [string, string[]]) =>
+        call[1][0] === "api" && call[1][1] === "repos/acme/modkit/actions/runs",
     )
     expect(workflowRunCall?.[1]).toEqual(
-      expect.arrayContaining(["--branch", "main", "--event", "push", "--status", "completed"]),
+      expect.arrayContaining(["-f", "branch=main", "-f", "event=push", "-f", "status=completed"]),
     )
 
     const readyCall = runner.run.mock.calls.find(
@@ -1220,9 +1225,9 @@ describe("runCliCapability", () => {
             exitCode: 0,
           }
         }
-        if (args[0] === "run" && args[1] === "list") {
+        if (args[0] === "api" && args[1] === "repos/acme/modkit/actions/runs") {
           return {
-            stdout: JSON.stringify([null]),
+            stdout: JSON.stringify({ total_count: 1, workflow_runs: [null] }),
             stderr: "",
             exitCode: 0,
           }
@@ -1292,18 +1297,21 @@ describe("runCliCapability", () => {
             exitCode: 0,
           }
         }
-        if (args[0] === "run" && args[1] === "list") {
+        if (args[0] === "api" && args[1] === "repos/acme/modkit/actions/runs") {
           return {
-            stdout: JSON.stringify([
-              {
-                databaseId: "x",
-                workflowName: 1,
-                status: 2,
-                conclusion: 3,
-                headBranch: 4,
-                url: 5,
-              },
-            ]),
+            stdout: JSON.stringify({
+              total_count: 1,
+              workflow_runs: [
+                {
+                  databaseId: "x",
+                  workflowName: 1,
+                  status: 2,
+                  conclusion: 3,
+                  headBranch: 4,
+                  url: 5,
+                },
+              ],
+            }),
             stderr: "",
             exitCode: 0,
           }
@@ -1407,9 +1415,10 @@ describe("runCliCapability", () => {
       run: vi
         .fn()
         .mockResolvedValueOnce({
-          stdout: JSON.stringify([
-            { id: 1, name: "CI", state: "active", path: ".github/workflows/ci.yml" },
-          ]),
+          stdout: JSON.stringify({
+            total_count: 1,
+            workflows: [{ id: 1, name: "CI", state: "active", path: ".github/workflows/ci.yml" }],
+          }),
           stderr: "",
           exitCode: 0,
         })
@@ -1440,6 +1449,7 @@ describe("runCliCapability", () => {
         .mockResolvedValueOnce({ stdout: "cancellation requested", stderr: "", exitCode: 0 })
         .mockResolvedValueOnce({
           stdout: JSON.stringify({
+            total_count: 1,
             artifacts: [
               {
                 id: 10,
@@ -1500,14 +1510,14 @@ describe("runCliCapability", () => {
       1,
       "gh",
       [
-        "workflow",
-        "list",
-        "--repo",
-        "acme/modkit",
-        "--limit",
-        "10",
-        "--json",
-        "id,name,path,state",
+        "api",
+        "repos/acme/modkit/actions/workflows",
+        "--method",
+        "GET",
+        "-f",
+        "per_page=10",
+        "-f",
+        "page=1",
       ],
       10_000,
     )
@@ -2284,7 +2294,7 @@ describe("runCliCapability", () => {
       run: vi
         .fn()
         .mockResolvedValueOnce({
-          stdout: JSON.stringify({ artifacts: [null] }),
+          stdout: JSON.stringify({ total_count: 1, artifacts: [null] }),
           stderr: "",
           exitCode: 0,
         })
@@ -2762,12 +2772,20 @@ describe("runCliCapability", () => {
         .mockResolvedValueOnce({ stdout: JSON.stringify([null]), stderr: "", exitCode: 0 })
         .mockResolvedValueOnce({ stdout: "null", stderr: "", exitCode: 0 })
         .mockResolvedValueOnce({ stdout: "null", stderr: "", exitCode: 0 })
-        .mockResolvedValueOnce({ stdout: JSON.stringify([null]), stderr: "", exitCode: 0 })
+        .mockResolvedValueOnce({
+          stdout: JSON.stringify({ total_count: 1, workflows: [null] }),
+          stderr: "",
+          exitCode: 0,
+        })
         .mockResolvedValueOnce({ stdout: "null", stderr: "", exitCode: 0 })
         .mockResolvedValueOnce({ stdout: "null", stderr: "", exitCode: 0 })
         .mockResolvedValueOnce({ stdout: "null", stderr: "", exitCode: 0 })
         .mockResolvedValueOnce({ stdout: "null", stderr: "", exitCode: 0 })
-        .mockResolvedValueOnce({ stdout: "null", stderr: "", exitCode: 0 }),
+        .mockResolvedValueOnce({
+          stdout: JSON.stringify({ total_count: 0, artifacts: [] }),
+          stderr: "",
+          exitCode: 0,
+        }),
     }
 
     const repoViewResult = await runCliCapability(runner, "repo.view", {
@@ -4149,16 +4167,19 @@ ERROR: Critical issue`,
   it("handles workflow.runs.list with optional branch, event, and status filters", async () => {
     const runner = {
       run: vi.fn(async () => ({
-        stdout: JSON.stringify([
-          {
-            databaseId: 1,
-            workflowName: "CI",
-            status: "completed",
-            conclusion: "success",
-            headBranch: "feature/test",
-            url: "https://example.com/run/1",
-          },
-        ]),
+        stdout: JSON.stringify({
+          total_count: 1,
+          workflow_runs: [
+            {
+              databaseId: 1,
+              workflowName: "CI",
+              status: "completed",
+              conclusion: "success",
+              headBranch: "feature/test",
+              url: "https://example.com/run/1",
+            },
+          ],
+        }),
         stderr: "",
         exitCode: 0,
       })),
@@ -4175,12 +4196,18 @@ ERROR: Critical issue`,
 
     expect(result.ok).toBe(true)
     const call = runner.run.mock.calls[0] as unknown as [string, string[], number]
-    expect(call[1]).toContain("--branch")
-    expect(call[1]).toContain("feature/test")
-    expect(call[1]).toContain("--event")
-    expect(call[1]).toContain("push")
-    expect(call[1]).toContain("--status")
-    expect(call[1]).toContain("completed")
+    expect(call[1]).toEqual(
+      expect.arrayContaining([
+        "api",
+        "repos/acme/modkit/actions/runs",
+        "-f",
+        "branch=feature/test",
+        "-f",
+        "event=push",
+        "-f",
+        "status=completed",
+      ]),
+    )
   })
 
   it("handles repo.labels.list with default first value when undefined", async () => {

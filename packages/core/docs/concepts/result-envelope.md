@@ -51,6 +51,21 @@ interface AttemptMeta {
 }
 ```
 
+List capabilities expose public pagination in `data.pageInfo`, not in the envelope:
+
+```ts
+data: {
+  items: T[]
+  pageInfo: {
+    hasNextPage: boolean
+    endCursor: string | null
+  }
+}
+```
+
+`meta.pagination` is reserved for envelope-level routing or transport metadata and is not a
+replacement for the capability's resumable list cursor.
+
 ## Success Example
 
 ```json

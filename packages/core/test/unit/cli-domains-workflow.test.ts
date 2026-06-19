@@ -27,24 +27,27 @@ describe("workflow domain handlers", () => {
     it("returns success with items array", async () => {
       const runner = mockRunner(
         0,
-        JSON.stringify([
-          {
-            databaseId: 123456,
-            workflowName: "CI",
-            status: "completed",
-            conclusion: "success",
-            headBranch: "main",
-            url: "https://github.com/owner/repo/actions/runs/123456",
-          },
-          {
-            databaseId: 123457,
-            workflowName: "CD",
-            status: "in_progress",
-            conclusion: null,
-            headBranch: "develop",
-            url: "https://github.com/owner/repo/actions/runs/123457",
-          },
-        ]),
+        JSON.stringify({
+          total_count: 2,
+          workflow_runs: [
+            {
+              databaseId: 123456,
+              workflowName: "CI",
+              status: "completed",
+              conclusion: "success",
+              headBranch: "main",
+              url: "https://github.com/owner/repo/actions/runs/123456",
+            },
+            {
+              databaseId: 123457,
+              workflowName: "CD",
+              status: "in_progress",
+              conclusion: null,
+              headBranch: "develop",
+              url: "https://github.com/owner/repo/actions/runs/123457",
+            },
+          ],
+        }),
       )
 
       const result = await handleWorkflowRunsList(
@@ -65,20 +68,37 @@ describe("workflow domain handlers", () => {
     })
 
     it("verifies call includes limit flag", async () => {
-      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "[]", stderr: "" })
+      const runSpy = vi.fn().mockResolvedValue({
+        exitCode: 0,
+        stdout: '{"total_count":0,"workflow_runs":[]}',
+        stderr: "",
+      })
       const runner = { run: runSpy } as unknown as CliCommandRunner
 
       await handleWorkflowRunsList(runner, { owner: "owner", name: "repo", first: 50 }, undefined)
 
       expect(runSpy).toHaveBeenCalledWith(
         "gh",
-        expect.arrayContaining(["run", "list", "--limit", "50"]),
+        expect.arrayContaining([
+          "api",
+          "repos/owner/repo/actions/runs",
+          "--method",
+          "GET",
+          "-f",
+          "per_page=50",
+          "-f",
+          "page=1",
+        ]),
         expect.any(Number),
       )
     })
 
     it("includes optional branch filter", async () => {
-      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "[]", stderr: "" })
+      const runSpy = vi.fn().mockResolvedValue({
+        exitCode: 0,
+        stdout: '{"total_count":0,"workflow_runs":[]}',
+        stderr: "",
+      })
       const runner = { run: runSpy } as unknown as CliCommandRunner
 
       await handleWorkflowRunsList(
@@ -89,7 +109,7 @@ describe("workflow domain handlers", () => {
 
       expect(runSpy).toHaveBeenCalledWith(
         "gh",
-        expect.arrayContaining(["--branch", "main"]),
+        expect.arrayContaining(["-f", "branch=main"]),
         expect.any(Number),
       )
     })
@@ -109,7 +129,7 @@ describe("workflow domain handlers", () => {
     })
 
     it("returns error when owner/name missing", async () => {
-      const runner = mockRunner(0, "[]")
+      const runner = mockRunner(0, '{"total_count":0,"workflow_runs":[]}')
 
       const result = await handleWorkflowRunsList(runner, { first: 30 }, undefined)
 
@@ -245,20 +265,23 @@ Final line`
     it("returns success with normalized workflow items", async () => {
       const runner = mockRunner(
         0,
-        JSON.stringify([
-          {
-            id: 111,
-            name: "CI",
-            path: ".github/workflows/ci.yml",
-            state: "active",
-          },
-          {
-            id: 222,
-            name: "Release",
-            path: ".github/workflows/release.yml",
-            state: "disabled",
-          },
-        ]),
+        JSON.stringify({
+          total_count: 2,
+          workflows: [
+            {
+              id: 111,
+              name: "CI",
+              path: ".github/workflows/ci.yml",
+              state: "active",
+            },
+            {
+              id: 222,
+              name: "Release",
+              path: ".github/workflows/release.yml",
+              state: "disabled",
+            },
+          ],
+        }),
       )
 
       const result = await handleWorkflowList(
@@ -279,14 +302,25 @@ Final line`
     })
 
     it("verifies call includes limit flag", async () => {
-      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "[]", stderr: "" })
+      const runSpy = vi
+        .fn()
+        .mockResolvedValue({ exitCode: 0, stdout: '{"total_count":0,"workflows":[]}', stderr: "" })
       const runner = { run: runSpy } as unknown as CliCommandRunner
 
       await handleWorkflowList(runner, { owner: "owner", name: "repo", first: 20 }, undefined)
 
       expect(runSpy).toHaveBeenCalledWith(
         "gh",
-        expect.arrayContaining(["workflow", "list", "--limit", "20"]),
+        expect.arrayContaining([
+          "api",
+          "repos/owner/repo/actions/workflows",
+          "--method",
+          "GET",
+          "-f",
+          "per_page=20",
+          "-f",
+          "page=1",
+        ]),
         expect.any(Number),
       )
     })
@@ -560,14 +594,16 @@ Final line`
             {
               id: "A_1",
               name: "build-output",
-              sizeInBytes: 5242880,
-              archiveDownloadUrl: "https://github.com/owner/repo/suites/123/artifacts/A_1/download",
+              size_in_bytes: 5242880,
+              archive_download_url:
+                "https://github.com/owner/repo/suites/123/artifacts/A_1/download",
             },
             {
               id: "A_2",
               name: "test-reports",
-              sizeInBytes: 1048576,
-              archiveDownloadUrl: "https://github.com/owner/repo/suites/123/artifacts/A_2/download",
+              size_in_bytes: 1048576,
+              archive_download_url:
+                "https://github.com/owner/repo/suites/123/artifacts/A_2/download",
             },
           ],
         }),
@@ -770,7 +806,11 @@ Final line`
 
   describe("handleWorkflowRunsList – additional coverage", () => {
     it("includes optional event filter", async () => {
-      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "[]", stderr: "" })
+      const runSpy = vi.fn().mockResolvedValue({
+        exitCode: 0,
+        stdout: '{"total_count":0,"workflow_runs":[]}',
+        stderr: "",
+      })
       const runner = { run: runSpy } as unknown as CliCommandRunner
 
       await handleWorkflowRunsList(
@@ -781,13 +821,17 @@ Final line`
 
       expect(runSpy).toHaveBeenCalledWith(
         "gh",
-        expect.arrayContaining(["--event", "push"]),
+        expect.arrayContaining(["-f", "event=push"]),
         expect.any(Number),
       )
     })
 
     it("includes optional status filter", async () => {
-      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "[]", stderr: "" })
+      const runSpy = vi.fn().mockResolvedValue({
+        exitCode: 0,
+        stdout: '{"total_count":0,"workflow_runs":[]}',
+        stderr: "",
+      })
       const runner = { run: runSpy } as unknown as CliCommandRunner
 
       await handleWorkflowRunsList(
@@ -798,13 +842,16 @@ Final line`
 
       expect(runSpy).toHaveBeenCalledWith(
         "gh",
-        expect.arrayContaining(["--status", "completed"]),
+        expect.arrayContaining(["-f", "status=completed"]),
         expect.any(Number),
       )
     })
 
     it("handles non-object run item gracefully", async () => {
-      const runner = mockRunner(0, JSON.stringify([null, "bad", 42]))
+      const runner = mockRunner(
+        0,
+        JSON.stringify({ total_count: 3, workflow_runs: [null, "bad", 42] }),
+      )
 
       const result = await handleWorkflowRunsList(
         runner,
@@ -832,7 +879,7 @@ Final line`
     })
 
     it("returns error when first is invalid", async () => {
-      const runner = mockRunner(0, "[]")
+      const runner = mockRunner(0, '{"total_count":0,"workflow_runs":[]}')
 
       const result = await handleWorkflowRunsList(
         runner,
@@ -859,7 +906,7 @@ Final line`
     })
 
     it("returns error when first is invalid", async () => {
-      const runner = mockRunner(0, "[]")
+      const runner = mockRunner(0, '{"total_count":0,"workflows":[]}')
 
       const result = await handleWorkflowList(
         runner,

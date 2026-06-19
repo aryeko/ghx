@@ -9,8 +9,9 @@ export function startCliSteps(
   deps: ExecutionDeps,
 ): Array<Promise<[number, ResultEnvelope]>> {
   return steps
-    .filter((s) => s.route === "cli")
+    .filter((s) => s.route === "cli" || s.route === "single")
     .map((step) => {
+      const routeUsed = step.route === "cli" ? "cli" : "graphql"
       const req = requests[step.index]
       if (req === undefined) {
         return Promise.resolve<[number, ResultEnvelope]>([
@@ -18,7 +19,7 @@ export function startCliSteps(
           {
             ok: false,
             error: { code: errorCodes.Unknown, message: "missing request", retryable: false },
-            meta: { capability_id: step.card.capability_id, route_used: "cli" },
+            meta: { capability_id: step.card.capability_id, route_used: routeUsed },
           },
         ])
       }
@@ -33,7 +34,7 @@ export function startCliSteps(
               message: err instanceof Error ? err.message : String(err),
               retryable: false,
             },
-            meta: { capability_id: req.task, route_used: "cli" },
+            meta: { capability_id: req.task, route_used: routeUsed },
           },
         ])
     })
@@ -58,10 +59,11 @@ export async function collectCliResults(
     } else {
       const msg = outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason)
       const req = requests[step.index]
+      const routeUsed = step.route === "cli" ? "cli" : "graphql"
       cliResults.set(step.index, {
         ok: false,
         error: { code: errorCodes.Unknown, message: msg, retryable: false },
-        meta: { capability_id: req?.task ?? "unknown", route_used: "cli" },
+        meta: { capability_id: req?.task ?? "unknown", route_used: routeUsed },
       })
     }
   }

@@ -63,6 +63,47 @@ cli:
 
 > The card is loaded automatically at startup — no manual registration needed.
 
+### Pagination Contract
+
+Cards with resumable list pagination must use the standard public data contract:
+
+```ts
+input: { first?: number; after?: string | null }
+data: { items: T[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } }
+```
+
+If `output_schema.properties.pageInfo` is present, registry policy validation also requires:
+
+```yaml
+input_schema:
+  properties:
+    first: { type: integer, minimum: 1, maximum: 100, default: 30 }
+    after: { type: [string, "null"] }
+
+output_schema:
+  properties:
+    pageInfo:
+      type: object
+      required: [hasNextPage, endCursor]
+      properties:
+        hasNextPage: { type: boolean }
+        endCursor: { type: [string, "null"] }
+      additionalProperties: false
+```
+
+Use `pageInfo` only for resumable list pagination. If a capability scans multiple backing
+connections before producing a page, use opaque ghx-owned cursors and keep traversal diagnostics
+in a top-level `scan` object with exactly:
+
+```ts
+scan: { pagesScanned: number; sourceItemsScanned: number; scanTruncated: boolean }
+```
+
+Do not add source-specific list pagination fields such as `commentsFirst`, `threadsFirst`,
+`commentsTruncated`, or `threadsTruncated`. Nested completeness flags such as
+`reactorsTruncated` and log-size fields such as `truncated` are still allowed because they are not
+the public list pagination contract.
+
 ## Step 2: Add the GraphQL Operation
 
 Create the `.graphql` file referenced by `documentPath`:

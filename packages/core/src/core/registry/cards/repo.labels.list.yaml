@@ -7,7 +7,7 @@ input_schema:
   properties:
     owner: { type: string, minLength: 1 }
     name: { type: string, minLength: 1 }
-    first: { type: integer, minimum: 1, default: 30 }
+    first: { type: integer, minimum: 1, maximum: 100, default: 30 }
     after: { type: [string, "null"] }
   additionalProperties: false
 output_schema:

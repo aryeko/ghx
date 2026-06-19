@@ -12,6 +12,7 @@ export type CliHandler = (
 
 export const DEFAULT_TIMEOUT_MS = 10_000
 export const DEFAULT_LIST_FIRST = 30
+export const MAX_LIST_FIRST = 100
 export const MAX_WORKFLOW_JOB_LOG_CHARS = 50_000
 export const REDACTED_CLI_ERROR_MESSAGE = "gh command failed; stderr redacted for safety"
 export const REPO_ISSUE_TYPES_GRAPHQL_QUERY =
@@ -52,7 +53,8 @@ export function parseListFirst(value: unknown): number | null {
     return DEFAULT_LIST_FIRST
   }
 
-  return parseStrictPositiveInt(value)
+  const parsed = parseStrictPositiveInt(value)
+  return parsed !== null && parsed <= MAX_LIST_FIRST ? parsed : null
 }
 
 export function parseNonEmptyString(value: unknown): string | null {

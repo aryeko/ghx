@@ -96,84 +96,53 @@ describe("executeTasks chaining - PR reaction filters", () => {
     })
   })
 
-  it("normalizes and filters pull request comment reactions in batched query results", async () => {
-    const queryMock = vi.fn().mockResolvedValueOnce({
-      step0: {
-        pullRequest: {
-          comments: {
-            pageInfo: { hasNextPage: false },
-            nodes: [
+  it("runs pull request comment reactions through non-batchable single handlers", async () => {
+    const queryMock = vi.fn()
+    const fetchPrCommentsReactionsList = vi
+      .fn()
+      .mockResolvedValueOnce({
+        items: [
+          {
+            subjectType: "IssueComment",
+            subjectId: "IC_1",
+            subjectUrl: "https://github.com/acme/repo/pull/1#issuecomment-1",
+            authorLogin: "alice",
+            groups: [
               {
-                __typename: "IssueComment",
-                id: "IC_1",
-                url: "https://github.com/acme/repo/pull/1#issuecomment-1",
-                author: { login: "alice" },
-                reactionGroups: [
-                  {
-                    content: "HEART",
-                    viewerHasReacted: true,
-                    reactors: {
-                      totalCount: 2,
-                      nodes: [
-                        { __typename: "User", login: "bob" },
-                        { __typename: "User", login: "carol" },
-                      ],
-                    },
-                  },
-                ],
-              },
-              {
-                __typename: "IssueComment",
-                id: "IC_2",
-                url: "https://github.com/acme/repo/pull/1#issuecomment-2",
-                author: { login: "dave" },
-                reactionGroups: [
-                  {
-                    content: "THUMBS_UP",
-                    viewerHasReacted: false,
-                    reactors: { totalCount: 1, nodes: [{ __typename: "User", login: "erin" }] },
-                  },
-                ],
+                content: "HEART",
+                reactorCount: 2,
+                reactorLogins: ["bob"],
+                viewerHasReacted: true,
+                reactorsTruncated: false,
               },
             ],
           },
-          reviewThreads: {
-            pageInfo: { hasNextPage: false },
-            nodes: [
+          {
+            subjectType: "PullRequestReviewComment",
+            subjectId: "RC_1",
+            subjectUrl: "https://github.com/acme/repo/pull/1#discussion_r1",
+            authorLogin: null,
+            groups: [
               {
-                comments: {
-                  pageInfo: { hasNextPage: true },
-                  nodes: [
-                    {
-                      __typename: "PullRequestReviewComment",
-                      id: "RC_1",
-                      url: "https://github.com/acme/repo/pull/1#discussion_r1",
-                      author: null,
-                      reactionGroups: [
-                        {
-                          content: "HEART",
-                          viewerHasReacted: false,
-                          reactors: {
-                            totalCount: 1,
-                            nodes: [{ __typename: "User", login: "bob" }],
-                          },
-                        },
-                      ],
-                    },
-                  ],
-                },
+                content: "HEART",
+                reactorCount: 1,
+                reactorLogins: ["bob"],
+                viewerHasReacted: false,
+                reactorsTruncated: false,
               },
             ],
           },
-        },
-      },
-      step1: {
-        pullRequest: {
-          comments: { pageInfo: { hasNextPage: false }, nodes: [] },
-          reviewThreads: { pageInfo: { hasNextPage: false }, nodes: [] },
-        },
-      },
-    })
+        ],
+        filterApplied: { reactorLogin: "bob", content: "HEART" },
+        pageInfo: { hasNextPage: false, endCursor: null },
+        scan: { pagesScanned: 2, sourceItemsScanned: 4, scanTruncated: false },
+      })
+      .mockResolvedValueOnce({
+        items: [],
+        filterApplied: { reactorLogin: null, content: null },
+        pageInfo: { hasNextPage: false, endCursor: null },
+        scan: { pagesScanned: 0, sourceItemsScanned: 0, scanTruncated: false },
+      })
 
     const result = await executeTasks(
       [
@@ -193,7 +162,9 @@ describe("executeTasks chaining - PR reaction filters", () => {
         },
       ],
       {
+        githubToken: "test-token",
         githubClient: createGithubClient({
+          fetchPrCommentsReactionsList,
           query: queryMock,
           queryRaw: vi.fn(),
         }),
@@ -201,6 +172,22 @@ describe("executeTasks chaining - PR reaction filters", () => {
     )
 
     expect(result.status).toBe("success")
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(fetchPrCommentsReactionsList).toHaveBeenCalledTimes(2)
+    expect(fetchPrCommentsReactionsList).toHaveBeenNthCalledWith(1, {
+      owner: "acme",
+      name: "repo",
+      prNumber: 1,
+      content: "HEART",
+      reactorLogin: "bob",
+      first: 30,
+    })
+    expect(fetchPrCommentsReactionsList).toHaveBeenNthCalledWith(2, {
+      owner: "acme",
+      name: "repo",
+      prNumber: 2,
+      first: 30,
+    })
     expect(result.results[0]).toMatchObject({
       ok: true,
       data: {
@@ -235,11 +222,8 @@ describe("executeTasks chaining - PR reaction filters", () => {
           },
         ],
         filterApplied: { reactorLogin: "bob", content: "HEART" },
-        scan: {
-          commentsTruncated: false,
-          threadsTruncated: false,
-          threadCommentsTruncated: true,
-        },
+        pageInfo: { hasNextPage: false, endCursor: null },
+        scan: { pagesScanned: 2, sourceItemsScanned: 4, scanTruncated: false },
       },
     })
     expect(result.results[1]).toMatchObject({
@@ -247,11 +231,8 @@ describe("executeTasks chaining - PR reaction filters", () => {
       data: {
         items: [],
         filterApplied: { reactorLogin: null, content: null },
-        scan: {
-          commentsTruncated: false,
-          threadsTruncated: false,
-          threadCommentsTruncated: false,
-        },
+        pageInfo: { hasNextPage: false, endCursor: null },
+        scan: { pagesScanned: 0, sourceItemsScanned: 0, scanTruncated: false },
       },
     })
   })

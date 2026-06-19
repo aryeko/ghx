@@ -25,15 +25,18 @@ describe("executeTask workflow.list", () => {
       ghAuthenticated: true,
       cliRunner: {
         run: async () => ({
-          stdout: JSON.stringify([
-            {
-              id: 123,
-              name: "CI",
-              path: ".github/workflows/ci.yml",
-              state: "active",
-              url: "https://github.com/go-modkit/modkit/blob/main/.github/workflows/ci.yml",
-            },
-          ]),
+          stdout: JSON.stringify({
+            total_count: 1,
+            workflows: [
+              {
+                id: 123,
+                name: "CI",
+                path: ".github/workflows/ci.yml",
+                state: "active",
+                url: "https://github.com/go-modkit/modkit/blob/main/.github/workflows/ci.yml",
+              },
+            ],
+          }),
           stderr: "",
           exitCode: 0,
         }),
@@ -45,6 +48,7 @@ describe("executeTask workflow.list", () => {
     expect(result.data).toEqual(
       expect.objectContaining({
         items: expect.any(Array),
+        pageInfo: { hasNextPage: false, endCursor: null },
       }),
     )
   })

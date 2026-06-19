@@ -10,11 +10,8 @@ import { errorCodes } from "@core/core/errors/codes.js"
 import { mapErrorToCode } from "@core/core/errors/map-error.js"
 import { isRetryableErrorCode } from "@core/core/errors/retryability.js"
 import { logger } from "@core/core/telemetry/log.js"
-import {
-  normalizePrCommentsReactionsListResult,
-  normalizePrReactionsListResult,
-} from "@core/gql/domains/pr-queries.js"
-import type { PrCommentsReactionsListInput, PrReactionsListInput } from "@core/gql/types.js"
+import { normalizePrReactionsListResult } from "@core/gql/domains/pr-queries.js"
+import type { PrReactionsListInput } from "@core/gql/types.js"
 import type { ClassifiedStep } from "./types.js"
 
 // Delegate to the shared retryability source of truth so chain results agree with
@@ -82,13 +79,6 @@ function applyQueryPostprocessing(
     return normalizePrReactionsListResult(
       { repository: data },
       input as unknown as PrReactionsListInput,
-    )
-  }
-
-  if (task === "pr.comments.reactions.list") {
-    return normalizePrCommentsReactionsListResult(
-      { repository: data },
-      input as unknown as PrCommentsReactionsListInput,
     )
   }
 

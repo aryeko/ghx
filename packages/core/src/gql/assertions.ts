@@ -364,6 +364,12 @@ function assertOptionalPageSize(value: unknown, fieldName: string): void {
   }
 }
 
+function assertOptionalAfterCursor(value: unknown, fieldName = "after"): void {
+  if (value !== undefined && value !== null && typeof value !== "string") {
+    throw new Error(`${fieldName} cursor must be a string`)
+  }
+}
+
 export function assertPrReactionsListInput(input: PrReactionsListInput): void {
   if (
     typeof input.owner !== "string" ||
@@ -392,9 +398,8 @@ export function assertPrCommentsReactionsListInput(input: PrCommentsReactionsLis
   if (!Number.isInteger(input.prNumber) || input.prNumber <= 0) {
     throw new Error("PR number must be a positive integer")
   }
-  assertOptionalPageSize(input.commentsFirst, "commentsFirst")
-  assertOptionalPageSize(input.threadsFirst, "threadsFirst")
-  assertOptionalPageSize(input.threadCommentsFirst, "threadCommentsFirst")
+  assertOptionalPageSize(input.first, "first")
+  assertOptionalAfterCursor(input.after)
   assertOptionalReactorLogin(input.reactorLogin)
   assertOptionalReactionContent(input.content)
 }
