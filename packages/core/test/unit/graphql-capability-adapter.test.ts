@@ -127,7 +127,7 @@ describe("runGraphqlCapability", () => {
     )
   })
 
-  it("defaults first for list capabilities when omitted", async () => {
+  it("forwards list params without injecting pagination defaults", async () => {
     const client = {
       fetchRepoView: vi.fn(),
       fetchIssueView: vi.fn(),
@@ -173,11 +173,15 @@ describe("runGraphqlCapability", () => {
     })
 
     expect(client.fetchIssueList).toHaveBeenCalledWith(
-      expect.objectContaining({ owner: "acme", name: "modkit", first: 30 }),
+      expect.objectContaining({ owner: "acme", name: "modkit" }),
     )
+    const issueListFirstCall = (client.fetchIssueList.mock.calls as unknown[][])[0]?.[0]
+    expect(issueListFirstCall).not.toHaveProperty("first")
     expect(client.fetchPrList).toHaveBeenCalledWith(
-      expect.objectContaining({ owner: "acme", name: "modkit", first: 30 }),
+      expect.objectContaining({ owner: "acme", name: "modkit" }),
     )
+    const prListFirstCall = (client.fetchPrList.mock.calls as unknown[][])[0]?.[0]
+    expect(prListFirstCall).not.toHaveProperty("first")
   })
 
   it("routes pr.threads.list through the GraphQL client", async () => {

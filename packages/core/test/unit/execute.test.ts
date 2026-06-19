@@ -42,6 +42,8 @@ describe("execute", () => {
 
     expect(result.ok).toBe(false)
     expect(result.error?.code).toBe("VALIDATION")
+    expect(result.error?.message).toMatch(/^Input validation failed:/)
+    expect(result.error?.message).toContain("name")
     expect(result.error?.details).toEqual(
       expect.objectContaining({
         ajvErrors: expect.any(Array),

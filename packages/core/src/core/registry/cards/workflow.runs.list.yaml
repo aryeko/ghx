@@ -7,7 +7,7 @@ input_schema:
   properties:
     owner: { type: string, minLength: 1 }
     name: { type: string, minLength: 1 }
-    first: { type: integer, minimum: 1 }
+    first: { type: integer, minimum: 1, default: 30 }
     branch: { type: string, minLength: 1 }
     event: { type: string, minLength: 1 }
     status: { type: string, minLength: 1 }

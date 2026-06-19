@@ -53,4 +53,28 @@ describe("mapErrorToCode", () => {
   it("maps unauthorized to auth over validation", () => {
     expect(mapErrorToCode(new Error("Unauthorized: invalid token"))).toBe("AUTH")
   })
+
+  it("maps 'Could not resolve to' issue message to NOT_FOUND even when it contains a 500-like number", () => {
+    expect(mapErrorToCode(new Error("Could not resolve to an Issue with the number of 500"))).toBe(
+      "NOT_FOUND",
+    )
+  })
+
+  it("maps 'Could not resolve to' PR message to NOT_FOUND", () => {
+    expect(
+      mapErrorToCode(new Error("Could not resolve to a PullRequest with the number of 42")),
+    ).toBe("NOT_FOUND")
+  })
+
+  it("maps 'still in progress' message to NOT_READY", () => {
+    expect(
+      mapErrorToCode(
+        new Error("job 123 is still in progress; logs will be available when it is complete"),
+      ),
+    ).toBe("NOT_READY")
+  })
+
+  it("maps 'too large' message to TOO_LARGE", () => {
+    expect(mapErrorToCode(new Error("diff entry server.mjs diff is too large"))).toBe("TOO_LARGE")
+  })
 })

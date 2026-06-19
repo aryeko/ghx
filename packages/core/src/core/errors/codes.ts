@@ -1,7 +1,7 @@
 /**
  * All possible error codes returned in {@link ResultError.code}.
  *
- * Retryable codes: `RATE_LIMIT`, `NETWORK`, `SERVER`.
+ * Retryable codes: `RATE_LIMIT`, `NETWORK`, `SERVER`, `NOT_READY`.
  */
 export const errorCodes = {
   Auth: "AUTH",
@@ -11,6 +11,8 @@ export const errorCodes = {
   Network: "NETWORK",
   Server: "SERVER",
   AdapterUnsupported: "ADAPTER_UNSUPPORTED",
+  NotReady: "NOT_READY",
+  TooLarge: "TOO_LARGE",
   Unknown: "UNKNOWN",
 } as const
 

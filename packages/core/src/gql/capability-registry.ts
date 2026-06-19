@@ -53,15 +53,6 @@ export type GraphqlHandler = (
   params: Record<string, unknown>,
 ) => Promise<unknown>
 
-const DEFAULT_LIST_FIRST = 30
-
-function withDefaultFirst(params: Record<string, unknown>): Record<string, unknown> {
-  if (params.first === undefined) {
-    return { ...params, first: DEFAULT_LIST_FIRST }
-  }
-  return params
-}
-
 function requireNonEmptyString(
   params: Record<string, unknown>,
   field: string,
@@ -80,7 +71,7 @@ const handlers = new Map<string, GraphqlHandler>([
 
   // Issue queries
   ["issue.view", (c, p) => c.fetchIssueView(p as IssueViewInput)],
-  ["issue.list", (c, p) => c.fetchIssueList(withDefaultFirst(p) as IssueListInput)],
+  ["issue.list", (c, p) => c.fetchIssueList(p as IssueListInput)],
   ["issue.comments.list", (c, p) => c.fetchIssueCommentsList(p as IssueCommentsListInput)],
 
   // Issue mutations
@@ -267,11 +258,11 @@ const handlers = new Map<string, GraphqlHandler>([
 
   // PR queries
   ["pr.view", (c, p) => c.fetchPrView(p as PrViewInput)],
-  ["pr.list", (c, p) => c.fetchPrList(withDefaultFirst(p) as PrListInput)],
-  ["pr.reviews.list", (c, p) => c.fetchPrReviewsList(withDefaultFirst(p) as PrReviewsListInput)],
-  ["pr.diff.files", (c, p) => c.fetchPrDiffListFiles(withDefaultFirst(p) as PrDiffListFilesInput)],
+  ["pr.list", (c, p) => c.fetchPrList(p as PrListInput)],
+  ["pr.reviews.list", (c, p) => c.fetchPrReviewsList(p as PrReviewsListInput)],
+  ["pr.diff.files", (c, p) => c.fetchPrDiffListFiles(p as PrDiffListFilesInput)],
   ["pr.merge.status", (c, p) => c.fetchPrMergeStatus(p as PrMergeStatusInput)],
-  ["pr.threads.list", (c, p) => c.fetchPrCommentsList(withDefaultFirst(p) as PrCommentsListInput)],
+  ["pr.threads.list", (c, p) => c.fetchPrCommentsList(p as PrCommentsListInput)],
 
   // PR mutations
   [
@@ -305,26 +296,17 @@ const handlers = new Map<string, GraphqlHandler>([
       return c.submitPrReview(p as PrReviewSubmitInput)
     },
   ],
-  ["repo.labels.list", (c, p) => c.fetchRepoLabelsList(withDefaultFirst(p) as RepoLabelsListInput)],
-  [
-    "repo.issue_types.list",
-    (c, p) => c.fetchRepoIssueTypesList(withDefaultFirst(p) as RepoIssueTypesListInput),
-  ],
+  ["repo.labels.list", (c, p) => c.fetchRepoLabelsList(p as RepoLabelsListInput)],
+  ["repo.issue_types.list", (c, p) => c.fetchRepoIssueTypesList(p as RepoIssueTypesListInput)],
   // Release
   ["release.view", (c, p) => c.fetchReleaseView(p as ReleaseViewInput)],
-  ["release.list", (c, p) => c.fetchReleaseList(withDefaultFirst(p) as ReleaseListInput)],
+  ["release.list", (c, p) => c.fetchReleaseList(p as ReleaseListInput)],
 
   // Project V2
   ["project_v2.org.view", (c, p) => c.fetchProjectV2OrgView(p as ProjectV2OrgViewInput)],
   ["project_v2.user.view", (c, p) => c.fetchProjectV2UserView(p as ProjectV2UserViewInput)],
-  [
-    "project_v2.fields.list",
-    (c, p) => c.fetchProjectV2FieldsList(withDefaultFirst(p) as ProjectV2FieldsListInput),
-  ],
-  [
-    "project_v2.items.list",
-    (c, p) => c.fetchProjectV2ItemsList(withDefaultFirst(p) as ProjectV2ItemsListInput),
-  ],
+  ["project_v2.fields.list", (c, p) => c.fetchProjectV2FieldsList(p as ProjectV2FieldsListInput)],
+  ["project_v2.items.list", (c, p) => c.fetchProjectV2ItemsList(p as ProjectV2ItemsListInput)],
 
   // PR mutations (Phase 2)
   [

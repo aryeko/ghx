@@ -1,3 +1,5 @@
+import { getOperationCard } from "@core/core/registry/index.js"
+import { validateInput } from "@core/core/registry/schema-validator.js"
 import type { GraphqlHandler } from "@core/gql/capability-registry.js"
 import { getGraphqlHandler, listGraphqlCapabilities } from "@core/gql/capability-registry.js"
 import type { GithubClient } from "@core/gql/github-client.js"
@@ -524,15 +526,17 @@ describe("mutation handlers call client when method is present", () => {
   })
 })
 
-// --- withDefaultFirst behavior (tested indirectly) ---
+// --- first default behavior: handler passes params through; schema (AJV) injects default ---
 
-describe("withDefaultFirst (indirect via issue.list)", () => {
-  it("adds first: 30 when not provided", async () => {
+describe("first default behavior (issue.list handler passes params through)", () => {
+  it("handler passes params to fetchIssueList unchanged (default is schema-layer's job)", async () => {
     const fetchIssueList = vi.fn().mockResolvedValue([])
     const client = mockClient({ fetchIssueList })
     const handler = requireHandler("issue.list")
-    await handler(client, { owner: "acme", name: "repo" })
-    expect(fetchIssueList).toHaveBeenCalledWith(expect.objectContaining({ first: 30 }))
+    await handler(client, { owner: "acme", name: "repo", first: 30 })
+    expect(fetchIssueList).toHaveBeenCalledWith(
+      expect.objectContaining({ owner: "acme", name: "repo" }),
+    )
   })
 
   it("preserves explicit first value", async () => {
@@ -543,24 +547,28 @@ describe("withDefaultFirst (indirect via issue.list)", () => {
     expect(fetchIssueList).toHaveBeenCalledWith(expect.objectContaining({ first: 10 }))
   })
 
-  it("adds first: 30 for pr.list when not provided", async () => {
+  it("handler passes params to fetchPrList unchanged (default is schema-layer's job)", async () => {
     const fetchPrList = vi.fn().mockResolvedValue([])
     const client = mockClient({ fetchPrList })
     const handler = requireHandler("pr.list")
-    await handler(client, { owner: "acme", name: "repo" })
-    expect(fetchPrList).toHaveBeenCalledWith(expect.objectContaining({ first: 30 }))
+    await handler(client, { owner: "acme", name: "repo", first: 30 })
+    expect(fetchPrList).toHaveBeenCalledWith(
+      expect.objectContaining({ owner: "acme", name: "repo" }),
+    )
   })
 })
 
-// --- project_v2.items.list defaults first to 30 ---
+// --- project_v2.items.list: handler passes params through; schema injects default ---
 
-describe("project_v2.items.list default first", () => {
-  it("defaults first to 30 when not provided", async () => {
+describe("project_v2.items.list handler passes params through", () => {
+  it("handler passes params to fetchProjectV2ItemsList unchanged (default is schema-layer's job)", async () => {
     const fetchProjectV2ItemsList = vi.fn().mockResolvedValue([])
     const client = mockClient({ fetchProjectV2ItemsList })
     const handler = requireHandler("project_v2.items.list")
-    await handler(client, { owner: "acme", projectNumber: 1 })
-    expect(fetchProjectV2ItemsList).toHaveBeenCalledWith(expect.objectContaining({ first: 30 }))
+    await handler(client, { owner: "acme", projectNumber: 1, first: 30 })
+    expect(fetchProjectV2ItemsList).toHaveBeenCalledWith(
+      expect.objectContaining({ owner: "acme", projectNumber: 1 }),
+    )
   })
 
   it("preserves explicit first for project_v2.items.list", async () => {
@@ -693,5 +701,50 @@ describe("pr.create field remapping", () => {
     const call = createPr.mock.calls[0] as unknown[]
     expect(call[0]).not.toHaveProperty("body")
     expect(call[0]).not.toHaveProperty("draft")
+  })
+})
+
+// --- AJV schema-layer first default (useDefaults) ---
+
+describe("schema-layer first default (AJV useDefaults)", () => {
+  it("issue.comments.list: validateInput injects first:30 into params when omitted", () => {
+    const card = getOperationCard("issue.comments.list")
+    if (!card) throw new Error("issue.comments.list card not found")
+    const params: Record<string, unknown> = { owner: "acme", name: "repo", issueNumber: 1 }
+    const result = validateInput(card.input_schema, params)
+    expect(result.ok).toBe(true)
+    expect(params.first).toBe(30)
+  })
+
+  it("issue.list: validateInput injects first:30 into params when omitted", () => {
+    const card = getOperationCard("issue.list")
+    if (!card) throw new Error("issue.list card not found")
+    const params: Record<string, unknown> = { owner: "acme", name: "repo" }
+    const result = validateInput(card.input_schema, params)
+    expect(result.ok).toBe(true)
+    expect(params.first).toBe(30)
+  })
+
+  it("pr.threads.list: validateInput injects first:30 into params when omitted", () => {
+    const card = getOperationCard("pr.threads.list")
+    if (!card) throw new Error("pr.threads.list card not found")
+    const params: Record<string, unknown> = { owner: "acme", name: "repo", prNumber: 1 }
+    const result = validateInput(card.input_schema, params)
+    expect(result.ok).toBe(true)
+    expect(params.first).toBe(30)
+  })
+
+  it("preserves explicit first when provided", () => {
+    const card = getOperationCard("issue.comments.list")
+    if (!card) throw new Error("issue.comments.list card not found")
+    const params: Record<string, unknown> = {
+      owner: "acme",
+      name: "repo",
+      issueNumber: 1,
+      first: 50,
+    }
+    const result = validateInput(card.input_schema, params)
+    expect(result.ok).toBe(true)
+    expect(params.first).toBe(50)
   })
 })
