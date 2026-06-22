@@ -1,5 +1,11 @@
 # @ghx-dev/core
 
+## 0.7.0
+
+### Minor Changes
+
+- d7adcaf: Rename the packaged agent skill and setup install target from `using-ghx` to `github-ghx`, while keeping legacy skill paths as resolver fallbacks for existing installs.
+
 ## 0.6.1
 
 ### Patch Changes
