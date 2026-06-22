@@ -126,7 +126,7 @@ ghx setup --scope <project|user> [--yes] [--dry-run] [--verify] [--track]
 
 | Flag | Required | Description |
 |---|---|---|
-| `--scope` | Yes | `project` (writes to `.agents/skills/using-ghx/SKILL.md`) or `user` (writes to `~/.agents/skills/using-ghx/SKILL.md`) |
+| `--scope` | Yes | `project` (writes to `.agents/skills/github-ghx/SKILL.md`) or `user` (writes to `~/.agents/skills/github-ghx/SKILL.md`) |
 | `--yes` | No | Skip confirmation prompt |
 | `--dry-run` | No | Print the target path without writing files |
 | `--verify` | No | Verify the installed skill exists and matches the packaged skill |

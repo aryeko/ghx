@@ -22,6 +22,8 @@ type SetupError = Error & { code?: ErrorCode }
 type VerifySkillStatus = "ok" | "missing" | "outdated"
 
 const ajv = new Ajv({ allErrors: true, strict: false })
+const canonicalSkillName = "github-ghx"
+const legacySkillName = "using-ghx"
 
 const setupOptionsSchema = {
   type: "object",
@@ -43,8 +45,10 @@ const validateSetupOptions = ajv.compile(setupOptionsSchema)
 
 const setupCommandDirectory = dirname(fileURLToPath(import.meta.url))
 const setupSkillAssetPathCandidates = [
-  join(setupCommandDirectory, "..", "..", "..", "skills", "using-ghx", "SKILL.md"),
-  join(setupCommandDirectory, "..", "..", "skills", "using-ghx", "SKILL.md"),
+  join(setupCommandDirectory, "..", "..", "..", "skills", canonicalSkillName, "SKILL.md"),
+  join(setupCommandDirectory, "..", "..", "skills", canonicalSkillName, "SKILL.md"),
+  join(setupCommandDirectory, "..", "..", "..", "skills", legacySkillName, "SKILL.md"),
+  join(setupCommandDirectory, "..", "..", "skills", legacySkillName, "SKILL.md"),
 ]
 
 function isENOENT(error: unknown): boolean {
@@ -129,9 +133,9 @@ function parseArgs(argv: string[]): SetupOptions | null {
   return options
 }
 
-function resolveSkillPath(scope: SetupScope): string {
+function resolveSkillPath(scope: SetupScope, skillName = canonicalSkillName): string {
   const base = scope === "user" ? homedir() : process.cwd()
-  return join(base, ".agents", "skills", "using-ghx", "SKILL.md")
+  return join(base, ".agents", "skills", skillName, "SKILL.md")
 }
 
 function resolveTrackingPath(): string {
@@ -182,12 +186,15 @@ async function confirmOverwrite(skillPath: string): Promise<boolean> {
   }
 }
 
-async function verifySkill(skillPath: string): Promise<VerifySkillStatus> {
+async function verifySkill(skillPath: string, legacySkillPath: string): Promise<VerifySkillStatus> {
   let installedContent: string
   try {
     installedContent = await readFile(skillPath, "utf8")
   } catch (error) {
     if (isENOENT(error)) {
+      if (await skillFileExists(legacySkillPath)) {
+        return "outdated"
+      }
       return "missing"
     }
 
@@ -219,10 +226,11 @@ export async function setupCommand(argv: string[] = []): Promise<number> {
   }
 
   const skillPath = resolveSkillPath(parsed.scope)
+  const legacySkillPath = resolveSkillPath(parsed.scope, legacySkillName)
 
   try {
     if (parsed.verifyOnly) {
-      const status = await verifySkill(skillPath)
+      const status = await verifySkill(skillPath, legacySkillPath)
       if (status === "missing") {
         process.stderr.write(`Verify failed: skill not installed at ${skillPath}\n`)
         return 1

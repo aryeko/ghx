@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { EvalModeResolver } from "@eval/mode/resolver.js"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -59,4 +62,33 @@ describe("EvalModeResolver", () => {
     // Falls back to GHX_SKILL_FALLBACK content
     expect(config.systemInstructions).toContain("ghx")
   })
+
+  it("prefers canonical github-ghx user skill over legacy paths", async () => {
+    const home = mkdtempSync(join(tmpdir(), "ghx-resolver-home-"))
+    writeSkill(home, "github-ghx", "canonical github-ghx skill")
+    writeSkill(home, "using-ghx", "legacy using-ghx skill")
+    writeSkill(home, "ghx", "historical ghx skill")
+    vi.stubEnv("HOME", home)
+
+    const config = await resolver.resolve("ghx")
+
+    expect(config.systemInstructions).toBe("canonical github-ghx skill")
+  })
+
+  it("falls back to legacy using-ghx user skill when canonical skill is absent", async () => {
+    const home = mkdtempSync(join(tmpdir(), "ghx-resolver-home-"))
+    writeSkill(home, "using-ghx", "legacy using-ghx skill")
+    writeSkill(home, "ghx", "historical ghx skill")
+    vi.stubEnv("HOME", home)
+
+    const config = await resolver.resolve("ghx")
+
+    expect(config.systemInstructions).toBe("legacy using-ghx skill")
+  })
 })
+
+function writeSkill(home: string, name: string, content: string): void {
+  const dir = join(home, ".agents", "skills", name)
+  mkdirSync(dir, { recursive: true })
+  writeFileSync(join(dir, "SKILL.md"), content, "utf8")
+}
