@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { setupCommand } from "@core/cli/commands/setup.js"
@@ -40,7 +40,7 @@ describe("setupCommand", () => {
     expect(code).toBe(0)
     expect(stdout.mock.calls.map((call) => String(call[0])).join("")).toContain("Dry run")
     expect(stdout.mock.calls.map((call) => String(call[0])).join("")).toContain(
-      ".agents/skills/using-ghx/SKILL.md",
+      ".agents/skills/github-ghx/SKILL.md",
     )
   })
 
@@ -70,9 +70,10 @@ describe("setupCommand", () => {
     const code = await setupCommand(["--scope", "user", "--yes"])
 
     expect(code).toBe(0)
-    const skillPath = join(tempRoot, ".agents", "skills", "using-ghx", "SKILL.md")
+    const skillPath = join(tempRoot, ".agents", "skills", "github-ghx", "SKILL.md")
     const content = readFileSync(skillPath, "utf8")
-    expect(content).toContain("Prefer `ghx` over `gh`, `gh api`, or `curl`")
+    expect(content).toContain("name: github-ghx")
+    expect(content).toContain("Use first for GitHub work in a repo")
     expect(content).toContain("ghx capabilities explain <capability_id>")
     expect(content).toContain("ghx run <capability_id> --input - <<'EOF'")
     expect(content).not.toContain("GHX_SKIP_GH_PREFLIGHT=1")
@@ -87,7 +88,7 @@ describe("setupCommand", () => {
     const code = await setupCommand(["--scope", "project", "--yes"])
 
     expect(code).toBe(0)
-    const skillPath = join(projectRoot, ".agents", "skills", "using-ghx", "SKILL.md")
+    const skillPath = join(projectRoot, ".agents", "skills", "github-ghx", "SKILL.md")
     const content = readFileSync(skillPath, "utf8")
     expect(content).toContain("ghx capabilities explain")
     expect(content).not.toContain("GHX_SKIP_GH_PREFLIGHT=1")
@@ -106,7 +107,7 @@ describe("setupCommand", () => {
 
   it("verify fails when installed skill content is stale", async () => {
     await setupCommand(["--scope", "user", "--yes"])
-    const skillPath = join(tempRoot, ".agents", "skills", "using-ghx", "SKILL.md")
+    const skillPath = join(tempRoot, ".agents", "skills", "github-ghx", "SKILL.md")
     writeFileSync(skillPath, "# stale skill\n\nghx capabilities list\n", "utf8")
     const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true)
 
@@ -127,9 +128,23 @@ describe("setupCommand", () => {
     expect(stderr.mock.calls.map((call) => String(call[0])).join("")).toContain("not installed")
   })
 
+  it("verify treats legacy using-ghx installs as outdated", async () => {
+    const legacySkillDir = join(tempRoot, ".agents", "skills", "using-ghx")
+    mkdirSync(legacySkillDir, { recursive: true })
+    writeFileSync(join(legacySkillDir, "SKILL.md"), "# legacy skill\n", "utf8")
+    const stderr = vi.spyOn(process.stderr, "write").mockImplementation(() => true)
+
+    const code = await setupCommand(["--scope", "user", "--verify"])
+
+    expect(code).toBe(1)
+    const output = stderr.mock.calls.map((call) => String(call[0])).join("")
+    expect(output).toContain("out of date")
+    expect(output).toContain("ghx setup --scope user --yes")
+  })
+
   it("requires overwrite confirmation when skill exists and --yes is not provided", async () => {
-    const skillPath = join(tempRoot, ".agents", "skills", "using-ghx", "SKILL.md")
-    const projectDir = join(tempRoot, ".agents", "skills", "using-ghx")
+    const skillPath = join(tempRoot, ".agents", "skills", "github-ghx", "SKILL.md")
+    const projectDir = join(tempRoot, ".agents", "skills", "github-ghx")
     await setupCommand(["--scope", "user", "--yes"])
     writeFileSync(skillPath, "custom content", "utf8")
 

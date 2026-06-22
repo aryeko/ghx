@@ -79,7 +79,7 @@ export class EvalModeResolver implements ModeResolver {
 ### ghx Mode
 
 - **Environment:** Prepends the ghx binary directory to `PATH` so the agent can invoke `ghx run <capability>` directly.
-- **System instructions:** Loads the full `SKILL.md` file, which documents every available capability with input/output schemas and examples. The resolver searches three locations in order: `GHX_SKILL_MD` environment variable, `./SKILL.md` in the working directory, and `~/.agents/skills/ghx/SKILL.md`. Falls back to a minimal instruction string if none are found.
+- **System instructions:** Loads the full `SKILL.md` file, which documents every available capability with input/output schemas and examples. The resolver checks `GHX_SKILL_MD`, `./SKILL.md`, canonical `~/.agents/skills/github-ghx/SKILL.md`, legacy user skill paths, and packaged skill paths before falling back to minimal instructions.
 - **Provider overrides:** None -- ghx operates as a CLI tool, not an MCP server.
 
 ### mcp Mode

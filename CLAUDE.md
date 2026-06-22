@@ -81,7 +81,7 @@ User/Agent → CLI (packages/core/src/cli/) → executeTask() [core/routing/engi
 
 1. **CLI entry** (`packages/core/src/cli/index.ts`) dispatches three command families:
    - `run` — parses `task` + `--input` JSON
-   - `setup` — installs/verifies `SKILL.md` at `~/.agents/skills/ghx/` or `.agents/` (project scope)
+   - `setup` — installs/verifies `SKILL.md` at `~/.agents/skills/github-ghx/` or `.agents/` (project scope)
    - `capabilities` — lists/explains capability contracts from operation cards
 
 2. **Operation cards** (`packages/core/src/core/registry/cards/*.yaml`) define each capability: input/output schemas, preferred route, and fallbacks.

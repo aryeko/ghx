@@ -132,7 +132,7 @@ ghx run pr.view --input '{"owner":"aryeko","name":"ghx","prNumber":42}'
 ghx setup --scope user --yes
 ```
 
-This writes `SKILL.md` to `~/.agents/skills/using-ghx/` which teaches your agent how to use `ghx` for reliable GitHub interactions. See [Agent Setup](./docs/getting-started/agent-setup.md) for platform-specific wiring.
+This writes `SKILL.md` to `~/.agents/skills/github-ghx/` which teaches your agent how to use `ghx` for reliable GitHub interactions. See [Agent Setup](./docs/getting-started/agent-setup.md) for platform-specific wiring.
 
 ## License
 

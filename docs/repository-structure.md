@@ -31,7 +31,7 @@ ghx/
 │   │   ├── .claude-plugin/     # Claude Code plugin manifest
 │   │   ├── .cursor-plugin/     # Cursor IDE plugin (rules, hooks, manifest)
 │   │   ├── skills/             # Agent skill templates (shared by both plugins)
-│   │   │   └── using-ghx/      # ghx usage skill (SKILL.md)
+│   │   │   └── github-ghx/      # ghx usage skill (SKILL.md)
 │   │   ├── src/
 │   │   │   ├── cli/                  # ghx CLI entrypoint
 │   │   │   ├── core/                 # Core runtime
@@ -192,7 +192,7 @@ ghx/
 | `cli/commands/setup.ts` | Skill installation | `setupCommand()` |
 | `cli/commands/capabilities-list.ts` | List capabilities | `capabilitiesListCommand()` |
 | `cli/commands/capabilities-explain.ts` | Explain capability | `capabilitiesExplainCommand()` |
-| `skills/using-ghx/SKILL.md` (package root) | Setup skill template / Claude Code plugin skill | (markdown) |
+| `skills/github-ghx/SKILL.md` (package root) | Setup skill template / Claude Code plugin skill | (markdown) |
 | `core/execute/execute-tool.ts` | Execute wrapper | `createExecuteTool()` |
 | `core/registry/list-capabilities.ts` | List tool | `listCapabilities()` |
 | `core/registry/explain-capability.ts` | Explain tool | `explainCapability()` |

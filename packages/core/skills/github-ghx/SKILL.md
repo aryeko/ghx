@@ -1,9 +1,25 @@
 ---
-name: using-ghx
-description: "Executes GitHub operations via ghx CLI, which batches multiple operations into single API calls and provides structured JSON output for 70+ GitHub capabilities. Use when working with PRs, issues, reviews, CI checks, releases, labels, comments, or any GitHub API operation -- even simple ones like checking PR status or listing issues. Provides richer output than raw gh, gh api, or curl commands."
+name: github-ghx
+description: "Use first for GitHub work in a repo: checking PRs, unresolved review threads, reviews, comments, issues, labels, CI checks, workflow runs/logs, releases, merge readiness, or any GitHub API state. Prefer ghx over gh, gh api, GraphQL, or curl whenever a matching ghx capability exists. Use raw gh mainly for auth, clone/checkout, release asset upload, and long-running check watching."
 ---
 
 # ghx CLI Skill
+
+## Operating rule
+
+For GitHub state or GitHub API work, check whether `ghx` has a matching capability before using `gh`, `gh api`, GraphQL, or curl.
+
+When another GitHub workflow skill is also active, use that skill for the workflow and use `ghx` as the first-choice GitHub state surface inside it.
+
+Do not replace an active workflow skill's sequencing, edits, or verification with this skill's examples; use `ghx` for the GitHub state calls and mutations that workflow requires.
+
+For "current PR" requests, use `ghx run pr.list` first when a nearby open PR can be selected from repository context. Use raw `gh pr view --json number` only to discover a branch-specific PR number that `ghx` cannot infer, then return to `ghx` for PR state.
+
+## Important rules
+
+- Use `ghx chain` when you have 2+ **independent** operations — it is faster and avoids mid-sequence failures.
+- Always use heredoc (`<<'EOF'`) for JSON input, never inline `--input '{...}'`.
+- Omit owner/name only for the current checkout; pass explicit owner/name when targeting another repository.
 
 ghx provides 70+ GitHub capabilities with structured JSON input/output. It batches operations into single GraphQL round-trips, making it faster than sequential `gh` or `gh api` calls.
 
@@ -181,10 +197,3 @@ Use `ghx chain` with `issue.labels.add`, `issue.assignees.add`, and `issue.comme
 1. Infer owner/name from git remote
 2. Get current branch: `git branch --show-current`
 3. `pr.create` with `head` = current branch, `base` = main/master
-
-## Important rules
-
-- Prefer `ghx` over `gh`, `gh api`, or `curl` for any GitHub operation that has a matching capability.
-- Use `ghx chain` when you have 2+ **independent** operations — it is faster and avoids mid-sequence failures.
-- Always use heredoc (`<<'EOF'`) for JSON input, never inline `--input '{...}'`.
-- Omit owner/name only for the current checkout; pass explicit owner/name when targeting another repository.

@@ -44,9 +44,9 @@ ghx setup --scope user --yes
 ghx setup --scope user --verify
 ```
 
-This writes `SKILL.md` to `~/.agents/skills/using-ghx/SKILL.md`.
+This writes `SKILL.md` to `~/.agents/skills/github-ghx/SKILL.md`.
 
-You can also install project-scoped (writes to `.agents/skills/using-ghx/SKILL.md` in the current directory):
+You can also install project-scoped (writes to `.agents/skills/github-ghx/SKILL.md` in the current directory):
 
 ```bash
 ghx setup --scope project --yes
@@ -61,7 +61,7 @@ ghx setup --scope project --yes
 | Windsurf | Yes | Yes | Also reads `.windsurf/skills/` |
 | OpenCode | Yes | Yes | Also reads `~/.config/opencode/skills/` |
 | Cursor | No | Yes | Prefer Cursor plugin marketplace instead (see above) |
-| Aider | No | No | Use `--read ~/.agents/skills/using-ghx/SKILL.md` flag |
+| Aider | No | No | Use `--read ~/.agents/skills/github-ghx/SKILL.md` flag |
 
 ## The Execute Tool Pattern
 

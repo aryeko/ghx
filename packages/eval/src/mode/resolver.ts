@@ -63,8 +63,20 @@ export class EvalModeResolver implements ModeResolver {
     const candidates = [
       process.env["GHX_SKILL_MD"],
       join(process.cwd(), "SKILL.md"),
+      join(process.env["HOME"] ?? "", ".agents", "skills", "github-ghx", "SKILL.md"),
+      join(process.env["HOME"] ?? "", ".agents", "skills", "using-ghx", "SKILL.md"),
       join(process.env["HOME"] ?? "", ".agents", "skills", "ghx", "SKILL.md"),
       // SKILL.md shipped with the installed @ghx-dev/core package (adjacent to the ghx binary)
+      join(
+        this.ghxBinDir(),
+        "..",
+        "node_modules",
+        "@ghx-dev",
+        "core",
+        "skills",
+        "github-ghx",
+        "SKILL.md",
+      ),
       join(
         this.ghxBinDir(),
         "..",
@@ -75,6 +87,7 @@ export class EvalModeResolver implements ModeResolver {
         "using-ghx",
         "SKILL.md",
       ),
+      join(this.ghxBinDir(), "..", "@ghx-dev", "core", "skills", "github-ghx", "SKILL.md"),
       join(this.ghxBinDir(), "..", "@ghx-dev", "core", "skills", "using-ghx", "SKILL.md"),
     ].filter((p): p is string => p !== undefined && p !== "")
 
