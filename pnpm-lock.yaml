@@ -162,8 +162,8 @@ importers:
         specifier: ^3.2.0
         version: 3.2.0(graphql@16.14.2)
       '@opencode-ai/sdk':
-        specifier: ^1.15.13
-        version: 1.17.8
+        specifier: ^1.17.11
+        version: 1.17.11
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9
@@ -198,8 +198,8 @@ importers:
         specifier: workspace:*
         version: link:../core
       '@opencode-ai/sdk':
-        specifier: ^1.15.13
-        version: 1.17.8
+        specifier: ^1.17.11
+        version: 1.17.11
       commander:
         specifier: ^14.0.3
         version: 14.0.3
@@ -1704,8 +1704,8 @@ packages:
   '@nx/workspace@22.7.4':
     resolution: {integrity: sha512-MBvWQQYXLFF/N7tWDFNQ+cKLWvYAmk3/A+Bt2olyydsVEigq96stUJnF8Yu44PICEqckG61SwXEziqQkLKDi/A==}
 
-  '@opencode-ai/sdk@1.17.8':
-    resolution: {integrity: sha512-6MKmsj2ujZyL44jy+12dpwWYDYKPS9fUr+0wVQxaIlPYQ/eAt8T8T3QrybplJ5ZtHfZUX+esXZ02x2UYYm7oEw==}
+  '@opencode-ai/sdk@1.17.11':
+    resolution: {integrity: sha512-UdSwnNM4/cD5rHnI8O7VaHuiwYnsEOglpRPVeeYE2S5Nm1K34ijCyZGDvBecb0ShdBQgn49XvyQWJH6cREsIPw==}
 
   '@oxc-project/types@0.133.0':
     resolution: {integrity: sha512-KzkdCd6Uxqnf6l3HOw1xfatAlUURA0g14cvBYFyJ5SaNOQbOUvBr9PKArcPcrNIeRsBdgcUzOGrhKveVpvOIGA==}
@@ -4022,6 +4022,7 @@ packages:
   tsconfck@3.1.6:
     resolution: {integrity: sha512-ks6Vjr/jEw0P1gmOVwutM3B7fWxoWBL2KRDb1JfqGVawBmO5UsvmWOQFGHBPl5yxYz4eERr19E6L7NMv+Fej4w==}
     engines: {node: ^18 || >=20}
+    deprecated: unmaintained
     hasBin: true
     peerDependencies:
       typescript: ^5.0.0
@@ -6172,7 +6173,7 @@ snapshots:
       - '@swc/core'
       - debug
 
-  '@opencode-ai/sdk@1.17.8':
+  '@opencode-ai/sdk@1.17.11':
     dependencies:
       cross-spawn: 7.0.6
 
