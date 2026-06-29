@@ -84,7 +84,7 @@
     "@vitest/eslint-plugin": "^1.6.18",
     "vite": "^8.0.16",
     "eslint": "^9.35.0",
-    "globals": "^17.6.0",
+    "globals": "^17.7.0",
     "lefthook": "^2.1.9",
     "nx": "22.7.4",
     "typescript": "catalog:",
