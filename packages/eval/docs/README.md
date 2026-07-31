@@ -105,7 +105,7 @@ See: **[Contributing](contributing/README.md)**
 
 ## Requirements
 
-- Node.js 22+
+- Node.js 22.13.0+
 - pnpm workspace
 - `@ghx-dev/agent-profiler`
 - `@ghx-dev/core`

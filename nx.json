@@ -48,14 +48,6 @@
       "dependsOn": ["build"]
     }
   },
-  "plugins": [
-    "@nx/js",
-    {
-      "plugin": "@nx/eslint/plugin",
-      "options": {
-        "targetName": "eslint:lint"
-      }
-    }
-  ],
+  "plugins": ["@nx/js"],
   "analytics": true
 }

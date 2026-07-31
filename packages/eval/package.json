@@ -3,10 +3,13 @@
   "version": "0.3.8",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
     "build": "tsup",
     "typecheck": "tsc -p tsconfig.build.json",
-    "lint": "eslint .",
+    "lint": "oxlint .",
     "test": "vitest run --project unit --passWithNoTests",
     "test:watch": "vitest --project unit",
     "test:coverage": "vitest run --coverage --project unit --passWithNoTests",
@@ -17,8 +20,8 @@
   "dependencies": {
     "@ghx-dev/agent-profiler": "workspace:*",
     "@ghx-dev/core": "workspace:*",
-    "@opencode-ai/sdk": "^1.15.13",
-    "commander": "^14.0.3",
+    "@opencode-ai/sdk": "^1.18.10",
+    "commander": "^15.0.0",
     "yaml": "^2.9.0",
     "zod": "^4.4.3"
   },
@@ -28,7 +31,6 @@
     "tsup": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
-    "vite-tsconfig-paths": "^6.1.1",
     "vitest": "catalog:"
   },
   "nx": {

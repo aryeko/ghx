@@ -4,8 +4,8 @@ Clone the repository, install dependencies, and verify your development environm
 
 ## Prerequisites
 
-- **Node.js** 22 or later
-- **pnpm** (latest stable)
+- **Node.js** 22.13.0 or later
+- **pnpm** 11.18.0 or later
 - **git**
 
 ## Clone and Install
@@ -56,7 +56,7 @@ pnpm --filter @ghx-dev/eval exec vitest run test/unit/scenario/schema.test.ts -t
 |---------|-------------|
 | `pnpm run format` | Auto-format with Biome |
 | `pnpm run format:check` | Check formatting without writing |
-| `pnpm run lint` | Run ESLint |
+| `pnpm run lint` | Run Oxlint |
 | `pnpm run typecheck` | Run TypeScript type checking |
 
 ## Full CI

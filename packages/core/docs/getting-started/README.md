@@ -46,7 +46,7 @@ Three-mode comparison (baseline `gh` CLI vs GitHub MCP vs ghx) across [30 runs](
 
 ## Prerequisites
 
-- **Node.js 22+**
+- **Node.js 22.13.0+**
 - **`gh` CLI** authenticated (`gh auth status`)
 - **`GITHUB_TOKEN`** or **`GH_TOKEN`** environment variable
 

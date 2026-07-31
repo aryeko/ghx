@@ -6,8 +6,8 @@ This guide covers development setup, testing, and code conventions specific to t
 
 ### Prerequisites
 
-- Node.js 22+
-- pnpm 9+
+- Node.js 22.13.0+
+- pnpm 11.18.0+
 - `gh` CLI authenticated (`gh auth status`)
 - `GITHUB_TOKEN` environment variable
 
@@ -28,7 +28,7 @@ pnpm run build
 |---|---|
 | `pnpm run build` | Build with tsup |
 | `pnpm run typecheck` | TypeScript type checking |
-| `pnpm run lint` | ESLint + Biome check |
+| `pnpm run lint` | Oxlint |
 | `pnpm run format` | Auto-fix formatting |
 | `pnpm run test` | Run unit tests |
 | `pnpm run test:watch` | Watch mode for unit tests |
@@ -69,7 +69,7 @@ test/
 ## Code Style
 
 - TypeScript strict mode
-- Biome for formatting, ESLint for linting
+- Biome for formatting, Oxlint for linting
 - No default exports
 - Explicit return types on public functions
 - TSDoc on all public exports
@@ -82,7 +82,7 @@ See the dedicated guide: [Adding a Capability](../guides/adding-a-capability.md)
 
 The CI pipeline runs:
 1. `typecheck` — TypeScript compilation
-2. `lint` — ESLint + Biome
+2. `lint` — Oxlint
 3. `test` — Unit tests
 4. `test:e2e:local` — Local E2E tests
 5. `gql:verify` — Generated code sync check

@@ -17,12 +17,14 @@ vi.mock("@eval/scenario/loader.js", () => ({
 }))
 
 vi.mock("@eval/fixture/manager.js", () => ({
-  FixtureManager: vi.fn().mockImplementation(() => ({
-    status: vi.fn().mockResolvedValue({ ok: [], missing: [] }),
-    seed: vi.fn().mockResolvedValue(undefined),
-    cleanup: vi.fn().mockResolvedValue(undefined),
-    reset: vi.fn().mockResolvedValue(undefined),
-  })),
+  FixtureManager: vi.fn().mockImplementation(function FixtureManagerMock() {
+    return {
+      status: vi.fn().mockResolvedValue({ ok: [], missing: [] }),
+      seed: vi.fn().mockResolvedValue(undefined),
+      cleanup: vi.fn().mockResolvedValue(undefined),
+      reset: vi.fn().mockResolvedValue(undefined),
+    }
+  }),
 }))
 
 vi.mock("@eval/fixture/manifest.js", () => ({
@@ -35,33 +37,35 @@ vi.mock("@eval/fixture/manifest.js", () => ({
 }))
 
 vi.mock("@eval/provider/opencode-provider.js", () => ({
-  OpenCodeProvider: vi.fn().mockImplementation(() => ({
-    id: "opencode",
-    init: vi.fn().mockResolvedValue(undefined),
-    createSession: vi.fn(),
-    prompt: vi.fn(),
-    exportSession: vi.fn(),
-    destroySession: vi.fn(),
-    shutdown: vi.fn().mockResolvedValue(undefined),
-  })),
+  OpenCodeProvider: vi.fn().mockImplementation(function OpenCodeProviderMock() {
+    return {
+      id: "opencode",
+      init: vi.fn().mockResolvedValue(undefined),
+      createSession: vi.fn(),
+      prompt: vi.fn(),
+      exportSession: vi.fn(),
+      destroySession: vi.fn(),
+      shutdown: vi.fn().mockResolvedValue(undefined),
+    }
+  }),
 }))
 
 vi.mock("@eval/scorer/checkpoint-scorer.js", () => ({
-  CheckpointScorer: vi.fn().mockImplementation(() => ({
-    score: vi.fn(),
-  })),
+  CheckpointScorer: vi.fn().mockImplementation(function CheckpointScorerMock() {
+    return { score: vi.fn() }
+  }),
 }))
 
 vi.mock("@eval/mode/resolver.js", () => ({
-  EvalModeResolver: vi.fn().mockImplementation(() => ({
-    resolve: vi.fn(),
-  })),
+  EvalModeResolver: vi.fn().mockImplementation(function EvalModeResolverMock() {
+    return { resolve: vi.fn() }
+  }),
 }))
 
 vi.mock("@eval/collector/ghx-collector.js", () => ({
-  GhxCollector: vi.fn().mockImplementation(() => ({
-    collect: vi.fn(),
-  })),
+  GhxCollector: vi.fn().mockImplementation(function GhxCollectorMock() {
+    return { collect: vi.fn() }
+  }),
 }))
 
 vi.mock("@eval/hooks/eval-hooks.js", () => ({

@@ -33,7 +33,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Audit dependencies
-        run: pnpm audit --audit-level=high
+        run: pnpm audit --audit-level=moderate
 
   build-and-test:
     runs-on: ubuntu-latest

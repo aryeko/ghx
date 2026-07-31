@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `@ghx-dev/agent-profiler` (`packages/agent-profiler`) — private; generic AI agent session profiler (latency, tokens, tool calls, cost, behavioral analysis)
 - `@ghx-dev/eval` (`packages/eval`) — private; evaluation harness for ghx benchmarking (scenarios, fixtures, checkpoint scoring)
 
-**Runtime:** Node.js `>=22`. **Language:** TypeScript strict, ESM (`module`/`moduleResolution` = `NodeNext`).
+**Runtime:** Node.js `>=22.13.0`. **Language:** TypeScript strict, ESM (`module`/`moduleResolution` = `NodeNext`).
 
 **Worktrees:** Feature branches may have isolated worktrees at `.worktrees/<branch-name>/`. Check there before assuming the main checkout is the active workspace.
 
@@ -105,7 +105,7 @@ User/Agent → CLI (packages/core/src/cli/) → executeTask() [core/routing/engi
 ## Code Style
 
 - **Formatter:** Biome (`biome.json`), formatting only (linter disabled). Double quotes, no semicolons, trailing commas, 2-space indent, 100-char line width. Also formats `.json` and `.yaml`/`.yml`. Do not introduce Prettier or other formatters.
-- **Linter:** ESLint (`eslint.config.mjs`) with TypeScript strict configs + Vitest plugin. `--max-warnings=0` enforced. Prefix unused variables with `_` to suppress warnings.
+- **Linter:** Oxlint (`.oxlintrc.json`) with native TypeScript and Vitest plugins plus type-aware linting. `maxWarnings: 0` is enforced. Prefix unused variables with `_` to suppress warnings.
 - **Imports:** Use `import type` for type-only imports. Relative imports require explicit `.js` extension (NodeNext resolution). When a module needs both a value and a type import from the same source, Biome's `organizeImports` places `import type` first — accept this ordering to avoid churn.
 - **Path aliases:** Use `@core/*` (maps to `packages/core/src/*`) and `@profiler/*` (maps to `packages/agent-profiler/src/*`) for imports crossing 2+ directory levels. Single-level relative imports (`./`, `../`) remain as-is. Aliases are configured per-package in `tsconfig.json`, `tsup.config.ts`, and `vitest.config.ts`.
 - **Types:** `unknown` + narrowing over `any`. Validate untrusted input at boundaries (AJV in core, Zod in agent-profiler). Result envelope shape `{ ok, data, error, meta }` is a stable contract — do not change it.
@@ -114,13 +114,13 @@ User/Agent → CLI (packages/core/src/cli/) → executeTask() [core/routing/engi
 - **Files:** kebab-case. Tests: `*.test.ts` (unit), `*.integration.test.ts` (integration). Types: PascalCase. Constants: `UPPER_SNAKE_CASE`.
 - **`exactOptionalPropertyTypes: true`** is set in tsconfig. Zod's `.optional()` infers `T | undefined`, which conflicts with TypeScript's strict optional semantics. When returning Zod-parsed values where the declared return type uses optional fields (`field?: T`), cast the result (e.g. `as Promise<ProfileRow[]>`).
 - **Generated code:** Never edit manually — `packages/core/src/gql/generated/**` and `packages/core/src/gql/operations/*.generated.ts`. Regenerate via codegen script.
-- **Dependency management:** Shared devDependencies are pinned in `pnpm-workspace.yaml` via pnpm catalog — use `"catalog:"` in package.json instead of version ranges for: `typescript`, `@types/node`, `tsup`, `tsx`, `vitest`, `@vitest/coverage-v8`. Dependabot is configured (`.github/dependabot.yml`) for weekly npm and GitHub Actions updates. `.npmrc` enforces `strict-peer-dependencies=true` and `auto-install-peers=false`.
+- **Dependency management:** Shared devDependencies are pinned in `pnpm-workspace.yaml` via pnpm catalog — use `"catalog:"` in package.json instead of version ranges for: `@typescript/native`, `typescript`, `@types/node`, `tsup`, `tsx`, `vitest`, `@vitest/coverage-v8`. The `@typescript/native` alias supplies the TypeScript 7 `tsc` CLI; the `typescript` alias supplies the TypeScript 6 API required by Nx and Vite until their programmatic integrations support TypeScript 7. Dependabot is configured (`.github/dependabot.yml`) for weekly npm and GitHub Actions updates. `pnpm-workspace.yaml` enforces `strictPeerDependencies: true` and `autoInstallPeers: false`.
 
 ## Pre-commit Hooks
 
 Lefthook runs automatically on commit (installed via `pnpm install`):
 - Biome format + auto-stage
-- ESLint on staged `.ts`/`.js`/`.mjs` (`--max-warnings=0`)
+- Oxlint on staged `.ts`/`.js`/`.mjs` (`maxWarnings: 0`)
 - Full typecheck
 
 **Caution:** Lefthook's `stage_fixed: true` auto-stages all Biome-modified files. Avoid parallel commits in the same worktree — stray unstaged files bleed into the wrong commit.

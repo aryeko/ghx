@@ -4,7 +4,7 @@ Thank you for your interest in contributing to ghx. This document provides guide
 
 ## Prerequisites
 
-- **Node.js** 22 or later
+- **Node.js** 22.13.0 or later
 - **Corepack** (included with modern Node.js)
 - **Git**
 - **gh CLI** authenticated (`gh auth status`) for CLI-backed flows
@@ -69,7 +69,7 @@ node packages/core/dist/cli/index.js run repo.view --input '{"owner":"aryeko","n
 [Lefthook](https://github.com/evilmartians/lefthook) runs automatically on commit:
 
 - **Format** - Biome formatting + import sorting (auto-stages fixed files)
-- **Lint** - ESLint on staged files
+- **Lint** - Oxlint on staged files
 - **Typecheck** - full type check
 
 Hooks are installed automatically by `pnpm install`.

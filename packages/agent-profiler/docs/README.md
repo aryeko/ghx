@@ -119,7 +119,7 @@ See: **[Contributing](contributing/README.md)**
 
 ## Requirements
 
-- Node.js 22+
+- Node.js 22.13.0+
 - TypeScript with strict mode
 
 ## Related Documentation

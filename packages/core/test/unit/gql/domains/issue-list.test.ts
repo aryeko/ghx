@@ -35,31 +35,27 @@ describe("runIssueList", () => {
     expect(variables).toMatchObject({ states: [expectedState] })
   })
 
-  it.each([
-    undefined,
-    null,
-    "",
-    " ",
-    "all",
-    "ALL",
-  ])("omits state filters when state is %s", async (inputState) => {
-    const { execute, transport } = createTransport()
-    const input: Parameters<typeof runIssueList>[1] = {
-      owner: "acme",
-      name: "repo",
-      first: 30,
-    }
+  it.each([undefined, null, "", " ", "all", "ALL"])(
+    "omits state filters when state is %s",
+    async (inputState) => {
+      const { execute, transport } = createTransport()
+      const input: Parameters<typeof runIssueList>[1] = {
+        owner: "acme",
+        name: "repo",
+        first: 30,
+      }
 
-    if (inputState !== undefined) {
-      input.state = inputState
-    }
+      if (inputState !== undefined) {
+        input.state = inputState
+      }
 
-    await runIssueList(transport, input)
+      await runIssueList(transport, input)
 
-    expect(execute).toHaveBeenCalledTimes(1)
-    const [, variables] = execute.mock.calls[0] as [string, Record<string, unknown>]
-    expect(variables.states).toBeUndefined()
-  })
+      expect(execute).toHaveBeenCalledTimes(1)
+      const [, variables] = execute.mock.calls[0] as [string, Record<string, unknown>]
+      expect(variables.states).toBeUndefined()
+    },
+  )
 
   it("throws before executing GraphQL when state is invalid", async () => {
     const { execute, transport } = createTransport()

@@ -110,7 +110,7 @@ export async function generateEvalReport(options: GenerateReportOptions): Promis
   }
 
   // Extract runId from first row — safe after length check above
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  // oxlint-disable-next-line typescript/no-non-null-assertion
   const runId = allRows[0]!.runId
 
   // Load analysis bundles and scenario metadata in parallel

@@ -2,4 +2,4 @@
 set -euo pipefail
 
 corepack enable
-corepack prepare pnpm@10.29.3 --activate
+corepack prepare pnpm@11.18.0 --activate

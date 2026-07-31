@@ -4,7 +4,7 @@ Install `@ghx-dev/agent-profiler` and verify the setup.
 
 ## Prerequisites
 
-- **Node.js 22+** -- the package uses modern ES module features that require Node 22 or later
+- **Node.js 22.13.0+** -- the package uses modern ES module features that require Node 22.13.0 or later
 - **TypeScript strict mode** -- the package is authored with `strict: true` and expects consumers to do the same
 - **pnpm** (monorepo) or **npm** -- any Node-compatible package manager works
 

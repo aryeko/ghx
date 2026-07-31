@@ -45,7 +45,7 @@ The coverage target is 90% (aim for 95%). Run the full test suite before opening
 Lefthook runs automatically on every commit:
 
 - Biome format and auto-stage
-- ESLint on staged `.ts` / `.js` / `.mjs` files
+- Oxlint on staged `.ts` / `.js` / `.mjs` files
 - Full typecheck
 
 ### Branch Naming

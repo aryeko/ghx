@@ -1,9 +1,36 @@
-import tsconfigPaths from "vite-tsconfig-paths"
 import { defineConfig } from "vitest/config"
 
 export default defineConfig({
-  plugins: [tsconfigPaths()],
+  resolve: {
+    alias: {
+      "@core": new URL("./src", import.meta.url).pathname,
+    },
+  },
   test: {
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "unit",
+          include: ["test/**/*.test.ts"],
+          exclude: ["test/e2e/**/*.test.ts"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "e2e:local",
+          include: ["test/e2e/setup-install-verify.e2e.test.ts"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "e2e:sdk",
+          include: ["test/e2e/setup-opencode-skill.e2e.test.ts"],
+        },
+      },
+    ],
     reporters: ["default", "junit"],
     outputFile: { junit: "test-report.junit.xml" },
     coverage: {

@@ -7,7 +7,7 @@
   "license": "MIT",
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13.0"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -26,7 +26,7 @@
     "build": "tsup",
     "format": "biome check --write .",
     "format:check": "biome check .",
-    "lint": "eslint . --max-warnings=0",
+    "lint": "oxlint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --project unit",
     "test:watch": "vitest watch --project unit",
@@ -43,17 +43,15 @@
     }
   },
   "dependencies": {
-    "js-yaml": "^4.2.0",
+    "js-yaml": "^5.2.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/js-yaml": "^4.0.9",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "tsup": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
-    "vite-tsconfig-paths": "^6.1.1",
     "vitest": "catalog:"
   }
 }
