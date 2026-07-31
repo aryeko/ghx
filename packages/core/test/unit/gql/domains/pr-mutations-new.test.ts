@@ -784,7 +784,7 @@ describe("runSubmitPrReview", () => {
       ],
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // oxlint-disable-next-line typescript/no-non-null-assertion
     const [, vars] = execute.mock.calls[1]!
     expect((vars as Record<string, unknown>).threads).toMatchObject([
       expect.objectContaining({ side: "RIGHT", startLine: 8, startSide: "RIGHT" }),
@@ -807,7 +807,7 @@ describe("runSubmitPrReview", () => {
       comments: [{ path: "src/index.ts", body: "nit", line: 10 }],
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // oxlint-disable-next-line typescript/no-non-null-assertion
     const [, vars] = execute.mock.calls[1]!
     const thread = ((vars as Record<string, unknown>).threads as unknown[])[0] as Record<
       string,

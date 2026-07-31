@@ -47,7 +47,7 @@ function mockSpawnResults(results: readonly string[]) {
 
 describe("createIssueBranchSeeder", () => {
   afterEach(() => {
-    vi.restoreAllMocks()
+    vi.resetAllMocks()
   })
 
   it("returns a seeder with type 'issue_with_branch'", () => {

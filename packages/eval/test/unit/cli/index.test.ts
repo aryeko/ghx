@@ -75,7 +75,11 @@ describe("direct run initialization", () => {
         name: vi.fn().mockReturnValue("eval"),
         commands: [],
       }
-      return { Command: vi.fn(() => mockCmdInstance) }
+      return {
+        Command: vi.fn(function CommandMock() {
+          return mockCmdInstance
+        }),
+      }
     })
 
     vi.resetModules()
@@ -101,7 +105,11 @@ describe("direct run initialization", () => {
         name: vi.fn().mockReturnValue("eval"),
         commands: [],
       }
-      return { Command: vi.fn(() => mockCmdInstance) }
+      return {
+        Command: vi.fn(function CommandMock() {
+          return mockCmdInstance
+        }),
+      }
     })
 
     vi.resetModules()

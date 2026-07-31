@@ -471,7 +471,8 @@ describe("generateAnalysisPage", () => {
     // Should deduplicate "Plan A"
     const baselineMatch = result.match(/\*\*baseline:\*\* (.+)/)
     expect(baselineMatch).toBeTruthy()
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- guarded by assertion above
+    // baselineMatch has been asserted above.
+    // oxlint-disable-next-line typescript/no-non-null-assertion
     const baselineItems = baselineMatch![1]!.split(", ")
     expect(baselineItems).toContain("Plan A")
     expect(baselineItems).toContain("Plan B")

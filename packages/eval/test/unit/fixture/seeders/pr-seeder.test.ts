@@ -81,7 +81,7 @@ function setupHappyPath() {
 
 describe("createPrSeeder", () => {
   afterEach(() => {
-    vi.restoreAllMocks()
+    vi.resetAllMocks()
   })
 
   it("returns a seeder with type 'pr'", () => {

@@ -310,7 +310,7 @@ describe("runProjectV2ItemFieldUpdate", () => {
       valueText: "hello",
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // oxlint-disable-next-line typescript/no-non-null-assertion
     const [, vars] = execute.mock.calls[0]!
     expect(vars).toMatchObject({ value: { text: "hello" } })
   })
@@ -330,7 +330,7 @@ describe("runProjectV2ItemFieldUpdate", () => {
       valueNumber: 42,
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // oxlint-disable-next-line typescript/no-non-null-assertion
     const [, vars] = execute.mock.calls[0]!
     expect(vars).toMatchObject({ value: { number: 42 } })
   })
@@ -350,7 +350,7 @@ describe("runProjectV2ItemFieldUpdate", () => {
       valueDate: "2024-01-01",
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // oxlint-disable-next-line typescript/no-non-null-assertion
     const [, vars] = execute.mock.calls[0]!
     expect(vars).toMatchObject({ value: { date: "2024-01-01" } })
   })
@@ -370,7 +370,7 @@ describe("runProjectV2ItemFieldUpdate", () => {
       valueIterationId: "iter-abc",
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // oxlint-disable-next-line typescript/no-non-null-assertion
     const [, vars] = execute.mock.calls[0]!
     expect(vars).toMatchObject({ value: { iterationId: "iter-abc" } })
   })
@@ -390,7 +390,7 @@ describe("runProjectV2ItemFieldUpdate", () => {
       clear: true,
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // oxlint-disable-next-line typescript/no-non-null-assertion
     const [, vars] = execute.mock.calls[0]!
     expect(vars).toMatchObject({ value: {} })
   })
@@ -405,7 +405,7 @@ describe("runProjectV2ItemFieldUpdate", () => {
 
     await runProjectV2ItemFieldUpdate(transport, fieldUpdateInput)
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // oxlint-disable-next-line typescript/no-non-null-assertion
     const [, vars] = execute.mock.calls[0]!
     expect(vars).toMatchObject({
       projectId: "PVT_kwDOA_proj1",

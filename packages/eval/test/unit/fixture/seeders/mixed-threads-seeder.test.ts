@@ -1,5 +1,5 @@
 import { createMixedThreadsSeeder } from "@eval/fixture/seeders/mixed-threads-seeder.js"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@eval/fixture/seeders/gh.js", () => ({
   runGh: vi.fn(),
@@ -66,6 +66,10 @@ function setupHappyPathWithLabels(): void {
 }
 
 describe("createMixedThreadsSeeder", () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
   afterEach(() => {
     vi.restoreAllMocks()
   })

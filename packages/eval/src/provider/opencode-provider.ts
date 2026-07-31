@@ -70,7 +70,7 @@ export function restoreEnv(snapshot: EnvSnapshot): void {
   for (const [k, v] of Object.entries(snapshot.extra)) {
     if (v === undefined) {
       // Use Object.defineProperty to remove without dynamic delete
-      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+      // oxlint-disable-next-line typescript/no-dynamic-delete
       delete process.env[k]
     } else {
       process.env[k] = v

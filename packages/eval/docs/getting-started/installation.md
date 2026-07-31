@@ -4,7 +4,7 @@ Install `@ghx-dev/eval` and verify the setup within the ghx monorepo.
 
 ## Prerequisites
 
-- **Node.js 22+** -- the package uses modern ES module features that require Node 22 or later
+- **Node.js 22.13.0+**
 - **pnpm** -- workspace-aware package manager used by the ghx monorepo
 - **Access to the ghx monorepo** -- `@ghx-dev/eval` is a private package and is not published to npm
 

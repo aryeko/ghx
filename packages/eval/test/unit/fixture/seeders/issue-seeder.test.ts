@@ -11,7 +11,7 @@ const mockedExecFile = vi.mocked(childProcess.execFile)
 
 describe("createIssueSeeder", () => {
   afterEach(() => {
-    vi.restoreAllMocks()
+    vi.resetAllMocks()
   })
 
   it("returns a seeder with type 'issue'", () => {

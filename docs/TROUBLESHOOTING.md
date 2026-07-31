@@ -31,12 +31,12 @@ gh auth status  # verify
 
 **Symptom:** Startup errors or unexpected syntax failures.
 
-**Cause:** ghx requires Node.js 22 or later.
+**Cause:** ghx requires Node.js 22.13.0 or later.
 
 **Fix:**
 ```bash
-node --version  # must be >= 22
-nvm install 22  # if using nvm
+node --version       # must be >= 22.13.0
+nvm install 22.13.0  # if using nvm
 ```
 
 ## Runtime Errors

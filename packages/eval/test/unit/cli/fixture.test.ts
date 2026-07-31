@@ -15,12 +15,14 @@ const mockScenarios = [
 ]
 
 vi.mock("@eval/fixture/manager.js", () => ({
-  FixtureManager: vi.fn().mockImplementation(() => ({
-    seed: vi.fn().mockResolvedValue(undefined),
-    status: vi.fn().mockResolvedValue({ ok: ["pr-fixture"], missing: [] }),
-    cleanup: vi.fn().mockResolvedValue(undefined),
-    reset: vi.fn().mockResolvedValue(undefined),
-  })),
+  FixtureManager: vi.fn().mockImplementation(function FixtureManagerMock() {
+    return {
+      seed: vi.fn().mockResolvedValue(undefined),
+      status: vi.fn().mockResolvedValue({ ok: ["pr-fixture"], missing: [] }),
+      cleanup: vi.fn().mockResolvedValue(undefined),
+      reset: vi.fn().mockResolvedValue(undefined),
+    }
+  }),
 }))
 
 vi.mock("@eval/config/loader.js", () => ({
@@ -185,15 +187,14 @@ describe("fixture command", () => {
 
     it("prints missing fixtures when status has missing items", async () => {
       const { FixtureManager } = await import("@eval/fixture/manager.js")
-      vi.mocked(FixtureManager).mockImplementationOnce(
-        () =>
-          ({
-            seed: vi.fn().mockResolvedValue(undefined),
-            status: vi.fn().mockResolvedValue({ ok: [], missing: ["missing-fixture"] }),
-            cleanup: vi.fn().mockResolvedValue(undefined),
-            reset: vi.fn().mockResolvedValue(undefined),
-          }) as never,
-      )
+      vi.mocked(FixtureManager).mockImplementationOnce(function FixtureManagerMissingMock() {
+        return {
+          seed: vi.fn().mockResolvedValue(undefined),
+          status: vi.fn().mockResolvedValue({ ok: [], missing: ["missing-fixture"] }),
+          cleanup: vi.fn().mockResolvedValue(undefined),
+          reset: vi.fn().mockResolvedValue(undefined),
+        } as never
+      })
 
       await fixtureFn(["status"])
 
@@ -203,15 +204,14 @@ describe("fixture command", () => {
 
     it("prints no fixtures found when status is empty", async () => {
       const { FixtureManager } = await import("@eval/fixture/manager.js")
-      vi.mocked(FixtureManager).mockImplementationOnce(
-        () =>
-          ({
-            seed: vi.fn().mockResolvedValue(undefined),
-            status: vi.fn().mockResolvedValue({ ok: [], missing: [] }),
-            cleanup: vi.fn().mockResolvedValue(undefined),
-            reset: vi.fn().mockResolvedValue(undefined),
-          }) as never,
-      )
+      vi.mocked(FixtureManager).mockImplementationOnce(function FixtureManagerEmptyMock() {
+        return {
+          seed: vi.fn().mockResolvedValue(undefined),
+          status: vi.fn().mockResolvedValue({ ok: [], missing: [] }),
+          cleanup: vi.fn().mockResolvedValue(undefined),
+          reset: vi.fn().mockResolvedValue(undefined),
+        } as never
+      })
 
       await fixtureFn(["status"])
 

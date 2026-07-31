@@ -23,6 +23,7 @@ jobs:
       - run: pnpm --filter @ghx-dev/core run gql:verify
 
   build-and-test:
+    name: build-and-test (${{ matrix.label }})
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -34,7 +35,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [22, 24]
+        include:
+          - node-version: 22.13.0
+            label: 22
+          - node-version: 24
+            label: 24
     steps:
       - uses: actions/checkout@v6
         with:
@@ -86,6 +91,8 @@ jobs:
 
   audit:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v5
@@ -95,7 +102,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Audit dependencies
-        run: pnpm audit --audit-level=high
+        run: pnpm audit --audit-level=moderate
 
   e2e:
     runs-on: ubuntu-latest

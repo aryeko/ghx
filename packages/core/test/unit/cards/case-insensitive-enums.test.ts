@@ -193,7 +193,7 @@ describe("pr.reviews.submit GraphQL handler normalizes event/side case", () => {
       event: "approve" as never,
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // oxlint-disable-next-line typescript/no-non-null-assertion
     const [, vars] = execute.mock.calls[1]!
     expect((vars as Record<string, unknown>).event).toBe("APPROVE")
   })
@@ -210,7 +210,7 @@ describe("pr.reviews.submit GraphQL handler normalizes event/side case", () => {
       body: "needs work",
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // oxlint-disable-next-line typescript/no-non-null-assertion
     const [, vars] = execute.mock.calls[1]!
     expect((vars as Record<string, unknown>).event).toBe("REQUEST_CHANGES")
   })
@@ -226,7 +226,7 @@ describe("pr.reviews.submit GraphQL handler normalizes event/side case", () => {
       event: "APPROVE",
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // oxlint-disable-next-line typescript/no-non-null-assertion
     const [, vars] = execute.mock.calls[1]!
     expect((vars as Record<string, unknown>).event).toBe("APPROVE")
   })
@@ -252,7 +252,7 @@ describe("pr.reviews.submit GraphQL handler normalizes event/side case", () => {
       ],
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    // oxlint-disable-next-line typescript/no-non-null-assertion
     const [, vars] = execute.mock.calls[1]!
     expect((vars as Record<string, unknown>).threads).toMatchObject([
       expect.objectContaining({ side: "RIGHT", startSide: "LEFT" }),

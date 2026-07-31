@@ -3,9 +3,9 @@
   "private": true,
   "description": "CLI-first GitHub execution router for agents.",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13.0"
   },
-  "packageManager": "pnpm@10.33.0",
+  "packageManager": "pnpm@11.18.0",
   "scripts": {
     "build": "nx run-many -t build",
     "build:affected": "nx affected -t build",
@@ -52,42 +52,21 @@
   "author": "Arye Kogan",
   "license": "MIT",
   "type": "module",
-  "pnpm": {
-    "overrides": {
-      "immutable@<3.8.3": ">=3.8.3",
-      "axios@<1.15.0": "1.15.0",
-      "@babel/core@<=7.29.0": "7.29.6",
-      "brace-expansion@>=5.0.0 <5.0.6": "5.0.6",
-      "esbuild@>=0.27.3 <0.28.1": "0.28.1",
-      "fast-uri@<=3.1.1": "3.1.2",
-      "form-data@>=4.0.0 <4.0.6": "4.0.6",
-      "js-yaml@<=4.1.1": "4.2.0",
-      "read-yaml-file@1.1.0>js-yaml": "3.14.2",
-      "lodash@<=4.17.23": "4.18.1",
-      "shell-quote@<=1.8.3": "1.8.4",
-      "tmp@<0.2.6": "0.2.7",
-      "vite@<=6.4.2": "8.0.16",
-      "ws@>=8.0.0 <8.21.0": "8.21.0"
-    }
-  },
   "bugs": {
     "url": "https://github.com/aryeko/ghx/issues"
   },
   "homepage": "https://github.com/aryeko/ghx#readme",
   "devDependencies": {
-    "@biomejs/biome": "^2.4.15",
-    "@changesets/cli": "^2.31.0",
-    "@eslint/js": "^9.35.0",
-    "@nx/eslint": "22.7.4",
-    "@nx/js": "22.7.4",
+    "@biomejs/biome": "^2.5.6",
+    "@changesets/cli": "^2.31.1",
+    "@nx/js": "23.1.1",
+    "@typescript/native": "catalog:",
     "@types/node": "catalog:",
-    "@vitest/eslint-plugin": "^1.6.18",
-    "vite": "^8.0.16",
-    "eslint": "^9.35.0",
-    "globals": "^17.6.0",
-    "lefthook": "^2.1.9",
-    "nx": "22.7.4",
+    "lefthook": "^2.1.10",
+    "nx": "23.1.1",
+    "oxlint": "1.76.0",
+    "oxlint-tsgolint": "7.0.2001",
     "typescript": "catalog:",
-    "typescript-eslint": "^8.56.1"
+    "vite": "^8.2.0"
   }
 }
