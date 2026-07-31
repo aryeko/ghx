@@ -5,11 +5,8 @@ export type Incremental<T> =
   | T
   | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
 
-import { type GraphQLClient, type RequestOptions } from "graphql-request"
+import type { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/core"
 import type * as Types from "./base-types.js"
-import { TypedDocumentString } from "./typed-document-string.js"
-
-type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type RepoLabelsListQueryVariables = Exact<{
   owner: string
   name: string
@@ -36,67 +33,154 @@ export type RepoLabelsListQuery = {
   } | null
 }
 
-export const RepoLabelsListDocument = new TypedDocumentString(`
-    query RepoLabelsList($owner: String!, $name: String!, $first: Int!, $after: String) {
-  __typename
-  repository(owner: $owner, name: $name) {
-    __typename
-    labels(
-      first: $first
-      after: $after
-      orderBy: {field: CREATED_AT, direction: DESC}
-    ) {
-      __typename
-      nodes {
-        __typename
-        id
-        name
-        description
-        color
-        isDefault
-      }
-      pageInfo {
-        __typename
-        ...PageInfoFields
-      }
-    }
-  }
-}
-    fragment PageInfoFields on PageInfo {
-  endCursor
-  hasNextPage
-}`)
-
-export type SdkFunctionWrapper = <T>(
-  action: (requestHeaders?: Record<string, string>) => Promise<T>,
-  operationName: string,
-  operationType?: string,
-  variables?: any,
-) => Promise<T>
-
-const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationType, _variables) =>
-  action()
-
-export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
-  return {
-    RepoLabelsList(
-      variables: RepoLabelsListQueryVariables,
-      requestHeaders?: GraphQLClientRequestHeaders,
-      signal?: RequestInit["signal"],
-    ): Promise<RepoLabelsListQuery> {
-      return withWrapper(
-        (wrappedRequestHeaders) =>
-          client.request<RepoLabelsListQuery>({
-            document: RepoLabelsListDocument,
-            variables,
-            requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders },
-            signal,
-          }),
-        "RepoLabelsList",
-        "query",
-        variables,
-      )
+export const RepoLabelsListDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "RepoLabelsList" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "owner" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "name" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "first" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "after" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "repository" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "owner" },
+                value: { kind: "Variable", name: { kind: "Name", value: "owner" } },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "name" },
+                value: { kind: "Variable", name: { kind: "Name", value: "name" } },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "labels" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "first" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "first" } },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "after" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "after" } },
+                    },
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "orderBy" },
+                      value: {
+                        kind: "ObjectValue",
+                        fields: [
+                          {
+                            kind: "ObjectField",
+                            name: { kind: "Name", value: "field" },
+                            value: { kind: "EnumValue", value: "CREATED_AT" },
+                          },
+                          {
+                            kind: "ObjectField",
+                            name: { kind: "Name", value: "direction" },
+                            value: { kind: "EnumValue", value: "DESC" },
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "nodes" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                            { kind: "Field", name: { kind: "Name", value: "id" } },
+                            { kind: "Field", name: { kind: "Name", value: "name" } },
+                            { kind: "Field", name: { kind: "Name", value: "description" } },
+                            { kind: "Field", name: { kind: "Name", value: "color" } },
+                            { kind: "Field", name: { kind: "Name", value: "isDefault" } },
+                          ],
+                        },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "pageInfo" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                            {
+                              kind: "FragmentSpread",
+                              name: { kind: "Name", value: "PageInfoFields" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
     },
-  }
-}
-export type Sdk = ReturnType<typeof getSdk>
+    {
+      kind: "FragmentDefinition",
+      name: { kind: "Name", value: "PageInfoFields" },
+      typeCondition: { kind: "NamedType", name: { kind: "Name", value: "PageInfo" } },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "endCursor" } },
+          { kind: "Field", name: { kind: "Name", value: "hasNextPage" } },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<RepoLabelsListQuery, RepoLabelsListQueryVariables>

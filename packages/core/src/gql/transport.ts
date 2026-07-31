@@ -1,5 +1,5 @@
+import type { TypedDocumentNode } from "@graphql-typed-document-node/core"
 import { type DocumentNode, print } from "graphql"
-import type { GraphQLClient, RequestDocument, RequestOptions } from "graphql-request"
 
 export type GraphqlVariables = Record<string, unknown>
 
@@ -17,7 +17,6 @@ export type GraphqlRawResult<TData> = {
 }
 
 type GraphqlDocument = string | DocumentNode
-type QueryLike = GraphqlDocument | RequestDocument
 
 /**
  * Low-level transport interface for sending GraphQL queries.
@@ -52,7 +51,7 @@ export type TokenClientOptions = {
   graphqlUrl?: string
 }
 
-function queryToString(query: QueryLike): string {
+function queryToString(query: GraphqlDocument): string {
   if (typeof query === "string") {
     return query
   }
@@ -109,29 +108,15 @@ export function createGraphqlClient(transport: GraphqlTransport): GraphqlClient 
   }
 }
 
-export function createGraphqlRequestClient(transport: GraphqlTransport): GraphQLClient {
-  const client: Pick<GraphQLClient, "request"> = {
-    request<TData, TVariables extends object = object>(
-      documentOrOptions: RequestDocument | RequestOptions<TVariables, TData>,
-      ...variablesAndRequestHeaders: unknown[]
-    ): Promise<TData> {
-      const options =
-        typeof documentOrOptions === "object" &&
-        documentOrOptions !== null &&
-        "document" in documentOrOptions
-          ? documentOrOptions
-          : {
-              document: documentOrOptions,
-              variables: variablesAndRequestHeaders[0] as TVariables | undefined,
-            }
-
-      const queryText = queryToString(options.document)
-      assertQuery(queryText)
-      return transport.execute<TData>(queryText, options.variables as GraphqlVariables)
-    },
-  }
-
-  return client as GraphQLClient
+/** Execute a generated typed document through the public transport contract. */
+export function executeTypedDocument<TData, TVariables extends GraphqlVariables = GraphqlVariables>(
+  transport: GraphqlTransport,
+  document: TypedDocumentNode<TData, TVariables>,
+  variables: TVariables,
+): Promise<TData> {
+  const queryText = queryToString(document)
+  assertQuery(queryText)
+  return transport.execute<TData>(queryText, variables)
 }
 
 const DEFAULT_GRAPHQL_URL = "https://api.github.com/graphql"

@@ -5,11 +5,8 @@ export type Incremental<T> =
   | T
   | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
 
-import { type GraphQLClient, type RequestOptions } from "graphql-request"
+import type { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/core"
 import type * as Types from "./base-types.js"
-import { TypedDocumentString } from "./typed-document-string.js"
-
-type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type PrCommentUnresolveMutationVariables = Exact<{
   threadId: string | number
 }>
@@ -22,50 +19,67 @@ export type PrCommentUnresolveMutation = {
   } | null
 }
 
-export const PrCommentUnresolveDocument = new TypedDocumentString(`
-    mutation PrCommentUnresolve($threadId: ID!) {
-  __typename
-  unresolveReviewThread(input: {threadId: $threadId}) {
-    __typename
-    thread {
-      __typename
-      id
-      isResolved
-    }
-  }
-}
-    `)
-
-export type SdkFunctionWrapper = <T>(
-  action: (requestHeaders?: Record<string, string>) => Promise<T>,
-  operationName: string,
-  operationType?: string,
-  variables?: any,
-) => Promise<T>
-
-const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationType, _variables) =>
-  action()
-
-export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
-  return {
-    PrCommentUnresolve(
-      variables: PrCommentUnresolveMutationVariables,
-      requestHeaders?: GraphQLClientRequestHeaders,
-      signal?: RequestInit["signal"],
-    ): Promise<PrCommentUnresolveMutation> {
-      return withWrapper(
-        (wrappedRequestHeaders) =>
-          client.request<PrCommentUnresolveMutation>({
-            document: PrCommentUnresolveDocument,
-            variables,
-            requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders },
-            signal,
-          }),
-        "PrCommentUnresolve",
-        "mutation",
-        variables,
-      )
+export const PrCommentUnresolveDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "PrCommentUnresolve" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "threadId" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "unresolveReviewThread" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "threadId" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "threadId" } },
+                    },
+                  ],
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "thread" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      { kind: "Field", name: { kind: "Name", value: "isResolved" } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
     },
-  }
-}
-export type Sdk = ReturnType<typeof getSdk>
+  ],
+} as unknown as DocumentNode<PrCommentUnresolveMutation, PrCommentUnresolveMutationVariables>

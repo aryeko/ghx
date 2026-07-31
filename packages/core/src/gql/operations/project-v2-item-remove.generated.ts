@@ -5,11 +5,8 @@ export type Incremental<T> =
   | T
   | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
 
-import { type GraphQLClient, type RequestOptions } from "graphql-request"
+import type { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/core"
 import type * as Types from "./base-types.js"
-import { TypedDocumentString } from "./typed-document-string.js"
-
-type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type RemoveProjectV2ItemMutationVariables = Exact<{
   projectId: string | number
   itemId: string | number
@@ -23,46 +20,69 @@ export type RemoveProjectV2ItemMutation = {
   } | null
 }
 
-export const RemoveProjectV2ItemDocument = new TypedDocumentString(`
-    mutation RemoveProjectV2Item($projectId: ID!, $itemId: ID!) {
-  __typename
-  deleteProjectV2Item(input: {projectId: $projectId, itemId: $itemId}) {
-    __typename
-    deletedItemId
-  }
-}
-    `)
-
-export type SdkFunctionWrapper = <T>(
-  action: (requestHeaders?: Record<string, string>) => Promise<T>,
-  operationName: string,
-  operationType?: string,
-  variables?: any,
-) => Promise<T>
-
-const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationType, _variables) =>
-  action()
-
-export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
-  return {
-    RemoveProjectV2Item(
-      variables: RemoveProjectV2ItemMutationVariables,
-      requestHeaders?: GraphQLClientRequestHeaders,
-      signal?: RequestInit["signal"],
-    ): Promise<RemoveProjectV2ItemMutation> {
-      return withWrapper(
-        (wrappedRequestHeaders) =>
-          client.request<RemoveProjectV2ItemMutation>({
-            document: RemoveProjectV2ItemDocument,
-            variables,
-            requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders },
-            signal,
-          }),
-        "RemoveProjectV2Item",
-        "mutation",
-        variables,
-      )
+export const RemoveProjectV2ItemDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "RemoveProjectV2Item" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "projectId" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "itemId" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "deleteProjectV2Item" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "projectId" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "projectId" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "itemId" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "itemId" } },
+                    },
+                  ],
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                { kind: "Field", name: { kind: "Name", value: "deletedItemId" } },
+              ],
+            },
+          },
+        ],
+      },
     },
-  }
-}
-export type Sdk = ReturnType<typeof getSdk>
+  ],
+} as unknown as DocumentNode<RemoveProjectV2ItemMutation, RemoveProjectV2ItemMutationVariables>

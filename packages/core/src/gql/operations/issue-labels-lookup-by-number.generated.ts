@@ -5,11 +5,8 @@ export type Incremental<T> =
   | T
   | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
 
-import { type GraphQLClient, type RequestOptions } from "graphql-request"
+import type { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/core"
 import type * as Types from "./base-types.js"
-import { TypedDocumentString } from "./typed-document-string.js"
-
-type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type IssueLabelsLookupByNumberQueryVariables = Exact<{
   owner: string
   name: string
@@ -29,62 +26,129 @@ export type IssueLabelsLookupByNumberQuery = {
   } | null
 }
 
-export const IssueLabelsLookupByNumberDocument = new TypedDocumentString(`
-    query IssueLabelsLookupByNumber($owner: String!, $name: String!, $issueNumber: Int!) {
-  __typename
-  repository(owner: $owner, name: $name) {
-    __typename
-    issue(number: $issueNumber) {
-      __typename
-      id
-    }
-    labels(first: 100) {
-      __typename
-      pageInfo {
-        __typename
-        hasNextPage
-        endCursor
-      }
-      nodes {
-        __typename
-        id
-        name
-      }
-    }
-  }
-}
-    `)
-
-export type SdkFunctionWrapper = <T>(
-  action: (requestHeaders?: Record<string, string>) => Promise<T>,
-  operationName: string,
-  operationType?: string,
-  variables?: any,
-) => Promise<T>
-
-const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationType, _variables) =>
-  action()
-
-export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
-  return {
-    IssueLabelsLookupByNumber(
-      variables: IssueLabelsLookupByNumberQueryVariables,
-      requestHeaders?: GraphQLClientRequestHeaders,
-      signal?: RequestInit["signal"],
-    ): Promise<IssueLabelsLookupByNumberQuery> {
-      return withWrapper(
-        (wrappedRequestHeaders) =>
-          client.request<IssueLabelsLookupByNumberQuery>({
-            document: IssueLabelsLookupByNumberDocument,
-            variables,
-            requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders },
-            signal,
-          }),
-        "IssueLabelsLookupByNumber",
-        "query",
-        variables,
-      )
+export const IssueLabelsLookupByNumberDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "IssueLabelsLookupByNumber" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "owner" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "name" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "issueNumber" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "repository" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "owner" },
+                value: { kind: "Variable", name: { kind: "Name", value: "owner" } },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "name" },
+                value: { kind: "Variable", name: { kind: "Name", value: "name" } },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "issue" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "number" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "issueNumber" } },
+                    },
+                  ],
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                    ],
+                  },
+                },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "labels" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "first" },
+                      value: { kind: "IntValue", value: "100" },
+                    },
+                  ],
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "pageInfo" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                            { kind: "Field", name: { kind: "Name", value: "hasNextPage" } },
+                            { kind: "Field", name: { kind: "Name", value: "endCursor" } },
+                          ],
+                        },
+                      },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "nodes" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                            { kind: "Field", name: { kind: "Name", value: "id" } },
+                            { kind: "Field", name: { kind: "Name", value: "name" } },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
     },
-  }
-}
-export type Sdk = ReturnType<typeof getSdk>
+  ],
+} as unknown as DocumentNode<
+  IssueLabelsLookupByNumberQuery,
+  IssueLabelsLookupByNumberQueryVariables
+>

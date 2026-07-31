@@ -5,11 +5,8 @@ export type Incremental<T> =
   | T
   | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
 
-import { type GraphQLClient, type RequestOptions } from "graphql-request"
+import type { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/core"
 import type * as Types from "./base-types.js"
-import { TypedDocumentString } from "./typed-document-string.js"
-
-type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 /** Emojis that can be attached to Issues, Pull Requests and Comments. */
 export type ReactionContent =
   /** Represents the `:confused:` emoji. */
@@ -63,75 +60,177 @@ export type PrReactionsListQuery = {
   } | null
 }
 
-export const PrReactionsListDocument = new TypedDocumentString(`
-    query PrReactionsList($owner: String!, $name: String!, $prNumber: Int!) {
-  __typename
-  repository(owner: $owner, name: $name) {
-    __typename
-    pullRequest(number: $prNumber) {
-      __typename
-      id
-      url
-      reactionGroups {
-        __typename
-        ...ReactionGroupFields
-      }
-    }
-  }
-}
-    fragment ReactionGroupFields on ReactionGroup {
-  content
-  viewerHasReacted
-  reactors(first: 100) {
-    totalCount
-    nodes {
-      __typename
-      ... on User {
-        login
-      }
-      ... on Bot {
-        login
-      }
-      ... on Organization {
-        login
-      }
-      ... on Mannequin {
-        login
-      }
-    }
-  }
-}`)
-
-export type SdkFunctionWrapper = <T>(
-  action: (requestHeaders?: Record<string, string>) => Promise<T>,
-  operationName: string,
-  operationType?: string,
-  variables?: any,
-) => Promise<T>
-
-const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationType, _variables) =>
-  action()
-
-export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
-  return {
-    PrReactionsList(
-      variables: PrReactionsListQueryVariables,
-      requestHeaders?: GraphQLClientRequestHeaders,
-      signal?: RequestInit["signal"],
-    ): Promise<PrReactionsListQuery> {
-      return withWrapper(
-        (wrappedRequestHeaders) =>
-          client.request<PrReactionsListQuery>({
-            document: PrReactionsListDocument,
-            variables,
-            requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders },
-            signal,
-          }),
-        "PrReactionsList",
-        "query",
-        variables,
-      )
+export const PrReactionsListDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "PrReactionsList" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "owner" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "name" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "prNumber" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "repository" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "owner" },
+                value: { kind: "Variable", name: { kind: "Name", value: "owner" } },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "name" },
+                value: { kind: "Variable", name: { kind: "Name", value: "name" } },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "pullRequest" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "number" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "prNumber" } },
+                    },
+                  ],
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      { kind: "Field", name: { kind: "Name", value: "url" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "reactionGroups" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                            {
+                              kind: "FragmentSpread",
+                              name: { kind: "Name", value: "ReactionGroupFields" },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
     },
-  }
-}
-export type Sdk = ReturnType<typeof getSdk>
+    {
+      kind: "FragmentDefinition",
+      name: { kind: "Name", value: "ReactionGroupFields" },
+      typeCondition: { kind: "NamedType", name: { kind: "Name", value: "ReactionGroup" } },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "content" } },
+          { kind: "Field", name: { kind: "Name", value: "viewerHasReacted" } },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "reactors" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "first" },
+                value: { kind: "IntValue", value: "100" },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "totalCount" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "nodes" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                      {
+                        kind: "InlineFragment",
+                        typeCondition: { kind: "NamedType", name: { kind: "Name", value: "User" } },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [{ kind: "Field", name: { kind: "Name", value: "login" } }],
+                        },
+                      },
+                      {
+                        kind: "InlineFragment",
+                        typeCondition: { kind: "NamedType", name: { kind: "Name", value: "Bot" } },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [{ kind: "Field", name: { kind: "Name", value: "login" } }],
+                        },
+                      },
+                      {
+                        kind: "InlineFragment",
+                        typeCondition: {
+                          kind: "NamedType",
+                          name: { kind: "Name", value: "Organization" },
+                        },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [{ kind: "Field", name: { kind: "Name", value: "login" } }],
+                        },
+                      },
+                      {
+                        kind: "InlineFragment",
+                        typeCondition: {
+                          kind: "NamedType",
+                          name: { kind: "Name", value: "Mannequin" },
+                        },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [{ kind: "Field", name: { kind: "Name", value: "login" } }],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<PrReactionsListQuery, PrReactionsListQueryVariables>

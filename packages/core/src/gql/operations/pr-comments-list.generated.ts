@@ -5,11 +5,8 @@ export type Incremental<T> =
   | T
   | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
 
-import { type GraphQLClient, type RequestOptions } from "graphql-request"
+import type { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/core"
 import type * as Types from "./base-types.js"
-import { TypedDocumentString } from "./typed-document-string.js"
-
-type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 /** The possible sides of a diff. */
 export type DiffSide =
   /** The left side of the diff. */
@@ -82,94 +79,290 @@ export type PrCommentsListQuery = {
   } | null
 }
 
-export const PrCommentsListDocument = new TypedDocumentString(`
-    query PrCommentsList($owner: String!, $name: String!, $prNumber: Int!, $first: Int!, $after: String) {
-  __typename
-  repository(owner: $owner, name: $name) {
-    __typename
-    pullRequest(number: $prNumber) {
-      __typename
-      reviewThreads(first: $first, after: $after) {
-        __typename
-        edges {
-          __typename
-          cursor
-          node {
-            __typename
-            id
-            path
-            line
-            startLine
-            diffSide
-            subjectType
-            isResolved
-            isOutdated
-            viewerCanReply
-            viewerCanResolve
-            viewerCanUnresolve
-            resolvedBy {
-              __typename
-              login
-            }
-            comments(first: 20) {
-              __typename
-              nodes {
-                __typename
-                id
-                body
-                createdAt
-                url
-                author {
-                  __typename
-                  login
-                }
-              }
-            }
-          }
-        }
-        pageInfo {
-          __typename
-          ...PageInfoFields
-        }
-      }
-    }
-  }
-}
-    fragment PageInfoFields on PageInfo {
-  endCursor
-  hasNextPage
-}`)
-
-export type SdkFunctionWrapper = <T>(
-  action: (requestHeaders?: Record<string, string>) => Promise<T>,
-  operationName: string,
-  operationType?: string,
-  variables?: any,
-) => Promise<T>
-
-const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationType, _variables) =>
-  action()
-
-export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
-  return {
-    PrCommentsList(
-      variables: PrCommentsListQueryVariables,
-      requestHeaders?: GraphQLClientRequestHeaders,
-      signal?: RequestInit["signal"],
-    ): Promise<PrCommentsListQuery> {
-      return withWrapper(
-        (wrappedRequestHeaders) =>
-          client.request<PrCommentsListQuery>({
-            document: PrCommentsListDocument,
-            variables,
-            requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders },
-            signal,
-          }),
-        "PrCommentsList",
-        "query",
-        variables,
-      )
+export const PrCommentsListDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "PrCommentsList" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "owner" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "name" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "prNumber" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "first" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "after" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "repository" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "owner" },
+                value: { kind: "Variable", name: { kind: "Name", value: "owner" } },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "name" },
+                value: { kind: "Variable", name: { kind: "Name", value: "name" } },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "pullRequest" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "number" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "prNumber" } },
+                    },
+                  ],
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "reviewThreads" },
+                        arguments: [
+                          {
+                            kind: "Argument",
+                            name: { kind: "Name", value: "first" },
+                            value: { kind: "Variable", name: { kind: "Name", value: "first" } },
+                          },
+                          {
+                            kind: "Argument",
+                            name: { kind: "Name", value: "after" },
+                            value: { kind: "Variable", name: { kind: "Name", value: "after" } },
+                          },
+                        ],
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "edges" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                                  { kind: "Field", name: { kind: "Name", value: "cursor" } },
+                                  {
+                                    kind: "Field",
+                                    name: { kind: "Name", value: "node" },
+                                    selectionSet: {
+                                      kind: "SelectionSet",
+                                      selections: [
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "__typename" },
+                                        },
+                                        { kind: "Field", name: { kind: "Name", value: "id" } },
+                                        { kind: "Field", name: { kind: "Name", value: "path" } },
+                                        { kind: "Field", name: { kind: "Name", value: "line" } },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "startLine" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "diffSide" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "subjectType" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "isResolved" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "isOutdated" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "viewerCanReply" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "viewerCanResolve" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "viewerCanUnresolve" },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "resolvedBy" },
+                                          selectionSet: {
+                                            kind: "SelectionSet",
+                                            selections: [
+                                              {
+                                                kind: "Field",
+                                                name: { kind: "Name", value: "__typename" },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: { kind: "Name", value: "login" },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                        {
+                                          kind: "Field",
+                                          name: { kind: "Name", value: "comments" },
+                                          arguments: [
+                                            {
+                                              kind: "Argument",
+                                              name: { kind: "Name", value: "first" },
+                                              value: { kind: "IntValue", value: "20" },
+                                            },
+                                          ],
+                                          selectionSet: {
+                                            kind: "SelectionSet",
+                                            selections: [
+                                              {
+                                                kind: "Field",
+                                                name: { kind: "Name", value: "__typename" },
+                                              },
+                                              {
+                                                kind: "Field",
+                                                name: { kind: "Name", value: "nodes" },
+                                                selectionSet: {
+                                                  kind: "SelectionSet",
+                                                  selections: [
+                                                    {
+                                                      kind: "Field",
+                                                      name: { kind: "Name", value: "__typename" },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: { kind: "Name", value: "id" },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: { kind: "Name", value: "body" },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: { kind: "Name", value: "createdAt" },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: { kind: "Name", value: "url" },
+                                                    },
+                                                    {
+                                                      kind: "Field",
+                                                      name: { kind: "Name", value: "author" },
+                                                      selectionSet: {
+                                                        kind: "SelectionSet",
+                                                        selections: [
+                                                          {
+                                                            kind: "Field",
+                                                            name: {
+                                                              kind: "Name",
+                                                              value: "__typename",
+                                                            },
+                                                          },
+                                                          {
+                                                            kind: "Field",
+                                                            name: { kind: "Name", value: "login" },
+                                                          },
+                                                        ],
+                                                      },
+                                                    },
+                                                  ],
+                                                },
+                                              },
+                                            ],
+                                          },
+                                        },
+                                      ],
+                                    },
+                                  },
+                                ],
+                              },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "pageInfo" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                                  {
+                                    kind: "FragmentSpread",
+                                    name: { kind: "Name", value: "PageInfoFields" },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
     },
-  }
-}
-export type Sdk = ReturnType<typeof getSdk>
+    {
+      kind: "FragmentDefinition",
+      name: { kind: "Name", value: "PageInfoFields" },
+      typeCondition: { kind: "NamedType", name: { kind: "Name", value: "PageInfo" } },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "endCursor" } },
+          { kind: "Field", name: { kind: "Name", value: "hasNextPage" } },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<PrCommentsListQuery, PrCommentsListQueryVariables>

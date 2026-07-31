@@ -5,11 +5,8 @@ export type Incremental<T> =
   | T
   | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
 
-import { type GraphQLClient, type RequestOptions } from "graphql-request"
+import type { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/core"
 import type * as Types from "./base-types.js"
-import { TypedDocumentString } from "./typed-document-string.js"
-
-type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type IssueMilestoneSetMutationVariables = Exact<{
   issueId: string | number
   milestoneId?: string | number | null | undefined
@@ -27,53 +24,87 @@ export type IssueMilestoneSetMutation = {
   } | null
 }
 
-export const IssueMilestoneSetDocument = new TypedDocumentString(`
-    mutation IssueMilestoneSet($issueId: ID!, $milestoneId: ID) {
-  __typename
-  updateIssue(input: {id: $issueId, milestoneId: $milestoneId}) {
-    __typename
-    issue {
-      __typename
-      id
-      milestone {
-        __typename
-        number
-      }
-    }
-  }
-}
-    `)
-
-export type SdkFunctionWrapper = <T>(
-  action: (requestHeaders?: Record<string, string>) => Promise<T>,
-  operationName: string,
-  operationType?: string,
-  variables?: any,
-) => Promise<T>
-
-const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationType, _variables) =>
-  action()
-
-export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
-  return {
-    IssueMilestoneSet(
-      variables: IssueMilestoneSetMutationVariables,
-      requestHeaders?: GraphQLClientRequestHeaders,
-      signal?: RequestInit["signal"],
-    ): Promise<IssueMilestoneSetMutation> {
-      return withWrapper(
-        (wrappedRequestHeaders) =>
-          client.request<IssueMilestoneSetMutation>({
-            document: IssueMilestoneSetDocument,
-            variables,
-            requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders },
-            signal,
-          }),
-        "IssueMilestoneSet",
-        "mutation",
-        variables,
-      )
+export const IssueMilestoneSetDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "IssueMilestoneSet" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "issueId" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "milestoneId" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "updateIssue" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "id" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "issueId" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "milestoneId" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "milestoneId" } },
+                    },
+                  ],
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "issue" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "milestone" },
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                            { kind: "Field", name: { kind: "Name", value: "number" } },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
     },
-  }
-}
-export type Sdk = ReturnType<typeof getSdk>
+  ],
+} as unknown as DocumentNode<IssueMilestoneSetMutation, IssueMilestoneSetMutationVariables>

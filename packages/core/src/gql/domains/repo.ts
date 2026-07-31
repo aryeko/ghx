@@ -1,12 +1,12 @@
 import { assertRepoAndPaginationInput, assertRepoInput } from "../assertions.js"
 import type { RepoIssueTypesListQuery } from "../operations/repo-issue-types-list.generated.js"
-import { getSdk as getRepoIssueTypesListSdk } from "../operations/repo-issue-types-list.generated.js"
+import { RepoIssueTypesListDocument } from "../operations/repo-issue-types-list.generated.js"
 import type { RepoLabelsListQuery } from "../operations/repo-labels-list.generated.js"
-import { getSdk as getRepoLabelsListSdk } from "../operations/repo-labels-list.generated.js"
+import { RepoLabelsListDocument } from "../operations/repo-labels-list.generated.js"
 import type { RepoViewQuery } from "../operations/repo-view.generated.js"
-import { getSdk } from "../operations/repo-view.generated.js"
+import { RepoViewDocument } from "../operations/repo-view.generated.js"
 import type { GraphqlTransport } from "../transport.js"
-import { createGraphqlRequestClient } from "../transport.js"
+import { executeTypedDocument } from "../transport.js"
 import type {
   RepoIssueTypesListData,
   RepoIssueTypesListInput,
@@ -85,8 +85,7 @@ export async function runRepoView(
   input: RepoViewInput,
 ): Promise<RepoViewData> {
   assertRepoInput(input)
-  const sdk = getSdk(createGraphqlRequestClient(transport))
-  const result: RepoViewQuery = await sdk.RepoView(input)
+  const result = await executeTypedDocument(transport, RepoViewDocument, input)
   return normalizeRepoViewResult(result, input)
 }
 
@@ -95,8 +94,7 @@ export async function runRepoLabelsList(
   input: RepoLabelsListInput,
 ): Promise<RepoLabelsListData> {
   assertRepoAndPaginationInput(input)
-  const sdk = getRepoLabelsListSdk(createGraphqlRequestClient(transport))
-  const result: RepoLabelsListQuery = await sdk.RepoLabelsList(input)
+  const result = await executeTypedDocument(transport, RepoLabelsListDocument, input)
   return normalizeRepoLabelsListResult(result, input)
 }
 
@@ -105,7 +103,6 @@ export async function runRepoIssueTypesList(
   input: RepoIssueTypesListInput,
 ): Promise<RepoIssueTypesListData> {
   assertRepoAndPaginationInput(input)
-  const sdk = getRepoIssueTypesListSdk(createGraphqlRequestClient(transport))
-  const result: RepoIssueTypesListQuery = await sdk.RepoIssueTypesList(input)
+  const result = await executeTypedDocument(transport, RepoIssueTypesListDocument, input)
   return normalizeRepoIssueTypesListResult(result, input)
 }

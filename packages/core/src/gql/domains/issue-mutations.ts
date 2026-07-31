@@ -18,33 +18,33 @@ import {
   assertIssueUpdateInput,
   assertNonEmptyString,
 } from "../assertions.js"
-import { getSdk as getIssueAssigneesAddSdk } from "../operations/issue-assignees-add.generated.js"
-import { getSdk as getIssueAssigneesLookupByNumberSdk } from "../operations/issue-assignees-lookup-by-number.generated.js"
-import { getSdk as getIssueAssigneesRemoveSdk } from "../operations/issue-assignees-remove.generated.js"
-import { getSdk as getIssueAssigneesUpdateSdk } from "../operations/issue-assignees-update.generated.js"
-import { getSdk as getIssueBlockedByAddSdk } from "../operations/issue-blocked-by-add.generated.js"
-import { getSdk as getIssueBlockedByRemoveSdk } from "../operations/issue-blocked-by-remove.generated.js"
-import { getSdk as getIssueCloseSdk } from "../operations/issue-close.generated.js"
-import { getSdk as getIssueCommentCreateSdk } from "../operations/issue-comment-create.generated.js"
-import { getSdk as getIssueCreateSdk } from "../operations/issue-create.generated.js"
-import { getSdk as getIssueCreateRepositoryIdSdk } from "../operations/issue-create-repository-id.generated.js"
-import { getSdk as getIssueDeleteSdk } from "../operations/issue-delete.generated.js"
-import { getSdk as getIssueLabelsAddSdk } from "../operations/issue-labels-add.generated.js"
-import { getSdk as getIssueLabelsLookupByNumberSdk } from "../operations/issue-labels-lookup-by-number.generated.js"
-import { getSdk as getIssueLabelsRemoveSdk } from "../operations/issue-labels-remove.generated.js"
-import { getSdk as getIssueLabelsUpdateSdk } from "../operations/issue-labels-update.generated.js"
-import { getSdk as getIssueLinkedPrsListSdk } from "../operations/issue-linked-prs-list.generated.js"
-import { getSdk as getIssueMilestoneLookupByNumberSdk } from "../operations/issue-milestone-lookup-by-number.generated.js"
-import { getSdk as getIssueMilestoneSetSdk } from "../operations/issue-milestone-set.generated.js"
-import { getSdk as getIssueNodeIdLookupSdk } from "../operations/issue-node-id-lookup.generated.js"
-import { getSdk as getIssueParentLookupSdk } from "../operations/issue-parent-lookup.generated.js"
-import { getSdk as getIssueParentRemoveSdk } from "../operations/issue-parent-remove.generated.js"
-import { getSdk as getIssueParentSetSdk } from "../operations/issue-parent-set.generated.js"
-import { getSdk as getIssueRelationsGetSdk } from "../operations/issue-relations-get.generated.js"
-import { getSdk as getIssueReopenSdk } from "../operations/issue-reopen.generated.js"
-import { getSdk as getIssueUpdateSdk } from "../operations/issue-update.generated.js"
+import { IssueAssigneesAddDocument } from "../operations/issue-assignees-add.generated.js"
+import { IssueAssigneesLookupByNumberDocument } from "../operations/issue-assignees-lookup-by-number.generated.js"
+import { IssueAssigneesRemoveDocument } from "../operations/issue-assignees-remove.generated.js"
+import { IssueAssigneesUpdateDocument } from "../operations/issue-assignees-update.generated.js"
+import { IssueBlockedByAddDocument } from "../operations/issue-blocked-by-add.generated.js"
+import { IssueBlockedByRemoveDocument } from "../operations/issue-blocked-by-remove.generated.js"
+import { IssueCloseDocument } from "../operations/issue-close.generated.js"
+import { IssueCommentCreateDocument } from "../operations/issue-comment-create.generated.js"
+import { IssueCreateDocument } from "../operations/issue-create.generated.js"
+import { IssueCreateRepositoryIdDocument } from "../operations/issue-create-repository-id.generated.js"
+import { IssueDeleteDocument } from "../operations/issue-delete.generated.js"
+import { IssueLabelsAddDocument } from "../operations/issue-labels-add.generated.js"
+import { IssueLabelsLookupByNumberDocument } from "../operations/issue-labels-lookup-by-number.generated.js"
+import { IssueLabelsRemoveDocument } from "../operations/issue-labels-remove.generated.js"
+import { IssueLabelsUpdateDocument } from "../operations/issue-labels-update.generated.js"
+import { IssueLinkedPrsListDocument } from "../operations/issue-linked-prs-list.generated.js"
+import { IssueMilestoneLookupByNumberDocument } from "../operations/issue-milestone-lookup-by-number.generated.js"
+import { IssueMilestoneSetDocument } from "../operations/issue-milestone-set.generated.js"
+import { IssueNodeIdLookupDocument } from "../operations/issue-node-id-lookup.generated.js"
+import { IssueParentLookupDocument } from "../operations/issue-parent-lookup.generated.js"
+import { IssueParentRemoveDocument } from "../operations/issue-parent-remove.generated.js"
+import { IssueParentSetDocument } from "../operations/issue-parent-set.generated.js"
+import { IssueRelationsGetDocument } from "../operations/issue-relations-get.generated.js"
+import { IssueReopenDocument } from "../operations/issue-reopen.generated.js"
+import { IssueUpdateDocument } from "../operations/issue-update.generated.js"
 import type { GraphqlTransport } from "../transport.js"
-import { createGraphqlRequestClient } from "../transport.js"
+import { executeTypedDocument } from "../transport.js"
 import type {
   IssueAssigneesAddData,
   IssueAssigneesAddInput,
@@ -115,20 +115,22 @@ export async function runIssueCreate(
 ): Promise<IssueMutationData> {
   assertIssueCreateInput(input)
 
-  const client = createGraphqlRequestClient(transport)
-  const repositoryLookupResult = await getIssueCreateRepositoryIdSdk(
+  const client = transport
+  const repositoryLookupResult = await executeTypedDocument(
     client,
-  ).IssueCreateRepositoryId({
-    owner: input.owner,
-    name: input.name,
-  })
+    IssueCreateRepositoryIdDocument,
+    {
+      owner: input.owner,
+      name: input.name,
+    },
+  )
 
   const repositoryId = asRecord(repositoryLookupResult.repository)?.id
   if (typeof repositoryId !== "string" || repositoryId.length === 0) {
     throw new Error("Repository not found")
   }
 
-  const result = await getIssueCreateSdk(client).IssueCreate({
+  const result = await executeTypedDocument(client, IssueCreateDocument, {
     repositoryId,
     title: input.title,
     ...(input.body === undefined ? {} : { body: input.body }),
@@ -144,8 +146,8 @@ export async function runIssueUpdate(
 ): Promise<IssueMutationData> {
   assertIssueUpdateInput(input)
 
-  const client = createGraphqlRequestClient(transport)
-  const lookupResult = await getIssueNodeIdLookupSdk(client).IssueNodeIdLookup({
+  const client = transport
+  const lookupResult = await executeTypedDocument(client, IssueNodeIdLookupDocument, {
     owner: input.owner,
     name: input.name,
     issueNumber: input.issueNumber,
@@ -156,7 +158,7 @@ export async function runIssueUpdate(
     throw new Error("Issue not found")
   }
 
-  const result = await getIssueUpdateSdk(client).IssueUpdate({
+  const result = await executeTypedDocument(client, IssueUpdateDocument, {
     issueId,
     ...(input.title === undefined ? {} : { title: input.title }),
     ...(input.body === undefined ? {} : { body: input.body }),
@@ -171,8 +173,8 @@ export async function runIssueClose(
 ): Promise<IssueMutationData> {
   assertIssueMutationInput(input)
 
-  const client = createGraphqlRequestClient(transport)
-  const lookupResult = await getIssueNodeIdLookupSdk(client).IssueNodeIdLookup({
+  const client = transport
+  const lookupResult = await executeTypedDocument(client, IssueNodeIdLookupDocument, {
     owner: input.owner,
     name: input.name,
     issueNumber: input.issueNumber,
@@ -183,7 +185,7 @@ export async function runIssueClose(
     throw new Error("Issue not found")
   }
 
-  const result = await getIssueCloseSdk(client).IssueClose({ issueId })
+  const result = await executeTypedDocument(client, IssueCloseDocument, { issueId })
   const issueData = parseIssueNode(asRecord(asRecord(result)?.closeIssue)?.issue)
   return {
     ...issueData,
@@ -197,8 +199,8 @@ export async function runIssueReopen(
 ): Promise<IssueMutationData> {
   assertIssueMutationInput(input)
 
-  const client = createGraphqlRequestClient(transport)
-  const lookupResult = await getIssueNodeIdLookupSdk(client).IssueNodeIdLookup({
+  const client = transport
+  const lookupResult = await executeTypedDocument(client, IssueNodeIdLookupDocument, {
     owner: input.owner,
     name: input.name,
     issueNumber: input.issueNumber,
@@ -209,7 +211,7 @@ export async function runIssueReopen(
     throw new Error("Issue not found")
   }
 
-  const result = await getIssueReopenSdk(client).IssueReopen({ issueId })
+  const result = await executeTypedDocument(client, IssueReopenDocument, { issueId })
   const issueData = parseIssueNode(asRecord(asRecord(result)?.reopenIssue)?.issue)
   return {
     ...issueData,
@@ -223,8 +225,8 @@ export async function runIssueDelete(
 ): Promise<IssueMutationData> {
   assertIssueMutationInput(input)
 
-  const client = createGraphqlRequestClient(transport)
-  const lookupResult = await getIssueNodeIdLookupSdk(client).IssueNodeIdLookup({
+  const client = transport
+  const lookupResult = await executeTypedDocument(client, IssueNodeIdLookupDocument, {
     owner: input.owner,
     name: input.name,
     issueNumber: input.issueNumber,
@@ -235,7 +237,7 @@ export async function runIssueDelete(
     throw new Error("Issue not found")
   }
 
-  const result = await getIssueDeleteSdk(client).IssueDelete({ issueId })
+  const result = await executeTypedDocument(client, IssueDeleteDocument, { issueId })
   const mutation = asRecord(asRecord(result)?.deleteIssue)
   if (!mutation) {
     throw new Error("Issue deletion failed")
@@ -254,8 +256,8 @@ export async function runIssueLabelsUpdate(
 ): Promise<IssueLabelsUpdateData> {
   assertIssueLabelsUpdateInput(input)
 
-  const client = createGraphqlRequestClient(transport)
-  const lookupResult = await getIssueLabelsLookupByNumberSdk(client).IssueLabelsLookupByNumber({
+  const client = transport
+  const lookupResult = await executeTypedDocument(client, IssueLabelsLookupByNumberDocument, {
     owner: input.owner,
     name: input.name,
     issueNumber: input.issueNumber,
@@ -287,7 +289,7 @@ export async function runIssueLabelsUpdate(
     return id
   })
 
-  const result = await getIssueLabelsUpdateSdk(client).IssueLabelsUpdate({
+  const result = await executeTypedDocument(client, IssueLabelsUpdateDocument, {
     issueId,
     labelIds,
   })
@@ -311,8 +313,8 @@ export async function runIssueLabelsAdd(
 ): Promise<IssueLabelsAddData> {
   assertIssueLabelsAddInput(input)
 
-  const client = createGraphqlRequestClient(transport)
-  const lookupResult = await getIssueLabelsLookupByNumberSdk(client).IssueLabelsLookupByNumber({
+  const client = transport
+  const lookupResult = await executeTypedDocument(client, IssueLabelsLookupByNumberDocument, {
     owner: input.owner,
     name: input.name,
     issueNumber: input.issueNumber,
@@ -344,7 +346,7 @@ export async function runIssueLabelsAdd(
     return id
   })
 
-  const result = await getIssueLabelsAddSdk(client).IssueLabelsAdd({
+  const result = await executeTypedDocument(client, IssueLabelsAddDocument, {
     labelableId,
     labelIds,
   })
@@ -368,8 +370,8 @@ export async function runIssueLabelsRemove(
 ): Promise<IssueLabelsRemoveData> {
   assertIssueLabelsRemoveInput(input)
 
-  const client = createGraphqlRequestClient(transport)
-  const lookupResult = await getIssueLabelsLookupByNumberSdk(client).IssueLabelsLookupByNumber({
+  const client = transport
+  const lookupResult = await executeTypedDocument(client, IssueLabelsLookupByNumberDocument, {
     owner: input.owner,
     name: input.name,
     issueNumber: input.issueNumber,
@@ -401,7 +403,7 @@ export async function runIssueLabelsRemove(
     return id
   })
 
-  await getIssueLabelsRemoveSdk(client).IssueLabelsRemove({
+  await executeTypedDocument(client, IssueLabelsRemoveDocument, {
     labelableId,
     labelIds,
   })
@@ -418,10 +420,8 @@ export async function runIssueAssigneesUpdate(
 ): Promise<IssueAssigneesUpdateData> {
   assertIssueAssigneesUpdateInput(input)
 
-  const client = createGraphqlRequestClient(transport)
-  const lookupResult = await getIssueAssigneesLookupByNumberSdk(
-    client,
-  ).IssueAssigneesLookupByNumber({
+  const client = transport
+  const lookupResult = await executeTypedDocument(client, IssueAssigneesLookupByNumberDocument, {
     owner: input.owner,
     name: input.name,
     issueNumber: input.issueNumber,
@@ -429,7 +429,7 @@ export async function runIssueAssigneesUpdate(
 
   const { assignableId, assigneeIds } = resolveAssigneeIds(lookupResult, input.assignees)
 
-  const result = await getIssueAssigneesUpdateSdk(client).IssueAssigneesUpdate({
+  const result = await executeTypedDocument(client, IssueAssigneesUpdateDocument, {
     issueId: assignableId,
     assigneeIds,
   })
@@ -503,10 +503,8 @@ export async function runIssueAssigneesAdd(
 ): Promise<IssueAssigneesAddData> {
   assertIssueAssigneesAddInput(input)
 
-  const client = createGraphqlRequestClient(transport)
-  const lookupResult = await getIssueAssigneesLookupByNumberSdk(
-    client,
-  ).IssueAssigneesLookupByNumber({
+  const client = transport
+  const lookupResult = await executeTypedDocument(client, IssueAssigneesLookupByNumberDocument, {
     owner: input.owner,
     name: input.name,
     issueNumber: input.issueNumber,
@@ -514,7 +512,7 @@ export async function runIssueAssigneesAdd(
 
   const { assignableId, assigneeIds } = resolveAssigneeIds(lookupResult, input.assignees)
 
-  const result = await getIssueAssigneesAddSdk(client).IssueAssigneesAdd({
+  const result = await executeTypedDocument(client, IssueAssigneesAddDocument, {
     assignableId,
     assigneeIds,
   })
@@ -528,10 +526,8 @@ export async function runIssueAssigneesRemove(
 ): Promise<IssueAssigneesRemoveData> {
   assertIssueAssigneesRemoveInput(input)
 
-  const client = createGraphqlRequestClient(transport)
-  const lookupResult = await getIssueAssigneesLookupByNumberSdk(
-    client,
-  ).IssueAssigneesLookupByNumber({
+  const client = transport
+  const lookupResult = await executeTypedDocument(client, IssueAssigneesLookupByNumberDocument, {
     owner: input.owner,
     name: input.name,
     issueNumber: input.issueNumber,
@@ -539,7 +535,7 @@ export async function runIssueAssigneesRemove(
 
   const { assignableId, assigneeIds } = resolveAssigneeIds(lookupResult, input.assignees)
 
-  const result = await getIssueAssigneesRemoveSdk(client).IssueAssigneesRemove({
+  const result = await executeTypedDocument(client, IssueAssigneesRemoveDocument, {
     assignableId,
     assigneeIds,
   })
@@ -553,10 +549,8 @@ export async function runIssueMilestoneSet(
 ): Promise<IssueMilestoneSetData> {
   assertIssueMilestoneSetInput(input)
 
-  const client = createGraphqlRequestClient(transport)
-  const lookupResult = await getIssueMilestoneLookupByNumberSdk(
-    client,
-  ).IssueMilestoneLookupByNumber({
+  const client = transport
+  const lookupResult = await executeTypedDocument(client, IssueMilestoneLookupByNumberDocument, {
     owner: input.owner,
     name: input.name,
     issueNumber: input.issueNumber,
@@ -573,7 +567,7 @@ export async function runIssueMilestoneSet(
     throw new Error(`Milestone not found: ${input.milestoneNumber}`)
   }
 
-  const result = await getIssueMilestoneSetSdk(client).IssueMilestoneSet({
+  const result = await executeTypedDocument(client, IssueMilestoneSetDocument, {
     issueId,
     milestoneId,
   })
@@ -593,8 +587,8 @@ export async function runIssueMilestoneClear(
   input: IssueMilestoneClearInput,
 ): Promise<IssueMilestoneClearData> {
   assertIssueMutationInput(input)
-  const client = createGraphqlRequestClient(transport)
-  const lookupResult = await getIssueNodeIdLookupSdk(client).IssueNodeIdLookup({
+  const client = transport
+  const lookupResult = await executeTypedDocument(client, IssueNodeIdLookupDocument, {
     owner: input.owner,
     name: input.name,
     issueNumber: input.issueNumber,
@@ -605,7 +599,7 @@ export async function runIssueMilestoneClear(
     throw new Error("Issue not found")
   }
 
-  await getIssueMilestoneSetSdk(client).IssueMilestoneSet({
+  await executeTypedDocument(client, IssueMilestoneSetDocument, {
     issueId,
     milestoneId: null,
   })
@@ -622,8 +616,8 @@ export async function runIssueCommentCreate(
 ): Promise<IssueCommentCreateData> {
   assertIssueCommentCreateInput(input)
 
-  const client = createGraphqlRequestClient(transport)
-  const lookupResult = await getIssueNodeIdLookupSdk(client).IssueNodeIdLookup({
+  const client = transport
+  const lookupResult = await executeTypedDocument(client, IssueNodeIdLookupDocument, {
     owner: input.owner,
     name: input.name,
     issueNumber: input.issueNumber,
@@ -634,7 +628,7 @@ export async function runIssueCommentCreate(
     throw new Error("Issue not found")
   }
 
-  const result = await getIssueCommentCreateSdk(client).IssueCommentCreate({
+  const result = await executeTypedDocument(client, IssueCommentCreateDocument, {
     issueId,
     body: input.body,
   })
@@ -702,9 +696,7 @@ export async function runIssueLinkedPrsList(
 ): Promise<IssueLinkedPrsListData> {
   assertIssueLinkedPrsListInput(input)
 
-  const result = await getIssueLinkedPrsListSdk(
-    createGraphqlRequestClient(transport),
-  ).IssueLinkedPrsList({
+  const result = await executeTypedDocument(transport, IssueLinkedPrsListDocument, {
     owner: input.owner,
     name: input.name,
     issueNumber: input.issueNumber,
@@ -761,9 +753,7 @@ export async function runIssueRelationsGet(
 ): Promise<IssueRelationsGetData> {
   assertIssueRelationsGetInput(input)
 
-  const result = await getIssueRelationsGetSdk(
-    createGraphqlRequestClient(transport),
-  ).IssueRelationsGet({
+  const result = await executeTypedDocument(transport, IssueRelationsGetDocument, {
     owner: input.owner,
     name: input.name,
     issueNumber: input.issueNumber,
@@ -778,7 +768,7 @@ export async function runIssueParentSet(
 ): Promise<IssueParentSetData> {
   assertIssueParentSetInput(input)
 
-  const result = await getIssueParentSetSdk(createGraphqlRequestClient(transport)).IssueParentSet({
+  const result = await executeTypedDocument(transport, IssueParentSetDocument, {
     issueId: input.issueId,
     parentIssueId: input.parentIssueId,
   })
@@ -803,8 +793,8 @@ export async function runIssueParentRemove(
 ): Promise<IssueParentRemoveData> {
   assertIssueParentRemoveInput(input)
 
-  const client = createGraphqlRequestClient(transport)
-  const lookupResult = await getIssueParentLookupSdk(client).IssueParentLookup({
+  const client = transport
+  const lookupResult = await executeTypedDocument(client, IssueParentLookupDocument, {
     issueId: input.issueId,
   })
 
@@ -813,7 +803,7 @@ export async function runIssueParentRemove(
     throw new Error("Issue parent removal failed")
   }
 
-  const result = await getIssueParentRemoveSdk(client).IssueParentRemove({
+  const result = await executeTypedDocument(client, IssueParentRemoveDocument, {
     issueId: input.issueId,
     parentIssueId,
   })
@@ -837,9 +827,7 @@ export async function runIssueBlockedByAdd(
 ): Promise<IssueBlockedByData> {
   assertIssueBlockedByInput(input)
 
-  const result = await getIssueBlockedByAddSdk(
-    createGraphqlRequestClient(transport),
-  ).IssueBlockedByAdd({
+  const result = await executeTypedDocument(transport, IssueBlockedByAddDocument, {
     issueId: input.issueId,
     blockedByIssueId: input.blockedByIssueId,
   })
@@ -864,9 +852,7 @@ export async function runIssueBlockedByRemove(
 ): Promise<IssueBlockedByData> {
   assertIssueBlockedByInput(input)
 
-  const result = await getIssueBlockedByRemoveSdk(
-    createGraphqlRequestClient(transport),
-  ).IssueBlockedByRemove({
+  const result = await executeTypedDocument(transport, IssueBlockedByRemoveDocument, {
     issueId: input.issueId,
     blockedByIssueId: input.blockedByIssueId,
   })

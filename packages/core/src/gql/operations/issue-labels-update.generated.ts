@@ -5,11 +5,8 @@ export type Incremental<T> =
   | T
   | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
 
-import { type GraphQLClient, type RequestOptions } from "graphql-request"
+import type { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/core"
 import type * as Types from "./base-types.js"
-import { TypedDocumentString } from "./typed-document-string.js"
-
-type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type IssueLabelsUpdateMutationVariables = Exact<{
   issueId: string | number
   labelIds: Array<string | number> | string | number
@@ -30,56 +27,113 @@ export type IssueLabelsUpdateMutation = {
   } | null
 }
 
-export const IssueLabelsUpdateDocument = new TypedDocumentString(`
-    mutation IssueLabelsUpdate($issueId: ID!, $labelIds: [ID!]!) {
-  __typename
-  updateIssue(input: {id: $issueId, labelIds: $labelIds}) {
-    __typename
-    issue {
-      __typename
-      id
-      labels(first: 50) {
-        __typename
-        nodes {
-          __typename
-          name
-        }
-      }
-    }
-  }
-}
-    `)
-
-export type SdkFunctionWrapper = <T>(
-  action: (requestHeaders?: Record<string, string>) => Promise<T>,
-  operationName: string,
-  operationType?: string,
-  variables?: any,
-) => Promise<T>
-
-const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationType, _variables) =>
-  action()
-
-export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
-  return {
-    IssueLabelsUpdate(
-      variables: IssueLabelsUpdateMutationVariables,
-      requestHeaders?: GraphQLClientRequestHeaders,
-      signal?: RequestInit["signal"],
-    ): Promise<IssueLabelsUpdateMutation> {
-      return withWrapper(
-        (wrappedRequestHeaders) =>
-          client.request<IssueLabelsUpdateMutation>({
-            document: IssueLabelsUpdateDocument,
-            variables,
-            requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders },
-            signal,
-          }),
-        "IssueLabelsUpdate",
-        "mutation",
-        variables,
-      )
+export const IssueLabelsUpdateDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "mutation",
+      name: { kind: "Name", value: "IssueLabelsUpdate" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "issueId" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "labelIds" } },
+          type: {
+            kind: "NonNullType",
+            type: {
+              kind: "ListType",
+              type: {
+                kind: "NonNullType",
+                type: { kind: "NamedType", name: { kind: "Name", value: "ID" } },
+              },
+            },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "updateIssue" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "input" },
+                value: {
+                  kind: "ObjectValue",
+                  fields: [
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "id" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "issueId" } },
+                    },
+                    {
+                      kind: "ObjectField",
+                      name: { kind: "Name", value: "labelIds" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "labelIds" } },
+                    },
+                  ],
+                },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "issue" },
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "labels" },
+                        arguments: [
+                          {
+                            kind: "Argument",
+                            name: { kind: "Name", value: "first" },
+                            value: { kind: "IntValue", value: "50" },
+                          },
+                        ],
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "nodes" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                                  { kind: "Field", name: { kind: "Name", value: "name" } },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
     },
-  }
-}
-export type Sdk = ReturnType<typeof getSdk>
+  ],
+} as unknown as DocumentNode<IssueLabelsUpdateMutation, IssueLabelsUpdateMutationVariables>

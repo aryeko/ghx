@@ -20,15 +20,12 @@ describe("codegen config", () => {
         baseTypesPath: "./base-types.js",
       }),
     )
-    expect(generatedOutput.plugins).toEqual([
-      { add: { content: 'import { TypedDocumentString } from "./typed-document-string.js"' } },
-      "typescript-operations",
-      "typescript-graphql-request",
-    ])
+    expect(generatedOutput.plugins).toEqual(["typescript-operations", "typed-document-node"])
     expect(generatedOutput.documentTransforms).toHaveLength(1)
     expect(generatedOutput.config).toEqual(
       expect.objectContaining({
         defaultScalarType: "any",
+        documentMode: "documentNode",
         nonOptionalTypename: true,
       }),
     )

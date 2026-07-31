@@ -5,11 +5,8 @@ export type Incremental<T> =
   | T
   | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
 
-import { type GraphQLClient, type RequestOptions } from "graphql-request"
+import type { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/core"
 import type * as Types from "./base-types.js"
-import { TypedDocumentString } from "./typed-document-string.js"
-
-type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type PrDiffListFilesQueryVariables = Exact<{
   owner: string
   name: string
@@ -38,64 +35,158 @@ export type PrDiffListFilesQuery = {
   } | null
 }
 
-export const PrDiffListFilesDocument = new TypedDocumentString(`
-    query PrDiffListFiles($owner: String!, $name: String!, $prNumber: Int!, $first: Int!, $after: String) {
-  __typename
-  repository(owner: $owner, name: $name) {
-    __typename
-    pullRequest(number: $prNumber) {
-      __typename
-      files(first: $first, after: $after) {
-        __typename
-        nodes {
-          __typename
-          path
-          additions
-          deletions
-        }
-        pageInfo {
-          __typename
-          ...PageInfoFields
-        }
-      }
-    }
-  }
-}
-    fragment PageInfoFields on PageInfo {
-  endCursor
-  hasNextPage
-}`)
-
-export type SdkFunctionWrapper = <T>(
-  action: (requestHeaders?: Record<string, string>) => Promise<T>,
-  operationName: string,
-  operationType?: string,
-  variables?: any,
-) => Promise<T>
-
-const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationType, _variables) =>
-  action()
-
-export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
-  return {
-    PrDiffListFiles(
-      variables: PrDiffListFilesQueryVariables,
-      requestHeaders?: GraphQLClientRequestHeaders,
-      signal?: RequestInit["signal"],
-    ): Promise<PrDiffListFilesQuery> {
-      return withWrapper(
-        (wrappedRequestHeaders) =>
-          client.request<PrDiffListFilesQuery>({
-            document: PrDiffListFilesDocument,
-            variables,
-            requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders },
-            signal,
-          }),
-        "PrDiffListFiles",
-        "query",
-        variables,
-      )
+export const PrDiffListFilesDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "PrDiffListFiles" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "owner" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "name" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "prNumber" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "first" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "after" } },
+          type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "repository" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "owner" },
+                value: { kind: "Variable", name: { kind: "Name", value: "owner" } },
+              },
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "name" },
+                value: { kind: "Variable", name: { kind: "Name", value: "name" } },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "pullRequest" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "number" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "prNumber" } },
+                    },
+                  ],
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                      {
+                        kind: "Field",
+                        name: { kind: "Name", value: "files" },
+                        arguments: [
+                          {
+                            kind: "Argument",
+                            name: { kind: "Name", value: "first" },
+                            value: { kind: "Variable", name: { kind: "Name", value: "first" } },
+                          },
+                          {
+                            kind: "Argument",
+                            name: { kind: "Name", value: "after" },
+                            value: { kind: "Variable", name: { kind: "Name", value: "after" } },
+                          },
+                        ],
+                        selectionSet: {
+                          kind: "SelectionSet",
+                          selections: [
+                            { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "nodes" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                                  { kind: "Field", name: { kind: "Name", value: "path" } },
+                                  { kind: "Field", name: { kind: "Name", value: "additions" } },
+                                  { kind: "Field", name: { kind: "Name", value: "deletions" } },
+                                ],
+                              },
+                            },
+                            {
+                              kind: "Field",
+                              name: { kind: "Name", value: "pageInfo" },
+                              selectionSet: {
+                                kind: "SelectionSet",
+                                selections: [
+                                  { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                                  {
+                                    kind: "FragmentSpread",
+                                    name: { kind: "Name", value: "PageInfoFields" },
+                                  },
+                                ],
+                              },
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
     },
-  }
-}
-export type Sdk = ReturnType<typeof getSdk>
+    {
+      kind: "FragmentDefinition",
+      name: { kind: "Name", value: "PageInfoFields" },
+      typeCondition: { kind: "NamedType", name: { kind: "Name", value: "PageInfo" } },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "endCursor" } },
+          { kind: "Field", name: { kind: "Name", value: "hasNextPage" } },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<PrDiffListFilesQuery, PrDiffListFilesQueryVariables>

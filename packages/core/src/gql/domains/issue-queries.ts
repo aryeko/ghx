@@ -4,13 +4,13 @@ import {
   assertIssueListInput,
 } from "../assertions.js"
 import type { IssueCommentsListQuery } from "../operations/issue-comments-list.generated.js"
-import { getSdk as getIssueCommentsListSdk } from "../operations/issue-comments-list.generated.js"
-import type { IssueListQuery, IssueState } from "../operations/issue-list.generated.js"
-import { getSdk as getIssueListSdk } from "../operations/issue-list.generated.js"
+import { IssueCommentsListDocument } from "../operations/issue-comments-list.generated.js"
+import type { IssueState } from "../operations/issue-list.generated.js"
+import { IssueListDocument } from "../operations/issue-list.generated.js"
 import type { IssueViewQuery } from "../operations/issue-view.generated.js"
-import { getSdk as getIssueViewSdk } from "../operations/issue-view.generated.js"
+import { IssueViewDocument } from "../operations/issue-view.generated.js"
 import type { GraphqlTransport } from "../transport.js"
-import { createGraphqlRequestClient } from "../transport.js"
+import { executeTypedDocument } from "../transport.js"
 import type {
   IssueCommentsListData,
   IssueCommentsListInput,
@@ -58,8 +58,7 @@ export async function runIssueView(
 ): Promise<IssueViewData> {
   assertIssueInput(input)
 
-  const sdk = getIssueViewSdk(createGraphqlRequestClient(transport))
-  const result: IssueViewQuery = await sdk.IssueView(input)
+  const result = await executeTypedDocument(transport, IssueViewDocument, input)
   return normalizeIssueViewResult(result, input)
 }
 
@@ -69,8 +68,7 @@ export async function runIssueList(
 ): Promise<IssueListData> {
   assertIssueListInput(input)
 
-  const sdk = getIssueListSdk(createGraphqlRequestClient(transport))
-  const result: IssueListQuery = await sdk.IssueList({
+  const result = await executeTypedDocument(transport, IssueListDocument, {
     owner: input.owner,
     name: input.name,
     first: input.first,
@@ -138,7 +136,6 @@ export async function runIssueCommentsList(
 ): Promise<IssueCommentsListData> {
   assertIssueCommentsListInput(input)
 
-  const sdk = getIssueCommentsListSdk(createGraphqlRequestClient(transport))
-  const result: IssueCommentsListQuery = await sdk.IssueCommentsList(input)
+  const result = await executeTypedDocument(transport, IssueCommentsListDocument, input)
   return normalizeIssueCommentsListResult(result, input)
 }

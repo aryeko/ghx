@@ -1,4 +1,3 @@
-import type { GraphQLClient } from "graphql-request"
 import {
   assertNonEmptyString,
   assertProjectInput,
@@ -6,19 +5,19 @@ import {
   assertProjectUserInput,
 } from "../assertions.js"
 import type * as Types from "../operations/base-types.js"
-import { getSdk as getProjectV2FieldsListSdk } from "../operations/project-v2-fields-list.generated.js"
-import { getSdk as getProjectV2IssueNodeIdSdk } from "../operations/project-v2-issue-node-id.generated.js"
-import { getSdk as getAddProjectV2ItemSdk } from "../operations/project-v2-item-add.generated.js"
-import { getSdk as getUpdateProjectV2ItemFieldSdk } from "../operations/project-v2-item-field-update.generated.js"
-import { getSdk as getRemoveProjectV2ItemSdk } from "../operations/project-v2-item-remove.generated.js"
-import { getSdk as getProjectV2ItemsListSdk } from "../operations/project-v2-items-list.generated.js"
+import { ProjectV2FieldsListDocument } from "../operations/project-v2-fields-list.generated.js"
+import { ProjectV2IssueNodeIdDocument } from "../operations/project-v2-issue-node-id.generated.js"
+import { AddProjectV2ItemDocument } from "../operations/project-v2-item-add.generated.js"
+import { UpdateProjectV2ItemFieldDocument } from "../operations/project-v2-item-field-update.generated.js"
+import { RemoveProjectV2ItemDocument } from "../operations/project-v2-item-remove.generated.js"
+import { ProjectV2ItemsListDocument } from "../operations/project-v2-items-list.generated.js"
 import type { ProjectV2OrgViewQuery } from "../operations/project-v2-org-view.generated.js"
-import { getSdk as getProjectV2OrgViewSdk } from "../operations/project-v2-org-view.generated.js"
-import { getSdk as getProjectV2OwnerIdSdk } from "../operations/project-v2-owner-id.generated.js"
+import { ProjectV2OrgViewDocument } from "../operations/project-v2-org-view.generated.js"
+import { ProjectV2OwnerIdDocument } from "../operations/project-v2-owner-id.generated.js"
 import type { ProjectV2UserViewQuery } from "../operations/project-v2-user-view.generated.js"
-import { getSdk as getProjectV2UserViewSdk } from "../operations/project-v2-user-view.generated.js"
+import { ProjectV2UserViewDocument } from "../operations/project-v2-user-view.generated.js"
 import type { GraphqlTransport } from "../transport.js"
-import { createGraphqlRequestClient } from "../transport.js"
+import { executeTypedDocument } from "../transport.js"
 import type {
   ProjectV2FieldItemData,
   ProjectV2FieldsListData,
@@ -39,11 +38,11 @@ import type {
 } from "../types.js"
 
 async function resolveProjectId(
-  client: GraphQLClient,
+  transport: GraphqlTransport,
   owner: string,
   projectNumber: number,
 ): Promise<string> {
-  const result = await getProjectV2OwnerIdSdk(client).ProjectV2OwnerId({
+  const result = await executeTypedDocument(transport, ProjectV2OwnerIdDocument, {
     owner,
     projectNumber,
   })
@@ -54,8 +53,8 @@ async function resolveProjectId(
   throw new Error(`Project #${projectNumber} not found for owner "${owner}"`)
 }
 
-async function resolveIssueNodeId(client: GraphQLClient, issueUrl: string): Promise<string> {
-  const result = await getProjectV2IssueNodeIdSdk(client).ProjectV2IssueNodeId({
+async function resolveIssueNodeId(transport: GraphqlTransport, issueUrl: string): Promise<string> {
+  const result = await executeTypedDocument(transport, ProjectV2IssueNodeIdDocument, {
     url: issueUrl as Types.Scalars["URI"]["input"],
   })
   const resource = result.resource
@@ -128,8 +127,7 @@ export async function runProjectV2OrgView(
   input: ProjectV2OrgViewInput,
 ): Promise<ProjectV2OrgViewData> {
   assertProjectOrgInput(input)
-  const sdk = getProjectV2OrgViewSdk(createGraphqlRequestClient(transport))
-  const result: ProjectV2OrgViewQuery = await sdk.ProjectV2OrgView(input)
+  const result = await executeTypedDocument(transport, ProjectV2OrgViewDocument, input)
   return normalizeProjectV2OrgViewResult(result, input)
 }
 
@@ -138,8 +136,7 @@ export async function runProjectV2UserView(
   input: ProjectV2UserViewInput,
 ): Promise<ProjectV2UserViewData> {
   assertProjectUserInput(input)
-  const sdk = getProjectV2UserViewSdk(createGraphqlRequestClient(transport))
-  const result: ProjectV2UserViewQuery = await sdk.ProjectV2UserView(input)
+  const result = await executeTypedDocument(transport, ProjectV2UserViewDocument, input)
   return normalizeProjectV2UserViewResult(result, input)
 }
 
@@ -148,11 +145,9 @@ export async function runProjectV2FieldsList(
   input: ProjectV2FieldsListInput,
 ): Promise<ProjectV2FieldsListData> {
   assertProjectInput(input)
-  const client = createGraphqlRequestClient(transport)
-
   const first = input.first ?? 30
 
-  const result = await getProjectV2FieldsListSdk(client).ProjectV2FieldsList({
+  const result = await executeTypedDocument(transport, ProjectV2FieldsListDocument, {
     owner: input.owner,
     projectNumber: input.projectNumber,
     first,
@@ -189,11 +184,9 @@ export async function runProjectV2ItemsList(
   input: ProjectV2ItemsListInput,
 ): Promise<ProjectV2ItemsListData> {
   assertProjectInput(input)
-  const client = createGraphqlRequestClient(transport)
-
   const first = input.first ?? 30
 
-  const result = await getProjectV2ItemsListSdk(client).ProjectV2ItemsList({
+  const result = await executeTypedDocument(transport, ProjectV2ItemsListDocument, {
     owner: input.owner,
     projectNumber: input.projectNumber,
     first,
@@ -232,11 +225,10 @@ export async function runProjectV2ItemAdd(
     throw new Error("issueUrl is required")
   }
 
-  const client = createGraphqlRequestClient(transport)
-  const projectId = await resolveProjectId(client, input.owner, input.projectNumber)
-  const contentId = await resolveIssueNodeId(client, input.issueUrl)
+  const projectId = await resolveProjectId(transport, input.owner, input.projectNumber)
+  const contentId = await resolveIssueNodeId(transport, input.issueUrl)
 
-  const result = await getAddProjectV2ItemSdk(client).AddProjectV2Item({
+  const result = await executeTypedDocument(transport, AddProjectV2ItemDocument, {
     projectId,
     contentId,
   })
@@ -261,10 +253,9 @@ export async function runProjectV2ItemRemove(
     throw new Error("itemId is required")
   }
 
-  const client = createGraphqlRequestClient(transport)
-  const projectId = await resolveProjectId(client, input.owner, input.projectNumber)
+  const projectId = await resolveProjectId(transport, input.owner, input.projectNumber)
 
-  const result = await getRemoveProjectV2ItemSdk(client).RemoveProjectV2Item({
+  const result = await executeTypedDocument(transport, RemoveProjectV2ItemDocument, {
     projectId,
     itemId: input.itemId,
   })
@@ -287,10 +278,9 @@ export async function runProjectV2ItemFieldUpdate(
   assertNonEmptyString(input.itemId, "itemId")
   assertNonEmptyString(input.fieldId, "fieldId")
 
-  const client = createGraphqlRequestClient(transport)
   const value = buildFieldValue(input)
 
-  const result = await getUpdateProjectV2ItemFieldSdk(client).UpdateProjectV2ItemField({
+  const result = await executeTypedDocument(transport, UpdateProjectV2ItemFieldDocument, {
     projectId: input.projectId,
     itemId: input.itemId,
     fieldId: input.fieldId,

@@ -5,11 +5,8 @@ export type Incremental<T> =
   | T
   | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
 
-import { type GraphQLClient, type RequestOptions } from "graphql-request"
+import type { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/core"
 import type * as Types from "./base-types.js"
-import { TypedDocumentString } from "./typed-document-string.js"
-
-type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type ProjectV2OrgViewQueryVariables = Exact<{
   org: string
   projectNumber: number
@@ -31,54 +28,77 @@ export type ProjectV2OrgViewQuery = {
   } | null
 }
 
-export const ProjectV2OrgViewDocument = new TypedDocumentString(`
-    query ProjectV2OrgView($org: String!, $projectNumber: Int!) {
-  __typename
-  organization(login: $org) {
-    __typename
-    projectV2(number: $projectNumber) {
-      __typename
-      id
-      title
-      shortDescription
-      public
-      closed
-      url
-    }
-  }
-}
-    `)
-
-export type SdkFunctionWrapper = <T>(
-  action: (requestHeaders?: Record<string, string>) => Promise<T>,
-  operationName: string,
-  operationType?: string,
-  variables?: any,
-) => Promise<T>
-
-const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationType, _variables) =>
-  action()
-
-export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
-  return {
-    ProjectV2OrgView(
-      variables: ProjectV2OrgViewQueryVariables,
-      requestHeaders?: GraphQLClientRequestHeaders,
-      signal?: RequestInit["signal"],
-    ): Promise<ProjectV2OrgViewQuery> {
-      return withWrapper(
-        (wrappedRequestHeaders) =>
-          client.request<ProjectV2OrgViewQuery>({
-            document: ProjectV2OrgViewDocument,
-            variables,
-            requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders },
-            signal,
-          }),
-        "ProjectV2OrgView",
-        "query",
-        variables,
-      )
+export const ProjectV2OrgViewDocument = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "OperationDefinition",
+      operation: "query",
+      name: { kind: "Name", value: "ProjectV2OrgView" },
+      variableDefinitions: [
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "org" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "String" } },
+          },
+        },
+        {
+          kind: "VariableDefinition",
+          variable: { kind: "Variable", name: { kind: "Name", value: "projectNumber" } },
+          type: {
+            kind: "NonNullType",
+            type: { kind: "NamedType", name: { kind: "Name", value: "Int" } },
+          },
+        },
+      ],
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          {
+            kind: "Field",
+            name: { kind: "Name", value: "organization" },
+            arguments: [
+              {
+                kind: "Argument",
+                name: { kind: "Name", value: "login" },
+                value: { kind: "Variable", name: { kind: "Name", value: "org" } },
+              },
+            ],
+            selectionSet: {
+              kind: "SelectionSet",
+              selections: [
+                { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                {
+                  kind: "Field",
+                  name: { kind: "Name", value: "projectV2" },
+                  arguments: [
+                    {
+                      kind: "Argument",
+                      name: { kind: "Name", value: "number" },
+                      value: { kind: "Variable", name: { kind: "Name", value: "projectNumber" } },
+                    },
+                  ],
+                  selectionSet: {
+                    kind: "SelectionSet",
+                    selections: [
+                      { kind: "Field", name: { kind: "Name", value: "__typename" } },
+                      { kind: "Field", name: { kind: "Name", value: "id" } },
+                      { kind: "Field", name: { kind: "Name", value: "title" } },
+                      { kind: "Field", name: { kind: "Name", value: "shortDescription" } },
+                      { kind: "Field", name: { kind: "Name", value: "public" } },
+                      { kind: "Field", name: { kind: "Name", value: "closed" } },
+                      { kind: "Field", name: { kind: "Name", value: "url" } },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
     },
-  }
-}
-export type Sdk = ReturnType<typeof getSdk>
+  ],
+} as unknown as DocumentNode<ProjectV2OrgViewQuery, ProjectV2OrgViewQueryVariables>
