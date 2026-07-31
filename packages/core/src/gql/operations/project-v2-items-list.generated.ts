@@ -30,117 +30,87 @@ export type ProjectV2ItemsListQueryVariables = Exact<{
 
 export type ProjectV2ItemsListQuery = {
   __typename: "Query"
-  organization: {
-    __typename: "Organization"
-    projectV2: {
-      __typename: "ProjectV2"
-      items: {
-        __typename: "ProjectV2ItemConnection"
-        nodes: Array<{
-          __typename: "ProjectV2Item"
-          id: string
-          type: Types.ProjectV2ItemType
-          content:
-            | { __typename: "DraftIssue"; title: string }
-            | { __typename: "Issue"; number: number; title: string }
-            | { __typename: "PullRequest"; number: number; title: string }
-            | null
-        } | null> | null
-        pageInfo: { __typename: "PageInfo"; endCursor: string | null; hasNextPage: boolean }
+  repositoryOwner:
+    | {
+        __typename: "Organization"
+        projectV2: {
+          __typename: "ProjectV2"
+          items: {
+            __typename: "ProjectV2ItemConnection"
+            nodes: Array<{
+              __typename: "ProjectV2Item"
+              id: string
+              type: Types.ProjectV2ItemType
+              content:
+                | { __typename: "DraftIssue"; title: string }
+                | { __typename: "Issue"; number: number; title: string }
+                | { __typename: "PullRequest"; number: number; title: string }
+                | null
+            } | null> | null
+            pageInfo: { __typename: "PageInfo"; endCursor: string | null; hasNextPage: boolean }
+          }
+        } | null
       }
-    } | null
-  } | null
-  user: {
-    __typename: "User"
-    projectV2: {
-      __typename: "ProjectV2"
-      items: {
-        __typename: "ProjectV2ItemConnection"
-        nodes: Array<{
-          __typename: "ProjectV2Item"
-          id: string
-          type: Types.ProjectV2ItemType
-          content:
-            | { __typename: "DraftIssue"; title: string }
-            | { __typename: "Issue"; number: number; title: string }
-            | { __typename: "PullRequest"; number: number; title: string }
-            | null
-        } | null> | null
-        pageInfo: { __typename: "PageInfo"; endCursor: string | null; hasNextPage: boolean }
+    | {
+        __typename: "User"
+        projectV2: {
+          __typename: "ProjectV2"
+          items: {
+            __typename: "ProjectV2ItemConnection"
+            nodes: Array<{
+              __typename: "ProjectV2Item"
+              id: string
+              type: Types.ProjectV2ItemType
+              content:
+                | { __typename: "DraftIssue"; title: string }
+                | { __typename: "Issue"; number: number; title: string }
+                | { __typename: "PullRequest"; number: number; title: string }
+                | null
+            } | null> | null
+            pageInfo: { __typename: "PageInfo"; endCursor: string | null; hasNextPage: boolean }
+          }
+        } | null
       }
-    } | null
-  } | null
+    | null
 }
 
 export const ProjectV2ItemsListDocument = new TypedDocumentString(`
     query ProjectV2ItemsList($owner: String!, $projectNumber: Int!, $first: Int!, $after: String) {
   __typename
-  organization(login: $owner) {
+  repositoryOwner(login: $owner) {
     __typename
-    projectV2(number: $projectNumber) {
+    ... on ProjectV2Owner {
       __typename
-      items(first: $first, after: $after) {
+      projectV2(number: $projectNumber) {
         __typename
-        nodes {
+        items(first: $first, after: $after) {
           __typename
-          id
-          type
-          content {
+          nodes {
             __typename
-            ... on Issue {
+            id
+            type
+            content {
               __typename
-              number
-              title
-            }
-            ... on PullRequest {
-              __typename
-              number
-              title
-            }
-            ... on DraftIssue {
-              __typename
-              title
+              ... on Issue {
+                __typename
+                number
+                title
+              }
+              ... on PullRequest {
+                __typename
+                number
+                title
+              }
+              ... on DraftIssue {
+                __typename
+                title
+              }
             }
           }
-        }
-        pageInfo {
-          __typename
-          ...PageInfoFields
-        }
-      }
-    }
-  }
-  user(login: $owner) {
-    __typename
-    projectV2(number: $projectNumber) {
-      __typename
-      items(first: $first, after: $after) {
-        __typename
-        nodes {
-          __typename
-          id
-          type
-          content {
+          pageInfo {
             __typename
-            ... on Issue {
-              __typename
-              number
-              title
-            }
-            ... on PullRequest {
-              __typename
-              number
-              title
-            }
-            ... on DraftIssue {
-              __typename
-              title
-            }
+            ...PageInfoFields
           }
-        }
-        pageInfo {
-          __typename
-          ...PageInfoFields
         }
       }
     }

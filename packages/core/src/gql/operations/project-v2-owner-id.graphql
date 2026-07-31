@@ -1,0 +1,9 @@
+query ProjectV2OwnerId($owner: String!, $projectNumber: Int!) {
+  repositoryOwner(login: $owner) {
+    ... on ProjectV2Owner {
+      projectV2(number: $projectNumber) {
+        id
+      }
+    }
+  }
+}

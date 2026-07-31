@@ -51,15 +51,14 @@ import { PrReviewsListDocument } from "./operations/pr-reviews-list.generated.js
 import { PrReviewsRequestDocument } from "./operations/pr-reviews-request.generated.js"
 import { PrUpdateDocument } from "./operations/pr-update.generated.js"
 import { PrViewDocument } from "./operations/pr-view.generated.js"
-import { ProjectV2FieldsListOrgDocument } from "./operations/project-v2-fields-list-org.generated.js"
+import { ProjectV2FieldsListDocument } from "./operations/project-v2-fields-list.generated.js"
 import { ProjectV2IssueNodeIdDocument } from "./operations/project-v2-issue-node-id.generated.js"
 import { AddProjectV2ItemDocument } from "./operations/project-v2-item-add.generated.js"
 import { UpdateProjectV2ItemFieldDocument } from "./operations/project-v2-item-field-update.generated.js"
 import { RemoveProjectV2ItemDocument } from "./operations/project-v2-item-remove.generated.js"
-import { ProjectV2ItemsListOrgDocument } from "./operations/project-v2-items-list-org.generated.js"
-import { ProjectV2OrgIdDocument } from "./operations/project-v2-org-id.generated.js"
+import { ProjectV2ItemsListDocument } from "./operations/project-v2-items-list.generated.js"
 import { ProjectV2OrgViewDocument } from "./operations/project-v2-org-view.generated.js"
-import { ProjectV2UserIdDocument } from "./operations/project-v2-user-id.generated.js"
+import { ProjectV2OwnerIdDocument } from "./operations/project-v2-owner-id.generated.js"
 import { ProjectV2UserViewDocument } from "./operations/project-v2-user-view.generated.js"
 import { ReleaseListDocument } from "./operations/release-list.generated.js"
 import { ReleaseViewDocument } from "./operations/release-view.generated.js"
@@ -84,8 +83,7 @@ const DOCUMENTS: Record<string, string | { toString(): string }> = {
   PrAssigneesLookupByNumber: PrAssigneesLookupByNumberDocument,
   PrNodeId: PrNodeIdDocument,
   ProjectV2IssueNodeId: ProjectV2IssueNodeIdDocument,
-  ProjectV2OrgId: ProjectV2OrgIdDocument,
-  ProjectV2UserId: ProjectV2UserIdDocument,
+  ProjectV2OwnerId: ProjectV2OwnerIdDocument,
   UserNodeId: UserNodeIdDocument,
 
   // Mutation documents
@@ -143,8 +141,8 @@ const DOCUMENTS: Record<string, string | { toString(): string }> = {
   ReleaseList: ReleaseListDocument,
   ProjectV2OrgView: ProjectV2OrgViewDocument,
   ProjectV2UserView: ProjectV2UserViewDocument,
-  ProjectV2FieldsListOrg: ProjectV2FieldsListOrgDocument,
-  ProjectV2ItemsListOrg: ProjectV2ItemsListOrgDocument,
+  ProjectV2FieldsList: ProjectV2FieldsListDocument,
+  ProjectV2ItemsList: ProjectV2ItemsListDocument,
 }
 
 export function getDocument(operationName: string): string {

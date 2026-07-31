@@ -43,10 +43,7 @@ describe("runProjectV2ItemAdd", () => {
   })
 
   it("throws when project not found for owner", async () => {
-    const execute = vi
-      .fn()
-      .mockResolvedValueOnce({ organization: null })
-      .mockResolvedValueOnce({ user: null })
+    const execute = vi.fn().mockResolvedValueOnce({ repositoryOwner: null })
     const transport: GraphqlTransport = { execute }
 
     await expect(runProjectV2ItemAdd(transport, addInput)).rejects.toThrow(
@@ -57,7 +54,7 @@ describe("runProjectV2ItemAdd", () => {
   it("throws when issue not found at URL", async () => {
     const execute = vi
       .fn()
-      .mockResolvedValueOnce({ organization: { projectV2: { id: "PVT_kwDOA_proj1" } } })
+      .mockResolvedValueOnce({ repositoryOwner: { projectV2: { id: "PVT_kwDOA_proj1" } } })
       .mockResolvedValueOnce({ resource: null })
     const transport: GraphqlTransport = { execute }
 
@@ -69,7 +66,7 @@ describe("runProjectV2ItemAdd", () => {
   it("throws when addProjectV2ItemById returns no item", async () => {
     const execute = vi
       .fn()
-      .mockResolvedValueOnce({ organization: { projectV2: { id: "PVT_kwDOA_proj1" } } })
+      .mockResolvedValueOnce({ repositoryOwner: { projectV2: { id: "PVT_kwDOA_proj1" } } })
       .mockResolvedValueOnce({ resource: { __typename: "Issue", id: "I_kwDOA_issue1" } })
       .mockResolvedValueOnce({ addProjectV2ItemById: { item: null } })
     const transport: GraphqlTransport = { execute }
@@ -79,10 +76,10 @@ describe("runProjectV2ItemAdd", () => {
     )
   })
 
-  it("returns mapped data on success via org lookup", async () => {
+  it("returns mapped data on success via owner lookup", async () => {
     const execute = vi
       .fn()
-      .mockResolvedValueOnce({ organization: { projectV2: { id: "PVT_kwDOA_proj1" } } })
+      .mockResolvedValueOnce({ repositoryOwner: { projectV2: { id: "PVT_kwDOA_proj1" } } })
       .mockResolvedValueOnce({ resource: { __typename: "Issue", id: "I_kwDOA_issue1" } })
       .mockResolvedValueOnce({
         addProjectV2ItemById: {
@@ -97,11 +94,10 @@ describe("runProjectV2ItemAdd", () => {
     expect(result.itemType).toBe("ISSUE")
   })
 
-  it("falls back to user lookup when org lookup finds no project", async () => {
+  it("returns mapped data on success for a user-owned project", async () => {
     const execute = vi
       .fn()
-      .mockResolvedValueOnce({ organization: null })
-      .mockResolvedValueOnce({ user: { projectV2: { id: "PVT_kwDOA_userproj1" } } })
+      .mockResolvedValueOnce({ repositoryOwner: { projectV2: { id: "PVT_kwDOA_userproj1" } } })
       .mockResolvedValueOnce({ resource: { __typename: "Issue", id: "I_kwDOA_issue1" } })
       .mockResolvedValueOnce({
         addProjectV2ItemById: {
@@ -118,7 +114,7 @@ describe("runProjectV2ItemAdd", () => {
   it("returns itemType as null when type is null", async () => {
     const execute = vi
       .fn()
-      .mockResolvedValueOnce({ organization: { projectV2: { id: "PVT_kwDOA_proj1" } } })
+      .mockResolvedValueOnce({ repositoryOwner: { projectV2: { id: "PVT_kwDOA_proj1" } } })
       .mockResolvedValueOnce({ resource: { __typename: "Issue", id: "I_kwDOA_issue1" } })
       .mockResolvedValueOnce({
         addProjectV2ItemById: {
@@ -170,10 +166,7 @@ describe("runProjectV2ItemRemove", () => {
   })
 
   it("throws when project not found for owner", async () => {
-    const execute = vi
-      .fn()
-      .mockResolvedValueOnce({ organization: null })
-      .mockResolvedValueOnce({ user: null })
+    const execute = vi.fn().mockResolvedValueOnce({ repositoryOwner: null })
     const transport: GraphqlTransport = { execute }
 
     await expect(runProjectV2ItemRemove(transport, removeInput)).rejects.toThrow(
@@ -184,7 +177,7 @@ describe("runProjectV2ItemRemove", () => {
   it("throws when deleteProjectV2Item returns no deletedItemId", async () => {
     const execute = vi
       .fn()
-      .mockResolvedValueOnce({ organization: { projectV2: { id: "PVT_kwDOA_proj1" } } })
+      .mockResolvedValueOnce({ repositoryOwner: { projectV2: { id: "PVT_kwDOA_proj1" } } })
       .mockResolvedValueOnce({ deleteProjectV2Item: { deletedItemId: null } })
     const transport: GraphqlTransport = { execute }
 
@@ -196,7 +189,7 @@ describe("runProjectV2ItemRemove", () => {
   it("returns deletedItemId on success", async () => {
     const execute = vi
       .fn()
-      .mockResolvedValueOnce({ organization: { projectV2: { id: "PVT_kwDOA_proj1" } } })
+      .mockResolvedValueOnce({ repositoryOwner: { projectV2: { id: "PVT_kwDOA_proj1" } } })
       .mockResolvedValueOnce({ deleteProjectV2Item: { deletedItemId: "PVTI_kwDOA_item1" } })
     const transport: GraphqlTransport = { execute }
 
@@ -205,11 +198,10 @@ describe("runProjectV2ItemRemove", () => {
     expect(result.deletedItemId).toBe("PVTI_kwDOA_item1")
   })
 
-  it("falls back to user lookup when org lookup finds no project", async () => {
+  it("returns deletedItemId for a user-owned project", async () => {
     const execute = vi
       .fn()
-      .mockResolvedValueOnce({ organization: null })
-      .mockResolvedValueOnce({ user: { projectV2: { id: "PVT_kwDOA_userproj1" } } })
+      .mockResolvedValueOnce({ repositoryOwner: { projectV2: { id: "PVT_kwDOA_userproj1" } } })
       .mockResolvedValueOnce({ deleteProjectV2Item: { deletedItemId: "PVTI_kwDOA_item1" } })
     const transport: GraphqlTransport = { execute }
 
