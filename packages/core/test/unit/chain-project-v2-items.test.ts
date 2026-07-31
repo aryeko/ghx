@@ -99,11 +99,15 @@ describe("executeTasks chaining - project v2 item variable contracts", () => {
       },
     )
 
-    expect(queryRawMock).toHaveBeenCalledTimes(1)
+    expect(queryMock).toHaveBeenCalledTimes(1)
     const lookupDocument = queryMock.mock.calls[0]?.[0] as string
+    const lookupVars = queryMock.mock.calls[0]?.[1] as Record<string, unknown>
     expect(lookupDocument).toContain("repositoryOwner(")
     expect(lookupDocument).not.toContain("organization(")
     expect(lookupDocument).not.toContain("user(")
+    expect(lookupVars.step0_projectOwner_owner).toBe("acme-user")
+    expect(lookupVars.step1_projectOwner_owner).toBe("acme-org")
+    expect(queryRawMock).toHaveBeenCalledTimes(1)
     const mutationVars = queryRawMock.mock.calls[0]?.[1] as Record<string, unknown>
     expect(mutationVars.step0_projectId).toBe("PROJECT_USER_0")
     expect(mutationVars.step0_itemId).toBe("ITEM_0")
