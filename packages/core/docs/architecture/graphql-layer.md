@@ -16,7 +16,7 @@ graph TB
     end
 
     subgraph Transport["Transport Layer"]
-        GCL[GraphqlClient<br/>query + mutate]
+        GCL[GraphqlClient<br/>query + queryRaw]
         GT[GraphqlTransport<br/>execute interface]
     end
 
