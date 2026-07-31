@@ -1,5 +1,15 @@
 # @ghx-dev/core
 
+## 0.8.0
+
+### Minor Changes
+
+- b55d7ff: Upgrade the GraphQL runtime to version 17 and execute generated typed document nodes directly through the existing transport contract.
+
+### Patch Changes
+
+- 5504d8d: Normalize Project V2 single-select field options to the public `id` and `name` contract.
+
 ## 0.7.0
 
 ### Minor Changes
