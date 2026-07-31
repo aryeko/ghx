@@ -25,18 +25,12 @@ graphql:
   documentPath: src/gql/operations/project-v2-item-add.graphql
   resolution:
     lookups:
-      - id: projectOrg
-        operationName: ProjectV2OrgId
-        documentPath: src/gql/operations/project-v2-org-id.graphql
+      - id: projectOwner
+        operationName: ProjectV2OwnerId
+        documentPath: src/gql/operations/project-v2-owner-id.graphql
         vars:
-          org: owner
+          owner: owner
           projectNumber: projectNumber
-      - id: projectUser
-        operationName: ProjectV2UserId
-        documentPath: src/gql/operations/project-v2-user-id.graphql
-        vars:
-          login: owner
-          number: projectNumber
       - id: content
         operationName: ProjectV2IssueNodeId
         documentPath: src/gql/operations/project-v2-issue-node-id.graphql
@@ -44,12 +38,9 @@ graphql:
           url: issueUrl
     inject:
       - target: projectId
-        source: first_scalar
-        paths:
-          - from_lookup: projectOrg
-            path: organization.projectV2.id
-          - from_lookup: projectUser
-            path: user.projectV2.id
+        source: scalar
+        from_lookup: projectOwner
+        path: repositoryOwner.projectV2.id
       - target: contentId
         source: scalar
         from_lookup: content

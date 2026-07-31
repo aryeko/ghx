@@ -1,60 +1,32 @@
 query ProjectV2FieldsList($owner: String!, $projectNumber: Int!, $first: Int!, $after: String) {
-  organization(login: $owner) {
-    projectV2(number: $projectNumber) {
-      fields(first: $first, after: $after) {
-        nodes {
-          ... on ProjectV2Field {
-            id
-            name
-            dataType
-          }
-          ... on ProjectV2IterationField {
-            id
-            name
-            dataType
-          }
-          ... on ProjectV2SingleSelectField {
-            id
-            name
-            dataType
-            options {
+  repositoryOwner(login: $owner) {
+    ... on ProjectV2Owner {
+      projectV2(number: $projectNumber) {
+        fields(first: $first, after: $after) {
+          nodes {
+            ... on ProjectV2Field {
               id
               name
+              dataType
             }
-          }
-        }
-        pageInfo {
-          ...PageInfoFields
-        }
-      }
-    }
-  }
-  user(login: $owner) {
-    projectV2(number: $projectNumber) {
-      fields(first: $first, after: $after) {
-        nodes {
-          ... on ProjectV2Field {
-            id
-            name
-            dataType
-          }
-          ... on ProjectV2IterationField {
-            id
-            name
-            dataType
-          }
-          ... on ProjectV2SingleSelectField {
-            id
-            name
-            dataType
-            options {
+            ... on ProjectV2IterationField {
               id
               name
+              dataType
+            }
+            ... on ProjectV2SingleSelectField {
+              id
+              name
+              dataType
+              options {
+                id
+                name
+              }
             }
           }
-        }
-        pageInfo {
-          ...PageInfoFields
+          pageInfo {
+            ...PageInfoFields
+          }
         }
       }
     }

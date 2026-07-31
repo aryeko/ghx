@@ -3,13 +3,11 @@ import { describe, expect, it, vi } from "vitest"
 import { createGithubClient } from "../helpers/engine-fixtures.js"
 
 describe("executeTasks chaining - project v2 item variable contracts", () => {
-  it("resolves projectId with org/user fallback and resolves issue contentId for item add", async () => {
+  it("resolves projectId through repositoryOwner and resolves issue contentId for item add", async () => {
     const queryMock = vi.fn().mockResolvedValueOnce({
-      step0_projectOrg: { projectV2: { id: "PROJECT_ORG" } },
-      step0_projectUser: null,
+      step0_projectOwner: { projectV2: { id: "PROJECT_ORG" } },
       step0_content: { __typename: "Issue", id: "ISSUE_0" },
-      step1_projectOrg: null,
-      step1_projectUser: { projectV2: { id: "PROJECT_USER" } },
+      step1_projectOwner: { projectV2: { id: "PROJECT_USER" } },
       step1_content: { __typename: "Issue", id: "ISSUE_1" },
     })
 
@@ -49,12 +47,14 @@ describe("executeTasks chaining - project v2 item variable contracts", () => {
     )
 
     expect(queryMock).toHaveBeenCalledTimes(1)
+    const lookupDocument = queryMock.mock.calls[0]?.[0] as string
     const lookupVars = queryMock.mock.calls[0]?.[1] as Record<string, unknown>
-    expect(lookupVars.step0_projectOrg_org).toBe("acme-org")
-    expect(lookupVars.step0_projectUser_login).toBe("acme-org")
+    expect(lookupDocument).toContain("repositoryOwner(")
+    expect(lookupDocument).not.toContain("organization(")
+    expect(lookupDocument).not.toContain("user(")
+    expect(lookupVars.step0_projectOwner_owner).toBe("acme-org")
     expect(lookupVars.step0_content_url).toBe("https://github.com/acme/repo/issues/1")
-    expect(lookupVars.step1_projectOrg_org).toBe("acme-user")
-    expect(lookupVars.step1_projectUser_login).toBe("acme-user")
+    expect(lookupVars.step1_projectOwner_owner).toBe("acme-user")
     expect(lookupVars.step1_content_url).toBe("https://github.com/acme/repo/issues/2")
 
     expect(queryRawMock).toHaveBeenCalledTimes(1)
@@ -66,12 +66,10 @@ describe("executeTasks chaining - project v2 item variable contracts", () => {
     expect(result.status).toBe("success")
   })
 
-  it("resolves projectId with org/user fallback for item remove", async () => {
+  it("resolves projectId through repositoryOwner for item remove", async () => {
     const queryMock = vi.fn().mockResolvedValueOnce({
-      step0_projectOrg: null,
-      step0_projectUser: { projectV2: { id: "PROJECT_USER_0" } },
-      step1_projectOrg: { projectV2: { id: "PROJECT_ORG_1" } },
-      step1_projectUser: null,
+      step0_projectOwner: { projectV2: { id: "PROJECT_USER_0" } },
+      step1_projectOwner: { projectV2: { id: "PROJECT_ORG_1" } },
     })
 
     const queryRawMock = vi.fn().mockResolvedValueOnce({
@@ -101,6 +99,14 @@ describe("executeTasks chaining - project v2 item variable contracts", () => {
       },
     )
 
+    expect(queryMock).toHaveBeenCalledTimes(1)
+    const lookupDocument = queryMock.mock.calls[0]?.[0] as string
+    const lookupVars = queryMock.mock.calls[0]?.[1] as Record<string, unknown>
+    expect(lookupDocument).toContain("repositoryOwner(")
+    expect(lookupDocument).not.toContain("organization(")
+    expect(lookupDocument).not.toContain("user(")
+    expect(lookupVars.step0_projectOwner_owner).toBe("acme-user")
+    expect(lookupVars.step1_projectOwner_owner).toBe("acme-org")
     expect(queryRawMock).toHaveBeenCalledTimes(1)
     const mutationVars = queryRawMock.mock.calls[0]?.[1] as Record<string, unknown>
     expect(mutationVars.step0_projectId).toBe("PROJECT_USER_0")

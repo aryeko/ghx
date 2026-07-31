@@ -6,18 +6,15 @@ import {
   assertProjectUserInput,
 } from "../assertions.js"
 import type * as Types from "../operations/base-types.js"
-import { getSdk as getProjectV2FieldsListOrgSdk } from "../operations/project-v2-fields-list-org.generated.js"
-import { getSdk as getProjectV2FieldsListUserSdk } from "../operations/project-v2-fields-list-user.generated.js"
+import { getSdk as getProjectV2FieldsListSdk } from "../operations/project-v2-fields-list.generated.js"
 import { getSdk as getProjectV2IssueNodeIdSdk } from "../operations/project-v2-issue-node-id.generated.js"
 import { getSdk as getAddProjectV2ItemSdk } from "../operations/project-v2-item-add.generated.js"
 import { getSdk as getUpdateProjectV2ItemFieldSdk } from "../operations/project-v2-item-field-update.generated.js"
 import { getSdk as getRemoveProjectV2ItemSdk } from "../operations/project-v2-item-remove.generated.js"
-import { getSdk as getProjectV2ItemsListOrgSdk } from "../operations/project-v2-items-list-org.generated.js"
-import { getSdk as getProjectV2ItemsListUserSdk } from "../operations/project-v2-items-list-user.generated.js"
-import { getSdk as getProjectV2OrgIdSdk } from "../operations/project-v2-org-id.generated.js"
+import { getSdk as getProjectV2ItemsListSdk } from "../operations/project-v2-items-list.generated.js"
 import type { ProjectV2OrgViewQuery } from "../operations/project-v2-org-view.generated.js"
 import { getSdk as getProjectV2OrgViewSdk } from "../operations/project-v2-org-view.generated.js"
-import { getSdk as getProjectV2UserIdSdk } from "../operations/project-v2-user-id.generated.js"
+import { getSdk as getProjectV2OwnerIdSdk } from "../operations/project-v2-owner-id.generated.js"
 import type { ProjectV2UserViewQuery } from "../operations/project-v2-user-view.generated.js"
 import { getSdk as getProjectV2UserViewSdk } from "../operations/project-v2-user-view.generated.js"
 import type { GraphqlTransport } from "../transport.js"
@@ -46,20 +43,12 @@ async function resolveProjectId(
   owner: string,
   projectNumber: number,
 ): Promise<string> {
-  const orgResult = await getProjectV2OrgIdSdk(client).ProjectV2OrgId({
-    org: owner,
+  const result = await getProjectV2OwnerIdSdk(client).ProjectV2OwnerId({
+    owner,
     projectNumber,
   })
-  if (orgResult.organization?.projectV2?.id) {
-    return orgResult.organization.projectV2.id
-  }
-
-  const userResult = await getProjectV2UserIdSdk(client).ProjectV2UserId({
-    login: owner,
-    number: projectNumber,
-  })
-  if (userResult.user?.projectV2?.id) {
-    return userResult.user.projectV2.id
+  if (result.repositoryOwner?.projectV2?.id) {
+    return result.repositoryOwner.projectV2.id
   }
 
   throw new Error(`Project #${projectNumber} not found for owner "${owner}"`)
@@ -161,29 +150,16 @@ export async function runProjectV2FieldsList(
   assertProjectInput(input)
   const client = createGraphqlRequestClient(transport)
 
-  // Tries org lookup first; falls back to user lookup if the owner is not an org.
-  // This costs an extra network round-trip when the owner is a user account.
-
   const first = input.first ?? 30
 
-  const orgResult = await getProjectV2FieldsListOrgSdk(client).ProjectV2FieldsListOrg({
+  const result = await getProjectV2FieldsListSdk(client).ProjectV2FieldsList({
     owner: input.owner,
     projectNumber: input.projectNumber,
     first,
     ...(input.after !== undefined ? { after: input.after } : {}),
   })
 
-  let conn = orgResult.organization?.projectV2?.fields
-
-  if (!conn) {
-    const userResult = await getProjectV2FieldsListUserSdk(client).ProjectV2FieldsListUser({
-      owner: input.owner,
-      projectNumber: input.projectNumber,
-      first,
-      ...(input.after !== undefined ? { after: input.after } : {}),
-    })
-    conn = userResult.user?.projectV2?.fields
-  }
+  const conn = result.repositoryOwner?.projectV2?.fields
 
   if (!conn) {
     throw new Error(`Project #${input.projectNumber} not found for owner "${input.owner}"`)
@@ -215,29 +191,16 @@ export async function runProjectV2ItemsList(
   assertProjectInput(input)
   const client = createGraphqlRequestClient(transport)
 
-  // Tries org lookup first; falls back to user lookup if the owner is not an org.
-  // This costs an extra network round-trip when the owner is a user account.
-
   const first = input.first ?? 30
 
-  const orgResult = await getProjectV2ItemsListOrgSdk(client).ProjectV2ItemsListOrg({
+  const result = await getProjectV2ItemsListSdk(client).ProjectV2ItemsList({
     owner: input.owner,
     projectNumber: input.projectNumber,
     first,
     ...(input.after !== undefined ? { after: input.after } : {}),
   })
 
-  let conn = orgResult.organization?.projectV2?.items
-
-  if (!conn) {
-    const userResult = await getProjectV2ItemsListUserSdk(client).ProjectV2ItemsListUser({
-      owner: input.owner,
-      projectNumber: input.projectNumber,
-      first,
-      ...(input.after !== undefined ? { after: input.after } : {}),
-    })
-    conn = userResult.user?.projectV2?.items
-  }
+  const conn = result.repositoryOwner?.projectV2?.items
 
   if (!conn) {
     throw new Error(`Project #${input.projectNumber} not found for owner "${input.owner}"`)

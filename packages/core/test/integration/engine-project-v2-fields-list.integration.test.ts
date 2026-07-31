@@ -9,7 +9,7 @@ describe("executeTask project_v2.fields.list", () => {
       async execute<TData>(): Promise<TData> {
         return {
           __typename: "Query",
-          organization: {
+          repositoryOwner: {
             __typename: "Organization",
             projectV2: {
               __typename: "ProjectV2",

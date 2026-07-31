@@ -56,157 +56,123 @@ export type ProjectV2FieldsListQueryVariables = Exact<{
 
 export type ProjectV2FieldsListQuery = {
   __typename: "Query"
-  organization: {
-    __typename: "Organization"
-    projectV2: {
-      __typename: "ProjectV2"
-      fields: {
-        __typename: "ProjectV2FieldConfigurationConnection"
-        nodes: Array<
-          | {
-              __typename: "ProjectV2Field"
-              id: string
-              name: string
-              dataType: Types.ProjectV2FieldType
-            }
-          | {
-              __typename: "ProjectV2IterationField"
-              id: string
-              name: string
-              dataType: Types.ProjectV2FieldType
-            }
-          | {
-              __typename: "ProjectV2SingleSelectField"
-              id: string
-              name: string
-              dataType: Types.ProjectV2FieldType
-              options: Array<{
-                __typename: "ProjectV2SingleSelectFieldOption"
-                id: string
-                name: string
-              }>
-            }
-          | null
-        > | null
-        pageInfo: { __typename: "PageInfo"; endCursor: string | null; hasNextPage: boolean }
+  repositoryOwner:
+    | {
+        __typename: "Organization"
+        projectV2: {
+          __typename: "ProjectV2"
+          fields: {
+            __typename: "ProjectV2FieldConfigurationConnection"
+            nodes: Array<
+              | {
+                  __typename: "ProjectV2Field"
+                  id: string
+                  name: string
+                  dataType: Types.ProjectV2FieldType
+                }
+              | {
+                  __typename: "ProjectV2IterationField"
+                  id: string
+                  name: string
+                  dataType: Types.ProjectV2FieldType
+                }
+              | {
+                  __typename: "ProjectV2SingleSelectField"
+                  id: string
+                  name: string
+                  dataType: Types.ProjectV2FieldType
+                  options: Array<{
+                    __typename: "ProjectV2SingleSelectFieldOption"
+                    id: string
+                    name: string
+                  }>
+                }
+              | null
+            > | null
+            pageInfo: { __typename: "PageInfo"; endCursor: string | null; hasNextPage: boolean }
+          }
+        } | null
       }
-    } | null
-  } | null
-  user: {
-    __typename: "User"
-    projectV2: {
-      __typename: "ProjectV2"
-      fields: {
-        __typename: "ProjectV2FieldConfigurationConnection"
-        nodes: Array<
-          | {
-              __typename: "ProjectV2Field"
-              id: string
-              name: string
-              dataType: Types.ProjectV2FieldType
-            }
-          | {
-              __typename: "ProjectV2IterationField"
-              id: string
-              name: string
-              dataType: Types.ProjectV2FieldType
-            }
-          | {
-              __typename: "ProjectV2SingleSelectField"
-              id: string
-              name: string
-              dataType: Types.ProjectV2FieldType
-              options: Array<{
-                __typename: "ProjectV2SingleSelectFieldOption"
-                id: string
-                name: string
-              }>
-            }
-          | null
-        > | null
-        pageInfo: { __typename: "PageInfo"; endCursor: string | null; hasNextPage: boolean }
+    | {
+        __typename: "User"
+        projectV2: {
+          __typename: "ProjectV2"
+          fields: {
+            __typename: "ProjectV2FieldConfigurationConnection"
+            nodes: Array<
+              | {
+                  __typename: "ProjectV2Field"
+                  id: string
+                  name: string
+                  dataType: Types.ProjectV2FieldType
+                }
+              | {
+                  __typename: "ProjectV2IterationField"
+                  id: string
+                  name: string
+                  dataType: Types.ProjectV2FieldType
+                }
+              | {
+                  __typename: "ProjectV2SingleSelectField"
+                  id: string
+                  name: string
+                  dataType: Types.ProjectV2FieldType
+                  options: Array<{
+                    __typename: "ProjectV2SingleSelectFieldOption"
+                    id: string
+                    name: string
+                  }>
+                }
+              | null
+            > | null
+            pageInfo: { __typename: "PageInfo"; endCursor: string | null; hasNextPage: boolean }
+          }
+        } | null
       }
-    } | null
-  } | null
+    | null
 }
 
 export const ProjectV2FieldsListDocument = new TypedDocumentString(`
     query ProjectV2FieldsList($owner: String!, $projectNumber: Int!, $first: Int!, $after: String) {
   __typename
-  organization(login: $owner) {
+  repositoryOwner(login: $owner) {
     __typename
-    projectV2(number: $projectNumber) {
+    ... on ProjectV2Owner {
       __typename
-      fields(first: $first, after: $after) {
+      projectV2(number: $projectNumber) {
         __typename
-        nodes {
+        fields(first: $first, after: $after) {
           __typename
-          ... on ProjectV2Field {
+          nodes {
             __typename
-            id
-            name
-            dataType
-          }
-          ... on ProjectV2IterationField {
-            __typename
-            id
-            name
-            dataType
-          }
-          ... on ProjectV2SingleSelectField {
-            __typename
-            id
-            name
-            dataType
-            options {
+            ... on ProjectV2Field {
               __typename
               id
               name
+              dataType
             }
-          }
-        }
-        pageInfo {
-          __typename
-          ...PageInfoFields
-        }
-      }
-    }
-  }
-  user(login: $owner) {
-    __typename
-    projectV2(number: $projectNumber) {
-      __typename
-      fields(first: $first, after: $after) {
-        __typename
-        nodes {
-          __typename
-          ... on ProjectV2Field {
-            __typename
-            id
-            name
-            dataType
-          }
-          ... on ProjectV2IterationField {
-            __typename
-            id
-            name
-            dataType
-          }
-          ... on ProjectV2SingleSelectField {
-            __typename
-            id
-            name
-            dataType
-            options {
+            ... on ProjectV2IterationField {
               __typename
               id
               name
+              dataType
+            }
+            ... on ProjectV2SingleSelectField {
+              __typename
+              id
+              name
+              dataType
+              options {
+                __typename
+                id
+                name
+              }
             }
           }
-        }
-        pageInfo {
-          __typename
-          ...PageInfoFields
+          pageInfo {
+            __typename
+            ...PageInfoFields
+          }
         }
       }
     }

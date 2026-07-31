@@ -134,9 +134,10 @@ describe("runProjectV2UserView", () => {
 })
 
 describe("runProjectV2FieldsList", () => {
-  it("returns items and pageInfo from org branch", async () => {
+  it("returns items and pageInfo from an Organization repository owner", async () => {
     const execute = vi.fn().mockResolvedValue({
-      organization: {
+      repositoryOwner: {
+        __typename: "Organization",
         projectV2: {
           fields: {
             nodes: [
@@ -161,20 +162,18 @@ describe("runProjectV2FieldsList", () => {
     expect(result.pageInfo.endCursor).toBeNull()
   })
 
-  it("returns items and pageInfo from user branch when org is null", async () => {
-    const execute = vi
-      .fn()
-      .mockResolvedValueOnce({ organization: null })
-      .mockResolvedValueOnce({
-        user: {
-          projectV2: {
-            fields: {
-              nodes: [{ id: "field-u1", name: "Assignee", dataType: "ASSIGNEES" }],
-              pageInfo: { hasNextPage: true, endCursor: "cursor-ghi" },
-            },
+  it("returns items and pageInfo from a User repository owner", async () => {
+    const execute = vi.fn().mockResolvedValue({
+      repositoryOwner: {
+        __typename: "User",
+        projectV2: {
+          fields: {
+            nodes: [{ id: "field-u1", name: "Assignee", dataType: "ASSIGNEES" }],
+            pageInfo: { hasNextPage: true, endCursor: "cursor-ghi" },
           },
         },
-      })
+      },
+    })
     const transport: GraphqlTransport = { execute }
 
     const result = await runProjectV2FieldsList(transport, fieldsListInput)
@@ -189,7 +188,7 @@ describe("runProjectV2FieldsList", () => {
 
   it("maps null nodes as null-id entries in fields list", async () => {
     const execute = vi.fn().mockResolvedValue({
-      organization: {
+      repositoryOwner: {
         projectV2: {
           fields: {
             nodes: [null, { id: "field-1", name: "Title", dataType: "TEXT" }, null],
@@ -208,11 +207,8 @@ describe("runProjectV2FieldsList", () => {
     expect(result.items[2]?.id).toBeNull()
   })
 
-  it("throws when no org or user connection is found", async () => {
-    const execute = vi
-      .fn()
-      .mockResolvedValueOnce({ organization: null })
-      .mockResolvedValueOnce({ user: null })
+  it("throws when no repository owner connection is found", async () => {
+    const execute = vi.fn().mockResolvedValue({ repositoryOwner: null })
     const transport: GraphqlTransport = { execute }
 
     await expect(runProjectV2FieldsList(transport, fieldsListInput)).rejects.toThrow(
@@ -222,9 +218,10 @@ describe("runProjectV2FieldsList", () => {
 })
 
 describe("runProjectV2ItemsList", () => {
-  it("returns items and pageInfo from org branch", async () => {
+  it("returns items and pageInfo from an Organization repository owner", async () => {
     const execute = vi.fn().mockResolvedValue({
-      organization: {
+      repositoryOwner: {
+        __typename: "Organization",
         projectV2: {
           items: {
             nodes: [
@@ -252,26 +249,24 @@ describe("runProjectV2ItemsList", () => {
     expect(result.pageInfo.endCursor).toBeNull()
   })
 
-  it("returns items from user branch when org is null", async () => {
-    const execute = vi
-      .fn()
-      .mockResolvedValueOnce({ organization: null })
-      .mockResolvedValueOnce({
-        user: {
-          projectV2: {
-            items: {
-              nodes: [
-                {
-                  id: "item-u1",
-                  type: "PULL_REQUEST",
-                  content: { __typename: "PullRequest", number: 5, title: "Add feature" },
-                },
-              ],
-              pageInfo: { hasNextPage: false, endCursor: null },
-            },
+  it("returns items from a User repository owner", async () => {
+    const execute = vi.fn().mockResolvedValue({
+      repositoryOwner: {
+        __typename: "User",
+        projectV2: {
+          items: {
+            nodes: [
+              {
+                id: "item-u1",
+                type: "PULL_REQUEST",
+                content: { __typename: "PullRequest", number: 5, title: "Add feature" },
+              },
+            ],
+            pageInfo: { hasNextPage: false, endCursor: null },
           },
         },
-      })
+      },
+    })
     const transport: GraphqlTransport = { execute }
 
     const result = await runProjectV2ItemsList(transport, itemsListInput)
@@ -285,7 +280,7 @@ describe("runProjectV2ItemsList", () => {
 
   it("sets contentNumber to null when content has no number field (DraftIssue)", async () => {
     const execute = vi.fn().mockResolvedValue({
-      organization: {
+      repositoryOwner: {
         projectV2: {
           items: {
             nodes: [
@@ -310,7 +305,7 @@ describe("runProjectV2ItemsList", () => {
 
   it("sets contentNumber to null when content is null", async () => {
     const execute = vi.fn().mockResolvedValue({
-      organization: {
+      repositoryOwner: {
         projectV2: {
           items: {
             nodes: [
@@ -335,7 +330,7 @@ describe("runProjectV2ItemsList", () => {
 
   it("uses content.title for contentTitle", async () => {
     const execute = vi.fn().mockResolvedValue({
-      organization: {
+      repositoryOwner: {
         projectV2: {
           items: {
             nodes: [
@@ -357,11 +352,8 @@ describe("runProjectV2ItemsList", () => {
     expect(result.items[0]?.contentTitle).toBe("My PR title")
   })
 
-  it("throws when no org or user connection is found", async () => {
-    const execute = vi
-      .fn()
-      .mockResolvedValueOnce({ organization: null })
-      .mockResolvedValueOnce({ user: null })
+  it("throws when no repository owner connection is found", async () => {
+    const execute = vi.fn().mockResolvedValue({ repositoryOwner: null })
     const transport: GraphqlTransport = { execute }
 
     await expect(runProjectV2ItemsList(transport, itemsListInput)).rejects.toThrow(
@@ -371,7 +363,7 @@ describe("runProjectV2ItemsList", () => {
 
   it("sets id and contentType to null when node is null", async () => {
     const execute = vi.fn().mockResolvedValue({
-      organization: {
+      repositoryOwner: {
         projectV2: {
           items: {
             nodes: [null],
@@ -479,7 +471,7 @@ describe("runProjectV2UserView — null field mapping", () => {
 describe("runProjectV2FieldsList — options mapping", () => {
   it("includes options array for ProjectV2SingleSelectField nodes", async () => {
     const execute = vi.fn().mockResolvedValue({
-      organization: {
+      repositoryOwner: {
         projectV2: {
           fields: {
             nodes: [
@@ -514,7 +506,7 @@ describe("runProjectV2FieldsList — options mapping", () => {
 
   it("sets options to null for non-SingleSelectField nodes", async () => {
     const execute = vi.fn().mockResolvedValue({
-      organization: {
+      repositoryOwner: {
         projectV2: {
           fields: {
             nodes: [
@@ -601,15 +593,36 @@ describe("buildFieldValue", () => {
 
 describe("resolveIssueNodeId via runProjectV2ItemAdd", () => {
   const addInput = {
-    owner: "acme",
-    projectNumber: 1,
-    issueUrl: "https://github.com/acme/repo/issues/99",
+    owner: "aryeko",
+    projectNumber: 4,
+    issueUrl: "https://github.com/aryeko/ghx/issues/236",
   }
+
+  it("adds an issue to a user-owned project without a typed owner lookup", async () => {
+    const execute: GraphqlTransport["execute"] = async <TData>(query: string): Promise<TData> => {
+      if (query.includes("organization(") || query.includes("user(")) {
+        throw new Error("Could not resolve to an Organization with the login of 'aryeko'.")
+      }
+      if (query.includes("repositoryOwner(")) {
+        return { repositoryOwner: { projectV2: { id: "PVT_user_project" } } } as TData
+      }
+      if (query.includes("resource(")) {
+        return { resource: { __typename: "Issue", id: "ISSUE_236" } } as TData
+      }
+      return { addProjectV2ItemById: { item: { id: "PVTITEM_236", type: "ISSUE" } } } as TData
+    }
+    const transport: GraphqlTransport = { execute }
+
+    await expect(runProjectV2ItemAdd(transport, addInput)).resolves.toEqual({
+      itemId: "PVTITEM_236",
+      itemType: "ISSUE",
+    })
+  })
 
   it("throws when resource __typename is not Issue", async () => {
     const execute = vi
       .fn()
-      .mockResolvedValueOnce({ organization: { projectV2: { id: "PVT_proj1" } } })
+      .mockResolvedValueOnce({ repositoryOwner: { projectV2: { id: "PVT_proj1" } } })
       .mockResolvedValueOnce({ resource: { __typename: "PullRequest", id: "PR_abc" } })
     const transport: GraphqlTransport = { execute }
 
@@ -621,7 +634,7 @@ describe("resolveIssueNodeId via runProjectV2ItemAdd", () => {
   it("throws when resource has no id field", async () => {
     const execute = vi
       .fn()
-      .mockResolvedValueOnce({ organization: { projectV2: { id: "PVT_proj1" } } })
+      .mockResolvedValueOnce({ repositoryOwner: { projectV2: { id: "PVT_proj1" } } })
       .mockResolvedValueOnce({ resource: { __typename: "Issue" } })
     const transport: GraphqlTransport = { execute }
 

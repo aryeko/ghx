@@ -1,7 +1,0 @@
-query ProjectV2UserId($login: String!, $number: Int!) {
-  user(login: $login) {
-    projectV2(number: $number) {
-      id
-    }
-  }
-}

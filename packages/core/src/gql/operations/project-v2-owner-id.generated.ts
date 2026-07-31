@@ -10,27 +10,30 @@ import type * as Types from "./base-types.js"
 import { TypedDocumentString } from "./typed-document-string.js"
 
 type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
-export type ProjectV2OrgIdQueryVariables = Exact<{
-  org: string
+export type ProjectV2OwnerIdQueryVariables = Exact<{
+  owner: string
   projectNumber: number
 }>
 
-export type ProjectV2OrgIdQuery = {
+export type ProjectV2OwnerIdQuery = {
   __typename: "Query"
-  organization: {
-    __typename: "Organization"
-    projectV2: { __typename: "ProjectV2"; id: string } | null
-  } | null
+  repositoryOwner:
+    | { __typename: "Organization"; projectV2: { __typename: "ProjectV2"; id: string } | null }
+    | { __typename: "User"; projectV2: { __typename: "ProjectV2"; id: string } | null }
+    | null
 }
 
-export const ProjectV2OrgIdDocument = new TypedDocumentString(`
-    query ProjectV2OrgId($org: String!, $projectNumber: Int!) {
+export const ProjectV2OwnerIdDocument = new TypedDocumentString(`
+    query ProjectV2OwnerId($owner: String!, $projectNumber: Int!) {
   __typename
-  organization(login: $org) {
+  repositoryOwner(login: $owner) {
     __typename
-    projectV2(number: $projectNumber) {
+    ... on ProjectV2Owner {
       __typename
-      id
+      projectV2(number: $projectNumber) {
+        __typename
+        id
+      }
     }
   }
 }
@@ -48,20 +51,20 @@ const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationTy
 
 export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
   return {
-    ProjectV2OrgId(
-      variables: ProjectV2OrgIdQueryVariables,
+    ProjectV2OwnerId(
+      variables: ProjectV2OwnerIdQueryVariables,
       requestHeaders?: GraphQLClientRequestHeaders,
       signal?: RequestInit["signal"],
-    ): Promise<ProjectV2OrgIdQuery> {
+    ): Promise<ProjectV2OwnerIdQuery> {
       return withWrapper(
         (wrappedRequestHeaders) =>
-          client.request<ProjectV2OrgIdQuery>({
-            document: ProjectV2OrgIdDocument,
+          client.request<ProjectV2OwnerIdQuery>({
+            document: ProjectV2OwnerIdDocument,
             variables,
             requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders },
             signal,
           }),
-        "ProjectV2OrgId",
+        "ProjectV2OwnerId",
         "query",
         variables,
       )
