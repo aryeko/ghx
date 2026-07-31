@@ -3,11 +3,8 @@ export type Incremental<T> =
   | T
   | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
 
-import { type GraphQLClient, type RequestOptions } from "graphql-request"
+import type { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/core"
 import type * as Types from "../base-types.js"
-import { TypedDocumentString } from "../typed-document-string.js"
-
-type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 /** The possible states of an issue. */
 export type IssueState =
   /** An issue that has been closed */
@@ -24,31 +21,24 @@ export type IssueCoreFieldsFragment = {
   url: any
 }
 
-export const IssueCoreFieldsFragmentDoc = new TypedDocumentString(
-  `
-    fragment IssueCoreFields on Issue {
-  __typename
-  id
-  number
-  title
-  state
-  url
-}
-    `,
-  { fragmentName: "IssueCoreFields" },
-)
-
-export type SdkFunctionWrapper = <T>(
-  action: (requestHeaders?: Record<string, string>) => Promise<T>,
-  operationName: string,
-  operationType?: string,
-  variables?: any,
-) => Promise<T>
-
-const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationType, _variables) =>
-  action()
-
-export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
-  return {}
-}
-export type Sdk = ReturnType<typeof getSdk>
+export const IssueCoreFieldsFragmentDoc = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "FragmentDefinition",
+      name: { kind: "Name", value: "IssueCoreFields" },
+      typeCondition: { kind: "NamedType", name: { kind: "Name", value: "Issue" } },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          { kind: "Field", name: { kind: "Name", value: "id" } },
+          { kind: "Field", name: { kind: "Name", value: "number" } },
+          { kind: "Field", name: { kind: "Name", value: "title" } },
+          { kind: "Field", name: { kind: "Name", value: "state" } },
+          { kind: "Field", name: { kind: "Name", value: "url" } },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<IssueCoreFieldsFragment, unknown>

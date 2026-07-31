@@ -1,3 +1,4 @@
+import { type DocumentNode, print } from "graphql"
 import { IssueAssigneesAddDocument } from "./operations/issue-assignees-add.generated.js"
 import { IssueAssigneesLookupDocument } from "./operations/issue-assignees-lookup.generated.js"
 import { IssueAssigneesLookupByNumberDocument } from "./operations/issue-assignees-lookup-by-number.generated.js"
@@ -68,8 +69,7 @@ import { RepoViewDocument } from "./operations/repo-view.generated.js"
 import { UserNodeIdDocument } from "./operations/user-node-id.generated.js"
 
 // Unified document map — contains lookup queries, mutations, and query operations.
-// Values are TypedDocumentString instances (which extend String) since codegen v7.
-const DOCUMENTS: Record<string, string | { toString(): string }> = {
+const DOCUMENTS: Record<string, DocumentNode> = {
   // Resolution lookup queries (Phase 1)
   IssueAssigneesLookup: IssueAssigneesLookupDocument,
   IssueAssigneesLookupByNumber: IssueAssigneesLookupByNumberDocument,
@@ -150,7 +150,7 @@ export function getDocument(operationName: string): string {
   if (!doc) {
     throw new Error(`No document registered for operation: ${operationName}`)
   }
-  return String(doc)
+  return print(doc)
 }
 
 export function getLookupDocument(operationName: string): string {

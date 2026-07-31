@@ -3,39 +3,29 @@ export type Incremental<T> =
   | T
   | { [P in keyof T]?: P extends " $fragmentName" | "__typename" ? T[P] : never }
 
-import { type GraphQLClient, type RequestOptions } from "graphql-request"
+import type { TypedDocumentNode as DocumentNode } from "@graphql-typed-document-node/core"
 import type * as Types from "../base-types.js"
-import { TypedDocumentString } from "../typed-document-string.js"
-
-type GraphQLClientRequestHeaders = RequestOptions["requestHeaders"]
 export type PageInfoFieldsFragment = {
   __typename: "PageInfo"
   endCursor: string | null
   hasNextPage: boolean
 }
 
-export const PageInfoFieldsFragmentDoc = new TypedDocumentString(
-  `
-    fragment PageInfoFields on PageInfo {
-  __typename
-  endCursor
-  hasNextPage
-}
-    `,
-  { fragmentName: "PageInfoFields" },
-)
-
-export type SdkFunctionWrapper = <T>(
-  action: (requestHeaders?: Record<string, string>) => Promise<T>,
-  operationName: string,
-  operationType?: string,
-  variables?: any,
-) => Promise<T>
-
-const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationType, _variables) =>
-  action()
-
-export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
-  return {}
-}
-export type Sdk = ReturnType<typeof getSdk>
+export const PageInfoFieldsFragmentDoc = {
+  kind: "Document",
+  definitions: [
+    {
+      kind: "FragmentDefinition",
+      name: { kind: "Name", value: "PageInfoFields" },
+      typeCondition: { kind: "NamedType", name: { kind: "Name", value: "PageInfo" } },
+      selectionSet: {
+        kind: "SelectionSet",
+        selections: [
+          { kind: "Field", name: { kind: "Name", value: "__typename" } },
+          { kind: "Field", name: { kind: "Name", value: "endCursor" } },
+          { kind: "Field", name: { kind: "Name", value: "hasNextPage" } },
+        ],
+      },
+    },
+  ],
+} as unknown as DocumentNode<PageInfoFieldsFragment, unknown>

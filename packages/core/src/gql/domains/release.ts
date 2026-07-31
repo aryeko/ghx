@@ -1,10 +1,10 @@
 import { assertReleaseViewInput, assertRepoAndPaginationInput } from "../assertions.js"
 import type { ReleaseListQuery } from "../operations/release-list.generated.js"
-import { getSdk as getReleaseListSdk } from "../operations/release-list.generated.js"
+import { ReleaseListDocument } from "../operations/release-list.generated.js"
 import type { ReleaseViewQuery } from "../operations/release-view.generated.js"
-import { getSdk as getReleaseViewSdk } from "../operations/release-view.generated.js"
+import { ReleaseViewDocument } from "../operations/release-view.generated.js"
 import type { GraphqlTransport } from "../transport.js"
-import { createGraphqlRequestClient } from "../transport.js"
+import { executeTypedDocument } from "../transport.js"
 import type {
   ReleaseItemData,
   ReleaseListData,
@@ -73,8 +73,7 @@ export async function runReleaseView(
   input: ReleaseViewInput,
 ): Promise<ReleaseViewData> {
   assertReleaseViewInput(input)
-  const sdk = getReleaseViewSdk(createGraphqlRequestClient(transport))
-  const result: ReleaseViewQuery = await sdk.ReleaseView(input)
+  const result = await executeTypedDocument(transport, ReleaseViewDocument, input)
   return normalizeReleaseViewResult(result, input)
 }
 
@@ -83,7 +82,6 @@ export async function runReleaseList(
   input: ReleaseListInput,
 ): Promise<ReleaseListData> {
   assertRepoAndPaginationInput(input)
-  const sdk = getReleaseListSdk(createGraphqlRequestClient(transport))
-  const result: ReleaseListQuery = await sdk.ReleaseList(input)
+  const result = await executeTypedDocument(transport, ReleaseListDocument, input)
   return normalizeReleaseListResult(result, input)
 }

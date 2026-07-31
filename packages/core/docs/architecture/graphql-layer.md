@@ -16,7 +16,7 @@ graph TB
     end
 
     subgraph Transport["Transport Layer"]
-        GCL[GraphqlClient<br/>query + mutate]
+        GCL[GraphqlClient<br/>query + queryRaw]
         GT[GraphqlTransport<br/>execute interface]
     end
 
@@ -57,9 +57,9 @@ interface GraphqlTransport {
 }
 ```
 
-`createGraphqlClient(transport)` wraps this into a `GraphqlClient` with `query()` and `mutate()` methods.
+`createGraphqlClient(transport)` wraps this into a `GraphqlClient` with `query()` and `queryRaw()` methods.
 
-**Default transport**: `createTokenTransport(token, endpoint?)` — uses `graphql-request` to send queries to GitHub's GraphQL API.
+**Default transport**: `createTokenTransport(token, endpoint?)` — uses the platform `fetch` API to send queries to GitHub's GraphQL API.
 
 ## GithubClient Facade
 
@@ -115,9 +115,11 @@ pnpm run gql:verify
 ```
 
 The pipeline uses `@graphql-codegen/cli` with:
-- `typescript` plugin — generates base types from the GitHub schema
 - `typescript-operations` — generates per-operation input/output types
+- `typed-document-node` — generates typed GraphQL document nodes
 - `near-operation-file-preset` — co-locates generated types near their `.graphql` files
+
+The Codegen CLI runs with GraphQL 16 in the private root toolchain because its latest configuration and near-operation packages have not declared GraphQL 17 peer support yet. Published `@ghx-dev/core` runtime code uses GraphQL 17.
 
 ## Batch Query Building
 

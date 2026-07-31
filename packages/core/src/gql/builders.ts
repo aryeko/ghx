@@ -1,3 +1,4 @@
+import { print } from "graphql"
 import { IssueAssigneesUpdateDocument } from "./operations/issue-assignees-update.generated.js"
 import { IssueCommentCreateDocument } from "./operations/issue-comment-create.generated.js"
 import { IssueLabelsUpdateDocument } from "./operations/issue-labels-update.generated.js"
@@ -8,24 +9,24 @@ import { PrCommentResolveDocument } from "./operations/pr-comment-resolve.genera
 import { PrCommentUnresolveDocument } from "./operations/pr-comment-unresolve.generated.js"
 import type { GraphqlVariables } from "./transport.js"
 
-export const PR_COMMENT_REPLY_MUTATION = PrCommentReplyDocument
+export const PR_COMMENT_REPLY_MUTATION = print(PrCommentReplyDocument)
 
-export const PR_COMMENT_RESOLVE_MUTATION = PrCommentResolveDocument
+export const PR_COMMENT_RESOLVE_MUTATION = print(PrCommentResolveDocument)
 
-export const PR_COMMENT_UNRESOLVE_MUTATION = PrCommentUnresolveDocument
+export const PR_COMMENT_UNRESOLVE_MUTATION = print(PrCommentUnresolveDocument)
 
-const ISSUE_UPDATE_MUTATION = IssueUpdateDocument
+const ISSUE_UPDATE_MUTATION = print(IssueUpdateDocument)
 
-const ISSUE_LABELS_UPDATE_BY_ID_MUTATION = IssueLabelsUpdateDocument
+const ISSUE_LABELS_UPDATE_BY_ID_MUTATION = print(IssueLabelsUpdateDocument)
 
-const ISSUE_ASSIGNEES_UPDATE_BY_ID_MUTATION = IssueAssigneesUpdateDocument
+const ISSUE_ASSIGNEES_UPDATE_BY_ID_MUTATION = print(IssueAssigneesUpdateDocument)
 
-const ISSUE_MILESTONE_SET_BY_ID_MUTATION = IssueMilestoneSetDocument
+const ISSUE_MILESTONE_SET_BY_ID_MUTATION = print(IssueMilestoneSetDocument)
 
-const ISSUE_COMMENT_CREATE_MUTATION = IssueCommentCreateDocument
+const ISSUE_COMMENT_CREATE_MUTATION = print(IssueCommentCreateDocument)
 
 export type BuiltOperation = {
-  mutation: string | { toString(): string }
+  mutation: string
   variables: GraphqlVariables
 }
 

@@ -178,7 +178,7 @@ ghx/
 | `gql/batch.ts` | Batch query/mutation builder | `buildBatchQuery()`, `buildBatchMutation()` |
 | `gql/builders.ts` | Per-capability mutation builders | `OPERATION_BUILDERS` |
 | `gql/domains/*.ts` | Domain operation modules | `run*` operation handlers |
-| `gql/operations/*.generated.ts` | Generated operation SDKs | Operation-specific `getSdk()` |
+| `gql/operations/*.generated.ts` | Generated operation types and documents | Typed operation document nodes |
 | `gql/generated/common-types.generated.ts` | Generated scalar types | Type aliases |
 
 ### CLI & Agent Interface

@@ -6,20 +6,24 @@ import {
   assertPrReactionsListInput,
   assertPrReviewsListInput,
 } from "../assertions.js"
-import { getSdk as getPrCommentsReactionsListSdk } from "../operations/pr-comments-reactions-list.generated.js"
+import {
+  PrCommentsReactionsIssueCommentsPageDocument,
+  PrCommentsReactionsReviewThreadsPageDocument,
+  PrCommentsReactionsThreadCommentsPageDocument,
+} from "../operations/pr-comments-reactions-list.generated.js"
 import type { PrDiffListFilesQuery } from "../operations/pr-diff-list-files.generated.js"
-import { getSdk as getPrDiffListFilesSdk } from "../operations/pr-diff-list-files.generated.js"
-import type { PrListQuery, PullRequestState } from "../operations/pr-list.generated.js"
-import { getSdk as getPrListSdk } from "../operations/pr-list.generated.js"
+import { PrDiffListFilesDocument } from "../operations/pr-diff-list-files.generated.js"
+import type { PullRequestState } from "../operations/pr-list.generated.js"
+import { PrListDocument } from "../operations/pr-list.generated.js"
 import type { PrMergeStatusQuery } from "../operations/pr-merge-status.generated.js"
-import { getSdk as getPrMergeStatusSdk } from "../operations/pr-merge-status.generated.js"
-import { getSdk as getPrReactionsListSdk } from "../operations/pr-reactions-list.generated.js"
+import { PrMergeStatusDocument } from "../operations/pr-merge-status.generated.js"
+import { PrReactionsListDocument } from "../operations/pr-reactions-list.generated.js"
 import type { PrReviewsListQuery } from "../operations/pr-reviews-list.generated.js"
-import { getSdk as getPrReviewsListSdk } from "../operations/pr-reviews-list.generated.js"
+import { PrReviewsListDocument } from "../operations/pr-reviews-list.generated.js"
 import type { PrViewQuery } from "../operations/pr-view.generated.js"
-import { getSdk as getPrViewSdk } from "../operations/pr-view.generated.js"
+import { PrViewDocument } from "../operations/pr-view.generated.js"
 import type { GraphqlTransport } from "../transport.js"
-import { createGraphqlRequestClient } from "../transport.js"
+import { executeTypedDocument } from "../transport.js"
 import type {
   PrCommentReactionSubjectData,
   PrCommentsReactionsListData,
@@ -321,8 +325,7 @@ export async function runPrView(
 ): Promise<PrViewData> {
   assertPrInput(input)
 
-  const sdk = getPrViewSdk(createGraphqlRequestClient(transport))
-  const result: PrViewQuery = await sdk.PrView({
+  const result = await executeTypedDocument(transport, PrViewDocument, {
     owner: input.owner,
     name: input.name,
     prNumber: input.prNumber,
@@ -336,8 +339,7 @@ export async function runPrList(
 ): Promise<PrListData> {
   assertPrListInput(input)
 
-  const sdk = getPrListSdk(createGraphqlRequestClient(transport))
-  const result: PrListQuery = await sdk.PrList({
+  const result = await executeTypedDocument(transport, PrListDocument, {
     owner: input.owner,
     name: input.name,
     first: input.first,
@@ -407,8 +409,7 @@ export async function runPrReviewsList(
 ): Promise<PrReviewsListData> {
   assertPrReviewsListInput(input)
 
-  const sdk = getPrReviewsListSdk(createGraphqlRequestClient(transport))
-  const result: PrReviewsListQuery = await sdk.PrReviewsList(input)
+  const result = await executeTypedDocument(transport, PrReviewsListDocument, input)
   return normalizePrReviewsListResult(result, input)
 }
 
@@ -418,8 +419,7 @@ export async function runPrReactionsList(
 ): Promise<PrReactionsListData> {
   assertPrReactionsListInput(input)
 
-  const sdk = getPrReactionsListSdk(createGraphqlRequestClient(transport))
-  const result = await sdk.PrReactionsList({
+  const result = await executeTypedDocument(transport, PrReactionsListDocument, {
     owner: input.owner,
     name: input.name,
     prNumber: input.prNumber,
@@ -433,7 +433,6 @@ export async function runPrCommentsReactionsList(
 ): Promise<PrCommentsReactionsListData> {
   assertPrCommentsReactionsListInput(input)
 
-  const sdk = getPrCommentsReactionsListSdk(createGraphqlRequestClient(transport))
   const first = input.first ?? 30
   let cursor = decodeCommentsReactionCursor(input.after)
   const filter: ReactionFilter = {
@@ -451,13 +450,17 @@ export async function runPrCommentsReactionsList(
     items.length < first &&
     pagesScanned < MAX_PR_COMMENTS_REACTIONS_SCAN_PAGES
   ) {
-    const result = await sdk.PrCommentsReactionsIssueCommentsPage({
-      owner: input.owner,
-      name: input.name,
-      prNumber: input.prNumber,
-      first: first - items.length,
-      after: cursor.after,
-    })
+    const result = await executeTypedDocument(
+      transport,
+      PrCommentsReactionsIssueCommentsPageDocument,
+      {
+        owner: input.owner,
+        name: input.name,
+        prNumber: input.prNumber,
+        first: first - items.length,
+        after: cursor.after,
+      },
+    )
     const pr = result.repository?.pullRequest
     if (!pr) {
       throw new Error("Pull request not found")
@@ -493,11 +496,15 @@ export async function runPrCommentsReactionsList(
     pagesScanned < MAX_PR_COMMENTS_REACTIONS_SCAN_PAGES
   ) {
     if (cursor.currentThread) {
-      const threadResult = await sdk.PrCommentsReactionsThreadCommentsPage({
-        threadId: cursor.currentThread.id,
-        first: first - items.length,
-        after: cursor.currentThread.commentsAfter,
-      })
+      const threadResult = await executeTypedDocument(
+        transport,
+        PrCommentsReactionsThreadCommentsPageDocument,
+        {
+          threadId: cursor.currentThread.id,
+          first: first - items.length,
+          after: cursor.currentThread.commentsAfter,
+        },
+      )
       const thread = threadResult.node
       if (!thread || thread.__typename !== "PullRequestReviewThread") {
         throw new Error("Pull request review thread not found")
@@ -536,13 +543,17 @@ export async function runPrCommentsReactionsList(
       continue
     }
 
-    const result = await sdk.PrCommentsReactionsReviewThreadsPage({
-      owner: input.owner,
-      name: input.name,
-      prNumber: input.prNumber,
-      first: Math.max(1, first - items.length),
-      after: cursor.threadsAfter,
-    })
+    const result = await executeTypedDocument(
+      transport,
+      PrCommentsReactionsReviewThreadsPageDocument,
+      {
+        owner: input.owner,
+        name: input.name,
+        prNumber: input.prNumber,
+        first: Math.max(1, first - items.length),
+        after: cursor.threadsAfter,
+      },
+    )
     const pr = result.repository?.pullRequest
     if (!pr) {
       throw new Error("Pull request not found")
@@ -666,8 +677,7 @@ export async function runPrDiffListFiles(
 ): Promise<PrDiffListFilesData> {
   assertPrDiffListFilesInput(input)
 
-  const sdk = getPrDiffListFilesSdk(createGraphqlRequestClient(transport))
-  const result: PrDiffListFilesQuery = await sdk.PrDiffListFiles(input)
+  const result = await executeTypedDocument(transport, PrDiffListFilesDocument, input)
   return normalizePrDiffListFilesResult(result, input)
 }
 
@@ -694,7 +704,7 @@ export async function runPrMergeStatus(
 ): Promise<PrMergeStatusData> {
   assertPrInput({ owner: input.owner, name: input.name, prNumber: input.prNumber })
 
-  const result = await getPrMergeStatusSdk(createGraphqlRequestClient(transport)).PrMergeStatus({
+  const result = await executeTypedDocument(transport, PrMergeStatusDocument, {
     owner: input.owner,
     name: input.name,
     prNumber: input.prNumber,

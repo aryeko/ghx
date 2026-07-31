@@ -1,4 +1,3 @@
-import type { GraphQLClient } from "graphql-request"
 import {
   asRecord,
   assertPrAssigneesInput,
@@ -15,29 +14,29 @@ import {
   assertReviewThreadInput,
 } from "../assertions.js"
 import type * as Types from "../operations/base-types.js"
-import { getSdk as getIssueCommentCreateSdk } from "../operations/issue-comment-create.generated.js"
-import { getSdk as getIssueCreateRepositoryIdSdk } from "../operations/issue-create-repository-id.generated.js"
-import { getSdk as getPrAssigneesAddSdk } from "../operations/pr-assignees-add.generated.js"
-import { getSdk as getPrAssigneesRemoveSdk } from "../operations/pr-assignees-remove.generated.js"
-import { getSdk as getPrBranchUpdateSdk } from "../operations/pr-branch-update.generated.js"
-import { getSdk as getPrCloseSdk } from "../operations/pr-close.generated.js"
-import { getSdk as getPrCommentReplySdk } from "../operations/pr-comment-reply.generated.js"
-import { getSdk as getPrCommentResolveSdk } from "../operations/pr-comment-resolve.generated.js"
-import { getSdk as getPrCommentUnresolveSdk } from "../operations/pr-comment-unresolve.generated.js"
-import { getSdk as getPrCommentsListSdk } from "../operations/pr-comments-list.generated.js"
-import { getSdk as getPrCreateSdk } from "../operations/pr-create.generated.js"
-import { getSdk as getPrMergeSdk } from "../operations/pr-merge.generated.js"
-import { getSdk as getPrNodeIdSdk } from "../operations/pr-node-id.generated.js"
+import { IssueCommentCreateDocument } from "../operations/issue-comment-create.generated.js"
+import { IssueCreateRepositoryIdDocument } from "../operations/issue-create-repository-id.generated.js"
+import { PrAssigneesAddDocument } from "../operations/pr-assignees-add.generated.js"
+import { PrAssigneesRemoveDocument } from "../operations/pr-assignees-remove.generated.js"
+import { PrBranchUpdateDocument } from "../operations/pr-branch-update.generated.js"
+import { PrCloseDocument } from "../operations/pr-close.generated.js"
+import { PrCommentReplyDocument } from "../operations/pr-comment-reply.generated.js"
+import { PrCommentResolveDocument } from "../operations/pr-comment-resolve.generated.js"
+import { PrCommentUnresolveDocument } from "../operations/pr-comment-unresolve.generated.js"
+import { PrCommentsListDocument } from "../operations/pr-comments-list.generated.js"
+import { PrCreateDocument } from "../operations/pr-create.generated.js"
+import { PrMergeDocument } from "../operations/pr-merge.generated.js"
+import { PrNodeIdDocument } from "../operations/pr-node-id.generated.js"
 import {
-  getSdk as getPrReviewSubmitSdk,
+  PrReviewSubmitDocument,
   type PrReviewSubmitMutationVariables,
 } from "../operations/pr-review-submit.generated.js"
-import { getSdk as getPrReviewsRequestSdk } from "../operations/pr-reviews-request.generated.js"
-import { getSdk as getPrUpdateSdk } from "../operations/pr-update.generated.js"
-import { getSdk as getReviewThreadStateSdk } from "../operations/review-thread-state.generated.js"
-import { getSdk as getUserNodeIdSdk } from "../operations/user-node-id.generated.js"
+import { PrReviewsRequestDocument } from "../operations/pr-reviews-request.generated.js"
+import { PrUpdateDocument } from "../operations/pr-update.generated.js"
+import { ReviewThreadStateDocument } from "../operations/review-thread-state.generated.js"
+import { UserNodeIdDocument } from "../operations/user-node-id.generated.js"
 import type { GraphqlTransport } from "../transport.js"
-import { createGraphqlRequestClient } from "../transport.js"
+import { executeTypedDocument } from "../transport.js"
 import type {
   DraftComment,
   PrAssigneesAddData,
@@ -73,12 +72,12 @@ import type {
 const MAX_PR_REVIEW_THREAD_SCAN_PAGES = 5
 
 async function fetchPrNodeId(
-  client: GraphQLClient,
+  client: GraphqlTransport,
   owner: string,
   name: string,
   prNumber: number,
 ): Promise<string> {
-  const result = await getPrNodeIdSdk(client).PrNodeId({ owner, name, prNumber })
+  const result = await executeTypedDocument(client, PrNodeIdDocument, { owner, name, prNumber })
   const id = result.repository?.pullRequest?.id
   if (!id) throw new Error(`Pull request #${prNumber} not found in ${owner}/${name}`)
   return id
@@ -140,8 +139,6 @@ export async function runPrCommentsList(
   const unresolvedOnly = input.unresolvedOnly ?? true
   const includeOutdated = input.includeOutdated ?? true
 
-  const sdk = getPrCommentsListSdk(createGraphqlRequestClient(transport))
-
   const filteredThreads: Array<{ thread: PrReviewThreadData; cursor: string | null }> = []
   let sourceEndCursor: string | null = input.after ?? null
   let sourceHasNextPage = false
@@ -149,7 +146,7 @@ export async function runPrCommentsList(
   let sourceItemsScanned = 0
 
   while (pagesScanned < MAX_PR_REVIEW_THREAD_SCAN_PAGES && filteredThreads.length < input.first) {
-    const result = await sdk.PrCommentsList({
+    const result = await executeTypedDocument(transport, PrCommentsListDocument, {
       owner: input.owner,
       name: input.name,
       prNumber: input.prNumber,
@@ -265,10 +262,10 @@ export async function runPrCommentCreate(
 ): Promise<PrCommentCreateData> {
   assertPrCommentCreateInput(input)
 
-  const client = createGraphqlRequestClient(transport)
+  const client = transport
   const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
 
-  const result = await getIssueCommentCreateSdk(client).IssueCommentCreate({
+  const result = await executeTypedDocument(client, IssueCommentCreateDocument, {
     issueId: pullRequestId,
     body: input.body,
   })
@@ -293,8 +290,8 @@ export async function runReplyToReviewThread(
 ): Promise<ReplyToReviewThreadData> {
   assertReplyToReviewThreadInput(input)
 
-  const client = createGraphqlRequestClient(transport)
-  const replyResult = await getPrCommentReplySdk(client).PrCommentReply({
+  const client = transport
+  const replyResult = await executeTypedDocument(client, PrCommentReplyDocument, {
     threadId: input.threadId,
     body: input.body,
   })
@@ -304,7 +301,7 @@ export async function runReplyToReviewThread(
     throw new Error("Review thread mutation failed")
   }
 
-  const threadStateResult = await getReviewThreadStateSdk(client).ReviewThreadState({
+  const threadStateResult = await executeTypedDocument(client, ReviewThreadStateDocument, {
     threadId: input.threadId,
   })
   const threadNode = asRecord(threadStateResult.node)
@@ -326,9 +323,7 @@ export async function runResolveReviewThread(
 ): Promise<ReviewThreadMutationData> {
   assertReviewThreadInput(input)
 
-  const result = await getPrCommentResolveSdk(
-    createGraphqlRequestClient(transport),
-  ).PrCommentResolve({
+  const result = await executeTypedDocument(transport, PrCommentResolveDocument, {
     threadId: input.threadId,
   })
   return parseReviewThreadMutationResult(result, "resolveReviewThread")
@@ -340,9 +335,7 @@ export async function runUnresolveReviewThread(
 ): Promise<ReviewThreadMutationData> {
   assertReviewThreadInput(input)
 
-  const result = await getPrCommentUnresolveSdk(
-    createGraphqlRequestClient(transport),
-  ).PrCommentUnresolve({
+  const result = await executeTypedDocument(transport, PrCommentUnresolveDocument, {
     threadId: input.threadId,
   })
   return parseReviewThreadMutationResult(result, "unresolveReviewThread")
@@ -381,8 +374,8 @@ export async function runSubmitPrReview(
   }
   assertPrReviewSubmitInput(normalizedInput)
 
-  const client = createGraphqlRequestClient(transport)
-  const prIdResult = await getPrNodeIdSdk(client).PrNodeId({
+  const client = transport
+  const prIdResult = await executeTypedDocument(client, PrNodeIdDocument, {
     owner: normalizedInput.owner,
     name: normalizedInput.name,
     prNumber: normalizedInput.prNumber,
@@ -404,7 +397,7 @@ export async function runSubmitPrReview(
       }))
     : []
 
-  const result = await getPrReviewSubmitSdk(client).PrReviewSubmit({
+  const result = await executeTypedDocument(client, PrReviewSubmitDocument, {
     pullRequestId,
     event: normalizedInput.event as PrReviewSubmitMutationVariables["event"],
     ...(normalizedInput.body === undefined ? {} : { body: normalizedInput.body }),
@@ -429,9 +422,9 @@ export async function runPrCreate(
   input: PrCreateInput,
 ): Promise<PrCreateData> {
   assertPrCreateInput(input)
-  const client = createGraphqlRequestClient(transport)
+  const client = transport
 
-  const repoResult = await getIssueCreateRepositoryIdSdk(client).IssueCreateRepositoryId({
+  const repoResult = await executeTypedDocument(client, IssueCreateRepositoryIdDocument, {
     owner: input.owner,
     name: input.name,
   })
@@ -441,7 +434,7 @@ export async function runPrCreate(
     throw new Error(`Repository ${input.owner}/${input.name} not found`)
   }
 
-  const result = await getPrCreateSdk(client).PrCreate({
+  const result = await executeTypedDocument(client, PrCreateDocument, {
     repositoryId,
     baseRefName: input.baseRefName,
     headRefName: input.headRefName,
@@ -474,10 +467,10 @@ export async function runPrUpdate(
     throw new Error("draft update operation not available via GraphQL route")
   }
 
-  const client = createGraphqlRequestClient(transport)
+  const client = transport
   const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
 
-  const result = await getPrUpdateSdk(client).PrUpdate({
+  const result = await executeTypedDocument(client, PrUpdateDocument, {
     pullRequestId,
     ...(input.title !== undefined ? { title: input.title } : {}),
     ...(input.body !== undefined ? { body: input.body } : {}),
@@ -509,10 +502,10 @@ export async function runPrMerge(
     )
   }
 
-  const client = createGraphqlRequestClient(transport)
+  const client = transport
   const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
 
-  const result = await getPrMergeSdk(client).PrMerge({
+  const result = await executeTypedDocument(client, PrMergeDocument, {
     pullRequestId,
     ...(input.mergeMethod !== undefined
       ? { mergeMethod: input.mergeMethod as Types.PullRequestMergeMethod }
@@ -550,10 +543,10 @@ export async function runPrClose(
     )
   }
 
-  const client = createGraphqlRequestClient(transport)
+  const client = transport
   const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
 
-  const result = await getPrCloseSdk(client).PrClose({
+  const result = await executeTypedDocument(client, PrCloseDocument, {
     pullRequestId,
     addComment: input.comment !== undefined,
     commentBody: input.comment ?? "",
@@ -577,10 +570,10 @@ export async function runPrBranchUpdate(
   input: PrBranchUpdateInput,
 ): Promise<PrBranchUpdateData> {
   assertPrBranchUpdateInput(input)
-  const client = createGraphqlRequestClient(transport)
+  const client = transport
   const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
 
-  const result = await getPrBranchUpdateSdk(client).PrBranchUpdate({
+  const result = await executeTypedDocument(client, PrBranchUpdateDocument, {
     pullRequestId,
     ...(input.updateMethod !== undefined
       ? { updateMethod: input.updateMethod as Types.PullRequestBranchUpdateMethod }
@@ -600,12 +593,12 @@ export async function runPrBranchUpdate(
   }
 }
 
-async function resolveUserNodeIds(client: GraphQLClient, logins: string[]): Promise<string[]> {
+async function resolveUserNodeIds(client: GraphqlTransport, logins: string[]): Promise<string[]> {
   // N+1 pattern: each login requires a separate UserNodeId query.
   // GitHub's GraphQL API does not support bulk user-to-node-ID resolution.
   // Acceptable for typical 1-3 user operations; revisit if bulk use cases emerge.
   const results = await Promise.all(
-    logins.map((login) => getUserNodeIdSdk(client).UserNodeId({ login })),
+    logins.map((login) => executeTypedDocument(client, UserNodeIdDocument, { login })),
   )
   return logins.map((login, i) => {
     const id = results[i]?.user?.id
@@ -619,12 +612,12 @@ export async function runPrAssigneesAdd(
   input: PrAssigneesAddInput,
 ): Promise<PrAssigneesAddData> {
   assertPrAssigneesInput(input)
-  const client = createGraphqlRequestClient(transport)
+  const client = transport
   const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
 
   const userIds = await resolveUserNodeIds(client, input.assignees)
 
-  const result = await getPrAssigneesAddSdk(client).PrAssigneesAdd({
+  const result = await executeTypedDocument(client, PrAssigneesAddDocument, {
     assignableId: pullRequestId,
     assigneeIds: userIds,
   })
@@ -657,12 +650,12 @@ export async function runPrAssigneesRemove(
   input: PrAssigneesRemoveInput,
 ): Promise<PrAssigneesRemoveData> {
   assertPrAssigneesInput(input)
-  const client = createGraphqlRequestClient(transport)
+  const client = transport
   const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
 
   const userIds = await resolveUserNodeIds(client, input.assignees)
 
-  const result = await getPrAssigneesRemoveSdk(client).PrAssigneesRemove({
+  const result = await executeTypedDocument(client, PrAssigneesRemoveDocument, {
     assignableId: pullRequestId,
     assigneeIds: userIds,
   })
@@ -697,12 +690,12 @@ export async function runPrReviewsRequest(
   input: PrReviewsRequestInput,
 ): Promise<PrReviewsRequestData> {
   assertPrReviewsRequestInput(input)
-  const client = createGraphqlRequestClient(transport)
+  const client = transport
   const pullRequestId = await fetchPrNodeId(client, input.owner, input.name, input.prNumber)
 
   const reviewerUserIds = await resolveUserNodeIds(client, input.reviewers)
 
-  const result = await getPrReviewsRequestSdk(client).PrReviewsRequest({
+  const result = await executeTypedDocument(client, PrReviewsRequestDocument, {
     pullRequestId,
     userIds: reviewerUserIds,
     reviewRequestsFirst: Math.min(Math.max(reviewerUserIds.length, 1), 100),

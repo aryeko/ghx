@@ -1,6 +1,6 @@
 # Custom GraphQL Transport
 
-By default, ghx uses `graphql-request` to send queries to GitHub's GraphQL API. You can replace this with your own transport for enterprise endpoints, proxies, request signing, or test mocking.
+By default, ghx uses the platform `fetch` API to send queries to GitHub's GraphQL API. You can replace this with your own transport for enterprise endpoints, proxies, request signing, or test mocking.
 
 ## The Transport Interface
 

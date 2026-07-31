@@ -1,20 +1,20 @@
 /* global console, process */
 import { spawnSync } from "node:child_process"
 import { readdirSync, readFileSync, writeFileSync } from "node:fs"
-import { join, relative, resolve } from "node:path"
+import { join, resolve } from "node:path"
 
 function fixGeneratedImportExtensions(packageRoot) {
   const opsDir = join(packageRoot, "src", "gql", "operations")
-  fixGeneratedArtifactsInDir(opsDir, opsDir)
+  fixGeneratedArtifactsInDir(opsDir)
 }
 
-function fixGeneratedArtifactsInDir(dir, opsRoot) {
+function fixGeneratedArtifactsInDir(dir) {
   const entries = readdirSync(dir, { withFileTypes: true })
 
   for (const entry of entries) {
     const entryPath = join(dir, entry.name)
     if (entry.isDirectory()) {
-      fixGeneratedArtifactsInDir(entryPath, opsRoot)
+      fixGeneratedArtifactsInDir(entryPath)
       continue
     }
     if (!entry.isFile() || !entry.name.endsWith(".generated.ts")) {
@@ -28,18 +28,6 @@ function fixGeneratedArtifactsInDir(dir, opsRoot) {
     let fixed = fixedImports
       .replace(/^\s+\| { __typename\?: ["']NotificationThread["'] }\r?$/gm, "")
       .replace(/^\s+\| { __typename\?: ["']RepositoryDependabotAlertsThread["'] }\r?$/gm, "")
-
-    // Fix TypedDocumentString import path for files in subdirectories.
-    // The `add` plugin injects `./typed-document-string.js` for every file,
-    // but files in subdirectories (e.g. fragments/) need a deeper relative path.
-    const depth = relative(opsRoot, dir).split("/").filter(Boolean).length
-    if (depth > 0) {
-      const correctPrefix = "../".repeat(depth)
-      fixed = fixed.replace(
-        /from ["']\.\/typed-document-string\.js["']/,
-        `from "${correctPrefix}typed-document-string.js"`,
-      )
-    }
 
     if (fixed !== content) {
       writeFileSync(entryPath, fixed, "utf8")

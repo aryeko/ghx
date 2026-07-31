@@ -1,5 +1,10 @@
+import { RepoViewDocument } from "@core/gql/operations/repo-view.generated.js"
 import type { GraphqlTransport } from "@core/gql/transport.js"
-import { createGraphqlClient, createTokenTransport } from "@core/gql/transport.js"
+import {
+  createGraphqlClient,
+  createTokenTransport,
+  executeTypedDocument,
+} from "@core/gql/transport.js"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const originalFetch = globalThis.fetch
@@ -191,5 +196,30 @@ describe("createGraphqlClient.queryRaw", () => {
     expect(result.data).toBeUndefined()
     expect(result.errors).toHaveLength(1)
     expect(result.errors?.[0]?.message).toBe("Network error")
+  })
+})
+
+describe("executeTypedDocument", () => {
+  it("prints a generated document and preserves typed variables and result", async () => {
+    const data = {
+      __typename: "Query" as const,
+      repository: {
+        __typename: "Repository" as const,
+        id: "R1",
+        name: "ghx",
+        nameWithOwner: "aryeko/ghx",
+        isPrivate: false,
+        stargazerCount: 1,
+        forkCount: 0,
+        url: "https://github.com/aryeko/ghx",
+        defaultBranchRef: { __typename: "Ref" as const, name: "main" },
+      },
+    }
+    const execute = vi.fn().mockResolvedValue(data)
+    const transport: GraphqlTransport = { execute }
+    const variables = { owner: "aryeko", name: "ghx" }
+
+    await expect(executeTypedDocument(transport, RepoViewDocument, variables)).resolves.toBe(data)
+    expect(execute).toHaveBeenCalledWith(expect.stringContaining("query RepoView"), variables)
   })
 })
