@@ -1392,9 +1392,7 @@ describe("executeTasks — input validation preflight", () => {
       },
     }
 
-    vi.doMock("@core/core/registry/index.js", () => ({
-      getOperationCard: vi.fn().mockReturnValue(cardWithSchema),
-    }))
+    getOperationCardMock.mockReturnValue(cardWithSchema)
 
     const { executeTasks } = await import("@core/core/routing/engine/index.js")
 
