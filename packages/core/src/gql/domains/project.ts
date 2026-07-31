@@ -197,7 +197,7 @@ export async function runProjectV2FieldsList(
         dataType: n != null ? String(n.dataType) : null,
         options:
           n != null && "__typename" in n && n.__typename === "ProjectV2SingleSelectField"
-            ? (n as { options: Array<{ id: string; name: string }> }).options
+            ? n.options.map((option) => ({ id: option.id, name: option.name }))
             : null,
       }),
     ),

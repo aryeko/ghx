@@ -1,17 +1,46 @@
 import type { TaskRequest } from "@core/core/contracts/task.js"
 import { executeTask } from "@core/core/routing/engine/index.js"
-import type { GithubClient } from "@core/gql/github-client.js"
 import { createGithubClient } from "@core/gql/github-client.js"
 import { describe, expect, it } from "vitest"
 
 describe("executeTask project_v2.fields.list", () => {
-  it("returns graphql envelope for project_v2.fields.list", async () => {
-    const githubClient = {
-      fetchProjectV2FieldsList: async () => ({
-        items: [{ id: "F_1", name: "Status", dataType: "SINGLE_SELECT" }],
-        pageInfo: { hasNextPage: false, endCursor: null },
-      }),
-    } as unknown as GithubClient
+  it("normalizes generated single-select options in the graphql envelope", async () => {
+    const githubClient = createGithubClient({
+      async execute<TData>(): Promise<TData> {
+        return {
+          __typename: "Query",
+          organization: {
+            __typename: "Organization",
+            projectV2: {
+              __typename: "ProjectV2",
+              fields: {
+                __typename: "ProjectV2FieldConfigurationConnection",
+                nodes: [
+                  {
+                    __typename: "ProjectV2SingleSelectField",
+                    id: "F_1",
+                    name: "Status",
+                    dataType: "SINGLE_SELECT",
+                    options: [
+                      {
+                        __typename: "ProjectV2SingleSelectFieldOption",
+                        id: "OPT_1",
+                        name: "Todo",
+                      },
+                    ],
+                  },
+                ],
+                pageInfo: {
+                  __typename: "PageInfo",
+                  hasNextPage: false,
+                  endCursor: null,
+                },
+              },
+            },
+          },
+        } as TData
+      },
+    })
 
     const request: TaskRequest = {
       task: "project_v2.fields.list",
@@ -28,9 +57,16 @@ describe("executeTask project_v2.fields.list", () => {
 
     expect(result.ok).toBe(true)
     expect(result.meta.route_used).toBe("graphql")
-    expect(result.data).toMatchObject({
-      items: expect.any(Array),
-      pageInfo: { hasNextPage: expect.any(Boolean) },
+    expect(result.data).toEqual({
+      items: [
+        {
+          id: "F_1",
+          name: "Status",
+          dataType: "SINGLE_SELECT",
+          options: [{ id: "OPT_1", name: "Todo" }],
+        },
+      ],
+      pageInfo: { hasNextPage: false, endCursor: null },
     })
   })
 
