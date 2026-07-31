@@ -1,9 +1,11 @@
+import { fileURLToPath } from "node:url"
+
 import { defineConfig } from "vitest/config"
 
 export default defineConfig({
   resolve: {
     alias: {
-      "@eval": new URL("./src", import.meta.url).pathname,
+      "@eval": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
   test: {
@@ -30,8 +32,7 @@ export default defineConfig({
       thresholds: {
         lines: 90,
         functions: 90,
-        // Vitest 4's AST-based V8 remapping removes the false-positive branch coverage from v3.
-        branches: 80,
+        branches: 85,
         statements: 90,
       },
     },

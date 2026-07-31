@@ -42,6 +42,20 @@ describe("createLogger", () => {
     spy.mockRestore()
   })
 
+  it("suppresses info and warning messages below the configured level", () => {
+    const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {})
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
+    const logger = createLogger("error")
+
+    logger.info("suppressed info")
+    logger.warn("suppressed warning")
+
+    expect(infoSpy).not.toHaveBeenCalled()
+    expect(warnSpy).not.toHaveBeenCalled()
+    infoSpy.mockRestore()
+    warnSpy.mockRestore()
+  })
+
   it("exposes all four logging methods", () => {
     const logger = createLogger("debug")
     expect(typeof logger.debug).toBe("function")

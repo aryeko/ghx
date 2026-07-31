@@ -1,9 +1,11 @@
+import { fileURLToPath } from "node:url"
+
 import { defineConfig } from "vitest/config"
 
 export default defineConfig({
   resolve: {
     alias: {
-      "@profiler": new URL("./src", import.meta.url).pathname,
+      "@profiler": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
   test: {
@@ -38,8 +40,7 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text-summary", "lcov"],
       include: ["src/**/*.ts"],
-      // Vitest 4's AST-based V8 remapping removes the false-positive branch coverage from v3.
-      thresholds: { lines: 90, functions: 90, branches: 80, statements: 90 },
+      thresholds: { lines: 90, functions: 90, branches: 85, statements: 90 },
     },
   },
 })

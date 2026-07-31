@@ -92,6 +92,18 @@ describe("CompositeScorer", () => {
     expect(result.details.some((d) => d.id === "ok:check-1")).toBe(true)
   })
 
+  it("normalizes non-Error scorer rejections", async () => {
+    const rejectingScorer: Scorer = {
+      id: "broken",
+      evaluate: vi.fn().mockRejectedValue("unavailable"),
+    }
+    const scorer = new CompositeScorer({ scorers: [rejectingScorer] })
+
+    const result = await scorer.evaluate(makeScenario(), makeContext())
+
+    expect(result.details[0]?.error).toBe("unavailable")
+  })
+
   it("reports outputValid false when any scorer reports invalid", async () => {
     const invalidResult: ScorerResult = { ...passResult, outputValid: false }
     const scorer = new CompositeScorer({

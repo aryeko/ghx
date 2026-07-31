@@ -56,4 +56,36 @@ describe("runWarmup", () => {
 
     expect(provider.calls.destroySession?.length ?? 0).toBe(1)
   })
+
+  it("normalizes a non-Error prompt rejection", async () => {
+    const provider = createMockProvider()
+    provider.prompt = () => Promise.reject("provider rejected")
+    const logger = makeLogger()
+
+    const result = await runWarmup(provider, makeScenario(), "system prompt", logger)
+
+    expect(result.error).toBe("provider rejected")
+  })
+
+  it("logs a non-Error session cleanup rejection", async () => {
+    const provider = createMockProvider()
+    provider.destroySession = () => Promise.reject("already gone")
+    const logger = makeLogger()
+
+    const result = await runWarmup(provider, makeScenario(), "system prompt", logger)
+
+    expect(result.error).toBeUndefined()
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("already gone"))
+  })
+
+  it("logs an Error from session cleanup", async () => {
+    const provider = createMockProvider()
+    provider.destroySession = () => Promise.reject(new Error("already gone"))
+    const logger = makeLogger()
+
+    const result = await runWarmup(provider, makeScenario(), "system prompt", logger)
+
+    expect(result.error).toBeUndefined()
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("already gone"))
+  })
 })

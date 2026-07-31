@@ -181,6 +181,45 @@ describe("LlmJudgeScorer", () => {
     expect(request?.userPrompt).toContain("create_pr")
   })
 
+  it("includes difficulty but omits tool sequence when the trace has no tool calls", async () => {
+    const scenario = {
+      ...makeScenario(validRubric),
+      tags: ["difficulty:hard"],
+    }
+    const trace: SessionTrace = {
+      sessionId: "session-1",
+      events: [],
+      turns: [],
+      summary: {
+        totalTurns: 1,
+        totalToolCalls: 0,
+        totalTokens: {
+          input: 10,
+          output: 5,
+          reasoning: 0,
+          cacheRead: 0,
+          cacheWrite: 0,
+          total: 15,
+          active: 15,
+        },
+        totalDuration: 20,
+      },
+    }
+    const provider = makeProvider(
+      validResponse([
+        { id: "strategy-task-fit", passed: true, reasoning: "Good" },
+        { id: "tool-selection", passed: true, reasoning: "Good" },
+      ]),
+    )
+    const scorer = new LlmJudgeScorer({ id: "llm-judge", provider })
+
+    await scorer.evaluate(scenario, makeContext(trace))
+
+    const request = vi.mocked(provider.judge).mock.calls[0]?.[0]
+    expect(request?.userPrompt).toContain("Difficulty: hard")
+    expect(request?.userPrompt).not.toContain("Tool call sequence")
+  })
+
   it("includes grading instructions in system prompt when present", async () => {
     const rubricWithInstructions = {
       ...validRubric,

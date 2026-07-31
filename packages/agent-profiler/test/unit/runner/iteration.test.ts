@@ -4,7 +4,7 @@ import type { Collector } from "../../../src/contracts/collector.js"
 import type { RunHooks } from "../../../src/contracts/hooks.js"
 import type { IterationParams } from "../../../src/runner/iteration.js"
 import { runIteration } from "../../../src/runner/iteration.js"
-import { makeScenario } from "../../helpers/factories.js"
+import { makePromptResult, makeScenario } from "../../helpers/factories.js"
 import { createMockProvider } from "../../helpers/mock-provider.js"
 import { createMockScorer } from "../../helpers/mock-scorer.js"
 
@@ -38,6 +38,62 @@ function makeParams(overrides?: Partial<IterationParams>): IterationParams {
 }
 
 describe("runIteration", () => {
+  it("handles a prompt result with no tool calls", async () => {
+    const provider = createMockProvider({
+      promptResult: makePromptResult({
+        metrics: {
+          ...makePromptResult().metrics,
+          toolCalls: [],
+        },
+      }),
+    })
+
+    const { row } = await runIteration(makeParams({ provider }))
+
+    expect(row.toolCalls).toMatchObject({ total: 0, failed: 0, errorRate: 0 })
+  })
+
+  it("preserves actual and expected checkpoint details when supplied", async () => {
+    const scorer = createMockScorer({
+      details: [
+        {
+          id: "output",
+          description: "Expected output",
+          passed: false,
+          actual: "actual",
+          expected: "expected",
+        },
+      ],
+    })
+
+    const { row } = await runIteration(makeParams({ scorer }))
+
+    expect(row.checkpointDetails).toEqual([
+      expect.objectContaining({ actual: "actual", expected: "expected" }),
+    ])
+  })
+
+  it("uses the default timeout when the scenario omits one", async () => {
+    const provider = createMockProvider()
+    const scenario = {
+      ...makeScenario(),
+      timeoutMs: undefined,
+    } as unknown as IterationParams["scenario"]
+
+    await runIteration(makeParams({ provider, scenario }))
+
+    expect(provider.calls.prompt?.[0]?.[2]).toBe(120_000)
+  })
+
+  it("keeps the original scenario when beforeScenario returns nothing", async () => {
+    const provider = createMockProvider()
+    const beforeScenario = vi.fn().mockResolvedValue(undefined)
+
+    await runIteration(makeParams({ provider, hooks: { beforeScenario } }))
+
+    expect(provider.calls.prompt?.[0]?.[1]).toBe("Fix the bug in main.ts")
+  })
+
   it("produces valid ProfileRow with correct fields", async () => {
     const provider = createMockProvider()
     const params = makeParams({ provider })
@@ -148,6 +204,27 @@ describe("runIteration", () => {
     expect(row.tokens.total).toBe(0)
     expect(row.toolCalls.total).toBe(0)
     expect(trace).toBeNull()
+  })
+
+  it("normalizes a non-Error prompt rejection", async () => {
+    const provider = createMockProvider()
+    provider.prompt = () => Promise.reject("provider rejected")
+
+    const { row } = await runIteration(makeParams({ provider }))
+
+    expect(row.error).toBe("provider rejected")
+  })
+
+  it("calls afterScenario with the failed row", async () => {
+    const provider = createMockProvider()
+    provider.createSession = () => Promise.reject(new Error("session unavailable"))
+    const afterScenario = vi.fn()
+
+    const { row } = await runIteration(makeParams({ provider, hooks: { afterScenario } }))
+
+    expect(afterScenario).toHaveBeenCalledWith(
+      expect.objectContaining({ result: row, trace: null }),
+    )
   })
 
   it("collects metrics from all collectors into extensions", async () => {
@@ -331,5 +408,51 @@ describe("runIteration", () => {
     expect(logger.warn).toHaveBeenCalledWith(
       expect.stringContaining("Failed to destroy session during retry cleanup"),
     )
+  })
+
+  it("normalizes a non-Error destroy rejection during retry cleanup", async () => {
+    const provider = createMockProvider()
+    let promptAttempts = 0
+    const originalPrompt = provider.prompt.bind(provider)
+    provider.prompt = (handle, text, timeoutMs) => {
+      promptAttempts++
+      return promptAttempts === 1
+        ? Promise.reject(new Error("retry"))
+        : originalPrompt(handle, text, timeoutMs)
+    }
+    let destroyAttempts = 0
+    const originalDestroy = provider.destroySession.bind(provider)
+    provider.destroySession = (handle) => {
+      destroyAttempts++
+      return destroyAttempts === 1 ? Promise.reject("already gone") : originalDestroy(handle)
+    }
+    const logger = makeLogger()
+
+    const { row } = await runIteration(makeParams({ provider, allowedRetries: 1, logger }))
+
+    expect(row.success).toBe(true)
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("already gone"))
+  })
+
+  it("logs a non-Error final destroy rejection", async () => {
+    const provider = createMockProvider()
+    provider.destroySession = () => Promise.reject("cleanup failed")
+    const logger = makeLogger()
+
+    const { row } = await runIteration(makeParams({ provider, logger }))
+
+    expect(row.success).toBe(true)
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("cleanup failed"))
+  })
+
+  it("logs an Error from final session cleanup", async () => {
+    const provider = createMockProvider()
+    provider.destroySession = () => Promise.reject(new Error("cleanup failed"))
+    const logger = makeLogger()
+
+    const { row } = await runIteration(makeParams({ provider, logger }))
+
+    expect(row.success).toBe(true)
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("cleanup failed"))
   })
 })
