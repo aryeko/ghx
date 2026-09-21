@@ -70,8 +70,8 @@
     "graphql": "^16.14.2",
     "lefthook": "^2.1.10",
     "nx": "23.1.1",
-    "oxlint": "1.76.0",
-    "oxlint-tsgolint": "7.0.2001",
+    "oxlint": "1.83.0",
+    "oxlint-tsgolint": "7.0.2002",
     "typescript": "catalog:",
     "vite": "^8.2.0"
   }
