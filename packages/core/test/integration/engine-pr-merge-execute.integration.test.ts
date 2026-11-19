@@ -29,7 +29,7 @@ describe("executeTask pr.merge", () => {
       error: { code: "VALIDATION", retryable: false, details: { stackNumber: 42, prNumber: 5 } },
       meta: { route_used: "graphql" },
     })
-    expect(result.error?.message).toContain("gh stack merge")
+    expect(result.error?.message).toContain("pr.stack.merge")
     expect(mergePr).not.toHaveBeenCalled()
     expect(run).not.toHaveBeenCalled()
   })

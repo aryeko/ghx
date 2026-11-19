@@ -96,7 +96,9 @@ describe("operation cards registry", () => {
       "pr.stack.create",
       "pr.stack.add",
       "pr.stack.unstack",
+      "pr.stack.merge",
       "pr.merge.status",
+      "pr.merge.request.view",
       "pr.merge",
       "pr.close",
       "pr.assignees.add",
@@ -240,6 +242,7 @@ describe("operation cards registry", () => {
       "pr.stack.list",
       "pr.stack.view",
       "pr.stack.status",
+      "pr.merge.request.view",
     ])
     for (const card of cards) {
       expect(card.routing.fallbacks).toEqual([])

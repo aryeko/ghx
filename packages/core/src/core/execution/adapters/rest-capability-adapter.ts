@@ -4,6 +4,7 @@ import type { GithubClient } from "@core/gql/github-client.js"
 import { normalizeError, normalizeResult } from "../normalizer.js"
 import { readStack } from "./rest/read-stack.js"
 import { addToStack, createStack, unstack } from "./rest/stack-membership.js"
+import { mergeStack, readMergeRequest } from "./rest/stack-merge.js"
 import { decodeStackCursor, encodeStackCursor, nextStackPage } from "./rest/stack-pagination.js"
 import { parseStackList, publicStackSnapshot } from "./rest/stack-snapshot.js"
 import { readStackStatus } from "./rest/stack-status.js"
@@ -81,6 +82,22 @@ export async function runRestCapability(
       case "pr.stack.unstack":
         return normalizeResult(
           await unstack(client, repoPath, params as Parameters<typeof unstack>[2]),
+          "rest",
+          meta,
+        )
+      case "pr.stack.merge":
+        return normalizeResult(
+          await mergeStack(client, repoPath, params as Parameters<typeof mergeStack>[2]),
+          "rest",
+          meta,
+        )
+      case "pr.merge.request.view":
+        return normalizeResult(
+          await readMergeRequest(
+            client,
+            repoPath,
+            params as Parameters<typeof readMergeRequest>[2],
+          ),
           "rest",
           meta,
         )

@@ -89,7 +89,7 @@ async function checkMembership(
       ok: false,
       error: {
         code: errorCodes.Validation,
-        message: `Pull request #${target.prNumber} belongs to native stack #${stackNumber}. Use GitHub or gh stack merge to merge it.`,
+        message: `Pull request #${target.prNumber} belongs to native stack #${stackNumber}. Use pr.stack.status and pr.stack.merge to merge it.`,
         retryable: false,
         details: { ...details, stackNumber },
       },

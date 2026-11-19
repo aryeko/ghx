@@ -1,6 +1,6 @@
 capability_id: pr.merge
 version: "1.0.0"
-description: Merge a standalone pull request. Use GitHub or gh stack merge for native stack members.
+description: Merge a standalone pull request. Use pr.stack.merge for native stack members.
 input_schema:
   type: object
   required: [owner, name, prNumber]
