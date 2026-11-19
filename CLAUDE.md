@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `@ghx-dev/agent-profiler` (`packages/agent-profiler`) — private; generic AI agent session profiler (latency, tokens, tool calls, cost, behavioral analysis)
 - `@ghx-dev/eval` (`packages/eval`) — private; evaluation harness for ghx benchmarking (scenarios, fixtures, checkpoint scoring)
 
-**Runtime:** Node.js `>=22.13.0`. **Language:** TypeScript strict, ESM (`module`/`moduleResolution` = `NodeNext`).
+**Runtime:** Node.js `>=22.13.0` for the published CLI. **Development:** use `.nvmrc` (Node 26 LTS), or Node `^22.18.0 || ^24.11.0 || >=26.0.0`. **Language:** TypeScript strict, ESM (`module`/`moduleResolution` = `NodeNext`).
 
 **Worktrees:** Feature branches may have isolated worktrees at `.worktrees/<branch-name>/`. Check there before assuming the main checkout is the active workspace.
 
@@ -115,6 +115,10 @@ User/Agent → CLI (packages/core/src/cli/) → executeTask() [core/routing/engi
 - **`exactOptionalPropertyTypes: true`** is set in tsconfig. Zod's `.optional()` infers `T | undefined`, which conflicts with TypeScript's strict optional semantics. When returning Zod-parsed values where the declared return type uses optional fields (`field?: T`), cast the result (e.g. `as Promise<ProfileRow[]>`).
 - **Generated code:** Never edit manually — `packages/core/src/gql/generated/**` and `packages/core/src/gql/operations/*.generated.ts`. Regenerate via codegen script.
 - **Dependency management:** Shared devDependencies are pinned in `pnpm-workspace.yaml` via pnpm catalog — use `"catalog:"` in package.json instead of version ranges for: `@typescript/native`, `typescript`, `@types/node`, `tsup`, `tsx`, `vitest`, `@vitest/coverage-v8`. The `@typescript/native` alias supplies the TypeScript 7 `tsc` CLI; the `typescript` alias supplies the TypeScript 6 API required by Nx and Vite until their programmatic integrations support TypeScript 7. Dependabot is configured (`.github/dependabot.yml`) for weekly npm and GitHub Actions updates. `pnpm-workspace.yaml` enforces `strictPeerDependencies: true` and `autoInstallPeers: false`.
+
+The root GraphQL devDependency stays on the latest 16.x release for code generation: GitHub's cached schema deprecates implementation fields whose interface fields remain active, which GraphQL 17 rejects during schema validation. The published core uses GraphQL 17. Keep schema validation enabled and update this split once the upstream schema is compatible.
+
+Nx 24.0.6 is patched in `patches/` to use minimatch 11's supported matching APIs, allowing the security override in `pnpm-workspace.yaml`. `pnpm run test:dependencies` covers generator globs, project selection, wildcard target dependencies, and release branch matching, and runs before both CI commands. Remove the patch when Nx supports the patched minimatch major itself.
 
 ## Pre-commit Hooks
 

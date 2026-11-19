@@ -1,0 +1,160 @@
+diff --git a/dist/src/command-line/release/utils/repository-git-tags.js b/dist/src/command-line/release/utils/repository-git-tags.js
+index f0b60f36fbffc315b25589d0afff6a4335245245..791ea0b3a24d7362ff2c5ba96dfd8b662e46d147 100644
+--- a/dist/src/command-line/release/utils/repository-git-tags.js
++++ b/dist/src/command-line/release/utils/repository-git-tags.js
+@@ -3,7 +3,7 @@ var _RepoGitTags_instances, _RepoGitTags_tagsMap, _RepoGitTags_getTags, _RepoGit
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.RepoGitTags = void 0;
+ const tslib_1 = require("tslib");
+-const minimatch_1 = require("minimatch");
++const globs_1 = require("../../../utils/globs");
+ const exec_command_1 = require("./exec-command");
+ /**
+  * Caches git tags to avoid redundant git operations during release workflows.
+@@ -110,11 +110,8 @@ async function _RepoGitTags_alwaysCheckAllBranches(checkAllBranchesWhen) {
+             // Check if any glob pattern matches next
+             if (!alwaysCheckAllBranches) {
+                 alwaysCheckAllBranches = checkAllBranchesWhen.some((pattern) => {
+-                    const r = minimatch_1.minimatch.makeRe(pattern, { dot: true });
+-                    if (!r) {
+-                        return false;
+-                    }
+-                    return r.test(currentBranch);
++                    const matcher = (0, globs_1.createGlobMatcher)(pattern, { dot: true });
++                    return matcher ? matcher(currentBranch) : false;
+                 });
+             }
+         }
+diff --git a/dist/src/generators/utils/glob.js b/dist/src/generators/utils/glob.js
+index af0e4c3a456ca9e650f0796ed378ae3eb8535ca7..8262cd3b541906ca8c51ab845a043a36af6969ce 100644
+--- a/dist/src/generators/utils/glob.js
++++ b/dist/src/generators/utils/glob.js
+@@ -2,7 +2,6 @@
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.glob = glob;
+ exports.globAsync = globAsync;
+-const minimatch_1 = require("minimatch");
+ const globs_1 = require("../../utils/globs");
+ const workspace_context_1 = require("../../utils/workspace-context");
+ /**
+@@ -33,12 +32,12 @@ async function globAsync(tree, patterns) {
+ function combineGlobResultsWithTree(tree, patterns, results) {
+     const matches = new Set(results);
+     const combinedGlob = (0, globs_1.combineGlobPatterns)(patterns);
+-    const matcher = minimatch_1.minimatch.makeRe(combinedGlob);
++    const matcher = (0, globs_1.createGlobMatcher)(combinedGlob);
+     if (!matcher) {
+         throw new Error('Invalid glob pattern: ' + combinedGlob);
+     }
+     for (const change of tree.listChanges()) {
+-        if (change.type !== 'UPDATE' && matcher.test(change.path)) {
++        if (change.type !== 'UPDATE' && matcher(change.path)) {
+             if (change.type === 'CREATE') {
+                 matches.add(change.path);
+             }
+diff --git a/dist/src/tasks-runner/utils.js b/dist/src/tasks-runner/utils.js
+index be72e1bef90185a41136f55102f86557dbc1cb7f..46d5e39cdb17bef91e5ff42051ccd0f8ba9e03f1 100644
+--- a/dist/src/tasks-runner/utils.js
++++ b/dist/src/tasks-runner/utils.js
+@@ -105,8 +105,7 @@ function findMatchingTargets(pattern, allTargetNames) {
+     if (cachedResult) {
+         return cachedResult;
+     }
+-    const matcher = minimatch_1.minimatch.filter(pattern);
+-    const matchingTargets = allTargetNames.filter((t) => matcher(t));
++    const matchingTargets = allTargetNames.filter((0, minimatch_1.filter)(pattern));
+     cache.set(pattern, matchingTargets);
+     return matchingTargets;
+ }
+diff --git a/dist/src/utils/find-matching-projects.js b/dist/src/utils/find-matching-projects.js
+index cadad9dca44f733fbe9f97e6fd96da40ce68157a..81b2ac89b2264f03589f42d20a086de1c53b03dd 100644
+--- a/dist/src/utils/find-matching-projects.js
++++ b/dist/src/utils/find-matching-projects.js
+@@ -2,7 +2,6 @@
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.getMatchingStringsWithCache = void 0;
+ exports.findMatchingProjects = findMatchingProjects;
+-const minimatch_1 = require("minimatch");
+ const globs_1 = require("./globs");
+ const validPatternTypes = [
+     'name', // Pattern is based on the project's name
+@@ -197,26 +196,26 @@ function isValidPatternType(type) {
+ exports.getMatchingStringsWithCache = (() => {
+     // Map< Pattern, Map< Item, Result >>
+     const minimatchCache = new Map();
+-    const regexCache = new Map();
++    const matcherCache = new Map();
+     return (pattern, items) => {
+         if (!minimatchCache.has(pattern)) {
+             minimatchCache.set(pattern, new Map());
+         }
+         const patternCache = minimatchCache.get(pattern);
+-        if (!regexCache.has(pattern)) {
+-            const regex = minimatch_1.minimatch.makeRe(pattern, { dot: true });
+-            if (regex) {
+-                regexCache.set(pattern, regex);
++        if (!matcherCache.has(pattern)) {
++            const matcher = (0, globs_1.createGlobMatcher)(pattern, { dot: true });
++            if (matcher) {
++                matcherCache.set(pattern, matcher);
+             }
+             else {
+                 throw new Error('Invalid glob pattern ' + pattern);
+             }
+         }
+-        const matcher = regexCache.get(pattern);
++        const matcher = matcherCache.get(pattern);
+         return items.filter((item) => {
+             let entry = patternCache.get(item);
+             if (entry === undefined || entry === null) {
+-                entry = item === pattern ? true : matcher.test(item);
++                entry = item === pattern ? true : matcher(item);
+                 patternCache.set(item, entry);
+             }
+             return entry;
+diff --git a/dist/src/utils/globs.js b/dist/src/utils/globs.js
+index fd95f0ec775d2d508e4276661c84cda91e0202c4..349f46019b2ef9a5f7f3d78202cc4c37fce27f09 100644
+--- a/dist/src/utils/globs.js
++++ b/dist/src/utils/globs.js
+@@ -2,11 +2,41 @@
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.GLOB_CHARACTERS = void 0;
+ exports.combineGlobPatterns = combineGlobPatterns;
++exports.createGlobMatcher = createGlobMatcher;
+ exports.isGlobPattern = isGlobPattern;
++const minimatch_1 = require("minimatch");
+ function combineGlobPatterns(...patterns) {
+     const p = patterns.flat();
+     return p.length > 1 ? '{' + p.join(',') + '}' : p.length === 1 ? p[0] : '';
+ }
++function createGlobMatcher(pattern, options) {
++    const matcher = new minimatch_1.Minimatch(pattern, options);
++    if (!matcher.set.length) {
++        return null;
++    }
++    // Nx's previous matcher included the parent when a trailing globstar consumed zero path segments.
++    const parentMatchers = matcher.globSet.filter((entry) => entry.endsWith('/**')).map((entry) => {
++        let parent = entry;
++        while (parent.endsWith('/**')) {
++            parent = parent.slice(0, -3);
++        }
++        return new minimatch_1.Minimatch(parent, {
++            ...options,
++            nonegate: true,
++            nocomment: true,
++        });
++    });
++    return (value) => {
++        if (matcher.negate && !value) {
++            return false;
++        }
++        const matches = matcher.match(value);
++        if (matches !== matcher.negate) {
++            return matches;
++        }
++        return parentMatchers.some((parent) => parent.match(value)) ? !matcher.negate : matches;
++    };
++}
+ exports.GLOB_CHARACTERS = new Set(['*', '|', '{', '}', '(', ')', '[']);
+ function isGlobPattern(pattern) {
+     for (const c of pattern) {

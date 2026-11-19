@@ -14,9 +14,7 @@ export default defineConfig([
     format: ["esm"],
     outDir: "dist",
     clean: true,
-    // tsup currently synthesizes baseUrl for declaration bundling; its TS6 API
-    // needs the localized deprecation allowance while tsc itself runs TS7.
-    dts: { compilerOptions: { ignoreDeprecations: "6.0" } },
+    dts: true,
     sourcemap: true,
     onSuccess: "node scripts/copy-registry-cards.mjs",
     esbuildOptions(options) {

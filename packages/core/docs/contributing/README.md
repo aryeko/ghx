@@ -6,7 +6,7 @@ This guide covers development setup, testing, and code conventions specific to t
 
 ### Prerequisites
 
-- Node.js 22.13.0+
+- Node.js matching the repository `.nvmrc` (or a supported development version in the root `package.json`)
 - pnpm 11.18.0+
 - `gh` CLI authenticated (`gh auth status`)
 - `GITHUB_TOKEN` environment variable

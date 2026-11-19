@@ -19,3 +19,10 @@ catalog:
 
 strictPeerDependencies: true
 autoInstallPeers: false
+
+# Nx and graphql-config still depend on vulnerable minimatch majors.
+# GHSA-g3hv-75wg-m249; remove once their supported ranges include the fix.
+overrides:
+  "minimatch@>=7.0.0 <11.0.1": "11.0.9"
+patchedDependencies:
+  nx@24.0.6: patches/nx@24.0.6.patch

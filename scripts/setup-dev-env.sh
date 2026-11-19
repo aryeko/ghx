@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 package_manager=$(node -p 'require("./package.json").packageManager')
-if [[ "$package_manager" != pnpm@* ]]; then
+if [[ "$package_manager" != pnpm@[0-9]* ]]; then
   echo "Expected a pnpm version in package.json's packageManager field." >&2
   exit 1
 fi
