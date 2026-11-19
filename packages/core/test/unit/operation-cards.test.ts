@@ -93,6 +93,9 @@ describe("operation cards registry", () => {
       "pr.stack.list",
       "pr.stack.view",
       "pr.stack.status",
+      "pr.stack.create",
+      "pr.stack.add",
+      "pr.stack.unstack",
       "pr.merge.status",
       "pr.merge",
       "pr.close",
@@ -228,7 +231,11 @@ describe("operation cards registry", () => {
   })
 
   it("routes native stack reads directly to the documented REST endpoints", () => {
-    const cards = listOperationCards().filter((card) => card.routing.preferred === "rest")
+    const cards = listOperationCards().filter(
+      (card) =>
+        card.routing.preferred === "rest" &&
+        card.rest?.endpoints.every(({ method }) => method === "GET"),
+    )
     expect(cards.map((card) => card.capability_id)).toEqual([
       "pr.stack.list",
       "pr.stack.view",

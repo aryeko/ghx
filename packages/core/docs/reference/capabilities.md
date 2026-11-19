@@ -1,6 +1,6 @@
 # Capabilities Reference
 
-All 77 capabilities in `@ghx-dev/core`, grouped by domain.
+All 80 capabilities in `@ghx-dev/core`, grouped by domain.
 
 ## Repository
 
@@ -38,7 +38,7 @@ All 77 capabilities in `@ghx-dev/core`, grouped by domain.
 | `issue.relations.blocked_by.add` | Add blocked-by relationship | graphql |
 | `issue.relations.blocked_by.remove` | Remove blocked-by relationship | graphql |
 
-## Pull Requests (28)
+## Pull Requests (31)
 
 | Capability ID | Description | Preferred Route |
 |---|---|---|
@@ -51,6 +51,9 @@ All 77 capabilities in `@ghx-dev/core`, grouped by domain.
 | `pr.stack.list` | Discover native GitHub.com stacks, optionally by PR | rest |
 | `pr.stack.view` | Read a native stack and its ordered layers | rest |
 | `pr.stack.status` | Read layer review and CI signals and preview the observed merge scope | rest |
+| `pr.stack.create` | Register existing PRs as a native stack | rest |
+| `pr.stack.add` | Append existing PRs above the current top | rest |
+| `pr.stack.unstack` | Remove all eligible members from a native stack | rest |
 | `pr.merge.status` | Check PR merge status | graphql |
 | `pr.diff.view` | View raw PR diff | cli |
 | `pr.diff.files` | List changed files in a PR | cli |
@@ -76,6 +79,12 @@ Use `pr.stack.list` with `prNumber` to look up membership. Pass the returned `st
 `mergePreview` describes the open layers through it. A stale snapshot or a closed,
 unmerged predecessor suppresses the preview. Signals describe observable reviews
 and checks, and GitHub evaluates the stack’s merge rules.
+
+Pass PR numbers bottom to top when registering or appending to a stack. Open the
+PRs with the right base branches before calling these capabilities. Run each
+write separately with `ghx run` or `executeTask`. If GitHub may have received a
+write but no outcome is available, inspect current membership before trying
+another write. Unstack reports any locked members that remain.
 
 ## Workflows & CI (11)
 

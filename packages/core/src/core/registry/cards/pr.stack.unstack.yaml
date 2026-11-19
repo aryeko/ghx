@@ -1,0 +1,58 @@
+capability_id: pr.stack.unstack
+version: "1.0.0"
+description: Remove all eligible members from a native GitHub stack.
+input_schema:
+  type: object
+  required: [owner, name, stackNumber, expectedPrNumbers]
+  properties:
+    owner: { type: string, pattern: "^[A-Za-z0-9-]+$" }
+    name: { type: string, pattern: "^(?![.]{1,2}$)[A-Za-z0-9_.-]+$" }
+    stackNumber: { type: integer, minimum: 1, maximum: 9007199254740991 }
+    expectedPrNumbers:
+      type: array
+      description: Complete membership observed by the caller in bottom-to-top order.
+      minItems: 1
+      uniqueItems: true
+      items: { type: integer, minimum: 1, maximum: 9007199254740991 }
+  additionalProperties: false
+output_schema:
+  type: object
+  required: [dissolved, remainingPrNumbers]
+  properties:
+    dissolved: { type: boolean }
+    remainingPrNumbers:
+      type: array
+      items: { type: integer, minimum: 1 }
+    stack:
+      type: object
+      required: [stackNumber, baseRefName, open, members]
+      properties:
+        stackNumber: { type: integer, minimum: 1 }
+        baseRefName: { type: string }
+        open: { type: boolean }
+        members:
+          type: array
+          items:
+            type: object
+            required: [prNumber, position, headRefName, headSha, baseRefName, state, isDraft]
+            properties:
+              prNumber: { type: integer, minimum: 1 }
+              position: { type: integer, minimum: 1 }
+              headRefName: { type: string }
+              headSha: { type: string }
+              baseRefName: { type: string }
+              state: { type: string, enum: [OPEN, CLOSED, MERGED] }
+              isDraft: { type: boolean }
+            additionalProperties: false
+      additionalProperties: false
+  additionalProperties: false
+routing:
+  preferred: rest
+  fallbacks: []
+  notes:
+    - GitHub.com only. Run as a single capability.
+    - If the submission outcome is unknown, read remote state before submitting again.
+    - Expected membership is checked before submission. GitHub decides which members are eligible for removal.
+rest:
+  endpoints:
+    - { method: POST, path: "/repos/{owner}/{repo}/stacks/{stack_number}/unstack" }

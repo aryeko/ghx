@@ -5,6 +5,7 @@ import type {
 } from "@core/core/contracts/envelope.js"
 import type { TaskRequest } from "@core/core/contracts/task.js"
 import { errorCodes } from "@core/core/errors/codes.js"
+import { isRestMutation } from "@core/core/registry/rest-mutations.js"
 import { logger } from "@core/core/telemetry/log.js"
 import { executeBatch } from "./batch.js"
 import { runSingleTask } from "./single.js"
@@ -42,6 +43,27 @@ export async function executeTasks(
       status: "failed",
       results: [],
       meta: { route_used: "graphql", total: 0, succeeded: 0, failed: 0 },
+    }
+  }
+
+  if (requests.some((request) => request !== undefined && isRestMutation(request.task))) {
+    return {
+      status: "failed",
+      results: Array.from(requests, (request) => {
+        const task = request?.task ?? "unknown"
+        return {
+          task,
+          ok: false,
+          error: {
+            code: errorCodes.Validation,
+            message: isRestMutation(task)
+              ? `${task} requires ghx run or executeTask`
+              : "Batch contains a REST mutation that requires single-task execution",
+            retryable: false,
+          },
+        }
+      }),
+      meta: { route_used: "rest", total: requests.length, succeeded: 0, failed: requests.length },
     }
   }
 

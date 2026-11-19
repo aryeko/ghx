@@ -2,7 +2,15 @@ import type { ChainResultEnvelope, ResultEnvelope } from "../../core/contracts/e
 
 export type CompactRunResult =
   | { ok: true; data: unknown; pagination?: ResultEnvelope["meta"]["pagination"] }
-  | { ok: false; error: { code: string; message: string } }
+  | {
+      ok: false
+      error: {
+        code: string
+        message: string
+        retryable?: boolean
+        details?: Record<string, unknown>
+      }
+    }
 
 export type CompactChainStepResult =
   | { task: string; ok: true; data?: unknown }
@@ -25,6 +33,12 @@ export function compactRunResult(envelope: ResultEnvelope): CompactRunResult {
     error: {
       code: err?.code ?? "UNKNOWN",
       message: err?.message ?? "",
+      ...(envelope.meta.route_used === "rest" && err !== undefined
+        ? {
+            retryable: err.retryable,
+            ...(err.details === undefined ? {} : { details: err.details }),
+          }
+        : {}),
     },
   }
 }

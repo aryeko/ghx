@@ -83,6 +83,9 @@ pr.checks.rerun.all - Rerun all PR workflow checks for a selected run. [owner, n
 pr.stack.list - List native GitHub.com stacks or find the stack containing a PR. [owner, name, prNumber?, first?, after?]
 pr.stack.view - View the trunk and ordered members of a stack. [owner, name, stackNumber]
 pr.stack.status - Inspect layer review and CI signals, optionally preview a merge prefix. [owner, name, stackNumber, throughPrNumber?]
+pr.stack.create - Register existing PRs in bottom-to-top order. [owner, name, prNumbers]
+pr.stack.add - Append PRs above the current top of a stack. [owner, name, stackNumber, expectedTopPrNumber, prNumbers]
+pr.stack.unstack - Unstack all eligible members and report those retained. [owner, name, stackNumber, expectedPrNumbers]
 pr.merge.status - View PR mergeability and readiness signals. [owner, name, prNumber]
 pr.merge - Execute a PR merge. [owner, name, prNumber, method?, deleteBranch?, admin?, auto?]
 pr.close - Close a PR without merging. [owner, name, prNumber, deleteBranch?, comment?]
@@ -173,7 +176,7 @@ If you get `RATE_LIMIT` or `NETWORK`, retry after a short delay. For `NOT_FOUND`
 ## Common workflow patterns
 
 ### Inspect a native PR stack
-Use `pr.stack.list` with the PR number, then `pr.stack.status` with the returned stack number. When `throughPrNumber` is set, the preview describes the open prefix through that PR. Use GitHub or the official `gh stack` extension for stack mutations.
+Use `pr.stack.list` with the PR number, then `pr.stack.status` with the returned stack number. When `throughPrNumber` is set, the preview describes the open prefix through that PR. Run native stack membership changes individually with `ghx run`. If a write's outcome is unknown, verify current membership before another write. Use the official `gh stack` extension for local branch and worktree operations.
 
 ### PR merge readiness audit
 Use `ghx chain` with `pr.checks.list`, `pr.threads.list`, and `pr.merge.status` in one call to get all three signals at once.
