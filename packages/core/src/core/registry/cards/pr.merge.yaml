@@ -34,7 +34,11 @@ output_schema:
   properties:
     prNumber: { type: integer, minimum: 1 }
     method: { type: string, enum: [merge, squash, rebase] }
-    isMethodAssumed: { type: boolean, description: "true when method was not specified by the caller and defaults to merge" }
+    isMethodAssumed:
+      {
+        type: boolean,
+        description: "true when method was not specified by the caller and defaults to merge",
+      }
     queued: { type: boolean }
     deleteBranch: { type: boolean }
     admin: { type: boolean }

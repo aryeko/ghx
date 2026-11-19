@@ -43,4 +43,4 @@ graphql:
   documentPath: src/gql/operations/repo-labels-list.graphql
 cli:
   command: label list
-  jsonFields: [id,name,description,color,isDefault]
+  jsonFields: [id, name, description, color, isDefault]
