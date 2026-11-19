@@ -1,5 +1,18 @@
 # @ghx-dev/core
 
+## 0.9.0
+
+### Minor Changes
+
+- d6be3e1: Add `pr.stack.merge` and `pr.merge.request.view` for GitHub asynchronous stack merges. Preview and recheck the requested prefix, submit using the selected head SHA, and distinguish queue admission from a completed merge.
+- 2f71c88: Add `pr.stack.create`, `pr.stack.add`, and `pr.stack.unstack` to register, extend, and unstack native GitHub PR stacks from existing pull requests.
+- 829eabb: Add `pr.stack.list`, `pr.stack.view`, and `pr.stack.status` for native GitHub.com pull request stacks. Inspect the ordered layers and their review and CI signals, and preview the observed merge scope for a selected pull request.
+
+### Patch Changes
+
+- 0568d46: Update GraphQL and YAML runtime dependencies and refresh the bundled CLI with patched transitive dependencies.
+- 0206737: Check native stack membership before ordinary `pr.merge` dispatch. Stacked PRs require an explicit stack merge, including when an ordinary merge would have used the CLI for auto-merge, admin, or branch deletion.
+
 ## 0.8.0
 
 ### Minor Changes
