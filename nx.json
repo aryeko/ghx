@@ -10,75 +10,45 @@
       "cache": true
     },
     "lint": {
-      "dependsOn": [
-        "^lint"
-      ],
+      "dependsOn": ["^lint"],
       "cache": true
     },
     "typecheck": {
-      "dependsOn": [
-        "^build",
-        "^typecheck"
-      ],
+      "dependsOn": ["^build", "^typecheck"],
       "cache": true
     },
     "build": {
-      "dependsOn": [
-        "^build",
-        "typecheck"
-      ],
-      "outputs": [
-        "{projectRoot}/dist"
-      ],
+      "dependsOn": ["^build", "typecheck"],
+      "outputs": ["{projectRoot}/dist"],
       "cache": true
     },
     "test": {
-      "dependsOn": [
-        "typecheck"
-      ],
+      "dependsOn": ["typecheck"],
       "cache": true
     },
     "test:coverage": {
-      "dependsOn": [
-        "typecheck"
-      ],
+      "dependsOn": ["typecheck"],
       "cache": false
     },
     "ci": {
-      "dependsOn": [
-        "format:check",
-        "lint",
-        "typecheck",
-        "test:coverage",
-        "build",
-        "ci:extra"
-      ],
+      "dependsOn": ["format:check", "lint", "typecheck", "test:coverage", "build", "ci:extra"],
       "cache": false
     },
     "ci:extra": {
       "cache": false
     },
     "test:e2e": {
-      "dependsOn": [
-        "test:e2e:local",
-        "test:e2e:sdk"
-      ],
+      "dependsOn": ["test:e2e:local", "test:e2e:sdk"],
       "cache": false
     },
     "test:e2e:sdk": {
-      "dependsOn": [
-        "build"
-      ]
+      "dependsOn": ["build"]
     },
     "test:e2e:local": {
-      "dependsOn": [
-        "build"
-      ]
+      "dependsOn": ["build"]
     }
   },
-  "plugins": [
-    "@nx/js"
-  ],
+  "plugins": ["@nx/js"],
   "analytics": true,
   "affected": {
     "legacy": true
