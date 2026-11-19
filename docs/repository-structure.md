@@ -151,7 +151,7 @@ ghx/
 | `core/execution/adapters/graphql-capability-adapter.ts` | GraphQL capability adapter | `runGraphqlCapability()` |
 | `core/execution/adapters/cli-adapter.ts` | Generic CLI wrapper | `runCliAdapter()` |
 | `core/execution/adapters/graphql-adapter.ts` | Generic GraphQL wrapper | `runGraphqlAdapter()` |
-| `core/execution/adapters/rest-adapter.ts` | GitHub.com REST reads and HTTP error mapping | `createRestReader()` |
+| `core/execution/adapters/rest-adapter.ts` | GitHub.com REST transport and HTTP error mapping | `createRestClient()` |
 | `core/execution/adapters/rest-capability-adapter.ts` | REST capability dispatch | `runRestCapability()` |
 | `core/execution/adapters/rest/` | Native stack responses, pagination, and status | |
 | `core/execution/cli/safe-runner.ts` | Safe CLI spawn wrapper | `createSafeCliCommandRunner()` |

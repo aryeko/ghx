@@ -33,7 +33,7 @@ function integerHeader(value: string | null): number | undefined {
   return Number.isSafeInteger(number) ? number : undefined
 }
 
-async function httpError(response: Response): Promise<RestError> {
+async function httpError(response: Response, write: boolean): Promise<RestError> {
   const { status, headers } = response
   const retryAfter = integerHeader(headers.get("retry-after"))
   const primaryLimit = headers.get("x-ratelimit-remaining") === "0"
@@ -48,7 +48,7 @@ async function httpError(response: Response): Promise<RestError> {
       ? errorCodes.Auth
       : status === 404
         ? errorCodes.NotFound
-        : status === 400 || status === 422
+        : status === 400 || status === 409 || status === 422
           ? errorCodes.Validation
           : errorCodes.Server
 
@@ -63,8 +63,8 @@ async function httpError(response: Response): Promise<RestError> {
 
   return new RestError({
     code,
-    message: `GitHub REST read failed (HTTP ${status})`,
-    retryable: isRetryableErrorCode(code),
+    message: `GitHub REST ${write ? "write" : "read"} failed (HTTP ${status})`,
+    retryable: !write && isRetryableErrorCode(code),
     details,
   })
 }
@@ -92,13 +92,45 @@ async function readRestJson(response: Response): Promise<unknown> {
   }
 }
 
-export type RestReader = (
-  path: string,
-  search?: URLSearchParams,
-) => Promise<{ data: unknown; headers: { get(name: string): string | null } }>
+type RestResponse = {
+  status: number
+  data: unknown
+  headers: { get(name: string): string | null }
+}
 
-export function createRestReader(token: string, restFetch: typeof fetch): RestReader {
-  return async (path: string, search?: URLSearchParams) => {
+type RestRequest = {
+  method: "GET" | "POST" | "PUT"
+  expectedStatuses: readonly number[]
+  body?: Record<string, unknown>
+}
+
+export type RestReader = (path: string, search?: URLSearchParams) => Promise<RestResponse>
+
+export type RestClient = {
+  read: RestReader
+  request(path: string, options: RestRequest): Promise<RestResponse>
+}
+
+export function githubRequestId(headers: RestResponse["headers"]): string | undefined {
+  const id = headers.get("x-github-request-id")
+  return id !== null && /^[A-Z0-9:-]{1,80}$/i.test(id) ? id : undefined
+}
+
+export function unknownRestWrite(details: Record<string, unknown> = {}): RestError {
+  return new RestError({
+    code: errorCodes.Server,
+    message: "GitHub REST write outcome is unknown. Read remote state before submitting again.",
+    retryable: false,
+    details: { ...details, submissionOutcome: "unknown" },
+  })
+}
+
+export function createRestClient(token: string, restFetch: typeof fetch): RestClient {
+  const request = async (
+    path: string,
+    { method, expectedStatuses, body }: RestRequest,
+    search?: URLSearchParams,
+  ): Promise<RestResponse> => {
     const url = new URL(path, GITHUB_REST_ORIGIN)
     if (url.origin !== GITHUB_REST_ORIGIN) {
       throw new RestError({
@@ -109,18 +141,23 @@ export function createRestReader(token: string, restFetch: typeof fetch): RestRe
     }
     if (search) url.search = search.toString()
 
+    const write = method !== "GET"
     let response: Response
     try {
       response = await restFetch(url, {
+        ...(write ? { method } : {}),
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         headers: {
           accept: "application/vnd.github+json",
           authorization: `Bearer ${token}`,
           "x-github-api-version": API_VERSION,
+          ...(body === undefined ? {} : { "content-type": "application/json" }),
         },
         redirect: "manual",
         signal: AbortSignal.timeout(TIMEOUT_MS),
       })
     } catch {
+      if (write) throw unknownRestWrite()
       throw new RestError({
         code: errorCodes.Network,
         message: "GitHub REST request failed or timed out",
@@ -128,7 +165,30 @@ export function createRestReader(token: string, restFetch: typeof fetch): RestRe
       })
     }
 
-    if (!response.ok) throw await httpError(response)
-    return { data: await readRestJson(response), headers: response.headers }
+    const { status, headers } = response
+    const requestId = githubRequestId(headers)
+    const writeDetails =
+      write && requestId !== undefined ? { status, githubRequestId: requestId } : { status }
+    if (!expectedStatuses.includes(status)) {
+      if (write && (response.ok || status >= 500 || status === 408)) {
+        throw unknownRestWrite(writeDetails)
+      }
+      throw await httpError(response, write)
+    }
+
+    if (status === 204) return { status, data: null, headers }
+    try {
+      return { status, data: await readRestJson(response), headers }
+    } catch (error) {
+      // A conflict rejected this submission. Its response may carry the prior request ID.
+      if (status === 409) return { status, data: null, headers }
+      if (write) throw unknownRestWrite(writeDetails)
+      throw error
+    }
+  }
+
+  return {
+    request,
+    read: (path, search) => request(path, { method: "GET", expectedStatuses: [200] }, search),
   }
 }

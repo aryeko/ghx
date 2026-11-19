@@ -2,6 +2,7 @@ import { compactRunResult } from "@core/cli/formatters/compact.js"
 import { applyRepoContextDefaultsToInput } from "@core/cli/repo-context.js"
 import { invalidateTokenCache, resolveGithubToken } from "@core/core/auth/resolve-token.js"
 import { errorCodes } from "@core/core/errors/codes.js"
+import { isRestMutation } from "@core/core/registry/rest-mutations.js"
 import type { TaskRequest } from "../../core/contracts/task.js"
 import { executeTask } from "../../core/routing/engine/index.js"
 import { createGithubClient } from "../../gql/github-client.js"
@@ -155,7 +156,12 @@ export async function runCommand(argv: string[] = []): Promise<number> {
     skipGhPreflight,
   })
 
-  if (!result.ok && result.error?.code === errorCodes.Auth && source !== "env") {
+  if (
+    !result.ok &&
+    result.error?.code === errorCodes.Auth &&
+    source !== "env" &&
+    !isRestMutation(task)
+  ) {
     await invalidateTokenCache()
     const fresh = await resolveGithubToken()
     result = await executeTask(request, {

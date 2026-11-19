@@ -92,6 +92,8 @@ Native GitHub.com stack discovery uses the resolved GitHub token directly.
 `pr.stack.list` and `pr.stack.view` consume REST responses.
 `pr.stack.status` reads the REST snapshot before and after a bounded GraphQL
 read of review and CI signals. Independent stack reads work in `chain`.
+Membership writes use the single-task route, with no fallback and no automatic
+replay after submission. The compact CLI format preserves REST recovery details.
 Library callers can supply `restFetch` in the execution dependencies to test
 REST calls.
 

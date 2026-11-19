@@ -207,6 +207,22 @@ describe("runCommand", () => {
     )
   })
 
+  it("does not resubmit a native stack write from the CLI auth refresh path", async () => {
+    resolveGithubTokenMock.mockResolvedValue({ token: "cached-token", source: "cache" })
+    executeTaskMock.mockResolvedValue({
+      ok: false,
+      error: { code: "AUTH", message: "Forbidden", retryable: false },
+      meta: { capability_id: "pr.stack.create", route_used: "rest" },
+    })
+    vi.spyOn(process.stdout, "write").mockImplementation(() => true)
+
+    await runCommand(["pr.stack.create", "--input", '{"owner":"a","name":"b","prNumbers":[1,2]}'])
+
+    expect(executeTaskMock).toHaveBeenCalledTimes(1)
+    expect(resolveGithubTokenMock).toHaveBeenCalledTimes(1)
+    expect(invalidateTokenCacheMock).not.toHaveBeenCalled()
+  })
+
   it("propagates non-ok GraphQL HTTP responses", async () => {
     const fetchMock = vi.fn(async () => ({
       ok: false,

@@ -125,6 +125,19 @@ describe("compactRunResult", () => {
     expect(result).not.toHaveProperty("error.details")
   })
 
+  it("keeps recovery information in compact REST errors", () => {
+    const envelope = makeErrorEnvelope({
+      error: {
+        code: "SERVER",
+        message: "GitHub REST write outcome is unknown",
+        retryable: false,
+        details: { submissionOutcome: "unknown", stackNumber: 42 },
+      },
+      meta: { capability_id: "pr.stack.add", route_used: "rest" },
+    })
+    expect(compactRunResult(envelope)).toEqual({ ok: false, error: envelope.error })
+  })
+
   it("strips meta from the compact result", () => {
     const envelope = makeOkEnvelope()
     const result = compactRunResult(envelope)

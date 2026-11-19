@@ -245,6 +245,21 @@ describe("capabilityRegistry", () => {
         fallbackRoutes: [],
       },
       {
+        task: "pr.stack.create",
+        defaultRoute: "rest",
+        fallbackRoutes: [],
+      },
+      {
+        task: "pr.stack.add",
+        defaultRoute: "rest",
+        fallbackRoutes: [],
+      },
+      {
+        task: "pr.stack.unstack",
+        defaultRoute: "rest",
+        fallbackRoutes: [],
+      },
+      {
         task: "pr.merge.status",
         defaultRoute: "graphql",
         fallbackRoutes: ["cli"],
