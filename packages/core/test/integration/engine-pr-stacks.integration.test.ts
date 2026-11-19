@@ -57,7 +57,12 @@ describe("native PR stack capabilities", () => {
       )
       .mockResolvedValueOnce(Response.json([]))
 
-    const deps = { githubClient: client, githubToken: "test-token", restFetch }
+    const deps = {
+      githubClient: client,
+      githubToken: "test-token",
+      githubHost: "github.com",
+      restFetch,
+    }
     const input = { ...repo, first: 1 }
     const first = await executeTask({ task: "pr.stack.list", input }, deps)
     expect(first).toMatchObject({
@@ -96,7 +101,7 @@ describe("native PR stack capabilities", () => {
         task: "pr.stack.view",
         input: { ...repo, stackNumber },
       })),
-      { githubClient: client, githubToken: "test-token", restFetch },
+      { githubClient: client, githubToken: "test-token", githubHost: "github.com", restFetch },
     )
     expect(result).toMatchObject({
       status: "partial",
@@ -136,6 +141,7 @@ describe("native PR stack capabilities", () => {
       {
         githubClient: createGithubClient({ execute } as Parameters<typeof createGithubClient>[0]),
         githubToken: "test-token",
+        githubHost: "github.com",
         restFetch,
       },
     )
@@ -180,8 +186,40 @@ describe("native PR stack capabilities", () => {
 
     const result = await executeTask(
       { task: "pr.stack.status", input: { ...repo, stackNumber: 42, throughPrNumber: 10 } },
-      { githubClient: client, githubToken: "test-token", restFetch },
+      { githubClient: client, githubToken: "test-token", githubHost: "github.com", restFetch },
     )
+    expect(result).toMatchObject({
+      ok: true,
+      data: { snapshotStatus: "stale", mergePreview: null },
+    })
+  })
+
+  it("suppresses the preview for a GraphQL head mismatch with stable REST snapshots", async () => {
+    const restFetch = vi.fn<typeof fetch>(async () => Response.json(stack))
+    const execute = vi.fn(async () => ({
+      nodes: [
+        {
+          __typename: "PullRequest",
+          id: "PR_api",
+          headRefOid: "d".repeat(40),
+          reviewDecision: "APPROVED",
+          mergeStateStatus: "CLEAN",
+          statusCheckRollup: { state: "SUCCESS" },
+        },
+      ],
+    }))
+
+    const result = await executeTask(
+      { task: "pr.stack.status", input: { ...repo, stackNumber: 42, throughPrNumber: 9 } },
+      {
+        githubClient: createGithubClient({ execute } as Parameters<typeof createGithubClient>[0]),
+        githubToken: "test-token",
+        githubHost: "github.com",
+        restFetch,
+      },
+    )
+
+    expect(restFetch).toHaveBeenCalledTimes(2)
     expect(result).toMatchObject({
       ok: true,
       data: { snapshotStatus: "stale", mergePreview: null },
@@ -195,7 +233,7 @@ describe("native PR stack capabilities", () => {
     )
     const result = await executeTask(
       { task: "pr.stack.list", input: repo },
-      { githubClient: client, githubToken: "test-token", restFetch },
+      { githubClient: client, githubToken: "test-token", githubHost: "github.com", restFetch },
     )
     expect(restFetch).toHaveBeenCalledTimes(1)
     expect(result.error).toMatchObject({
@@ -221,7 +259,12 @@ describe("native PR stack capabilities", () => {
       .mockResolvedValueOnce(new Response("private content"))
       .mockRejectedValueOnce(new Error("private network details"))
     const request = { task: "pr.stack.list", input: repo }
-    const deps = { githubClient: client, githubToken: "test-token", restFetch }
+    const deps = {
+      githubClient: client,
+      githubToken: "test-token",
+      githubHost: "github.com",
+      restFetch,
+    }
     const invalid = await executeTask(request, deps)
     const unavailable = await executeTask(request, deps)
 
@@ -237,7 +280,7 @@ describe("native PR stack capabilities", () => {
     )
     const result = await executeTask(
       { task: "pr.stack.view", input: { ...repo, stackNumber: 42 } },
-      { githubClient: client, githubToken: "test-token", restFetch },
+      { githubClient: client, githubToken: "test-token", githubHost: "github.com", restFetch },
     )
 
     expect(result).toMatchObject({

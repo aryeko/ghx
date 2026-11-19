@@ -1,3 +1,4 @@
+import { isObject } from "@core/shared/utils.js"
 import type { ResultError } from "../../contracts/envelope.js"
 import { errorCodes } from "../../errors/codes.js"
 import { isRetryableErrorCode } from "../../errors/retryability.js"
@@ -5,6 +6,7 @@ import { isRetryableErrorCode } from "../../errors/retryability.js"
 export const GITHUB_REST_ORIGIN = "https://api.github.com"
 const API_VERSION = "2026-03-10"
 const TIMEOUT_MS = 15_000
+const SECONDARY_RATE_LIMIT_WAIT_SECONDS = 60
 
 export class RestError extends Error {
   constructor(readonly result: ResultError) {
@@ -12,12 +14,33 @@ export class RestError extends Error {
   }
 }
 
-function httpError(response: Response): RestError {
+async function reportsSecondaryRateLimit(response: Response): Promise<boolean> {
+  try {
+    const payload: unknown = await response.json()
+    return (
+      isObject(payload) &&
+      typeof payload.message === "string" &&
+      /secondary rate limit/i.test(payload.message)
+    )
+  } catch {
+    return false
+  }
+}
+
+function integerHeader(value: string | null): number | undefined {
+  if (value === null || !/^\d+$/.test(value)) return undefined
+  const number = Number(value)
+  return Number.isSafeInteger(number) ? number : undefined
+}
+
+async function httpError(response: Response): Promise<RestError> {
   const { status, headers } = response
-  const retryAfter = headers.get("retry-after")
+  const retryAfter = integerHeader(headers.get("retry-after"))
+  const primaryLimit = headers.get("x-ratelimit-remaining") === "0"
   const isRateLimit =
     status === 429 ||
-    (status === 403 && (retryAfter !== null || headers.get("x-ratelimit-remaining") === "0"))
+    (status === 403 &&
+      (retryAfter !== undefined || primaryLimit || (await reportsSecondaryRateLimit(response))))
 
   const code = isRateLimit
     ? errorCodes.RateLimit
@@ -30,12 +53,12 @@ function httpError(response: Response): RestError {
           : errorCodes.Server
 
   const details: Record<string, unknown> = { status }
-  if (retryAfter !== null && /^\d+$/.test(retryAfter)) {
-    details.retryAfterSeconds = Number(retryAfter)
-  }
-  const reset = headers.get("x-ratelimit-reset")
-  if (reset !== null && /^\d+$/.test(reset)) {
-    details.rateLimitReset = Number(reset)
+  const reset = integerHeader(headers.get("x-ratelimit-reset"))
+  if (reset !== undefined) details.rateLimitReset = reset
+  if (retryAfter !== undefined) {
+    details.retryAfterSeconds = retryAfter
+  } else if (isRateLimit && (!primaryLimit || reset === undefined)) {
+    details.retryAfterSeconds = SECONDARY_RATE_LIMIT_WAIT_SECONDS
   }
 
   return new RestError({
@@ -44,6 +67,29 @@ function httpError(response: Response): RestError {
     retryable: isRetryableErrorCode(code),
     details,
   })
+}
+
+async function readRestJson(response: Response): Promise<unknown> {
+  let body: string
+  try {
+    body = await response.text()
+  } catch {
+    throw new RestError({
+      code: errorCodes.Network,
+      message: "GitHub REST response transfer failed or timed out",
+      retryable: true,
+    })
+  }
+
+  try {
+    return JSON.parse(body) as unknown
+  } catch {
+    throw new RestError({
+      code: errorCodes.Server,
+      message: "GitHub REST response could not be read as JSON",
+      retryable: false,
+    })
+  }
 }
 
 export type RestReader = (
@@ -82,17 +128,7 @@ export function createRestReader(token: string, restFetch: typeof fetch): RestRe
       })
     }
 
-    if (!response.ok) throw httpError(response)
-
-    try {
-      const data: unknown = await response.json()
-      return { data, headers: response.headers }
-    } catch {
-      throw new RestError({
-        code: errorCodes.Server,
-        message: "GitHub REST response could not be read as JSON",
-        retryable: false,
-      })
-    }
+    if (!response.ok) throw await httpError(response)
+    return { data: await readRestJson(response), headers: response.headers }
   }
 }
