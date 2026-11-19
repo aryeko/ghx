@@ -1,6 +1,6 @@
 capability_id: pr.merge
 version: "1.0.0"
-description: Execute a pull request merge.
+description: Merge a standalone pull request. Use GitHub or gh stack merge for native stack members.
 input_schema:
   type: object
   required: [owner, name, prNumber]
@@ -58,15 +58,10 @@ routing:
       predicate: cli if auto == true
       reason: "gh CLI required for --auto"
 graphql:
-  # GQL limitation: deleteBranch: true unsupported, triggers CLI fallback
   operationName: PrMerge
   operationType: mutation
   documentPath: src/gql/operations/pr-merge.graphql
-  # Resolution maps the user-facing inputs to the GraphQL mutation variables:
-  # - pullRequestId is the GraphQL node id, looked up from owner/name/prNumber.
-  # - mergeMethod is the uppercase GraphQL enum, derived from the lower/mixed-case
-  #   `method` input. The single-call path (capability-registry handler) does the
-  #   same normalization, so chain and single-call paths agree.
+  # Document the variable sources. The engine dispatches guarded merges individually.
   resolution:
     lookup:
       operationName: PrNodeId

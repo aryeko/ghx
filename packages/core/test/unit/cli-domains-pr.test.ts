@@ -2,6 +2,7 @@ import { handlers } from "@core/core/execution/adapters/cli/domains/pr.js"
 import type { CliHandler } from "@core/core/execution/adapters/cli/helpers.js"
 import type { CliCommandRunner } from "@core/core/execution/adapters/cli-adapter.js"
 import { describe, expect, it, vi } from "vitest"
+import { cliMembershipResponse } from "../helpers/pr-merge-fixtures.js"
 
 const mockRunner = (
   exitCode: number,
@@ -482,7 +483,10 @@ describe("pr domain handlers", () => {
 
   describe("pr.merge", () => {
     it("succeeds with method squash and deleteBranch", async () => {
-      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" })
+      const runSpy = vi
+        .fn()
+        .mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" })
+        .mockResolvedValueOnce(cliMembershipResponse("https://github.com/owner/repo/pull/123"))
       const runner = { run: runSpy } as unknown as CliCommandRunner
 
       const result = await h("pr.merge")(
@@ -513,7 +517,10 @@ describe("pr domain handlers", () => {
     })
 
     it("defaults to merge method", async () => {
-      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" })
+      const runSpy = vi
+        .fn()
+        .mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" })
+        .mockResolvedValueOnce(cliMembershipResponse("https://github.com/owner/repo/pull/123"))
       const runner = { run: runSpy } as unknown as CliCommandRunner
 
       await h("pr.merge")(
@@ -1262,7 +1269,12 @@ describe("pr domain handlers – additional coverage", () => {
 
     it("returns error on non-zero exit code", async () => {
       const result = await h("pr.merge")(
-        mockRunner(1, "", "merge conflict"),
+        {
+          run: vi
+            .fn()
+            .mockResolvedValueOnce(cliMembershipResponse("https://github.com/o/r/pull/1"))
+            .mockResolvedValue({ exitCode: 1, stdout: "", stderr: "merge conflict" }),
+        },
         { owner: "o", name: "r", prNumber: 1 },
         undefined,
       )
@@ -1271,7 +1283,10 @@ describe("pr domain handlers – additional coverage", () => {
     })
 
     it("succeeds with rebase method", async () => {
-      const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" })
+      const runSpy = vi
+        .fn()
+        .mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" })
+        .mockResolvedValueOnce(cliMembershipResponse("https://github.com/o/r/pull/1"))
       const runner = { run: runSpy } as unknown as CliCommandRunner
 
       const result = await h("pr.merge")(

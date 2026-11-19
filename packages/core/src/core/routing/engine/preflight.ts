@@ -9,6 +9,7 @@ import { resolutionLookups } from "./resolve.js"
 import type { ClassifiedStep } from "./types.js"
 
 export const SINGLE_HANDLER_GRAPHQL_TASKS = new Set([
+  "pr.merge",
   "pr.comments.reactions.list",
   "pr.threads.list",
   "project_v2.fields.list",
@@ -114,12 +115,12 @@ export function runPreflight(
 
     let route: ClassifiedStep["route"]
     const preferredRoute = selectPreferredRoute(card, req.input, {})
-    if (SINGLE_HANDLER_GRAPHQL_TASKS.has(req.task) && card.graphql) {
-      route = "single"
-    } else if (preferredRoute === "rest" && card.rest) {
+    if (preferredRoute === "rest" && card.rest) {
       route = "rest"
     } else if (preferredRoute === "cli" && card.cli) {
       route = "cli"
+    } else if (SINGLE_HANDLER_GRAPHQL_TASKS.has(req.task) && card.graphql) {
+      route = "single"
     } else if (!card.graphql && card.cli) {
       route = "cli"
     } else if (card.graphql) {
