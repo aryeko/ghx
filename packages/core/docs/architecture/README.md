@@ -18,7 +18,7 @@ graph TB
         CONTRACTS[contracts/<br/>ResultEnvelope, TaskRequest]
         REGISTRY[registry/<br/>70+ Operation Cards + Schema Validation]
         ROUTING[routing/engine/<br/>Single + Batch Execution]
-        EXEC[execution/<br/>Adapters: CLI + GraphQL]
+        EXEC[execution/<br/>Adapters: CLI + GraphQL + REST]
         ERRORS[errors/<br/>Error Codes + Mapping]
         TELEM[telemetry/<br/>Structured Logging]
     end
@@ -123,5 +123,5 @@ src/
 ## Deep Dives
 
 - [Execution Pipeline](./execution-pipeline.md) — step-by-step walkthrough of how a single task executes
-- [Adapters](./adapters.md) — CLI and GraphQL adapter internals
+- [Adapters](./adapters.md) — CLI, GraphQL, and REST adapter internals
 - [GraphQL Layer](./graphql-layer.md) — transport, client facade, codegen, batching

@@ -1,7 +1,6 @@
 import { runCommand } from "@core/cli/commands/run.js"
 import { formatJson } from "@core/cli/formatters/json.js"
 import { main } from "@core/cli/index.js"
-import { runRestAdapter } from "@core/core/execution/adapters/rest-adapter.js"
 import { routeReasonCodes } from "@core/core/routing/reason-codes.js"
 import { projectName } from "@core/shared/constants.js"
 import { isObject } from "@core/shared/utils.js"
@@ -26,9 +25,5 @@ describe("scaffolds and constants", () => {
     expect(isObject({})).toBe(true)
     expect(isObject([])).toBe(false)
     expect(isObject(null)).toBe(false)
-  })
-
-  it("throws for unimplemented rest adapter", async () => {
-    await expect(runRestAdapter()).rejects.toThrow("not implemented")
   })
 })

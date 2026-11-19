@@ -90,6 +90,9 @@ describe("operation cards registry", () => {
       "pr.checks.list",
       "pr.checks.rerun.failed",
       "pr.checks.rerun.all",
+      "pr.stack.list",
+      "pr.stack.view",
+      "pr.stack.status",
       "pr.merge.status",
       "pr.merge",
       "pr.close",
@@ -224,12 +227,17 @@ describe("operation cards registry", () => {
     )
   })
 
-  it("keeps rest route disabled until implemented", () => {
-    const cards = listOperationCards()
-
+  it("routes native stack reads directly to the documented REST endpoints", () => {
+    const cards = listOperationCards().filter((card) => card.routing.preferred === "rest")
+    expect(cards.map((card) => card.capability_id)).toEqual([
+      "pr.stack.list",
+      "pr.stack.view",
+      "pr.stack.status",
+    ])
     for (const card of cards) {
-      expect(card.routing.preferred).not.toBe("rest")
-      expect(card.routing.fallbacks).not.toContain("rest")
+      expect(card.routing.fallbacks).toEqual([])
+      expect(card.rest?.endpoints).toHaveLength(1)
+      expect(card.rest?.endpoints[0]?.method).toBe("GET")
     }
   })
 

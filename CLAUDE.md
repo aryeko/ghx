@@ -75,7 +75,7 @@ pnpm --filter @ghx-dev/agent-profiler run test:coverage
 User/Agent → CLI (packages/core/src/cli/) → executeTask() [core/routing/engine.ts]
            → execute() [core/execute/execute.ts]
            → preflight checks (GITHUB_TOKEN, gh auth)
-           → CLI Adapter | GraphQL Adapter | REST Adapter (stub)
+           → CLI Adapter | GraphQL Adapter | REST Adapter
            → ResultEnvelope { ok, data, error, meta }
 ```
 

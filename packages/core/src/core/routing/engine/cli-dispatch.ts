@@ -9,9 +9,9 @@ export function startCliSteps(
   deps: ExecutionDeps,
 ): Array<Promise<[number, ResultEnvelope]>> {
   return steps
-    .filter((s) => s.route === "cli" || s.route === "single")
+    .filter((s) => s.route === "cli" || s.route === "single" || s.route === "rest")
     .map((step) => {
-      const routeUsed = step.route === "cli" ? "cli" : "graphql"
+      const routeUsed = step.route === "rest" || step.route === "cli" ? step.route : "graphql"
       const req = requests[step.index]
       if (req === undefined) {
         return Promise.resolve<[number, ResultEnvelope]>([
@@ -59,7 +59,7 @@ export async function collectCliResults(
     } else {
       const msg = outcome.reason instanceof Error ? outcome.reason.message : String(outcome.reason)
       const req = requests[step.index]
-      const routeUsed = step.route === "cli" ? "cli" : "graphql"
+      const routeUsed = step.route === "rest" || step.route === "cli" ? step.route : "graphql"
       cliResults.set(step.index, {
         ok: false,
         error: { code: errorCodes.Unknown, message: msg, retryable: false },

@@ -19,12 +19,13 @@ describe("executeTask engine wiring", () => {
     getOperationCardMock.mockReturnValue(baseCard)
   })
 
-  it("exposes REST fallback envelope via execute route callbacks", async () => {
+  it("returns a REST unsupported envelope for capabilities handled by other adapters", async () => {
     executeMock.mockImplementation(
       async (options: {
+        params: Record<string, unknown>
         routes: { rest: (params: Record<string, unknown>) => Promise<unknown> }
       }) => {
-        return options.routes.rest({})
+        return options.routes.rest(options.params)
       },
     )
 
@@ -57,7 +58,7 @@ describe("executeTask engine wiring", () => {
     expect(result.ok).toBe(false)
     expect(result.error?.code).toBe("ADAPTER_UNSUPPORTED")
     expect(result.meta.route_used).toBe("rest")
-    expect(result.meta.reason).toBe("DEFAULT_POLICY")
+    expect(result.error?.message).toBe("Unsupported REST task")
   })
 
   it("skips cli preflight probes when skipGhPreflight is true", async () => {

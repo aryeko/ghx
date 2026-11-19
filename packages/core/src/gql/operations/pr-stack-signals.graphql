@@ -1,0 +1,14 @@
+query PrStackSignals($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    __typename
+    ... on PullRequest {
+      id
+      headRefOid
+      reviewDecision
+      mergeStateStatus
+      statusCheckRollup {
+        state
+      }
+    }
+  }
+}

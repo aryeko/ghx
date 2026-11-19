@@ -6,6 +6,7 @@ import { logger } from "../telemetry/log.js"
 export type PreflightInput = {
   route: RouteSource
   githubToken?: string | null
+  githubHost?: string
   githubClientPresent?: boolean
   ghCliAvailable?: boolean
   ghAuthenticated?: boolean
@@ -34,7 +35,12 @@ export function preflightCheck(input: PreflightInput): PreflightResult {
   }
 
   if (input.route === "rest") {
-    return fail(errorCodes.AdapterUnsupported, "REST route is planned but not implemented in v1")
+    if (input.githubHost !== undefined && input.githubHost.toLowerCase() !== "github.com") {
+      return fail(errorCodes.AdapterUnsupported, "REST stack capabilities require GitHub.com")
+    }
+    if (!input.githubToken?.trim()) {
+      return fail(errorCodes.Auth, "GitHub token is required for the REST route")
+    }
   }
 
   if (input.route === "cli" && input.ghCliAvailable === false) {

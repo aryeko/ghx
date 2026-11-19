@@ -80,6 +80,9 @@ pr.diff.view - View the unified diff for a PR. [owner, name, prNumber]
 pr.checks.list - List PR check statuses with summary counts. [owner, name, prNumber, state?]
 pr.checks.rerun.failed - Rerun failed PR workflow checks for a selected run. [owner, name, prNumber, runId]
 pr.checks.rerun.all - Rerun all PR workflow checks for a selected run. [owner, name, prNumber, runId]
+pr.stack.list - List native GitHub.com stacks or find the stack containing a PR. [owner, name, prNumber?, first?, after?]
+pr.stack.view - View the trunk and ordered members of a stack. [owner, name, stackNumber]
+pr.stack.status - Inspect layer review and CI signals, optionally preview a merge prefix. [owner, name, stackNumber, throughPrNumber?]
 pr.merge.status - View PR mergeability and readiness signals. [owner, name, prNumber]
 pr.merge - Execute a PR merge. [owner, name, prNumber, method?, deleteBranch?, admin?, auto?]
 pr.close - Close a PR without merging. [owner, name, prNumber, deleteBranch?, comment?]
@@ -168,6 +171,9 @@ Common error codes: `AUTH`, `NOT_FOUND`, `VALIDATION`, `RATE_LIMIT`, `NETWORK`, 
 If you get `RATE_LIMIT` or `NETWORK`, retry after a short delay. For `NOT_FOUND`, double-check owner/name/number. For `VALIDATION`, run `ghx capabilities explain <id>` to check the expected schema.
 
 ## Common workflow patterns
+
+### Inspect a native PR stack
+Use `pr.stack.list` with the PR number, then `pr.stack.status` with the returned stack number. When `throughPrNumber` is set, the preview describes the open prefix through that PR. Use GitHub or the official `gh stack` extension for stack mutations.
 
 ### PR merge readiness audit
 Use `ghx chain` with `pr.checks.list`, `pr.threads.list`, and `pr.merge.status` in one call to get all three signals at once.
