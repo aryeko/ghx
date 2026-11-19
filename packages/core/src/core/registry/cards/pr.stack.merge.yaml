@@ -1,0 +1,62 @@
+capability_id: pr.stack.merge
+version: "1.0.0"
+description: Request a native GitHub stack merge through a selected pull request.
+input_schema:
+  type: object
+  required: [owner, name, stackNumber, throughPrNumber, expectedBaseRefName, expectedMembers]
+  properties:
+    owner: { type: string, pattern: "^[A-Za-z0-9-]+$" }
+    name: { type: string, pattern: "^(?![.]{1,2}$)[A-Za-z0-9_.-]+$" }
+    stackNumber: { type: integer, minimum: 1, maximum: 9007199254740991 }
+    throughPrNumber: { type: integer, minimum: 1, maximum: 9007199254740991 }
+    expectedBaseRefName: { type: string, minLength: 1, description: "Stack trunk from the merge preview." }
+    expectedMembers:
+      type: array
+      minItems: 1
+      description: Open PRs in the merge preview in bottom-to-top order, including the target.
+      items:
+        type: object
+        required: [prNumber, headSha]
+        properties:
+          prNumber: { type: integer, minimum: 1, maximum: 9007199254740991 }
+          headSha: { type: string, pattern: "^[a-fA-F0-9]{40}$" }
+        additionalProperties: false
+    mergeAction: { type: string, enum: [default, direct_merge, merge_queue], default: default }
+    method: { type: string, enum: [merge, squash, rebase], description: Requires direct_merge. }
+  additionalProperties: false
+  if:
+    required: [method]
+  then:
+    required: [mergeAction]
+    properties:
+      mergeAction: { const: direct_merge }
+output_schema:
+  type: object
+  required: [status, previewPrNumbers]
+  properties:
+    status: { type: string, enum: [pending, merged, enqueued] }
+    requestId: { type: string }
+    mergeCommitSha: { type: string }
+    message: { type: string }
+    mergeAction: { type: string, enum: [default, direct_merge, merge_queue] }
+    method: { type: string, enum: [default, merge, squash, rebase] }
+    expectedHeadSha: { type: string }
+    bypassRules: { type: boolean }
+    previewPrNumbers:
+      type: array
+      minItems: 1
+      items: { type: integer, minimum: 1 }
+      description: The caller's intended scope in bottom-to-top order.
+  additionalProperties: false
+routing:
+  preferred: rest
+  fallbacks: []
+  notes:
+    - GitHub.com only. Use the expected fields from pr.stack.status or an equivalent snapshot.
+    - ghx checks the trunk and full open prefix before submission. GitHub only conditions the merge on the selected PR head and may merge a changed prefix.
+    - Use pr.merge.request.view for a pending request and verify landed PRs directly after a terminal result.
+    - An enqueued result means queue admission. Check PR state for eventual landing or ejection.
+rest:
+  endpoints:
+    - { method: GET, path: "/repos/{owner}/{repo}/stacks/{stack_number}" }
+    - { method: PUT, path: "/repos/{owner}/{repo}/pulls/{pull_number}/merge-async" }

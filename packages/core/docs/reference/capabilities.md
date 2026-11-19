@@ -1,6 +1,6 @@
 # Capabilities Reference
 
-All 80 capabilities in `@ghx-dev/core`, grouped by domain.
+All 82 capabilities in `@ghx-dev/core`, grouped by domain.
 
 ## Repository
 
@@ -38,7 +38,7 @@ All 80 capabilities in `@ghx-dev/core`, grouped by domain.
 | `issue.relations.blocked_by.add` | Add blocked-by relationship | graphql |
 | `issue.relations.blocked_by.remove` | Remove blocked-by relationship | graphql |
 
-## Pull Requests (31)
+## Pull Requests (33)
 
 | Capability ID | Description | Preferred Route |
 |---|---|---|
@@ -54,6 +54,8 @@ All 80 capabilities in `@ghx-dev/core`, grouped by domain.
 | `pr.stack.create` | Register existing PRs as a native stack | rest |
 | `pr.stack.add` | Append existing PRs above the current top | rest |
 | `pr.stack.unstack` | Remove all eligible members from a native stack | rest |
+| `pr.stack.merge` | Request a native merge through a selected layer | rest |
+| `pr.merge.request.view` | Read an async merge request result | rest |
 | `pr.merge.status` | Check PR merge status | graphql |
 | `pr.diff.view` | View raw PR diff | cli |
 | `pr.diff.files` | List changed files in a PR | cli |
@@ -85,6 +87,13 @@ PRs with the right base branches before calling these capabilities. Run each
 write separately with `ghx run` or `executeTask`. If GitHub may have received a
 write but no outcome is available, inspect current membership before trying
 another write. Unstack reports any locked members that remain.
+
+For a native stack merge, pass `mergePreview` from `pr.stack.status` along with
+`owner` and `name` to `pr.stack.merge`. The preview lists the intended PRs.
+GitHub enforces the selected PR's head SHA, and it can resolve a different
+prefix if membership changes after preflight. Record the request ID and use
+`pr.merge.request.view` to check a pending request. Queue admission ends request
+polling. Use PR state to verify eventual landing or ejection.
 
 ## Workflows & CI (11)
 

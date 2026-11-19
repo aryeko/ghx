@@ -86,6 +86,8 @@ pr.stack.status - Inspect layer review and CI signals, optionally preview a merg
 pr.stack.create - Register existing PRs in bottom-to-top order. [owner, name, prNumbers]
 pr.stack.add - Append PRs above the current top of a stack. [owner, name, stackNumber, expectedTopPrNumber, prNumbers]
 pr.stack.unstack - Unstack all eligible members and report those retained. [owner, name, stackNumber, expectedPrNumbers]
+pr.stack.merge - Request a native merge through a selected layer. [owner, name, stackNumber, throughPrNumber, expectedBaseRefName, expectedMembers, mergeAction?, method?]
+pr.merge.request.view - Read an async merge request result. [owner, name, prNumber, requestId]
 pr.merge.status - View PR mergeability and readiness signals. [owner, name, prNumber]
 pr.merge - Execute a PR merge. [owner, name, prNumber, method?, deleteBranch?, admin?, auto?]
 pr.close - Close a PR without merging. [owner, name, prNumber, deleteBranch?, comment?]
@@ -177,6 +179,9 @@ If you get `RATE_LIMIT` or `NETWORK`, retry after a short delay. For `NOT_FOUND`
 
 ### Inspect a native PR stack
 Use `pr.stack.list` with the PR number, then `pr.stack.status` with the returned stack number. When `throughPrNumber` is set, the preview describes the open prefix through that PR. Run native stack membership changes individually with `ghx run`. If a write's outcome is unknown, verify current membership before another write. Use the official `gh stack` extension for local branch and worktree operations.
+
+### Merge a native PR stack
+Read `pr.stack.status` with an explicit `throughPrNumber`, then verify the ordered open prefix before an authorized `pr.stack.merge`. Use its request ID to check a pending request via `pr.merge.request.view`. Check individual PR states after an `enqueued` result to verify landing or ejection. The target head SHA is GitHub's only atomic condition on the preview.
 
 ### PR merge readiness audit
 Use `ghx chain` with `pr.checks.list`, `pr.threads.list`, and `pr.merge.status` in one call to get all three signals at once.
