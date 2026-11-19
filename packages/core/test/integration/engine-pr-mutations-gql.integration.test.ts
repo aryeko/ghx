@@ -2,6 +2,7 @@ import type { TaskRequest } from "@core/core/contracts/task.js"
 import { executeTask } from "@core/core/routing/engine/index.js"
 import type { GithubClient } from "@core/gql/github-client.js"
 import { describe, expect, it } from "vitest"
+import { membershipResponse } from "../helpers/pr-merge-fixtures.js"
 
 describe("PR mutation GQL routing", () => {
   describe("pr.create", () => {
@@ -85,6 +86,7 @@ describe("PR mutation GQL routing", () => {
   describe("pr.merge", () => {
     it("routes to graphql and returns correct output shape", async () => {
       const githubClient = {
+        queryRaw: async () => membershipResponse("https://github.com/acme/repo/pull/42"),
         mergePr: async () => ({
           prNumber: 42,
           method: "merge",

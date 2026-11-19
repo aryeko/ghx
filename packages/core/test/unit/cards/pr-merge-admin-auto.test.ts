@@ -5,6 +5,7 @@ import type { CliCommandRunner } from "@core/core/execution/adapters/cli-adapter
 import { getOperationCard } from "@core/core/registry/index.js"
 import { validateInput } from "@core/core/registry/schema-validator.js"
 import { describe, expect, it, vi } from "vitest"
+import { cliMembershipResponse } from "../../helpers/pr-merge-fixtures.js"
 
 const handler = (id: string): CliHandler => {
   const fn = handlers[id]
@@ -240,7 +241,10 @@ describe("pr.merge admin/auto routing", () => {
 
 describe("pr.merge CLI handler --admin and --auto flags", () => {
   it("appends --admin when admin:true", async () => {
-    const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" })
+    const runSpy = vi
+      .fn()
+      .mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce(cliMembershipResponse("https://github.com/owner/repo/pull/123"))
     const runner = { run: runSpy } as unknown as CliCommandRunner
 
     const result = await handler("pr.merge")(
@@ -272,7 +276,10 @@ describe("pr.merge CLI handler --admin and --auto flags", () => {
   })
 
   it("appends --auto when auto:true", async () => {
-    const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" })
+    const runSpy = vi
+      .fn()
+      .mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce(cliMembershipResponse("https://github.com/owner/repo/pull/123"))
     const runner = { run: runSpy } as unknown as CliCommandRunner
 
     const result = await handler("pr.merge")(
@@ -305,7 +312,10 @@ describe("pr.merge CLI handler --admin and --auto flags", () => {
   })
 
   it("does not append flags when admin/auto are false or undefined", async () => {
-    const runSpy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" })
+    const runSpy = vi
+      .fn()
+      .mockResolvedValue({ exitCode: 0, stdout: "", stderr: "" })
+      .mockResolvedValueOnce(cliMembershipResponse("https://github.com/owner/repo/pull/123"))
     const runner = { run: runSpy } as unknown as CliCommandRunner
 
     const result = await handler("pr.merge")(
@@ -323,7 +333,7 @@ describe("pr.merge CLI handler --admin and --auto flags", () => {
     expect(result.ok).toBe(true)
     expect(result.data).not.toHaveProperty("admin")
     expect(result.data).not.toHaveProperty("auto")
-    const args = runSpy.mock.calls[0]?.[1] as string[]
+    const args = runSpy.mock.calls[1]?.[1] as string[]
     expect(args).not.toContain("--admin")
     expect(args).not.toContain("--auto")
   })

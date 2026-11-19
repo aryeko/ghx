@@ -2,6 +2,7 @@ import { errorCodes } from "@core/core/errors/codes.js"
 import { mapErrorToCode } from "@core/core/errors/map-error.js"
 import { isRetryableErrorCode } from "@core/core/errors/retryability.js"
 import { normalizeError, normalizeResult } from "../../../normalizer.js"
+import { guardCliPrMerge } from "../../pr-merge-guard.js"
 import type { CliHandler } from "../helpers.js"
 import {
   commandTokens,
@@ -519,7 +520,6 @@ const handlePrMerge: CliHandler = async (runner, params, card) => {
   try {
     const owner = String(params.owner ?? "")
     const name = String(params.name ?? "")
-    const repo = owner && name ? `${owner}/${name}` : ""
     const prNumber = parseStrictPositiveInt(params.prNumber)
     if (prNumber === null) throw new Error("Missing or invalid prNumber for pr.merge")
     const rawMethod = params.method === undefined ? "merge" : params.method
@@ -536,8 +536,18 @@ const handlePrMerge: CliHandler = async (runner, params, card) => {
     if (params.auto !== undefined && typeof params.auto !== "boolean")
       throw new Error("Missing or invalid auto for pr.merge")
 
-    const args = [...commandTokens(card, "pr merge"), String(prNumber)]
-    if (repo) args.push("--repo", repo)
+    if (!/^[\w-]+$/.test(owner) || !/^[\w.-]+$/.test(name) || name.endsWith(".git")) {
+      throw new Error("Missing or invalid repository for pr.merge")
+    }
+    const guard = await guardCliPrMerge(runner, { owner, name, prNumber })
+    if (!guard.ok) {
+      return normalizeError(guard.error, "cli", {
+        capabilityId: "pr.merge",
+        reason: "CARD_FALLBACK",
+      })
+    }
+
+    const args = [...commandTokens(card, "pr merge"), String(prNumber), "--repo", guard.repo]
     args.push(`--${method}`)
     if (params.deleteBranch === true) args.push("--delete-branch")
     if (params.admin === true) args.push("--admin")

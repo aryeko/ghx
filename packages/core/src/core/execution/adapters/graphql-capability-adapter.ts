@@ -6,6 +6,7 @@ import { normalizeError, normalizeResult } from "@core/core/execution/normalizer
 import { logger } from "@core/core/telemetry/log.js"
 import { getGraphqlHandler } from "@core/gql/capability-registry.js"
 import type { GithubClient } from "@core/gql/github-client.js"
+import { guardGraphqlPrMerge } from "./pr-merge-guard.js"
 
 export async function runGraphqlCapability(
   client: GithubClient,
@@ -30,6 +31,16 @@ export async function runGraphqlCapability(
         ok: result.ok,
       })
       return result
+    }
+    if (capabilityId === "pr.merge") {
+      const guard = await guardGraphqlPrMerge(client, {
+        owner: String(params.owner),
+        name: String(params.name),
+        prNumber: Number(params.prNumber),
+      })
+      if (!guard.ok) {
+        return normalizeError(guard.error, "graphql", { capabilityId, reason: "CARD_PREFERRED" })
+      }
     }
     const data = await handler(client, params)
     const result = normalizeResult(data, "graphql", {

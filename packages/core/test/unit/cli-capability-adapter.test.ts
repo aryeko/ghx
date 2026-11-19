@@ -1,6 +1,7 @@
 import { runCliCapability } from "@core/core/execution/adapters/cli-capability-adapter.js"
 import type { OperationCard } from "@core/core/registry/types.js"
 import { describe, expect, it, vi } from "vitest"
+import { cliMembershipResponse } from "../helpers/pr-merge-fixtures.js"
 
 describe("runCliCapability", () => {
   it("builds gh args and parses json output", async () => {
@@ -797,11 +798,13 @@ describe("runCliCapability", () => {
 
   it("executes PR operations: merge and branch updates", async () => {
     const runner = {
-      run: vi.fn(async () => ({
-        stdout: "",
-        stderr: "",
-        exitCode: 0,
-      })),
+      run: vi
+        .fn(async () => ({
+          stdout: "",
+          stderr: "",
+          exitCode: 0,
+        }))
+        .mockResolvedValueOnce(cliMembershipResponse("https://github.com/acme/modkit/pull/10")),
     }
 
     const merge = await runCliCapability(runner, "pr.merge", {
@@ -821,13 +824,13 @@ describe("runCliCapability", () => {
     expect(branchUpdate.ok).toBe(true)
 
     expect(runner.run).toHaveBeenNthCalledWith(
-      1,
+      2,
       "gh",
-      ["pr", "merge", "10", "--repo", "acme/modkit", "--squash", "--delete-branch"],
+      ["pr", "merge", "10", "--repo", "github.com/acme/modkit", "--squash", "--delete-branch"],
       10_000,
     )
     expect(runner.run).toHaveBeenNthCalledWith(
-      2,
+      3,
       "gh",
       ["pr", "update-branch", "10", "--repo", "acme/modkit"],
       10_000,
@@ -3590,11 +3593,13 @@ describe("runCliCapability", () => {
 
   it("handles pr.merge without explicit method (defaults to merge)", async () => {
     const runner = {
-      run: vi.fn(async () => ({
-        stdout: "",
-        stderr: "",
-        exitCode: 0,
-      })),
+      run: vi
+        .fn(async () => ({
+          stdout: "",
+          stderr: "",
+          exitCode: 0,
+        }))
+        .mockResolvedValueOnce(cliMembershipResponse("https://github.com/acme/modkit/pull/10")),
     }
 
     const result = await runCliCapability(runner, "pr.merge", {
@@ -3611,7 +3616,7 @@ describe("runCliCapability", () => {
       queued: true,
       deleteBranch: false,
     })
-    const call = runner.run.mock.calls[0] as unknown as [string, string[], number]
+    const call = runner.run.mock.calls[1] as unknown as [string, string[], number]
     expect(call[1]).toContain("--merge")
   })
 
@@ -3638,11 +3643,13 @@ describe("runCliCapability", () => {
 
   it("handles pr.merge with rebase method", async () => {
     const runner = {
-      run: vi.fn(async () => ({
-        stdout: "",
-        stderr: "",
-        exitCode: 0,
-      })),
+      run: vi
+        .fn(async () => ({
+          stdout: "",
+          stderr: "",
+          exitCode: 0,
+        }))
+        .mockResolvedValueOnce(cliMembershipResponse("https://github.com/acme/modkit/pull/10")),
     }
 
     const result = await runCliCapability(runner, "pr.merge", {
@@ -3656,7 +3663,7 @@ describe("runCliCapability", () => {
     expect(result.ok).toBe(true)
     expect((result.data as Record<string, unknown>)?.method).toBe("rebase")
     expect((result.data as Record<string, unknown>)?.isMethodAssumed).toBe(false)
-    const call = runner.run.mock.calls[0] as unknown as [string, string[], number]
+    const call = runner.run.mock.calls[1] as unknown as [string, string[], number]
     expect(call[1]).toContain("--rebase")
     expect(call[1]).toContain("--delete-branch")
   })

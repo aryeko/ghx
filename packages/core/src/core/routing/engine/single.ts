@@ -48,7 +48,7 @@ export async function runSingleTask(
 
   const result = await execute({
     card,
-    params: card.routing.preferred === "rest" ? { ...input } : input,
+    params: card.routing.preferred === "rest" || task === "pr.merge" ? { ...input } : input,
     routingContext: {
       ghCliAvailable: deps.ghCliAvailable,
       ghAuthenticated: deps.ghAuthenticated,
