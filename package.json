@@ -68,7 +68,7 @@
     "@nx/js": "24.0.6",
     "@typescript/native": "catalog:",
     "@types/node": "catalog:",
-    "graphql": "^16.15.0",
+    "graphql": "^17.1.0",
     "lefthook": "^2.2.2",
     "nx": "24.0.6",
     "oxlint": "1.94.0",
