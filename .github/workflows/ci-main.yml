@@ -13,9 +13,9 @@ jobs:
   gql-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v5
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.1.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -27,9 +27,9 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v5
-      - uses: actions/setup-node@v6
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.1.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -47,11 +47,11 @@ jobs:
       GITHUB_TOKEN: ${{ github.token }}
       NX_NO_CLOUD: ${{ vars.NX_NO_CLOUD }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@v5
-      - uses: actions/setup-node@v6
+      - uses: pnpm/action-setup@v6.1.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -63,7 +63,7 @@ jobs:
         run: pnpm run test:e2e
       - name: Upload coverage to Codecov
         if: ${{ always() && !cancelled() }}
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@v7.1.1
         with:
           files: packages/*/coverage/lcov.info
           flags: main
@@ -71,7 +71,7 @@ jobs:
           fail_ci_if_error: true
       - name: Upload test results to Codecov
         if: ${{ always() && !cancelled() }}
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@v7.1.1
         with:
           files: packages/*/test-report.junit.xml
           report_type: test_results
@@ -94,11 +94,11 @@ jobs:
       GITHUB_TOKEN: ${{ github.token }}
       NX_NO_CLOUD: ${{ vars.NX_NO_CLOUD }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
-      - uses: pnpm/action-setup@v5
-      - uses: actions/setup-node@v6
+      - uses: pnpm/action-setup@v6.1.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -107,13 +107,13 @@ jobs:
       - run: pnpm run build
       - name: Create Release Pull Request or Publish
         id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action@v2.1.2
         with:
-          commitMode: github-api
-          publish: pnpm run changeset:publish
-          version: pnpm run changeset:version
-          commit: "chore: version packages"
-          title: "chore: version packages"
+          push-with-git-cli: false
+          publish-script: pnpm run changeset:publish
+          version-script: pnpm run changeset:version
+          commit-message: "chore: version packages"
+          pr-title: "chore: version packages"
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}

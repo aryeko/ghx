@@ -1,7 +1,7 @@
 {
   "name": "@ghx-dev/core",
   "version": "0.8.0",
-  "description": "Route GitHub operations through deterministic adapters instead of fragile shell scraping. 70+ capabilities covering issues, PRs, repos, releases, and projects — each with validated input, normalized output, and automatic fallback routing.",
+  "description": "Route GitHub operations through deterministic adapters instead of fragile shell scraping. 70+ capabilities covering issues, PRs, repos, releases, and projects \u2014 each with validated input, normalized output, and automatic fallback routing.",
   "author": "Arye Kogan",
   "license": "MIT",
   "keywords": [
@@ -87,12 +87,12 @@
   },
   "dependencies": {
     "ajv": "^8.20.0",
-    "graphql": "^17.0.2",
-    "js-yaml": "^5.2.2"
+    "graphql": "^17.1.0",
+    "js-yaml": "^5.5.0"
   },
   "devDependencies": {
     "@graphql-typed-document-node/core": "^3.2.0",
-    "@opencode-ai/sdk": "^1.18.10",
+    "@opencode-ai/sdk": "^1.19.6",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "tsup": "catalog:",
