@@ -59,7 +59,7 @@ describe("native stack merge dispatch", () => {
         { status: 202 },
       )
     })
-    const deps = { githubClient, githubToken: "test-token", restFetch }
+    const deps = { githubClient, githubToken: "test-token", githubHost: "github.com", restFetch }
 
     const submit = await executeTask({ task: "pr.stack.merge", input: preview }, deps)
     expect(submit).toMatchObject({
@@ -86,6 +86,7 @@ describe("native stack merge dispatch", () => {
     const result = await executeTasks([{ task: "pr.stack.merge", input: preview }], {
       githubClient,
       githubToken: "test-token",
+      githubHost: "github.com",
       restFetch,
     })
     expect(result.status).toBe("failed")
