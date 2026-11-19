@@ -1,6 +1,6 @@
 # Adapters
 
-Adapters are the bridge between the routing engine and the actual GitHub APIs. ghx ships two adapters: **GraphQL** and **CLI**. Each converts a generic `(capabilityId, params)` call into a route-specific API call and normalizes the result into a `ResultEnvelope`.
+Adapters are the bridge between the routing engine and the actual GitHub APIs. ghx ships **GraphQL**, **CLI**, and **REST** adapters. Each converts a generic `(capabilityId, params)` call into a route-specific API call and normalizes the result into a `ResultEnvelope`.
 
 ## Adapter Dispatch Flow
 
@@ -10,7 +10,7 @@ flowchart LR
 
     D -->|graphql| GQL[GraphQL Adapter]
     D -->|cli| CLI[CLI Adapter]
-    D -->|rest| REST["REST Adapter<br/>(not yet implemented)"]
+    D -->|rest| REST["REST Adapter"]
 
     subgraph GQL[GraphQL Adapter]
         GQL1[Lookup handler in registry] --> GQL2[Execute GraphQL operation]
@@ -26,6 +26,7 @@ flowchart LR
 
     GQL3 --> RE[ResultEnvelope]
     CLI5 --> RE
+    REST --> RE
 
     style RE fill:#2ECC71,color:#fff
 ```
@@ -85,9 +86,18 @@ const result = await executeTask(
 )
 ```
 
+## REST Adapter
+
+Native GitHub.com stack discovery uses the resolved GitHub token directly.
+`pr.stack.list` and `pr.stack.view` consume REST responses.
+`pr.stack.status` reads the REST snapshot before and after a bounded GraphQL
+read of review and CI signals. Independent stack reads work in `chain`.
+Library callers can supply `restFetch` in the execution dependencies to test
+REST calls.
+
 ## Supported Capabilities per Adapter
 
-Most capabilities support both adapters. Some are one-adapter-only:
+Most capabilities use GraphQL or the CLI. Some are one-adapter-only:
 
 | Adapter | Unique capabilities |
 |---|---|

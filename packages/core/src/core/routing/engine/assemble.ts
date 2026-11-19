@@ -203,9 +203,14 @@ export function assembleChainResult(input: AssembleInput): ChainResultEnvelope {
     duration_ms: Date.now() - batchStartMs,
   })
 
-  // "cli" only when every step was CLI-only. Mixed chains report "graphql" because
-  // GraphQL is the primary coordination mechanism even when some steps used the CLI adapter.
-  const routeUsed: RouteSource = cliStepCount === requests.length ? "cli" : "graphql"
+  // Homogeneous REST or CLI batches report their adapter. Mixed batches retain the
+  // historical GraphQL value in the aggregate envelope.
+  const routeUsed: RouteSource =
+    steps.length > 0 && steps.every((step) => step.route === "rest")
+      ? "rest"
+      : cliStepCount === requests.length
+        ? "cli"
+        : "graphql"
 
   return {
     status,

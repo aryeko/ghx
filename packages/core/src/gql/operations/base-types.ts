@@ -20,6 +20,7 @@ export type PullRequestReviewEvent = string
 export type ReactionContent = string
 export type MergeableState = string
 export type MergeStateStatus = string
+export type StatusState = string
 export type PullRequestReviewDecision = string
 export type ProjectV2FieldType = string
 export type ProjectV2ItemType = string

@@ -1,6 +1,6 @@
 # Capabilities Reference
 
-All 74 capabilities in `@ghx-dev/core`, grouped by domain.
+All 77 capabilities in `@ghx-dev/core`, grouped by domain.
 
 ## Repository
 
@@ -38,7 +38,7 @@ All 74 capabilities in `@ghx-dev/core`, grouped by domain.
 | `issue.relations.blocked_by.add` | Add blocked-by relationship | graphql |
 | `issue.relations.blocked_by.remove` | Remove blocked-by relationship | graphql |
 
-## Pull Requests (25)
+## Pull Requests (28)
 
 | Capability ID | Description | Preferred Route |
 |---|---|---|
@@ -48,6 +48,9 @@ All 74 capabilities in `@ghx-dev/core`, grouped by domain.
 | `pr.update` | Update PR title/body | graphql |
 | `pr.close` | Close a PR without merging | graphql |
 | `pr.merge` | Merge a PR | graphql |
+| `pr.stack.list` | Discover native GitHub.com stacks, optionally by PR | rest |
+| `pr.stack.view` | Read a native stack and its ordered layers | rest |
+| `pr.stack.status` | Read layer review and CI signals and preview the observed merge scope | rest |
 | `pr.merge.status` | Check PR merge status | graphql |
 | `pr.diff.view` | View raw PR diff | cli |
 | `pr.diff.files` | List changed files in a PR | cli |
@@ -67,6 +70,12 @@ All 74 capabilities in `@ghx-dev/core`, grouped by domain.
 | `pr.checks.rerun.all` | Rerun all checks | cli |
 | `pr.checks.rerun.failed` | Rerun failed checks | cli |
 | `pr.branch.update` | Update PR branch from base | graphql |
+
+Use `pr.stack.list` with `prNumber` to look up membership. Pass the returned `stackNumber` to
+`pr.stack.view` or `pr.stack.status`. In status, `throughPrNumber` selects an open layer and
+`mergePreview` describes the open layers through it. A stale snapshot or a closed,
+unmerged predecessor suppresses the preview. Signals describe observable reviews
+and checks, and GitHub evaluates the stack’s merge rules.
 
 ## Workflows & CI (11)
 

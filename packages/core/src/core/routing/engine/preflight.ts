@@ -32,7 +32,6 @@ export function runPreflight(
 ): PreflightSuccess | PreflightFailure {
   const preflightErrorByIndex = new Map<number, ChainStepResult>()
   const cards: OperationCard[] = []
-  const cardIsCliOnly: boolean[] = []
 
   for (let i = 0; i < requests.length; i += 1) {
     const req = requests[i]
@@ -43,15 +42,17 @@ export function runPreflight(
         throw new Error(`Invalid task: ${req.task}`)
       }
 
-      const inputValidation = validateInput(card.input_schema, req.input)
+      // REST steps validate again at dispatch. Keep schema defaults off the caller's input.
+      const params = card.routing.preferred === "rest" ? { ...req.input } : req.input
+      const inputValidation = validateInput(card.input_schema, params)
       if (!inputValidation.ok) {
         const details = formatSchemaErrorDetails(inputValidation.errors)
         throw new Error(`Input validation failed: ${details}`)
       }
 
-      if (!card.graphql && !card.cli) {
+      if (!card.graphql && !card.cli && !card.rest) {
         throw new Error(
-          `capability '${req.task}' has no supported route (graphql or cli) and cannot be chained`,
+          `capability '${req.task}' has no supported route (graphql, cli, or rest) and cannot be chained`,
         )
       }
 
@@ -68,7 +69,6 @@ export function runPreflight(
       }
 
       cards.push(card)
-      cardIsCliOnly.push(!card.graphql)
     } catch (err) {
       preflightErrorByIndex.set(i, {
         task: req.task,
@@ -95,9 +95,12 @@ export function runPreflight(
           },
         },
     )
-    // If all cards that passed preflight are CLI-only, report cli route_used
-    const anyGqlCard = cardIsCliOnly.some((isCliOnly) => !isCliOnly)
-    const routeUsed: RouteSource = !anyGqlCard && cards.length > 0 ? "cli" : "graphql"
+    const routeUsed: RouteSource =
+      cards.length > 0 && cards.every((card) => card.routing.preferred === "rest")
+        ? "rest"
+        : cards.length > 0 && cards.every((card) => !card.graphql && !card.rest)
+          ? "cli"
+          : "graphql"
     return { ok: false, results, routeUsed }
   }
 
@@ -113,6 +116,8 @@ export function runPreflight(
     const preferredRoute = selectPreferredRoute(card, req.input, {})
     if (SINGLE_HANDLER_GRAPHQL_TASKS.has(req.task) && card.graphql) {
       route = "single"
+    } else if (preferredRoute === "rest" && card.rest) {
+      route = "rest"
     } else if (preferredRoute === "cli" && card.cli) {
       route = "cli"
     } else if (!card.graphql && card.cli) {

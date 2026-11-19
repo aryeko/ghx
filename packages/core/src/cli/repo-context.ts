@@ -304,6 +304,16 @@ function needsRepoContext(task: string, input: Record<string, unknown>): boolean
   return hasOwnerNameSchema(card) && (!hasUsableString(input.owner) || !hasUsableString(input.name))
 }
 
+function supportsRepoContext(task: string, context: RepoContext, env: NodeJS.ProcessEnv): boolean {
+  if (getOperationCard(task)?.routing.preferred !== "rest") return true
+
+  const remote = context.remoteUrl ?? env.GITHUB_SERVER_URL
+  if (remote === undefined) return true
+  const sshHost = /^[^@\s]+@([^:\s]+):[^/\s]/.exec(remote)?.[1]
+  const hostname = sshHost ?? (URL.canParse(remote) ? new URL(remote).hostname : null)
+  return hostname === "github.com" || hostname === "ssh.github.com"
+}
+
 function applyContext(
   input: Record<string, unknown>,
   context: RepoContext,
@@ -325,7 +335,9 @@ export async function applyRepoContextDefaultsToInput(
   }
 
   const context = await resolveRepoContext(options)
-  return context ? applyContext(input, context) : input
+  return context && supportsRepoContext(task, context, options.env ?? process.env)
+    ? applyContext(input, context)
+    : input
 }
 
 export async function applyRepoContextDefaultsToSteps(
@@ -344,7 +356,10 @@ export async function applyRepoContextDefaultsToSteps(
     context ??= await resolveRepoContext(options)
     output.push({
       ...step,
-      input: context ? applyContext(step.input, context) : step.input,
+      input:
+        context && supportsRepoContext(step.task, context, options.env ?? process.env)
+          ? applyContext(step.input, context)
+          : step.input,
     })
   }
 

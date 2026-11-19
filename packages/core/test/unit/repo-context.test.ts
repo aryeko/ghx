@@ -72,6 +72,27 @@ describe("repo context cache", () => {
     })
   })
 
+  it("infers a stack repository only from a GitHub.com remote", async () => {
+    await writeGitRemote(tempRoot, "git@github.example.com:acme/widgets.git")
+    const input = { stackNumber: 42 }
+    const options = { cwd: tempRoot }
+    const [stackStep, legacyStep] = await applyRepoContextDefaultsToSteps(
+      [
+        { task: "pr.stack.view", input },
+        { task: "pr.view", input: { prNumber: 1 } },
+      ],
+      options,
+    )
+    expect(stackStep?.input).toEqual(input)
+    expect(legacyStep?.input).toMatchObject({ owner: "acme", name: "widgets" })
+
+    const githubRoot = join(tempRoot, "github")
+    await writeGitRemote(githubRoot, "git@github.com:acme/widgets.git")
+    await expect(
+      applyRepoContextDefaultsToInput("pr.stack.view", input, { cwd: githubRoot }),
+    ).resolves.toEqual({ ...input, owner: "acme", name: "widgets" })
+  })
+
   it("uses GITHUB_REPOSITORY when no git remote context is available", async () => {
     vi.stubEnv("GITHUB_REPOSITORY", "octo/demo")
 

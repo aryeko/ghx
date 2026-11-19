@@ -6,6 +6,7 @@ import {
   runCliCapability,
 } from "@core/core/execution/adapters/cli-capability-adapter.js"
 import { runGraphqlCapability } from "@core/core/execution/adapters/graphql-capability-adapter.js"
+import { runRestCapability } from "@core/core/execution/adapters/rest-capability-adapter.js"
 import { normalizeError } from "@core/core/execution/normalizer.js"
 import { preflightCheck } from "@core/core/execution/preflight.js"
 import { getOperationCard } from "@core/core/registry/index.js"
@@ -47,19 +48,24 @@ export async function runSingleTask(
 
   const result = await execute({
     card,
-    params: input,
+    params: card.routing.preferred === "rest" ? { ...input } : input,
     routingContext: {
       ghCliAvailable: deps.ghCliAvailable,
       ghAuthenticated: deps.ghAuthenticated,
       githubTokenPresent: Boolean(deps.githubToken),
     },
     retry: {
-      maxAttemptsPerRoute: 2,
+      // A REST rate-limit response can ask callers to wait before retrying.
+      maxAttemptsPerRoute: card.routing.preferred === "rest" ? 1 : 2,
     },
     preflight: async (route: RouteSource) => {
       const preflightInput: Parameters<typeof preflightCheck>[0] = { route }
       if (deps.githubToken !== undefined) {
         preflightInput.githubToken = deps.githubToken
+      }
+      if (route === "rest") {
+        const githubHost = deps.githubHost ?? (process.env.GH_HOST?.trim() || undefined)
+        if (githubHost !== undefined) preflightInput.githubHost = githubHost
       }
       if (route === "graphql") {
         preflightInput.githubClientPresent = githubClientSatisfiesGraphqlPreflight
@@ -103,22 +109,19 @@ export async function runSingleTask(
       return preflightCheck(preflightInput)
     },
     routes: {
-      graphql: async () => {
-        return runGraphqlCapability(deps.githubClient, task, input)
+      graphql: async (params) => {
+        return runGraphqlCapability(deps.githubClient, task, params)
       },
-      cli: async () => {
-        return runCliCapability(cliRunner, task as CliCapabilityId, input, card)
+      cli: async (params) => {
+        return runCliCapability(cliRunner, task as CliCapabilityId, params, card)
       },
-      rest: async () =>
-        normalizeError(
-          {
-            code: errorCodes.AdapterUnsupported,
-            message: `Route 'rest' is not implemented for task '${task}'`,
-            retryable: false,
-            details: { route: "rest", task },
-          },
-          "rest",
-          { capabilityId: task, reason },
+      rest: async (params) =>
+        runRestCapability(
+          task,
+          params,
+          deps.githubToken?.trim() ?? "",
+          deps.restFetch ?? fetch,
+          deps.githubClient,
         ),
     },
   })

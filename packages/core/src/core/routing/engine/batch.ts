@@ -33,7 +33,8 @@ export async function executeBatch(
   const { steps } = preflight
   const cliSteps = steps.filter((s) => s.route === "cli")
   const singleSteps = steps.filter((s) => s.route === "single")
-  const directlyExecutedSteps = [...cliSteps, ...singleSteps]
+  const restSteps = steps.filter((s) => s.route === "rest")
+  const directlyExecutedSteps = [...cliSteps, ...singleSteps, ...restSteps]
   const gqlSteps = steps.filter((s) => s.route === "gql-query" || s.route === "gql-mutation")
   const cliStepCount = cliSteps.length
 

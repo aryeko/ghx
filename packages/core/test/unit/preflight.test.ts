@@ -38,11 +38,11 @@ describe("preflightCheck", () => {
     expect(result).toHaveProperty("message", expect.stringContaining("authentication"))
   })
 
-  it("reports rest route as unimplemented", () => {
+  it("requires authentication for the REST route", () => {
     const result = preflightCheck({ route: "rest" })
     expect(result.ok).toBe(false)
-    expect(result).toHaveProperty("code", "ADAPTER_UNSUPPORTED")
-    expect(result).toHaveProperty("message", expect.stringContaining("not implemented"))
+    expect(result).toHaveProperty("code", "AUTH")
+    expect(result).toHaveProperty("message", expect.stringContaining("GitHub token"))
     expect(result).toHaveProperty("details", { route: "rest" })
   })
 })

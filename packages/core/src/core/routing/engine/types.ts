@@ -4,7 +4,7 @@ import type { RouteReasonCode } from "@core/core/routing/reason-codes.js"
 import type { GithubClient } from "@core/gql/github-client.js"
 import type { ResolutionCache } from "../resolution-cache.js"
 
-export type StepRoute = "gql-query" | "gql-mutation" | "cli" | "single"
+export type StepRoute = "gql-query" | "gql-mutation" | "cli" | "rest" | "single"
 
 export type ClassifiedStep = {
   route: StepRoute
@@ -21,6 +21,8 @@ export type ClassifiedStep = {
 export type ExecutionDeps = {
   githubClient: GithubClient
   githubToken?: string | null
+  restFetch?: typeof fetch
+  githubHost?: string
   cliRunner?: CliCommandRunner
   ghCliAvailable?: boolean
   ghAuthenticated?: boolean
