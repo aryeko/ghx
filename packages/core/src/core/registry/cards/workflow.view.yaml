@@ -27,4 +27,4 @@ routing:
   fallbacks: []
 cli:
   command: workflow view
-  jsonFields: [id,name,path,state,url]
+  jsonFields: [id, name, path, state, url]

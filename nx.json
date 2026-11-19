@@ -49,5 +49,8 @@
     }
   },
   "plugins": ["@nx/js"],
-  "analytics": true
+  "analytics": true,
+  "affected": {
+    "legacy": true
+  }
 }

@@ -4,7 +4,7 @@ Clone the repository, install dependencies, and verify your development environm
 
 ## Prerequisites
 
-- **Node.js** 22.13.0 or later
+- **Node.js** matching the repository `.nvmrc` (or a supported development version in the root `package.json`)
 - **pnpm** 11.18.0 or later
 - **git**
 

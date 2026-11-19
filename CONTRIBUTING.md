@@ -4,11 +4,12 @@ Thank you for your interest in contributing to ghx. This document provides guide
 
 ## Prerequisites
 
-- **Node.js** 22.13.0 or later
-- **Corepack** (included with modern Node.js)
+- **Node.js with npm**. Use the version in `.nvmrc` for development. The workspace also supports Node.js 22.18+ within 22.x and 24.11+ within 24.x.
 - **Git**
 - **gh CLI** authenticated (`gh auth status`) for CLI-backed flows
 - **opencode CLI** only when running E2E suites locally (`pnpm run test:e2e`)
+
+The published `ghx` CLI supports Node.js 22.13.0 or later.
 
 ## Development Setup
 
@@ -25,7 +26,7 @@ Thank you for your interest in contributing to ghx. This document provides guide
    ./scripts/setup-dev-env.sh
    ```
 
-   This script enables Corepack and activates the repo's pinned pnpm version.
+   This script uses npm to install the pnpm version pinned in `package.json` if it is missing. If an older Corepack shim blocks the install, run `corepack disable pnpm` and retry.
 
 3. **Install dependencies**
 

@@ -35,7 +35,7 @@ output_schema:
             viewerCanResolve,
             viewerCanUnresolve,
             resolvedByLogin,
-            comments
+            comments,
           ]
         properties:
           id: { type: string, minLength: 1 }

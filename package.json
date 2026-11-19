@@ -3,9 +3,9 @@
   "private": true,
   "description": "CLI-first GitHub execution router for agents.",
   "engines": {
-    "node": ">=22.13.0"
+    "node": "^22.18.0 || ^24.11.0 || >=26.0.0"
   },
-  "packageManager": "pnpm@11.18.0",
+  "packageManager": "pnpm@12.21.0",
   "scripts": {
     "build": "nx run-many -t build",
     "build:affected": "nx affected -t build",
@@ -23,8 +23,9 @@
     "test:e2e:affected": "nx affected -t test:e2e",
     "typecheck": "nx run-many -t typecheck",
     "typecheck:affected": "nx affected -t typecheck",
-    "ci": "nx run-many -t ci",
-    "ci:affected": "nx affected -t ci",
+    "ci": "pnpm run test:dependencies && nx run-many -t ci",
+    "ci:affected": "pnpm run test:dependencies && nx affected -t ci",
+    "test:dependencies": "node --test scripts/dependency-compatibility.test.mjs",
     "changeset": "changeset",
     "changeset:publish": "changeset publish",
     "changeset:status": "changeset status",
@@ -57,22 +58,22 @@
   },
   "homepage": "https://github.com/aryeko/ghx#readme",
   "devDependencies": {
-    "@biomejs/biome": "^2.5.6",
-    "@changesets/cli": "^2.31.1",
-    "@graphql-codegen/cli": "^7.2.0",
-    "@graphql-codegen/near-operation-file-preset": "^5.2.1",
-    "@graphql-codegen/schema-ast": "^6.1.0",
-    "@graphql-codegen/typescript-operations": "^6.1.2",
-    "@graphql-codegen/typed-document-node": "^7.1.0",
-    "@nx/js": "23.1.1",
+    "@biomejs/biome": "^2.6.8",
+    "@changesets/cli": "^3.0.3",
+    "@graphql-codegen/cli": "^8.0.0",
+    "@graphql-codegen/near-operation-file-preset": "^6.0.1",
+    "@graphql-codegen/schema-ast": "^7.0.0",
+    "@graphql-codegen/typescript-operations": "^7.0.1",
+    "@graphql-codegen/typed-document-node": "^8.0.0",
+    "@nx/js": "24.0.6",
     "@typescript/native": "catalog:",
     "@types/node": "catalog:",
-    "graphql": "^16.14.2",
-    "lefthook": "^2.1.10",
-    "nx": "23.1.1",
-    "oxlint": "1.76.0",
-    "oxlint-tsgolint": "7.0.2001",
+    "graphql": "^16.15.0",
+    "lefthook": "^2.2.2",
+    "nx": "24.0.6",
+    "oxlint": "1.94.0",
+    "oxlint-tsgolint": "7.0.2007",
     "typescript": "catalog:",
-    "vite": "^8.2.0"
+    "vite": "^8.3.8"
   }
 }

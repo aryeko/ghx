@@ -18,7 +18,8 @@ output_schema:
       type: array
       items:
         type: object
-        required: [id, tagName, name, isDraft, isPrerelease, url, targetCommitish, createdAt, publishedAt]
+        required:
+          [id, tagName, name, isDraft, isPrerelease, url, targetCommitish, createdAt, publishedAt]
         properties:
           id: { type: ["integer", "null"], minimum: 0 }
           tagName: { type: [string, "null"] }
