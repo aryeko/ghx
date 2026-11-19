@@ -20,6 +20,7 @@ describe("native stack mutation policy", () => {
       const result = await executeTasks(requests, {
         githubClient,
         githubToken: "test-token",
+        githubHost: "github.com",
         restFetch,
       })
 
@@ -59,7 +60,12 @@ describe("native stack mutation policy", () => {
         throw new Error("Unexpected GraphQL request")
       },
     })
-    const result = await executeTask(create, { githubClient, githubToken: "test-token", restFetch })
+    const result = await executeTask(create, {
+      githubClient,
+      githubToken: "test-token",
+      githubHost: "github.com",
+      restFetch,
+    })
 
     expect(writes).toEqual(['{"pull_requests":[21,22]}'])
     expect(result).toMatchObject({
